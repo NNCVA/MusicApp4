@@ -10,9 +10,9 @@
 ## 已确认推荐
 
 1. **状态流契约**：每个页面 ViewModel 只暴露不可变 `StateFlow<UiState>`，界面通过 `onAction` 提交用户动作；Snackbar、导航结果等一次性行为通过 `SharedFlow<UiEffect>` 发出，Composable 不持有业务状态。
-2. **数据源归属**：Room 是媒体库、播放列表、历史与隐藏状态的应用内唯一事实来源；MediaStore 只作为同步输入，DataStore 只保存用户设置，界面不得直接查询 MediaStore 或 DataStore。
+2. **数据源归属**：Room 是媒体库、播放列表、历史、隐藏状态与路径规则的应用内唯一事实来源；MediaStore 只作为同步输入，DataStore 只保存用户设置，其中扫描模式属于设置；界面不得直接查询 MediaStore 或 DataStore。
 3. **Room 表结构**：建立 `tracks`、`playlists`、`playlist_tracks`、`play_history`、`hidden_tracks`、`path_rules`、`playback_snapshot`；专辑、艺术家、文件夹通过 `tracks` 查询派生，不建立重复缓存表。
-4. **事务与迁移**：扫描结果合并、播放列表重排和批量操作必须使用 Room 事务；导出 Schema 并为每次版本升级编写 Migration 与迁移测试，发布构建禁止 destructive migration。
+4. **事务与迁移**：扫描结果合并、播放列表曲目位置更新和批量操作必须使用 Room 事务；导出 Schema 并为每次版本升级编写 Migration 与迁移测试，发布构建禁止 destructive migration。
 5. **播放器边界**：只有 `MediaLibraryService` 持有 ExoPlayer 和 MediaSession；Activity 与 ViewModel 仅通过 `MediaController` 发送命令和观察状态，不注入或暴露原始 Player 实例。
 
 ## 第二批已确认推荐

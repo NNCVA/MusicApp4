@@ -14,6 +14,7 @@
 - [08 系统媒体集成](design-review-08-system-media-integration.md)
 - [09 安全与测试](design-review-09-security-and-testing.md)
 - [11 首版最终约束](design-review-11-final-open-questions.md)
+- [12 实施边界](design-review-12-implementation-boundaries.md)
 
 ## 已搁置
 
@@ -21,5 +22,11 @@
 
 ## 领域与架构
 
-- [领域词汇](CONTEXT.md)
-- [ADR 目录](adr/)
+- [领域词汇](../CONTEXT.md)
+- [ADR 目录](../adr/)
+
+## 实施文档
+
+- [首版实现规格](implementation-spec.md)
+- [首版短计划](../plan/implementation-plan.md)
+- [首版开发 Wave Plan](../plan/implementation-wave-plan.md)
