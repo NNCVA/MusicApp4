@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kotlin LSP"
+  short_description: "Work effectively in Kotlin projects."
+  default_prompt: "Use $kotlin-lsp to inspect and update this Kotlin project safely."
