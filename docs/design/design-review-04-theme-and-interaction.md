@@ -2,6 +2,11 @@
 
 状态：已接受（2026-07-28）
 
+## 已实现基线
+
+- 已建立 `MusicDimensions`、`MusicShapes`、`MusicTypography` 统一令牌、四套预设 Light/Dark 色板与 Android 12+ 动态取色回退。
+- 已建立资源化加载/空态/错误态组件与线程安全 FIFO Snackbar 队列；最小点击目标令牌固定为 `48 dp`。
+
 以下十项是基于当前需求与 Android 平台行为确认的实现约束。
 
 1. **默认主题与预设**：Android 12+ 首次启动默认使用 Material You 动态取色，低版本使用默认蓝；另提供默认蓝、翡翠绿、日落橙、紫罗兰四套预设，每套都有完整浅色和深色色板。

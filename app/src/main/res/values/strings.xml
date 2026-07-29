@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">MusicApp</string>
+    <string name="loading">Loading…</string>
+    <string name="empty_state_title">Nothing here yet</string>
+    <string name="error_state_title">Something went wrong</string>
+    <string name="retry">Retry</string>
+    <string name="dismiss">Dismiss</string>
 </resources>

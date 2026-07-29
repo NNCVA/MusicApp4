@@ -24,8 +24,8 @@
 ## 3. 当前基线
 
 - 仓库只有 `:app` 模块，`minSdk 26`、`targetSdk 36`，Kotlin/JVM 使用 17。
-- 已接入 Compose、Material 3 与 Navigation 3；当前只有一个 `Main` 路由和空页面。
-- 已建立 Hilt Application/Activity 入口、应用级协程作用域、可替换时钟与随机源、平台无关领域模型与纯业务策略、Room v1 七表与 Repository/Fake，以及 Preferences DataStore 设置 Repository；尚未实现 MediaStore 同步、播放器服务、业务 ViewModel 或页面。
+- 已接入 Compose、Material 3、Navigation 3、四套 Light/Dark 主题、动态取色、统一设计令牌与共享加载/空态/错误态；当前只有一个 `Main` 路由和空页面。
+- 已建立 Hilt Application/Activity 入口、应用级协程作用域、可替换时钟与随机源、平台无关领域模型与纯业务策略、Room v1 七表与 Repository/Fake、Preferences DataStore 设置 Repository 及 Snackbar 队列；尚未实现 MediaStore 同步、播放器服务、业务 ViewModel 或页面。
 - Manifest 当前只有 Hilt Application、启动 Activity 与设置白名单备份规则。
 
 所有 Wave 均以“从空白骨架新增能力”为基线，不得把设计文档描述误报为已存在代码。
