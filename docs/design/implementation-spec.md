@@ -25,7 +25,7 @@
 
 - 仓库只有 `:app` 模块，`minSdk 26`、`targetSdk 36`，Kotlin/JVM 使用 17。
 - 已接入 Compose、Material 3 与 Navigation 3；当前只有一个 `Main` 路由和空页面。
-- 已建立 Hilt Application/Activity 入口、应用级协程作用域、可替换时钟与随机源，以及 Room、DataStore、Media3、Lifecycle、协程与 JVM 测试依赖底座；尚未建立业务表、Repository、播放器服务、业务 ViewModel 或页面。
+- 已建立 Hilt Application/Activity 入口、应用级协程作用域、可替换时钟与随机源、平台无关领域模型与纯业务策略，以及 Room、DataStore、Media3、Lifecycle、协程与 JVM 测试依赖底座；尚未建立业务表、Repository、播放器服务、业务 ViewModel 或页面。
 - Manifest 当前只有 Hilt Application、启动 Activity 与设置白名单备份规则。
 
 所有 Wave 均以“从空白骨架新增能力”为基线，不得把设计文档描述误报为已存在代码。
@@ -104,8 +104,8 @@ DataStore 只保存用户设置：
 
 ### 6.3 播放列表名称
 
-- 去除首尾空白后执行 Unicode 规范化。
-- 长度按规范化后的 Unicode 字符数计算，允许 `1–50`。
+- 去除首尾空白后执行 Unicode NFC 规范化。
+- 长度按规范化后的 Unicode code point 数计算，允许 `1–50`。
 - 重名比较忽略大小写；展示去除首尾空白后的名称。
 - 集合默认按创建时间倒序；列表内曲目按加入位置排序，批量添加保持选择顺序。
 - 同一列表内重复曲目跳过，并反馈实际新增数与跳过数。
@@ -180,6 +180,7 @@ DataStore 只保存用户设置：
 
 ### 8.3 随机队列变更
 
+- 播放队列允许同一曲目以不同队列项重复出现，每个队列项拥有独立身份；播放列表仍保持曲目唯一。
 - 普通“加入队列”：追加到原始队列末尾，并随机插入当前随机序列的未播放区间。
 - “下一首播放”：按选择顺序插入随机序列当前项之后，并追加到原始队列末尾。
 - 已播放前缀和当前曲目保持不变。
