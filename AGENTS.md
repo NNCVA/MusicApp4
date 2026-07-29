@@ -4,7 +4,7 @@
 - 必须使用中文输出！！！
 - 注意，必要时使用 .agents/skills/ 目录下的skills ！！！
 - 项目文档全放在 docs/ 目录下！！！
-- 多使用子代理并行执行
+- 多使用子代理并行执行， codex子代理目录.codex/agents/
 - 调用所有工具（Tool）时，必须严格检查并填写当前 schema 规定的全部必填字段，杜绝 SchemaError。
 
 ## 项目概述

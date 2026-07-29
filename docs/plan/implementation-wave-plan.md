@@ -2,6 +2,8 @@
 
 状态：可执行（2026-07-28）
 
+执行单元与状态记录见 [`waves/README.md`](waves/README.md)。本文件保留 Wave 0–8 的阶段范围、依赖与门禁；实际实施以 `Wn-xx` 执行单元为最小提交和验证单位。
+
 ## 1. 执行原则
 
 - Wave 按依赖顺序推进；上游门禁通过后，下游才可依赖其契约。
@@ -32,6 +34,8 @@ flowchart LR
 
 ## 3. Wave 0：工程与质量底座
 
+执行计划：[`waves/wave-0-engineering-foundation.md`](waves/wave-0-engineering-foundation.md)
+
 ### 目标
 
 把空白骨架升级为可持续迭代、能在每个后续 Wave 自动验证的工程底座。
@@ -53,6 +57,8 @@ flowchart LR
 - Manifest 仅保留当前启动 Activity 导出；未引入 `INTERNET` 或 `POST_NOTIFICATIONS`。
 
 ## 4. Wave 1：领域、Room 与设置事实来源
+
+执行计划：[`waves/wave-1-domain-data-settings.md`](waves/wave-1-domain-data-settings.md)
 
 ### 依赖
 
@@ -81,6 +87,8 @@ Wave 0。
 
 ## 5. Wave 2：设计系统与应用壳层
 
+执行计划：[`waves/wave-2-design-system-app-shell.md`](waves/wave-2-design-system-app-shell.md)
+
 ### 依赖
 
 Wave 1 的设置流、Repository Fake 与领域模型。
@@ -108,6 +116,8 @@ Wave 1 的设置流、Repository Fake 与领域模型。
 - 导航状态在配置变化和进程恢复模拟中可重建。
 
 ## 6. Wave 3：媒体库纵向闭环
+
+执行计划：[`waves/wave-3-media-library.md`](waves/wave-3-media-library.md)
 
 ### 依赖
 
@@ -138,6 +148,8 @@ Wave 1 数据事实来源，Wave 2 壳层与共享状态。
 - Wave 3 新增核心逻辑达到行覆盖率 `80%`、分支覆盖率 `70%`。
 
 ## 7. Wave 4：播放内核与系统媒体
+
+执行计划：[`waves/wave-4-playback-system-media.md`](waves/wave-4-playback-system-media.md)
 
 ### 依赖
 
@@ -171,6 +183,8 @@ Wave 3 可用曲目与 URI，Wave 1 快照和设置。
 
 ## 8. Wave 5：播放器 UI、队列与歌词
 
+执行计划：[`waves/wave-5-player-ui-lyrics.md`](waves/wave-5-player-ui-lyrics.md)
+
 ### 依赖
 
 Wave 4 播放状态与命令，Wave 3 元数据和封面。
@@ -199,6 +213,8 @@ Wave 4 播放状态与命令，Wave 3 元数据和封面。
 - Wave 5 新增核心逻辑达到行覆盖率 `80%`、分支覆盖率 `70%`。
 
 ## 9. Wave 6：分类浏览、播放列表与历史
+
+执行计划：[`waves/wave-6-library-features.md`](waves/wave-6-library-features.md)
 
 ### 依赖
 
@@ -229,6 +245,8 @@ Wave 2 共享曲目组件，Wave 3 媒体查询，Wave 4 播放建队；可与 W
 
 ## 10. Wave 7：设置、Aero、数据管理与关于
 
+执行计划：[`waves/wave-7-settings-aero-about.md`](waves/wave-7-settings-aero-about.md)
+
 ### 依赖
 
 Wave 2 主题壳层，Wave 3 扫描协调器，Wave 4 播放设置，Wave 6 数据入口。
@@ -258,6 +276,8 @@ Wave 2 主题壳层，Wave 3 扫描协调器，Wave 4 播放设置，Wave 6 数�
 
 ## 11. Wave 8：发布硬化与首版验收
 
+执行计划：[`waves/wave-8-release-acceptance.md`](waves/wave-8-release-acceptance.md)
+
 ### 依赖
 
 Wave 0–7 全部完成。
@@ -281,7 +301,7 @@ Wave 0–7 全部完成。
 
 ## 12. 需求到 Wave 的映射
 
-| 需求 | 实现 Wave | 功能测试 Wave | 最终复验 |
+| 需求 | 涉及 Wave | 功能测试 Wave | 最终复验 |
 |---|---|---|---|
 | 1 音频扫描器 | 1、3 | 3 | 8 |
 | 2 曲目列表 | 2、3、6 | 3、6 | 8 |

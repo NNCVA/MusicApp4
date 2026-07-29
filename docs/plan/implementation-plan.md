@@ -2,7 +2,7 @@
 
 状态：可执行（2026-07-28）
 
-详细行为以 [`../design/implementation-spec.md`](../design/implementation-spec.md) 为准，任务拆分与门禁以 [`implementation-wave-plan.md`](implementation-wave-plan.md) 为准。
+详细行为以 [`../design/implementation-spec.md`](../design/implementation-spec.md) 为准，阶段拆分与门禁以 [`implementation-wave-plan.md`](implementation-wave-plan.md) 为准，最小执行单元及状态记录以 [`waves/README.md`](waves/README.md) 为准。
 
 ## 目标
 
