@@ -15,7 +15,15 @@ class MediaStoreQueryException internal constructor(
 interface MediaStoreQueryAdapter {
     @Throws(MediaStoreQueryException::class)
     fun queryAudio(): List<MediaAudioCandidate>
+
+    @Throws(MediaStoreQueryException::class)
+    fun queryAudioWithReport(): MediaStoreQueryResult = MediaStoreQueryResult(queryAudio(), emptyList())
 }
+
+data class MediaStoreQueryResult(
+    val candidates: List<MediaAudioCandidate>,
+    val unreadableDisplayNames: List<String?>,
+)
 
 class AndroidMediaStoreQueryAdapter internal constructor(
     private val contentResolver: ContentResolver,
@@ -39,12 +47,14 @@ class AndroidMediaStoreQueryAdapter internal constructor(
         },
     )
 
-    override fun queryAudio(): List<MediaAudioCandidate> =
+    override fun queryAudio(): List<MediaAudioCandidate> = queryAudioWithReport().candidates
+
+    override fun queryAudioWithReport(): MediaStoreQueryResult =
         try {
             val spec = MediaStoreQuerySpec.forApiLevel(apiLevel)
             val legacyStorageRoots =
                 if (apiLevel < 29) legacyStorageRootsProvider() else emptySet()
-            queryTargets().flatMap { target ->
+            val results = queryTargets().map { target ->
                 val cursor =
                     contentResolver.query(
                         target.uri,
@@ -57,6 +67,10 @@ class AndroidMediaStoreQueryAdapter internal constructor(
                     it.readRows(target.volumeName, spec.pathColumn, legacyStorageRoots)
                 }
             }
+            MediaStoreQueryResult(
+                candidates = results.flatMap(ReadRowsResult::candidates),
+                unreadableDisplayNames = results.flatMap(ReadRowsResult::unreadableDisplayNames),
+            )
         } catch (exception: Exception) {
             if (exception is MediaStoreQueryException) throw exception
             throw MediaStoreQueryException(exception)
@@ -75,7 +89,7 @@ class AndroidMediaStoreQueryAdapter internal constructor(
         } else {
             listOf(
                 QueryTarget(
-                    volumeName = MediaStore.VOLUME_EXTERNAL,
+                    volumeName = LEGACY_EXTERNAL_VOLUME_NAME,
                     uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 ),
             )
@@ -85,13 +99,19 @@ class AndroidMediaStoreQueryAdapter internal constructor(
         volumeName: String,
         pathColumn: String,
         legacyStorageRoots: Set<String>,
-    ): List<MediaAudioCandidate> {
+    ): ReadRowsResult {
         val columns = Columns(this, pathColumn)
-        return buildList {
-            while (moveToNext()) {
-                readCandidateOrNull(volumeName, columns, legacyStorageRoots)?.let(::add)
+        val candidates = mutableListOf<MediaAudioCandidate>()
+        val unreadableDisplayNames = mutableListOf<String?>()
+        while (moveToNext()) {
+            val candidate = readCandidateOrNull(volumeName, columns, legacyStorageRoots)
+            if (candidate == null) {
+                unreadableDisplayNames += runCatching { columns.displayName.stringOrNull() }.getOrNull()
+            } else {
+                candidates += candidate
             }
         }
+        return ReadRowsResult(candidates, unreadableDisplayNames)
     }
 
     private fun readCandidateOrNull(
@@ -137,6 +157,11 @@ class AndroidMediaStoreQueryAdapter internal constructor(
     private data class QueryTarget(
         val volumeName: String,
         val uri: android.net.Uri,
+    )
+
+    private data class ReadRowsResult(
+        val candidates: List<MediaAudioCandidate>,
+        val unreadableDisplayNames: List<String?>,
     )
 
     private class Columns(cursor: Cursor, pathColumn: String) {
@@ -226,3 +251,5 @@ private fun normalizeSegments(path: String): String {
     }
     return segments.joinToString("/")
 }
+
+private const val LEGACY_EXTERNAL_VOLUME_NAME = "external"

@@ -124,9 +124,10 @@ class MediaStoreQuerySpecTest {
             }
         }
 
-        val rows = adapter(provider, apiLevel = 29).queryAudio()
+        val result = adapter(provider, apiLevel = 29).queryAudioWithReport()
 
-        assertEquals(listOf(61L, 62L), rows.map { it.mediaStoreId })
+        assertEquals(listOf(61L, 62L), result.candidates.map { it.mediaStoreId })
+        assertEquals(listOf("track.mp3"), result.unreadableDisplayNames)
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.musicapp.player.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.musicapp.player.core.domain.model.ColorSource
 import com.musicapp.player.core.domain.model.PresetTheme
 import org.junit.Assert.assertEquals
@@ -29,6 +30,9 @@ class DesignTokenPolicyTest {
             assertEquals(dimensions.trackListItemHeight, dimensions.miniPlayerHeight)
             assertEquals(160.dp, dimensions.adaptiveGridMinimumCellWidth)
             assertEquals(48.dp, dimensions.minimumTouchTarget)
+            assertEquals(176.dp, dimensions.radarSize)
+            assertEquals(2.dp, dimensions.radarStrokeWidth)
+            assertEquals(360.dp, dimensions.dialogListMaxHeight)
         }
     }
 
@@ -43,6 +47,14 @@ class DesignTokenPolicyTest {
         assertNotNull(typography.titleLarge)
         assertNotNull(typography.bodyLarge)
         assertNotNull(typography.labelSmall)
+        assertEquals(16.sp, typography.compactTrackTitle.fontSize)
+        assertEquals(20.sp, typography.compactTrackTitle.lineHeight)
+        assertEquals(12.sp, typography.compactTrackArtist.fontSize)
+        assertEquals(16.sp, typography.compactTrackArtist.lineHeight)
+        assertEquals(18.sp, typography.expandedTrackTitle.fontSize)
+        assertEquals(22.sp, typography.expandedTrackTitle.lineHeight)
+        assertEquals(14.sp, typography.expandedTrackArtist.fontSize)
+        assertEquals(18.sp, typography.expandedTrackArtist.lineHeight)
         assertNotNull(typography.material)
     }
 

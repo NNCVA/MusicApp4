@@ -2,7 +2,9 @@ package com.musicapp.player.data.settings
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.AppLanguage
 import com.musicapp.player.core.domain.model.AppSettings
@@ -43,6 +45,23 @@ class SettingsRepositoryTest {
         advanceUntilIdle()
 
         assertEquals(AppSettings(), repository.settings.value)
+    }
+
+    @Test
+    fun currentSettingsReadsPersistedValueWhileObservedStateIsStillInitialDefault() = runTest {
+        val persisted = mutablePreferencesOf(
+            stringPreferencesKey("scan_mode") to ScanMode.SELECTED_DIRECTORIES.name,
+        )
+        val unstartedObserverScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher())
+        val repository = PreferencesSettingsRepository(
+            dataStore = FixedDataStore(persisted),
+            applicationScope = unstartedObserverScope,
+        )
+
+        assertEquals(ScanMode.ALL, repository.settings.value.scanMode)
+        assertEquals(ScanMode.SELECTED_DIRECTORIES, repository.currentSettings().scanMode)
+        assertEquals(ScanMode.ALL, repository.settings.value.scanMode)
+        unstartedObserverScope.cancel()
     }
 
     @Test
@@ -167,5 +186,14 @@ class SettingsRepositoryTest {
 
         override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences =
             throw UnsupportedOperationException("Read-only test DataStore")
+    }
+
+    private class FixedDataStore(
+        private val preferences: Preferences,
+    ) : DataStore<Preferences> {
+        override val data: Flow<Preferences> = flow { emit(preferences) }
+
+        override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences =
+            transform(preferences)
     }
 }

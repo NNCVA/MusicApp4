@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.musicapp.player.navigation.AboutRoute
@@ -51,6 +52,8 @@ import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
 import com.musicapp.player.navigation.topLevelNavKeys
 import com.musicapp.player.feature.permission.MediaPermissionState
+import com.musicapp.player.feature.tracks.TracksScreenRoute
+import com.musicapp.player.feature.tracks.TracksViewModel
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.AppShell
 import com.musicapp.player.ui.shell.PlayerSheetPlaceholder
@@ -154,7 +157,12 @@ private fun TracksDestination(
 ) {
     when (permissionState) {
         is MediaPermissionState.Granted ->
-            DestinationPlaceholder(TracksRoute, contentInsets, policy, openDrawer)
+            TracksScreenRoute(
+                viewModel = viewModel<TracksViewModel>(),
+                contentInsets = contentInsets,
+                policy = policy,
+                openDrawer = openDrawer,
+            )
         is MediaPermissionState.PurposeExplanation ->
             PermissionPrompt(
                 descriptionResId = R.string.permission_audio_explanation,

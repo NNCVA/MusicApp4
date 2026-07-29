@@ -12,6 +12,7 @@
 - 权限状态机通过平台 Gateway 隔离 Activity Result 与系统设置；权限请求历史属于不可备份的系统协调元数据，不属于 DataStore 用户设置。
 - MediaStore Cursor、旧 API 绝对路径与平台异常封装在 `data/mediastore`；上层只消费 `core/media` 领域候选、准入结果和相对目录。
 - `data/sync` 以一次 Room 事务提交完整扫描：先推进代次并批量 Upsert，再仅对本轮成功查询的已挂载卷清理缺失曲目；失败路径不推进代次、不覆盖元数据且不删除关联。
+- `feature/tracks` 以 `TracksViewModel` 合并 Room 曲目与同步状态，排序契约保存在 `SavedStateHandle`，Composable 只提交扫描、排序、选择、隐藏和反馈确认动作，不持有 MediaStore 或物理删除能力。
 
 ## 已确认推荐
 

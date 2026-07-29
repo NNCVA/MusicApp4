@@ -19,12 +19,12 @@ import kotlinx.coroutines.CancellationException
 class MediaLibrarySyncCoordinator @Inject constructor(
     private val database: MusicDatabase,
     private val clock: Clock,
-) {
+) : MediaLibrarySynchronizer {
     private val trackDao = database.trackDao()
     private val snapshotDao = database.playbackSnapshotDao()
     private val syncStateDao = database.mediaSyncStateDao()
 
-    suspend fun synchronize(
+    override suspend fun synchronize(
         mode: MediaLibrarySyncMode,
         source: MediaLibraryScanSource,
     ): MediaLibrarySyncResult {
@@ -40,7 +40,18 @@ class MediaLibrarySyncCoordinator @Inject constructor(
             }
             return retainCacheAfterFailure(reason)
         }
-        return commit(mode, scan)
+        return commit(mode, scan).copy(scanSummary = scan.summary)
+    }
+
+    override suspend fun cacheSnapshot(): MediaLibraryCacheSnapshot {
+        val generation = syncStateDao.getGenerationOrNull() ?: 0
+        val mountedSignatures = syncStateDao.getVolumeStates()
+            .filter { it.availability == Availability.AVAILABLE.name }
+            .associate { it.volumeName to it.mediaStoreVersion }
+        return MediaLibraryCacheSnapshot(
+            hasSuccessfulScan = generation > 0,
+            mountedVolumeSignatures = mountedSignatures,
+        )
     }
 
     suspend fun commit(

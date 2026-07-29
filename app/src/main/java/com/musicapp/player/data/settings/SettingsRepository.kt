@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 interface SettingsRepository {
     val settings: StateFlow<AppSettings>
 
+    suspend fun currentSettings(): AppSettings
+
     suspend fun setColorSource(value: ColorSource)
 
     suspend fun setPresetTheme(value: PresetTheme)

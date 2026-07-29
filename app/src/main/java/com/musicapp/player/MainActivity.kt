@@ -15,17 +15,24 @@ import androidx.compose.runtime.getValue
 import com.musicapp.player.feature.permission.AndroidPermissionGateway
 import com.musicapp.player.feature.permission.MediaPermissionCoordinator
 import com.musicapp.player.feature.permission.MediaPermissionState
+import com.musicapp.player.data.sync.LibrarySyncCoordinator
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicDimensions
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+  @Inject lateinit var librarySyncCoordinator: LibrarySyncCoordinator
+
   private lateinit var mediaPermissionCoordinator: MediaPermissionCoordinator
+  private var isActivityStarted = false
   private val permissionLauncher =
     registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
       if (::mediaPermissionCoordinator.isInitialized) {
+        val wasGranted = mediaPermissionCoordinator.canQueryMediaStore
         mediaPermissionCoordinator.onPermissionResult(granted)
+        reconcileMediaPermission(wasGranted)
       }
     }
 
@@ -39,6 +46,10 @@ class MainActivity : ComponentActivity() {
           launchPermissionRequest = permissionLauncher::launch,
         ),
       )
+    if (mediaPermissionCoordinator.canQueryMediaStore && !ProcessSyncLifecycle.coldStartDispatched) {
+      ProcessSyncLifecycle.coldStartDispatched = true
+      librarySyncCoordinator.onColdStart()
+    }
     enableEdgeToEdge()
     setContent {
       val permissionState by mediaPermissionCoordinator.state.collectAsStateWithLifecycle()
@@ -62,11 +73,42 @@ class MainActivity : ComponentActivity() {
   override fun onResume() {
     super.onResume()
     if (!::mediaPermissionCoordinator.isInitialized) return
+    val wasGranted = mediaPermissionCoordinator.canQueryMediaStore
     when (mediaPermissionCoordinator.state.value) {
       is MediaPermissionState.Requesting -> Unit
       is MediaPermissionState.WaitingForSettingsReturn ->
         mediaPermissionCoordinator.onApplicationSettingsReturned()
       else -> mediaPermissionCoordinator.refreshPermission()
     }
+    reconcileMediaPermission(wasGranted)
   }
+
+  override fun onStart() {
+    super.onStart()
+    isActivityStarted = true
+    if (::mediaPermissionCoordinator.isInitialized && mediaPermissionCoordinator.canQueryMediaStore) {
+      librarySyncCoordinator.startForeground()
+    }
+  }
+
+  override fun onStop() {
+    isActivityStarted = false
+    librarySyncCoordinator.stopForeground()
+    super.onStop()
+  }
+
+  private fun reconcileMediaPermission(wasGranted: Boolean) {
+    val isGranted = mediaPermissionCoordinator.canQueryMediaStore
+    if (!wasGranted && isGranted) {
+      ProcessSyncLifecycle.coldStartDispatched = true
+      librarySyncCoordinator.requestPermissionGrantedSync()
+    }
+    if (isActivityStarted) {
+      if (isGranted) librarySyncCoordinator.startForeground() else librarySyncCoordinator.stopForeground()
+    }
+  }
+}
+
+private object ProcessSyncLifecycle {
+  var coldStartDispatched: Boolean = false
 }

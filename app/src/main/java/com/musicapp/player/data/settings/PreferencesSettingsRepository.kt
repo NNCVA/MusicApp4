@@ -21,6 +21,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -29,7 +31,7 @@ class PreferencesSettingsRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     @ApplicationCoroutineScope applicationScope: CoroutineScope,
 ) : SettingsRepository {
-    override val settings: StateFlow<AppSettings> = dataStore.data
+    private val settingsFlow: Flow<AppSettings> = dataStore.data
         .catch { exception ->
             if (exception is IOException) {
                 emit(emptyPreferences())
@@ -38,11 +40,15 @@ class PreferencesSettingsRepository @Inject constructor(
             }
         }
         .map(::toAppSettings)
+
+    override val settings: StateFlow<AppSettings> = settingsFlow
         .stateIn(
             scope = applicationScope,
             started = SharingStarted.Eagerly,
             initialValue = AppSettings(),
         )
+
+    override suspend fun currentSettings(): AppSettings = settingsFlow.first()
 
     override suspend fun setColorSource(value: ColorSource) {
         setEnum(Keys.COLOR_SOURCE, value)

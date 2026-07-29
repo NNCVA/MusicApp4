@@ -24,8 +24,8 @@
 ## 3. 当前基线
 
 - 仓库只有 `:app` 模块，`minSdk 26`、`targetSdk 36`，Kotlin/JVM 使用 17。
-- 已接入 Compose、Material 3、Navigation 3、四套 Light/Dark 主题、动态取色、统一设计令牌与共享加载/空态/错误态；八个一级栈、详情 Route Key、三档自适应壳层及应用级 Player Sheet 占位已建立，业务页面仍为占位内容。
-- 已建立 Hilt Application/Activity 入口、应用级协程作用域、可替换时钟与随机源、平台无关领域模型与纯业务策略、Room v2（七张业务表、同步代次与每卷状态）、Repository/Fake、Preferences DataStore 设置 Repository、MediaStore 多卷查询/准入适配、原子媒体库同步及 Snackbar 队列；尚未实现自动同步触发、播放器服务、业务 ViewModel 或页面。
+- 已接入 Compose、Material 3、Navigation 3、四套 Light/Dark 主题、动态取色、统一设计令牌与共享加载/空态/错误态；八个一级栈、详情 Route Key、三档自适应壳层及应用级 Player Sheet 占位已建立，单曲页已实现，其余业务页面仍为占位内容。
+- 已建立 Hilt Application/Activity 入口、应用级协程作用域、可替换时钟与随机源、平台无关领域模型与纯业务策略、Room v2（七张业务表、同步代次与每卷状态）、Repository/Fake、Preferences DataStore 设置 Repository、MediaStore 多卷查询/准入适配、原子媒体库同步、冷启动/前台自动同步协调、单曲 ViewModel 及 Snackbar 队列；尚未实现高级元数据、播放器服务或其余业务页面。
 - Manifest 已声明分版本音频读取权限，未声明 `POST_NOTIFICATIONS`；Hilt Application、启动 Activity、设置白名单备份规则与运行时权限 Gateway 已接入。
 
 所有 Wave 均以“从空白骨架新增能力”为基线，不得把设计文档描述误报为已存在代码。
