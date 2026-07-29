@@ -2,6 +2,7 @@
 androidGradlePlugin = "9.0.1"
 androidxCore = "1.18.0"
 androidxActivity = "1.13.0"
+androidxAppCompat = "1.7.1"
 androidxComposeBom = "2026.03.01"
 kotlin = "2.3.20"
 nav3Core = "1.0.1"
@@ -11,6 +12,7 @@ dataStore = "1.2.1"
 media3 = "1.10.1"
 lifecycle = "2.10.0"
 coroutines = "1.11.0"
+serializationJson = "1.8.1"
 coil = "3.5.0"
 ksp = "2.3.10"
 junit4 = "4.13.2"
@@ -25,6 +27,7 @@ profileInstaller = "1.4.1"
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivity" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidxAppCompat" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "androidxComposeBom" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3"}
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui"}
@@ -48,6 +51,7 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serializationJson" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }

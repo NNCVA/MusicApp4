@@ -45,6 +45,10 @@ android {
       shaders = false
     }
 
+    androidResources {
+      generateLocaleConfig = true
+    }
+
     testOptions {
       animationsDisabled = true
       unitTests.isIncludeAndroidResources = true
@@ -89,10 +93,12 @@ dependencies {
   // Core Android dependencies
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.activity.compose)
+  implementation(libs.androidx.appcompat)
   implementation(libs.androidx.lifecycle.process)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
   implementation(libs.kotlinx.coroutines.android)
+  implementation(libs.kotlinx.serialization.json)
 
   // Compose
   implementation(libs.androidx.compose.ui)
@@ -167,6 +173,9 @@ val coverageExcludes =
     "**/*_Impl*.*",
     "**/package-info*.*",
     "com/musicapp/player/core/system/Default*.*",
+    "com/musicapp/player/data/local/**",
+    "com/musicapp/player/data/repository/room/**",
+    "com/musicapp/player/data/settings/**",
   )
 val debugClassDirectories =
   files(

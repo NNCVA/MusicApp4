@@ -3,48 +3,70 @@ package com.musicapp.player.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
+import com.musicapp.player.core.designsystem.MusicDimensions
+import com.musicapp.player.core.designsystem.MusicShapes
+import com.musicapp.player.core.designsystem.MusicTypography
+import com.musicapp.player.core.designsystem.MusicWindowSizeClass
+import com.musicapp.player.core.designsystem.musicDimensions
+import com.musicapp.player.core.designsystem.musicShapes
+import com.musicapp.player.core.designsystem.musicTypography
 
-private val DarkColorScheme = darkColorScheme(primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80)
+private val LocalMusicDimensions = staticCompositionLocalOf { musicDimensions(MusicWindowSizeClass.Compact) }
+private val LocalMusicShapes = staticCompositionLocalOf { musicShapes(MusicWindowSizeClass.Compact) }
+private val LocalMusicTypography = staticCompositionLocalOf { musicTypography(MusicWindowSizeClass.Compact) }
+private val LocalMusicWindowSizeClass = staticCompositionLocalOf { MusicWindowSizeClass.Compact }
 
-private val LightColorScheme =
-  lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
+object MusicTheme {
+  val dimensions: MusicDimensions
+    @Composable @ReadOnlyComposable get() = LocalMusicDimensions.current
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
-  )
+  val shapes: MusicShapes
+    @Composable @ReadOnlyComposable get() = LocalMusicShapes.current
+
+  val typography: MusicTypography
+    @Composable @ReadOnlyComposable get() = LocalMusicTypography.current
+
+  val windowSizeClass: MusicWindowSizeClass
+    @Composable @ReadOnlyComposable get() = LocalMusicWindowSizeClass.current
+}
 
 @Composable
 fun MusicAppTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
-  // Dynamic color is available on Android 12+
   dynamicColor: Boolean = true,
+  themePreset: MusicThemePreset = if (dynamicColor) MusicThemePreset.Dynamic else MusicThemePreset.DefaultBlue,
+  windowSizeClass: MusicWindowSizeClass = MusicWindowSizeClass.Compact,
   content: @Composable () -> Unit,
 ) {
+  val resolvedPreset = resolveThemePreset(themePreset, Build.VERSION.SDK_INT)
+  val context = LocalContext.current
   val colorScheme =
     when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
+      resolvedPreset == MusicThemePreset.Dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
         if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
+      else -> presetColorScheme(resolvedPreset, darkTheme)
     }
+  val dimensions = musicDimensions(windowSizeClass)
+  val shapes = musicShapes(windowSizeClass)
+  val typography = musicTypography(windowSizeClass)
 
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+  CompositionLocalProvider(
+    LocalMusicDimensions provides dimensions,
+    LocalMusicShapes provides shapes,
+    LocalMusicTypography provides typography,
+    LocalMusicWindowSizeClass provides windowSizeClass,
+  ) {
+    MaterialTheme(
+      colorScheme = colorScheme,
+      typography = materialTypography(typography),
+      content = content,
+    )
+  }
 }

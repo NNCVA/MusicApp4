@@ -1,6 +1,6 @@
 # MusicApp Wave 执行计划索引
 
-状态：`TODO`
+状态：`DOING`
 
 本目录把 [`../implementation-wave-plan.md`](../implementation-wave-plan.md) 中的 Wave 0–8 作为阶段门禁，并进一步拆成可独立提交、独立验证、独立回滚的执行单元。
 

@@ -1,2 +1,2 @@
-/** Shared design tokens and components are introduced in Wave 2. */
+/** Stable design tokens shared by every MusicApp Compose surface. */
 package com.musicapp.player.core.designsystem
