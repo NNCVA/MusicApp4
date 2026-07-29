@@ -2,10 +2,10 @@
 
 状态：已接受（2026-07-29）
 
-## 当前基线
+## 已实现基线
 
-- 项目当前没有本地单元测试和测试依赖，`testDebugUnitTest` 目前是空任务。
-- 仓库当前没有 CI 工作流，系统默认 Java 也不可用；CI 需显式配置 JDK 17。
+- 已配置 JUnit4、`kotlinx-coroutines-test`、Turbine、Robolectric、Room Testing 与 Hilt Testing；`ProjectSmokeTest` 保证 `testDebugUnitTest` 至少执行一个真实 JVM 测试。JDK 17 下 Robolectric 使用 API 35 Runtime（API 36 Runtime 要求 Java 21），应用仍保持 `compileSdk`/`targetSdk 36`。
+- CI 显式使用 JDK 17，并仅运行 `testDebugUnitTest`、`lintDebug` 与 `assembleDebug` 三项门禁；需要 Android Runtime 的 Hilt 和 DAO 行为分别由 Robolectric 与 Room Testing 验证。
 
 ## 已确认约束
 

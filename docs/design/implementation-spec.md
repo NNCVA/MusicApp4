@@ -25,8 +25,8 @@
 
 - 仓库只有 `:app` 模块，`minSdk 26`、`targetSdk 36`，Kotlin/JVM 使用 17。
 - 已接入 Compose、Material 3 与 Navigation 3；当前只有一个 `Main` 路由和空页面。
-- 尚未接入 Hilt、Room、DataStore、Media3、MediaStore 业务层、ViewModel、Repository、业务页面或测试基础设施。
-- Manifest 当前只有启动 Activity。
+- 已建立 Hilt、Room、DataStore、Media3、Lifecycle、协程与 JVM 测试依赖底座；尚未建立业务表、Repository、播放器服务、业务 ViewModel 或页面。
+- Manifest 当前只有启动 Activity 与设置白名单备份规则。
 
 所有 Wave 均以“从空白骨架新增能力”为基线，不得把设计文档描述误报为已存在代码。
 
@@ -302,6 +302,7 @@ DataStore 只保存用户设置：
 ## 13. 功能测试与 CI
 
 - JVM 单元测试使用 JUnit4；协程使用 `kotlinx-coroutines-test`，Flow 使用 Turbine。
+- 需要 Android Runtime 的 Hilt 组件与 Room DAO 使用 Robolectric、Room Testing 在 `testDebugUnitTest` 中验证。
 - 平台对象使用 Fake 隔离，使纯业务逻辑可由 `testDebugUnitTest` 执行。
 - 单元测试覆盖扫描过滤、路径优先级、排序、队列模式、播放历史阈值、淡出淡入状态机、LRC 解析、本地化格式化和 ViewModel。
 - CI 使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`。
