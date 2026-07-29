@@ -24,7 +24,7 @@
 ## 3. 当前基线
 
 - 仓库只有 `:app` 模块，`minSdk 26`、`targetSdk 36`，Kotlin/JVM 使用 17。
-- 已接入 Compose、Material 3、Navigation 3、四套 Light/Dark 主题、动态取色、统一设计令牌与共享加载/空态/错误态；当前只有一个 `Main` 路由和空页面。
+- 已接入 Compose、Material 3、Navigation 3、四套 Light/Dark 主题、动态取色、统一设计令牌与共享加载/空态/错误态；八个一级栈、详情 Route Key、三档自适应壳层及应用级 Player Sheet 占位已建立，业务页面仍为占位内容。
 - 已建立 Hilt Application/Activity 入口、应用级协程作用域、可替换时钟与随机源、平台无关领域模型与纯业务策略、Room v1 七表与 Repository/Fake、Preferences DataStore 设置 Repository 及 Snackbar 队列；尚未实现 MediaStore 同步、播放器服务、业务 ViewModel 或页面。
 - Manifest 当前只有 Hilt Application、启动 Activity 与设置白名单备份规则。
 
