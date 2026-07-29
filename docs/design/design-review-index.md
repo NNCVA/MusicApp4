@@ -25,4 +25,5 @@
 
 - [首版实现规格](implementation-spec.md)
 - [首版短计划](../plan/implementation-plan.md)
+- [首版逐过程执行计划](../plan/implementation-execution-plan.md)
 - [首版开发 Wave Plan](../plan/implementation-wave-plan.md)
