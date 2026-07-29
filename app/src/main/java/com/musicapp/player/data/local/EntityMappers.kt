@@ -34,6 +34,7 @@ internal fun Track.toEntity() = TrackEntity(
     mimeType = mimeType,
     sizeBytes = sizeBytes,
     availability = availability.name,
+    lastSeenSyncGeneration = 0,
 )
 
 internal fun TrackEntity.toDomain() = Track(

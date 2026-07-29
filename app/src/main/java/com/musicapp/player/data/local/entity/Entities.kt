@@ -34,6 +34,30 @@ data class TrackEntity(
     @ColumnInfo(name = "mime_type") val mimeType: String?,
     @ColumnInfo(name = "size_bytes") val sizeBytes: Long,
     @ColumnInfo(name = "availability") val availability: String,
+    @ColumnInfo(name = "last_seen_sync_generation", defaultValue = "0")
+    val lastSeenSyncGeneration: Long = 0,
+)
+
+@Entity(tableName = "media_sync_state")
+data class MediaSyncStateEntity(
+    @androidx.room.PrimaryKey
+    @ColumnInfo(name = "state_id") val stateId: Int = ACTIVE_STATE_ID,
+    @ColumnInfo(name = "last_generation") val lastGeneration: Long = 0,
+) {
+    companion object {
+        const val ACTIVE_STATE_ID = 1
+    }
+}
+
+@Entity(tableName = "media_volume_sync_state")
+data class MediaVolumeSyncStateEntity(
+    @androidx.room.PrimaryKey
+    @ColumnInfo(name = "volume_name") val volumeName: String,
+    @ColumnInfo(name = "availability") val availability: String,
+    @ColumnInfo(name = "last_successful_generation") val lastSuccessfulGeneration: Long?,
+    @ColumnInfo(name = "last_complete_generation") val lastCompleteGeneration: Long?,
+    @ColumnInfo(name = "media_store_version") val mediaStoreVersion: String?,
+    @ColumnInfo(name = "updated_at_ms") val updatedAtMs: Long,
 )
 
 @Entity(

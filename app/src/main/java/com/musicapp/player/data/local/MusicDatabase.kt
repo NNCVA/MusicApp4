@@ -3,6 +3,7 @@ package com.musicapp.player.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.musicapp.player.data.local.dao.HiddenTrackDao
+import com.musicapp.player.data.local.dao.MediaSyncStateDao
 import com.musicapp.player.data.local.dao.PathRuleDao
 import com.musicapp.player.data.local.dao.PlayHistoryDao
 import com.musicapp.player.data.local.dao.PlaybackSnapshotDao
@@ -10,6 +11,8 @@ import com.musicapp.player.data.local.dao.PlaylistDao
 import com.musicapp.player.data.local.dao.PlaylistTrackDao
 import com.musicapp.player.data.local.dao.TrackDao
 import com.musicapp.player.data.local.entity.HiddenTrackEntity
+import com.musicapp.player.data.local.entity.MediaSyncStateEntity
+import com.musicapp.player.data.local.entity.MediaVolumeSyncStateEntity
 import com.musicapp.player.data.local.entity.PathRuleEntity
 import com.musicapp.player.data.local.entity.PlayHistoryEntity
 import com.musicapp.player.data.local.entity.PlaybackSnapshotEntity
@@ -26,8 +29,10 @@ import com.musicapp.player.data.local.entity.TrackEntity
         HiddenTrackEntity::class,
         PathRuleEntity::class,
         PlaybackSnapshotEntity::class,
+        MediaSyncStateEntity::class,
+        MediaVolumeSyncStateEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class MusicDatabase : RoomDatabase() {
@@ -38,4 +43,5 @@ abstract class MusicDatabase : RoomDatabase() {
     abstract fun playlistTrackDao(): PlaylistTrackDao
     abstract fun playHistoryDao(): PlayHistoryDao
     abstract fun playbackSnapshotDao(): PlaybackSnapshotDao
+    abstract fun mediaSyncStateDao(): MediaSyncStateDao
 }

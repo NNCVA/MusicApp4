@@ -7,10 +7,11 @@
 - 首版保持单一 `:app` Gradle 模块，内部按 `core/data/media/designsystem` 与 `feature/*` 包划分依赖方向。
 - 使用 Hilt 管理 Application、Room、Repository、MediaLibraryService 与 ViewModel 的依赖和作用域。
 - 已实现 Hilt Application/Activity 入口、应用级 `SupervisorJob` 协程作用域，以及可由测试替换的时钟和随机源；业务单例将在所属过程中接入。
-- 已实现 Room v1 七张业务表、复合外键与索引、DAO、事务 Repository/Fake、完整播放快照往返及 Schema 导出；后续版本只能通过 Migration 演进。
+- 已实现 Room v1 七张业务表、复合外键与索引、DAO、事务 Repository/Fake、完整播放快照往返及 Schema 导出；过程 10 已通过 `Migration(1, 2)` 增加同步代次和每卷状态，后续版本继续只通过 Migration 演进。
 - 已实现 Navigation 3 八个一级栈及版本化二进制/Base64 快照；进程恢复点只保存 Route Key 与参数，不保存页面业务状态。
 - 权限状态机通过平台 Gateway 隔离 Activity Result 与系统设置；权限请求历史属于不可备份的系统协调元数据，不属于 DataStore 用户设置。
 - MediaStore Cursor、旧 API 绝对路径与平台异常封装在 `data/mediastore`；上层只消费 `core/media` 领域候选、准入结果和相对目录。
+- `data/sync` 以一次 Room 事务提交完整扫描：先推进代次并批量 Upsert，再仅对本轮成功查询的已挂载卷清理缺失曲目；失败路径不推进代次、不覆盖元数据且不删除关联。
 
 ## 已确认推荐
 

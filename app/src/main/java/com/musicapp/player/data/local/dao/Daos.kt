@@ -8,6 +8,8 @@ import androidx.room.Query
 import androidx.room.Update
 import androidx.room.Upsert
 import com.musicapp.player.data.local.entity.HiddenTrackEntity
+import com.musicapp.player.data.local.entity.MediaSyncStateEntity
+import com.musicapp.player.data.local.entity.MediaVolumeSyncStateEntity
 import com.musicapp.player.data.local.entity.PathRuleEntity
 import com.musicapp.player.data.local.entity.PlayHistoryEntity
 import com.musicapp.player.data.local.entity.PlaybackSnapshotEntity
@@ -72,6 +74,21 @@ interface TrackDao {
 
     @Query("UPDATE tracks SET availability = :availability WHERE volume_name = :volumeName")
     suspend fun updateAvailabilityForVolume(volumeName: String, availability: String)
+
+    @Query("UPDATE tracks SET availability = :availability")
+    suspend fun updateAllAvailability(availability: String)
+
+    @Query("SELECT DISTINCT volume_name FROM tracks ORDER BY volume_name")
+    suspend fun getKnownVolumeNames(): List<String>
+
+    @Query(
+        "SELECT * FROM tracks WHERE volume_name IN (:volumeNames) " +
+            "AND last_seen_sync_generation != :generation",
+    )
+    suspend fun getNotSeenInGeneration(
+        volumeNames: List<String>,
+        generation: Long,
+    ): List<TrackEntity>
 }
 
 @Dao
@@ -81,6 +98,30 @@ interface HiddenTrackDao {
 
     @Query("DELETE FROM hidden_tracks WHERE track_volume_name = :volumeName AND track_media_store_id = :mediaStoreId")
     suspend fun delete(volumeName: String, mediaStoreId: Long)
+
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM hidden_tracks WHERE track_volume_name = :volumeName " +
+            "AND track_media_store_id = :mediaStoreId)",
+    )
+    suspend fun exists(volumeName: String, mediaStoreId: Long): Boolean
+}
+
+@Dao
+interface MediaSyncStateDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertGlobalStateIfAbsent(entity: MediaSyncStateEntity)
+
+    @Query("UPDATE media_sync_state SET last_generation = last_generation + 1 WHERE state_id = 1")
+    suspend fun incrementGeneration()
+
+    @Query("SELECT last_generation FROM media_sync_state WHERE state_id = 1")
+    suspend fun getGenerationOrNull(): Long?
+
+    @Query("SELECT * FROM media_volume_sync_state ORDER BY volume_name")
+    suspend fun getVolumeStates(): List<MediaVolumeSyncStateEntity>
+
+    @Upsert
+    suspend fun upsertVolumeStates(entities: List<MediaVolumeSyncStateEntity>)
 }
 
 @Dao

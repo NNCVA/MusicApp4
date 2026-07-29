@@ -1,0 +1,623 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "d0e80f3c20e1bf12c7e32f065895841f",
+    "entities": [
+      {
+        "tableName": "tracks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`volume_name` TEXT NOT NULL, `media_store_id` INTEGER NOT NULL, `title` TEXT NOT NULL, `artist_name` TEXT NOT NULL, `artist_media_store_id` INTEGER, `album_title` TEXT, `album_volume_name` TEXT, `album_media_store_id` INTEGER, `duration_ms` INTEGER NOT NULL, `date_added_ms` INTEGER NOT NULL, `date_modified_ms` INTEGER NOT NULL, `relative_path` TEXT NOT NULL, `display_name` TEXT NOT NULL, `mime_type` TEXT, `size_bytes` INTEGER NOT NULL, `availability` TEXT NOT NULL, `last_seen_sync_generation` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`volume_name`, `media_store_id`))",
+        "fields": [
+          {
+            "fieldPath": "volumeName",
+            "columnName": "volume_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaStoreId",
+            "columnName": "media_store_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artistName",
+            "columnName": "artist_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artistMediaStoreId",
+            "columnName": "artist_media_store_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "albumTitle",
+            "columnName": "album_title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "albumVolumeName",
+            "columnName": "album_volume_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "albumMediaStoreId",
+            "columnName": "album_media_store_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "duration_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateAddedMs",
+            "columnName": "date_added_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateModifiedMs",
+            "columnName": "date_modified_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relativePath",
+            "columnName": "relative_path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "display_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mime_type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sizeBytes",
+            "columnName": "size_bytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "availability",
+            "columnName": "availability",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenSyncGeneration",
+            "columnName": "last_seen_sync_generation",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "volume_name",
+            "media_store_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_tracks_title",
+            "unique": false,
+            "columnNames": [
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tracks_title` ON `${TABLE_NAME}` (`title`)"
+          },
+          {
+            "name": "index_tracks_artist_media_store_id",
+            "unique": false,
+            "columnNames": [
+              "artist_media_store_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tracks_artist_media_store_id` ON `${TABLE_NAME}` (`artist_media_store_id`)"
+          },
+          {
+            "name": "index_tracks_album_volume_name_album_media_store_id",
+            "unique": false,
+            "columnNames": [
+              "album_volume_name",
+              "album_media_store_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tracks_album_volume_name_album_media_store_id` ON `${TABLE_NAME}` (`album_volume_name`, `album_media_store_id`)"
+          },
+          {
+            "name": "index_tracks_date_added_ms",
+            "unique": false,
+            "columnNames": [
+              "date_added_ms"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tracks_date_added_ms` ON `${TABLE_NAME}` (`date_added_ms`)"
+          },
+          {
+            "name": "index_tracks_duration_ms",
+            "unique": false,
+            "columnNames": [
+              "duration_ms"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tracks_duration_ms` ON `${TABLE_NAME}` (`duration_ms`)"
+          },
+          {
+            "name": "index_tracks_volume_name_relative_path",
+            "unique": false,
+            "columnNames": [
+              "volume_name",
+              "relative_path"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tracks_volume_name_relative_path` ON `${TABLE_NAME}` (`volume_name`, `relative_path`)"
+          }
+        ]
+      },
+      {
+        "tableName": "playlists",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlist_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `display_name` TEXT NOT NULL, `normalized_name` TEXT NOT NULL COLLATE NOCASE, `created_at_ms` INTEGER NOT NULL, `updated_at_ms` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "playlistId",
+            "columnName": "playlist_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "display_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtMs",
+            "columnName": "created_at_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMs",
+            "columnName": "updated_at_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "playlist_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_playlists_normalized_name",
+            "unique": true,
+            "columnNames": [
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlists_normalized_name` ON `${TABLE_NAME}` (`normalized_name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "playlist_tracks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlist_id` INTEGER NOT NULL, `track_volume_name` TEXT NOT NULL, `track_media_store_id` INTEGER NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`playlist_id`, `track_volume_name`, `track_media_store_id`), FOREIGN KEY(`playlist_id`) REFERENCES `playlists`(`playlist_id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`track_volume_name`, `track_media_store_id`) REFERENCES `tracks`(`volume_name`, `media_store_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "playlistId",
+            "columnName": "playlist_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trackVolumeName",
+            "columnName": "track_volume_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trackMediaStoreId",
+            "columnName": "track_media_store_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "playlist_id",
+            "track_volume_name",
+            "track_media_store_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_playlist_tracks_playlist_id_position",
+            "unique": true,
+            "columnNames": [
+              "playlist_id",
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_tracks_playlist_id_position` ON `${TABLE_NAME}` (`playlist_id`, `position`)"
+          },
+          {
+            "name": "index_playlist_tracks_track_volume_name_track_media_store_id",
+            "unique": false,
+            "columnNames": [
+              "track_volume_name",
+              "track_media_store_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_track_volume_name_track_media_store_id` ON `${TABLE_NAME}` (`track_volume_name`, `track_media_store_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "playlists",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "playlist_id"
+            ],
+            "referencedColumns": [
+              "playlist_id"
+            ]
+          },
+          {
+            "table": "tracks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "track_volume_name",
+              "track_media_store_id"
+            ],
+            "referencedColumns": [
+              "volume_name",
+              "media_store_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "play_history",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`track_volume_name` TEXT NOT NULL, `track_media_store_id` INTEGER NOT NULL, `last_played_at_ms` INTEGER NOT NULL, `play_count` INTEGER NOT NULL, PRIMARY KEY(`track_volume_name`, `track_media_store_id`), FOREIGN KEY(`track_volume_name`, `track_media_store_id`) REFERENCES `tracks`(`volume_name`, `media_store_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "trackVolumeName",
+            "columnName": "track_volume_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trackMediaStoreId",
+            "columnName": "track_media_store_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastPlayedAtMs",
+            "columnName": "last_played_at_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playCount",
+            "columnName": "play_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "track_volume_name",
+            "track_media_store_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_play_history_last_played_at_ms",
+            "unique": false,
+            "columnNames": [
+              "last_played_at_ms"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_play_history_last_played_at_ms` ON `${TABLE_NAME}` (`last_played_at_ms`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "tracks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "track_volume_name",
+              "track_media_store_id"
+            ],
+            "referencedColumns": [
+              "volume_name",
+              "media_store_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "hidden_tracks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`track_volume_name` TEXT NOT NULL, `track_media_store_id` INTEGER NOT NULL, `hidden_at_ms` INTEGER NOT NULL, PRIMARY KEY(`track_volume_name`, `track_media_store_id`), FOREIGN KEY(`track_volume_name`, `track_media_store_id`) REFERENCES `tracks`(`volume_name`, `media_store_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "trackVolumeName",
+            "columnName": "track_volume_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trackMediaStoreId",
+            "columnName": "track_media_store_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hiddenAtMs",
+            "columnName": "hidden_at_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "track_volume_name",
+            "track_media_store_id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "tracks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "track_volume_name",
+              "track_media_store_id"
+            ],
+            "referencedColumns": [
+              "volume_name",
+              "media_store_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "path_rules",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`path_rule_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `volume_name` TEXT NOT NULL, `directory` TEXT NOT NULL, `kind` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "pathRuleId",
+            "columnName": "path_rule_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "volumeName",
+            "columnName": "volume_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "directory",
+            "columnName": "directory",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "path_rule_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_path_rules_volume_name_directory_kind",
+            "unique": true,
+            "columnNames": [
+              "volume_name",
+              "directory",
+              "kind"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_path_rules_volume_name_directory_kind` ON `${TABLE_NAME}` (`volume_name`, `directory`, `kind`)"
+          }
+        ]
+      },
+      {
+        "tableName": "playback_snapshot",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`snapshot_id` INTEGER NOT NULL, `original_queue_json` TEXT NOT NULL, `stable_shuffle_sequence_json` TEXT NOT NULL, `current_queue_item_id` INTEGER, `shuffle_round` INTEGER NOT NULL, `shuffle_cursor` INTEGER, `position_ms` INTEGER NOT NULL, `playback_mode` TEXT NOT NULL, `playback_instance_json` TEXT, `updated_at_ms` INTEGER NOT NULL, `playback_resumption_allowed` INTEGER NOT NULL, PRIMARY KEY(`snapshot_id`))",
+        "fields": [
+          {
+            "fieldPath": "snapshotId",
+            "columnName": "snapshot_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalQueueJson",
+            "columnName": "original_queue_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stableShuffleSequenceJson",
+            "columnName": "stable_shuffle_sequence_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentQueueItemId",
+            "columnName": "current_queue_item_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "shuffleRound",
+            "columnName": "shuffle_round",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shuffleCursor",
+            "columnName": "shuffle_cursor",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "positionMs",
+            "columnName": "position_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playbackMode",
+            "columnName": "playback_mode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playbackInstanceJson",
+            "columnName": "playback_instance_json",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAtMs",
+            "columnName": "updated_at_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playbackResumptionAllowed",
+            "columnName": "playback_resumption_allowed",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "snapshot_id"
+          ]
+        }
+      },
+      {
+        "tableName": "media_sync_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`state_id` INTEGER NOT NULL, `last_generation` INTEGER NOT NULL, PRIMARY KEY(`state_id`))",
+        "fields": [
+          {
+            "fieldPath": "stateId",
+            "columnName": "state_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastGeneration",
+            "columnName": "last_generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "state_id"
+          ]
+        }
+      },
+      {
+        "tableName": "media_volume_sync_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`volume_name` TEXT NOT NULL, `availability` TEXT NOT NULL, `last_successful_generation` INTEGER, `last_complete_generation` INTEGER, `media_store_version` TEXT, `updated_at_ms` INTEGER NOT NULL, PRIMARY KEY(`volume_name`))",
+        "fields": [
+          {
+            "fieldPath": "volumeName",
+            "columnName": "volume_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "availability",
+            "columnName": "availability",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSuccessfulGeneration",
+            "columnName": "last_successful_generation",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastCompleteGeneration",
+            "columnName": "last_complete_generation",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "mediaStoreVersion",
+            "columnName": "media_store_version",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAtMs",
+            "columnName": "updated_at_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "volume_name"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd0e80f3c20e1bf12c7e32f065895841f')"
+    ]
+  }
+}
