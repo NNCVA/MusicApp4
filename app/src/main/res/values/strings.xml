@@ -23,4 +23,9 @@
     <string name="permission_open_settings">Open settings</string>
     <string name="permission_requesting">Requesting audio access…</string>
     <string name="permission_waiting_for_settings">Checking audio access after returning from settings…</string>
+    <string name="scan_skip_unsupported_format">Unsupported audio format</string>
+    <string name="scan_skip_zero_duration">Audio duration is unavailable</string>
+    <string name="scan_skip_system_audio">System ringtone, alarm, or notification audio</string>
+    <string name="scan_skip_excluded_path">Excluded by a folder rule</string>
+    <string name="scan_skip_outside_included_paths">Outside the selected folders</string>
 </resources>

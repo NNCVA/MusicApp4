@@ -10,6 +10,7 @@
 - 已实现 Room v1 七张业务表、复合外键与索引、DAO、事务 Repository/Fake、完整播放快照往返及 Schema 导出；后续版本只能通过 Migration 演进。
 - 已实现 Navigation 3 八个一级栈及版本化二进制/Base64 快照；进程恢复点只保存 Route Key 与参数，不保存页面业务状态。
 - 权限状态机通过平台 Gateway 隔离 Activity Result 与系统设置；权限请求历史属于不可备份的系统协调元数据，不属于 DataStore 用户设置。
+- MediaStore Cursor、旧 API 绝对路径与平台异常封装在 `data/mediastore`；上层只消费 `core/media` 领域候选、准入结果和相对目录。
 
 ## 已确认推荐
 

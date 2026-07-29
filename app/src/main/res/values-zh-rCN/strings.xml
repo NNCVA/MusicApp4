@@ -23,4 +23,9 @@
     <string name="permission_open_settings">打开设置</string>
     <string name="permission_requesting">正在请求音频访问权限…</string>
     <string name="permission_waiting_for_settings">从系统设置返回后正在检查音频访问权限…</string>
+    <string name="scan_skip_unsupported_format">不支持的音频格式</string>
+    <string name="scan_skip_zero_duration">无法获取音频时长</string>
+    <string name="scan_skip_system_audio">系统铃声、闹钟或通知音</string>
+    <string name="scan_skip_excluded_path">已被文件夹规则排除</string>
+    <string name="scan_skip_outside_included_paths">不在所选文件夹中</string>
 </resources>

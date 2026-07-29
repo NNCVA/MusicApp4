@@ -6,6 +6,7 @@
 
 - 已实现 API 26–32 `READ_EXTERNAL_STORAGE` 与 API 33+ `READ_MEDIA_AUDIO` 状态机、Activity Result 请求、拒绝/永久拒绝、系统设置往返及系统权限返回协调；未授权状态统一禁止 MediaStore 查询。
 - Manifest 未声明 `POST_NOTIFICATIONS`；首次请求记录使用不进入 Auto Backup 的内部 SharedPreferences，避免拒绝后每次启动重复请求。
+- 已实现 API 29+ 外部多卷/`RELATIVE_PATH` 与 API 26–28 `DATA` 适配查询、七格式/MIME/扩展名准入、系统音频排除及路径规则过滤；适配层只向上返回不含绝对路径的领域候选 DTO。
 
 ## 已确认
 

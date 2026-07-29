@@ -42,6 +42,31 @@ class PathRuleMatcherTest {
     }
 
     @Test
+    fun legacyAbsolutePathsNormalizeBeforeIncludeAndExcludeMatching() {
+        val legacyRules = listOf(
+            rule(3, "external_primary", "/storage/emulated/0/Music/", PathRuleKind.INCLUDE),
+            rule(4, "external_primary", "storage\\emulated\\0\\Music\\Private", PathRuleKind.EXCLUDE),
+        )
+
+        assertTrue(
+            PathRuleMatcher.matches(
+                "external_primary",
+                "/storage/emulated/0/Download/../Music/Album/song.mp3",
+                ScanMode.SELECTED_DIRECTORIES,
+                legacyRules,
+            ),
+        )
+        assertFalse(
+            PathRuleMatcher.matches(
+                "external_primary",
+                "storage\\emulated\\0\\Music\\Album\\..\\Private\\song.mp3",
+                ScanMode.SELECTED_DIRECTORIES,
+                legacyRules,
+            ),
+        )
+    }
+
+    @Test
     fun emptyDirectoryRuleCoversEveryPathWithinItsVolume() {
         val rootRule = rule(3, "external_primary", "", PathRuleKind.INCLUDE)
 
