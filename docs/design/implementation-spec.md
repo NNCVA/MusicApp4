@@ -25,8 +25,8 @@
 
 - 仓库只有 `:app` 模块，`minSdk 26`、`targetSdk 36`，Kotlin/JVM 使用 17。
 - 已接入 Compose、Material 3 与 Navigation 3；当前只有一个 `Main` 路由和空页面。
-- 已建立 Hilt、Room、DataStore、Media3、Lifecycle、协程与 JVM 测试依赖底座；尚未建立业务表、Repository、播放器服务、业务 ViewModel 或页面。
-- Manifest 当前只有启动 Activity 与设置白名单备份规则。
+- 已建立 Hilt Application/Activity 入口、应用级协程作用域、可替换时钟与随机源，以及 Room、DataStore、Media3、Lifecycle、协程与 JVM 测试依赖底座；尚未建立业务表、Repository、播放器服务、业务 ViewModel 或页面。
+- Manifest 当前只有 Hilt Application、启动 Activity 与设置白名单备份规则。
 
 所有 Wave 均以“从空白骨架新增能力”为基线，不得把设计文档描述误报为已存在代码。
 
