@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,13 +50,20 @@ import com.musicapp.player.navigation.TopLevelNavKey
 import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
 import com.musicapp.player.navigation.topLevelNavKeys
+import com.musicapp.player.feature.permission.MediaPermissionState
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.AppShell
 import com.musicapp.player.ui.shell.PlayerSheetPlaceholder
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 
 @Composable
-fun MainNavigation(onExit: () -> Unit) {
+fun MainNavigation(
+    onExit: () -> Unit,
+    permissionState: MediaPermissionState,
+    onConfirmPermission: () -> Unit,
+    onRetryPermission: () -> Unit,
+    onOpenPermissionSettings: () -> Unit,
+) {
     var encodedSnapshot by rememberSaveable {
         mutableStateOf(NavigationState.initial().snapshot().encode())
     }
@@ -98,7 +107,17 @@ fun MainNavigation(onExit: () -> Unit) {
                     onBack = ::handleBack,
                     entryProvider =
                         entryProvider {
-                            entry<TracksRoute> { DestinationPlaceholder(TracksRoute, contentInsets, policy, openDrawer) }
+                            entry<TracksRoute> {
+                                TracksDestination(
+                                    permissionState = permissionState,
+                                    contentInsets = contentInsets,
+                                    policy = policy,
+                                    openDrawer = openDrawer,
+                                    onConfirmPermission = onConfirmPermission,
+                                    onRetryPermission = onRetryPermission,
+                                    onOpenPermissionSettings = onOpenPermissionSettings,
+                                )
+                            }
                             entry<AlbumsRoute> { DestinationPlaceholder(AlbumsRoute, contentInsets, policy, openDrawer) }
                             entry<ArtistsRoute> { DestinationPlaceholder(ArtistsRoute, contentInsets, policy, openDrawer) }
                             entry<PlaylistsRoute> { DestinationPlaceholder(PlaylistsRoute, contentInsets, policy, openDrawer) }
@@ -121,6 +140,136 @@ fun MainNavigation(onExit: () -> Unit) {
         },
         playerSheetContent = { PlayerSheetPlaceholder() },
     )
+}
+
+@Composable
+private fun TracksDestination(
+    permissionState: MediaPermissionState,
+    contentInsets: WindowInsets,
+    policy: WindowLayoutPolicy,
+    openDrawer: () -> Unit,
+    onConfirmPermission: () -> Unit,
+    onRetryPermission: () -> Unit,
+    onOpenPermissionSettings: () -> Unit,
+) {
+    when (permissionState) {
+        is MediaPermissionState.Granted ->
+            DestinationPlaceholder(TracksRoute, contentInsets, policy, openDrawer)
+        is MediaPermissionState.PurposeExplanation ->
+            PermissionPrompt(
+                descriptionResId = R.string.permission_audio_explanation,
+                actionLabelResId = R.string.permission_continue,
+                onAction = onConfirmPermission,
+                contentInsets = contentInsets,
+                policy = policy,
+                openDrawer = openDrawer,
+            )
+        is MediaPermissionState.DeniedCanRetry ->
+            PermissionPrompt(
+                descriptionResId = R.string.permission_denied,
+                actionLabelResId = R.string.permission_retry,
+                onAction = onRetryPermission,
+                contentInsets = contentInsets,
+                policy = policy,
+                openDrawer = openDrawer,
+            )
+        is MediaPermissionState.PermanentlyDenied ->
+            PermissionPrompt(
+                descriptionResId = R.string.permission_permanently_denied,
+                actionLabelResId = R.string.permission_open_settings,
+                onAction = onOpenPermissionSettings,
+                contentInsets = contentInsets,
+                policy = policy,
+                openDrawer = openDrawer,
+            )
+        is MediaPermissionState.Requesting ->
+            PermissionProgress(
+                messageResId = R.string.permission_requesting,
+                contentInsets = contentInsets,
+                policy = policy,
+                openDrawer = openDrawer,
+            )
+        is MediaPermissionState.WaitingForSettingsReturn ->
+            PermissionProgress(
+                messageResId = R.string.permission_waiting_for_settings,
+                contentInsets = contentInsets,
+                policy = policy,
+                openDrawer = openDrawer,
+            )
+    }
+}
+
+@Composable
+private fun PermissionPrompt(
+    @StringRes descriptionResId: Int,
+    @StringRes actionLabelResId: Int,
+    onAction: () -> Unit,
+    contentInsets: WindowInsets,
+    policy: WindowLayoutPolicy,
+    openDrawer: () -> Unit,
+) {
+    val dimensions = MusicTheme.dimensions
+    Column(
+        modifier = permissionContentModifier(contentInsets),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
+    ) {
+        CompactNavigationButton(policy, openDrawer)
+        Text(
+            text = stringResource(R.string.permission_audio_title),
+            color = MusicTheme.colors.onSurface,
+            style = MusicTheme.typography.headlineMedium,
+        )
+        Text(
+            text = stringResource(descriptionResId),
+            color = MusicTheme.colors.onSurfaceVariant,
+            style = MusicTheme.typography.bodyLarge,
+        )
+        Button(
+            onClick = onAction,
+            modifier = Modifier.heightIn(min = dimensions.minimumTouchTarget),
+            shape = MusicTheme.shapes.small,
+        ) {
+            Text(
+                text = stringResource(actionLabelResId),
+                style = MusicTheme.typography.labelLarge,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PermissionProgress(
+    @StringRes messageResId: Int,
+    contentInsets: WindowInsets,
+    policy: WindowLayoutPolicy,
+    openDrawer: () -> Unit,
+) {
+    val dimensions = MusicTheme.dimensions
+    Column(
+        modifier = permissionContentModifier(contentInsets),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
+    ) {
+        CompactNavigationButton(policy, openDrawer)
+        CircularProgressIndicator(color = MusicTheme.colors.primary)
+        Text(
+            text = stringResource(messageResId),
+            color = MusicTheme.colors.onSurfaceVariant,
+            style = MusicTheme.typography.bodyLarge,
+        )
+    }
+}
+
+@Composable
+private fun permissionContentModifier(contentInsets: WindowInsets): Modifier {
+    val dimensions = MusicTheme.dimensions
+    return Modifier.fillMaxSize()
+        .windowInsetsPadding(contentInsets)
+        .padding(
+            horizontal = dimensions.contentHorizontalPadding,
+            vertical = dimensions.spaceMedium,
+        )
 }
 
 @Composable
@@ -187,22 +336,29 @@ private fun DestinationPlaceholder(
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
     ) {
-        if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
-            TextButton(
-                onClick = openDrawer,
-                modifier = Modifier.heightIn(min = dimensions.minimumTouchTarget),
-                shape = MusicTheme.shapes.small,
-            ) {
-                Text(
-                    text = stringResource(R.string.open_navigation),
-                    style = MusicTheme.typography.labelLarge,
-                )
-            }
-        }
+        CompactNavigationButton(policy, openDrawer)
         Text(
             text = stringResource(route.titleResId()),
             color = MusicTheme.colors.onSurface,
             style = MusicTheme.typography.headlineMedium,
+        )
+    }
+}
+
+@Composable
+private fun CompactNavigationButton(
+    policy: WindowLayoutPolicy,
+    openDrawer: () -> Unit,
+) {
+    if (policy != WindowLayoutPolicy.COMPACT_DRAWER) return
+    TextButton(
+        onClick = openDrawer,
+        modifier = Modifier.heightIn(min = MusicTheme.dimensions.minimumTouchTarget),
+        shape = MusicTheme.shapes.small,
+    ) {
+        Text(
+            text = stringResource(R.string.open_navigation),
+            style = MusicTheme.typography.labelLarge,
         )
     }
 }

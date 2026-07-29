@@ -2,6 +2,11 @@
 
 状态：已接受（2026-07-28）
 
+## 已实现基线
+
+- 已实现 API 26–32 `READ_EXTERNAL_STORAGE` 与 API 33+ `READ_MEDIA_AUDIO` 状态机、Activity Result 请求、拒绝/永久拒绝、系统设置往返及系统权限返回协调；未授权状态统一禁止 MediaStore 查询。
+- Manifest 未声明 `POST_NOTIFICATIONS`；首次请求记录使用不进入 Auto Backup 的内部 SharedPreferences，避免拒绝后每次启动重复请求。
+
 ## 已确认
 
 - 媒体库以 MediaStore 全机音频为来源，路径规则负责包含或排除。
