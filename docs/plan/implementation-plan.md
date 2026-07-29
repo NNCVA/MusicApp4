@@ -1,12 +1,12 @@
 # MusicApp 首版短计划
 
-状态：可执行（2026-07-28）
+状态：可执行（2026-07-29）
 
 详细行为以 [`../design/implementation-spec.md`](../design/implementation-spec.md) 为准，任务拆分与门禁以 [`implementation-wave-plan.md`](implementation-wave-plan.md) 为准。
 
 ## 目标
 
-从当前可编译的 Compose/Navigation 3 空白骨架出发，按依赖顺序完成本地媒体库、后台播放、播放器界面、分类与播放列表、设置与发布验收。
+从当前可编译的 Compose/Navigation 3 空白骨架出发，按依赖顺序完成本地媒体库、后台播放、播放器界面、分类与播放列表、设置与 CI 收口。
 
 ## 执行顺序
 
@@ -15,12 +15,10 @@
 2. **Wave 3–4：核心闭环**
    - 完成权限与 MediaStore 原子同步，再实现 MediaLibraryService、播放队列、三种互斥播放模式、淡出淡入、通知和恢复。
 3. **Wave 5–8：产品完成**
-   - 并行完成播放器/歌词与分类/播放列表，随后组装设置、Aero、关于，最后执行完整 Release 验收。
+   - 并行完成播放器/歌词与分类/播放列表，随后组装设置、Aero、关于，最后用最小 CI 收口。
 
 ## 固定门禁
 
-- 每个 Wave 同步交付 English、简体中文、无障碍、测试和截图，不集中拖到末尾。
-- 每个新增核心包达到行覆盖率 `80%`、分支覆盖率 `70%`。
-- 每个 Wave 通过本地测试、相关设备测试、截图、覆盖率、Debug 构建和 Lint。
-- Wave 1 与 Wave 4 增加 Release 冒烟；Wave 8 全量复跑并签收。
-- `docs/design/design-review-10-performance-release-questions.md` 保持搁置，不构成首版门禁。
+- 每个 Wave 同步交付功能实现、English/简体中文资源、必要单元测试和文档。
+- CI 固定使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`。
+- 上述三个 Gradle 任务是唯一 CI 门禁。

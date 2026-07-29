@@ -1,6 +1,6 @@
 # MusicApp 设计盘问索引
 
-本索引汇总需求盘问形成的实现约束。状态为“已接受”的文档属于首版实现依据；状态为“已搁置”的文档只保留备查，不构成当前发布门槛。
+本索引汇总需求盘问形成的实现约束。状态为“已接受”的文档属于首版实现依据。
 
 ## 已接受
 
@@ -12,13 +12,9 @@
 - [06 架构与数据](design-review-06-architecture.md)
 - [07 播放控制](design-review-07-playback-controls.md)
 - [08 系统媒体集成](design-review-08-system-media-integration.md)
-- [09 安全与测试](design-review-09-security-and-testing.md)
+- [09 功能测试与 CI](design-review-09-functional-testing-and-ci.md)
 - [11 首版最终约束](design-review-11-final-open-questions.md)
 - [12 实施边界](design-review-12-implementation-boundaries.md)
-
-## 已搁置
-
-- [10 性能与发布验收盘问](design-review-10-performance-release-questions.md)
 
 ## 领域与架构
 

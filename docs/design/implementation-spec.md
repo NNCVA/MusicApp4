@@ -1,6 +1,6 @@
 # MusicApp 首版实现规格
 
-状态：已制定（2026-07-28）
+状态：已制定（2026-07-29）
 
 ## 1. 依据与优先级
 
@@ -11,8 +11,6 @@
 3. 本规格及 `docs/plan/implementation-wave-plan.md`。
 4. `AGENTS.md` 的工程约定。
 
-`docs/design/design-review-10-performance-release-questions.md` 已搁置，其容量、性能、功耗、体积与长测指标不构成首版发布门禁。
-
 ## 2. 交付目标
 
 在现有可编译的单模块 Compose/Navigation 3 空白骨架上，交付一款完全离线的 Android 本地音乐播放器，覆盖 26 项首版需求，并满足以下完成条件：
@@ -21,14 +19,14 @@
 - 媒体库、播放列表、历史、隐藏状态、路径规则和播放快照均有稳定事实来源。
 - 本地曲目可完成发现、分类浏览、建队、后台播放、系统控制、歌词展示和状态恢复。
 - 手机、平板、折叠屏与 ChromeOS 可缩放窗口具备一致的自适应行为。
-- English 与简体中文资源完整，Release 构建通过测试、Lint、安全和隐私门禁。
+- English 与简体中文资源完整，最小 CI 通过单元测试、Lint 和 Debug 构建。
 
 ## 3. 当前基线
 
 - 仓库只有 `:app` 模块，`minSdk 26`、`targetSdk 36`，Kotlin/JVM 使用 17。
 - 已接入 Compose、Material 3 与 Navigation 3；当前只有一个 `Main` 路由和空页面。
 - 尚未接入 Hilt、Room、DataStore、Media3、MediaStore 业务层、ViewModel、Repository、业务页面或测试基础设施。
-- Release 当前尚未开启 R8 和资源压缩；Manifest 只有启动 Activity。
+- Manifest 当前只有启动 Activity。
 
 所有 Wave 均以“从空白骨架新增能力”为基线，不得把设计文档描述误报为已存在代码。
 
@@ -48,7 +46,6 @@
 - 物理删除音频、编辑音频标签、播放列表或播放队列拖拽排序。
 - TV、Android Auto、XR 专用界面；保留标准 MediaSession 系统控制。
 - 双播放器重叠式交叉淡化、在线媒体流、云同步。
-- 已搁置文档中的专项性能与发布指标。
 
 ## 5. 架构契约
 
@@ -289,27 +286,20 @@ DataStore 只保存用户设置：
 - 重置配置确认框明确列出保留数据；重建媒体库缓存不删除播放列表，失效曲目关联在同步后清理。
 - 关于页从安装包读取版本，资源化展示开发者和致谢，许可由构建生成并离线展示。
 
-## 12. 本地化、安全与备份
+## 12. 本地化、平台配置与备份
 
 - 默认 `values/strings.xml` 为 English，`values-zh-rCN/strings.xml` 为简体中文。
 - 启用 AGP 自动 LocaleConfig，并通过 `AppCompatDelegate.setApplicationLocales` 同步应用语言设置。
 - 所有可见文本、通知文案和无障碍说明来自资源；数量使用 `plurals`，禁止拼接可见句子。
 - 日期、数字、文件大小按当前应用语言格式化；时长使用本地化的 `mm:ss` 或 `h:mm:ss`。
-- Release 不得记录路径、标题、艺术家、歌词、URI 或数据库内容。
-- Debug 日志使用脱敏标识；安全异常只记录调用包与通用原因。
 - 只有启动 Activity 与受信 MediaLibraryService 可导出；不注册自定义 Deep Link、隐式业务 Intent 或导出 Provider，动态 Receiver 使用 `RECEIVER_NOT_EXPORTED`。
 - 内部 Intent 显式；外部输入逐字段校验且不转发嵌套 Intent；PendingIntent 默认不可变。
 - Auto Backup 只包含 DataStore 设置，排除数据库、队列、历史、播放列表和媒体库缓存。
-- Release 开启 R8 与资源压缩，保留 Room、Hilt、Media3 必需元数据，并校验权限及导出组件清单。
 
-## 13. 测试与完成门禁
+## 13. 功能测试与 CI
 
-- 本地与设备测试使用 JUnit4；协程使用 `kotlinx-coroutines-test`，Flow 使用 Turbine，Compose 使用官方测试 API，覆盖率使用 JaCoCo。
-- 核心统计范围为 `core/*`、`data/*`、`media/*` 纯业务代码及 ViewModel、Reducer、Parser；行覆盖率至少 `80%`、分支覆盖率至少 `70%`。
-- 排除生成代码、Hilt/Room 生成绑定、Compose Preview、资源类和仅转发平台 API 的薄适配器。
-- Room DAO、事务和 Migration 使用设备端真实 SQLite。
+- JVM 单元测试使用 JUnit4；协程使用 `kotlinx-coroutines-test`，Flow 使用 Turbine。
+- 平台对象使用 Fake 隔离，使纯业务逻辑可由 `testDebugUnitTest` 执行。
 - 单元测试覆盖扫描过滤、路径优先级、排序、队列模式、播放历史阈值、淡出淡入状态机、LRC 解析、本地化格式化和 ViewModel。
-- Compose 测试覆盖加载、空态、错误、多选、独立返回栈和状态恢复；优先使用语义节点，只有复杂节点才添加 `testTag`。
-- 每个页面在默认蓝浅色下覆盖 `400/610/900 dp` 宽度与 `400/500/1000 dp` 高度的九种组合；每页另在 `400×500 dp` 覆盖深色与 `1.5` 字体，单曲页、全屏播放器和设置页再覆盖四套预设浅深色与动态取色替代色。
-- 五条端到端旅程覆盖授权扫描、播放通知、播放列表、语言主题切换、进程终止恢复。
-- 最终必须通过 Debug 构建、Release 构建、单元测试、设备测试、截图测试、Lint、Manifest 安全检查与五条端到端旅程。
+- CI 使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`。
+- 上述三个 Gradle 任务是唯一 CI 门禁。

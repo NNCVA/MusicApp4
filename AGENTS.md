@@ -62,9 +62,9 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 - 严禁硬编码文本，所有界面字符串必须定义在资源文件中 (`values/strings.xml`, `values-zh-rCN/strings.xml`)。
 - 严禁在页面中硬编码圆角、间距和字号；统一通过 `MusicDimensions`、`MusicShapes`、`MusicTypography` 设计令牌读取。
 - 遵循 Android Edge-to-Edge 边到边沉浸式设计规范与 Material 3 设计指南。
-- Release 开启 R8 与资源压缩；发布日志不得输出路径、标题、艺术家、歌词、URI 或数据库内容。
 - 除启动 Activity 与受可信控制器校验的 MediaLibraryService 外，其他组件默认 `exported=false`；PendingIntent 默认不可变。
-- 已接受的测试策略见 `docs/design/design-review-09-security-and-testing.md`；已搁置的性能指标不得作为当前发布阻断条件。
+- CI 固定使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，不增加其他门禁。
+- 已接受的 CI 策略见 `docs/design/design-review-09-functional-testing-and-ci.md`。
 
 ## 架构与设计参考文档 (设计规范提示词)
 - 总索引：`docs/design/design-review-index.md`
@@ -74,4 +74,3 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 - 领域词汇：`docs/CONTEXT.md`
 - 架构决策：`docs/adr/`
 - `docs/design/design-review-01` 至 `09`、`11` 和 `12` 为已接受的首版实现约束。
-- `docs/design/design-review-10-performance-release-questions.md` 已搁置，仅保留备查。
