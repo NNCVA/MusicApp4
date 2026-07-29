@@ -7,6 +7,7 @@
 - 首版保持单一 `:app` Gradle 模块，内部按 `core/data/media/designsystem` 与 `feature/*` 包划分依赖方向。
 - 使用 Hilt 管理 Application、Room、Repository、MediaLibraryService 与 ViewModel 的依赖和作用域。
 - 已实现 Hilt Application/Activity 入口、应用级 `SupervisorJob` 协程作用域，以及可由测试替换的时钟和随机源；业务单例将在所属过程中接入。
+- 已实现 Room v1 七张业务表、复合外键与索引、DAO、事务 Repository/Fake、完整播放快照往返及 Schema 导出；后续版本只能通过 Migration 演进。
 
 ## 已确认推荐
 
