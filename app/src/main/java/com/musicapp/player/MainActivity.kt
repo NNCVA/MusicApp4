@@ -16,6 +16,7 @@ import com.musicapp.player.feature.permission.AndroidPermissionGateway
 import com.musicapp.player.feature.permission.MediaPermissionCoordinator
 import com.musicapp.player.feature.permission.MediaPermissionState
 import com.musicapp.player.data.sync.LibrarySyncCoordinator
+import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicDimensions
 import dagger.hilt.android.AndroidEntryPoint
@@ -24,6 +25,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
   @Inject lateinit var librarySyncCoordinator: LibrarySyncCoordinator
+  @Inject lateinit var playbackController: PlaybackControllerFacade
 
   private lateinit var mediaPermissionCoordinator: MediaPermissionCoordinator
   private var isActivityStarted = false
@@ -86,6 +88,7 @@ class MainActivity : ComponentActivity() {
   override fun onStart() {
     super.onStart()
     isActivityStarted = true
+    playbackController.connect()
     if (::mediaPermissionCoordinator.isInitialized && mediaPermissionCoordinator.canQueryMediaStore) {
       librarySyncCoordinator.startForeground()
     }
@@ -94,6 +97,7 @@ class MainActivity : ComponentActivity() {
   override fun onStop() {
     isActivityStarted = false
     librarySyncCoordinator.stopForeground()
+    playbackController.disconnect()
     super.onStop()
   }
 

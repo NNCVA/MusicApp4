@@ -4,8 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicapp.player.core.common.time.Clock
+import com.musicapp.player.core.domain.model.Availability
+import com.musicapp.player.core.domain.model.PlaybackContext
+import com.musicapp.player.core.domain.model.PlaybackContextSource
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.sync.LibrarySyncState
 import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
@@ -80,6 +84,7 @@ class TracksViewModel @Inject constructor(
     private val syncCoordinator: TracksSyncController,
     private val clock: Clock,
     private val savedStateHandle: SavedStateHandle,
+    private val playbackController: PlaybackControllerFacade,
 ) : ViewModel() {
     private val sort = MutableStateFlow(restoreSort(savedStateHandle))
     private val selectedTrackIds = MutableStateFlow<Set<TrackId>>(emptySet())
@@ -145,6 +150,21 @@ class TracksViewModel @Inject constructor(
         if (uiState.value.selectedTrackIds.isEmpty()) return false
         clearSelection()
         return true
+    }
+
+    fun playTrack(trackId: TrackId) {
+        val orderedTrackIds =
+            uiState.value.tracks
+                .filter { it.availability == Availability.AVAILABLE }
+                .map(Track::id)
+        if (trackId !in orderedTrackIds) return
+        playbackController.play(
+            PlaybackContext(
+                source = PlaybackContextSource.TRACKS,
+                orderedTrackIds = orderedTrackIds,
+                selectedTrackId = trackId,
+            ),
+        )
     }
 
     fun hideSelected() {

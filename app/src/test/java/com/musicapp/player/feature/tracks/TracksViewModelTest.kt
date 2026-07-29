@@ -1,9 +1,12 @@
 package com.musicapp.player.feature.tracks
 
 import androidx.lifecycle.SavedStateHandle
+import com.musicapp.player.core.domain.model.PlaybackContext
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.media.MediaAudioCandidate
+import com.musicapp.player.core.playback.PlaybackControllerFacade
+import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.data.repository.FakeMediaLibraryRepository
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.sync.LibrarySyncEvent
@@ -223,6 +226,23 @@ class TracksViewModelTest {
         assertEquals(null, viewModel.uiState.value.pendingFeedback)
     }
 
+    @Test
+    fun `track click starts a list-repeat context in the visible sort order`() = runTest(dispatcher) {
+        val playbackController = RecordingPlaybackControllerFacade()
+        val first = track(1, "Alpha")
+        val second = track(2, "Beta")
+        val viewModel = subject(
+            tracks = listOf(second, first),
+            playbackController = playbackController,
+        )
+        collectState(viewModel)
+
+        viewModel.playTrack(second.id)
+
+        assertEquals(listOf(first.id, second.id), playbackController.context?.orderedTrackIds)
+        assertEquals(second.id, playbackController.context?.selectedTrackId)
+    }
+
     private fun kotlinx.coroutines.test.TestScope.collectState(viewModel: TracksViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         testScheduler.runCurrent()
@@ -234,13 +254,38 @@ class TracksViewModelTest {
         repository: MediaLibraryRepository = FakeMediaLibraryRepository(tracks),
         syncController: FakeTracksSyncController = FakeTracksSyncController(syncState),
         savedState: SavedStateHandle = SavedStateHandle(),
+        playbackController: PlaybackControllerFacade = RecordingPlaybackControllerFacade(),
     ): TracksViewModel =
         TracksViewModel(
             mediaLibraryRepository = repository,
             syncCoordinator = syncController,
             clock = FakeClock(123),
             savedStateHandle = savedState,
+            playbackController = playbackController,
         )
+
+    private class RecordingPlaybackControllerFacade : PlaybackControllerFacade {
+        override val state: StateFlow<PlaybackControllerState> = MutableStateFlow(PlaybackControllerState())
+        var context: PlaybackContext? = null
+
+        override fun connect() = Unit
+
+        override fun disconnect() = Unit
+
+        override fun play(context: PlaybackContext) {
+            this.context = context
+        }
+
+        override fun play() = Unit
+
+        override fun pause() = Unit
+
+        override fun skipToPrevious() = Unit
+
+        override fun skipToNext() = Unit
+
+        override fun seekTo(positionMs: Long) = Unit
+    }
 
     private fun track(
         id: Long,

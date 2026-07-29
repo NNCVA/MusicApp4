@@ -82,7 +82,11 @@ fun TracksScreenRoute(
         onRetry = viewModel::retrySync,
         onSortSelected = viewModel::selectSort,
         onTrackClick = { track ->
-            if (state.isSelectionMode) viewModel.toggleSelection(track.id)
+            if (state.isSelectionMode) {
+                viewModel.toggleSelection(track.id)
+            } else {
+                viewModel.playTrack(track.id)
+            }
         },
         onTrackLongClick = { track ->
             if (!state.isSelectionMode) {
