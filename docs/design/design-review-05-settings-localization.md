@@ -2,6 +2,11 @@
 
 状态：已接受（2026-07-28）
 
+## 已实现基线
+
+- Preferences DataStore 已通过 `StateFlow` 提供七类设置、逐项更新与默认值重置；路径规则未进入 DataStore。
+- 读取 `IOException` 时回退默认设置，其他异常继续上抛；Auto Backup 仅白名单包含 `files/datastore/`，数据库不进入备份。
+
 ## 已确认基础
 
 - 应用语言提供“跟随系统／简体中文／English”。
