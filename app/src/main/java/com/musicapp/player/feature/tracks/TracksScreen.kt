@@ -44,6 +44,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -222,7 +223,12 @@ private fun TracksTopBar(
                 Text(stringResource(R.string.selection_close))
             }
             Text(
-                text = stringResource(R.string.selection_count, state.selectedTrackIds.size),
+                text =
+                    pluralStringResource(
+                        R.plurals.selection_count,
+                        state.selectedTrackIds.size,
+                        state.selectedTrackIds.size,
+                    ),
                 style = MusicTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f),
             )

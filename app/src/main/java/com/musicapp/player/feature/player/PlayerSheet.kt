@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -61,7 +62,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
@@ -110,6 +114,8 @@ fun PlayerSheetRoute(
         onPrevious = viewModel::skipPrevious,
         onNext = viewModel::skipNext,
         onSeek = viewModel::seekToFraction,
+        onRewind = viewModel::rewind,
+        onFastForward = viewModel::fastForward,
         onCycleMode = viewModel::cyclePlaybackMode,
         onJumpToQueueItem = viewModel::jumpToQueueItem,
         onRemoveQueueItem = viewModel::removeFromQueue,
@@ -131,6 +137,8 @@ fun PlayerSheet(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onSeek: (Float) -> Unit,
+    onRewind: () -> Unit,
+    onFastForward: () -> Unit,
     onCycleMode: () -> Unit,
     onJumpToQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
     onRemoveQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
@@ -206,6 +214,8 @@ fun PlayerSheet(
                             onPrevious = onPrevious,
                             onNext = onNext,
                             onSeek = onSeek,
+                            onRewind = onRewind,
+                            onFastForward = onFastForward,
                             onCycleMode = onCycleMode,
                             onJumpToQueueItem = onJumpToQueueItem,
                             onRemoveQueueItem = onRemoveQueueItem,
@@ -272,6 +282,8 @@ private fun FullPlayer(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onSeek: (Float) -> Unit,
+    onRewind: () -> Unit,
+    onFastForward: () -> Unit,
     onCycleMode: () -> Unit,
     onJumpToQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
     onRemoveQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
@@ -361,17 +373,61 @@ private fun FullPlayer(
             Text(formatDuration(state.positionMs), style = MusicTheme.typography.labelMedium)
             Text(formatDuration(state.durationMs), style = MusicTheme.typography.labelMedium)
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().height(dimensions.playerControlsHeight),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly,
+        Column(
+            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             TextButton(onClick = onCycleMode) { Text(stringResource(state.playbackMode.labelRes())) }
-            TextButton(onClick = onPrevious, enabled = state.canSkipPrevious) { Text(stringResource(R.string.playback_previous)) }
-            Button(onClick = onTogglePlayback) {
-                Text(stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                val previousDescription = stringResource(R.string.playback_previous)
+                TextButton(
+                    onClick = onPrevious,
+                    enabled = state.canSkipPrevious,
+                    modifier = Modifier.semantics { contentDescription = previousDescription },
+                ) {
+                    Text(stringResource(R.string.playback_previous_short))
+                }
+                val rewindDescription = stringResource(R.string.playback_rewind_10_seconds)
+                TextButton(
+                    onClick = onRewind,
+                    enabled = state.durationMs > 0,
+                    modifier = Modifier.semantics { contentDescription = rewindDescription },
+                ) {
+                    Text(stringResource(R.string.playback_rewind_10_seconds_short))
+                }
+                val playbackDescription =
+                    stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
+                Button(
+                    onClick = onTogglePlayback,
+                    modifier = Modifier.semantics { contentDescription = playbackDescription },
+                ) {
+                    Text(
+                        stringResource(
+                            if (state.isPlaying) R.string.playback_pause_short else R.string.playback_play_short,
+                        ),
+                    )
+                }
+                val forwardDescription = stringResource(R.string.playback_forward_10_seconds)
+                TextButton(
+                    onClick = onFastForward,
+                    enabled = state.durationMs > 0,
+                    modifier = Modifier.semantics { contentDescription = forwardDescription },
+                ) {
+                    Text(stringResource(R.string.playback_forward_10_seconds_short))
+                }
+                val nextDescription = stringResource(R.string.playback_next)
+                TextButton(
+                    onClick = onNext,
+                    enabled = state.canSkipNext,
+                    modifier = Modifier.semantics { contentDescription = nextDescription },
+                ) {
+                    Text(stringResource(R.string.playback_next_short))
+                }
             }
-            TextButton(onClick = onNext, enabled = state.canSkipNext) { Text(stringResource(R.string.playback_next)) }
         }
     }
 }
@@ -569,7 +625,14 @@ private fun TrackInfoContent(track: Track, metadata: AdvancedTrackMetadata?, loa
         InfoRow(R.string.track_info_encoding, metadata?.encoding ?: track.mimeType.orEmpty())
         InfoRow(R.string.track_info_bitrate, metadata?.bitrateBps?.let { stringResource(R.string.track_info_bitrate_value, it / 1_000) }.orEmpty())
         InfoRow(R.string.track_info_sample_rate, metadata?.sampleRateHz?.let { stringResource(R.string.track_info_sample_rate_value, it) }.orEmpty())
-        InfoRow(R.string.track_info_file_size, stringResource(R.string.track_info_file_size_value, track.sizeBytes))
+        InfoRow(
+            R.string.track_info_file_size,
+            pluralStringResource(
+                R.plurals.track_info_file_size_value,
+                track.sizeBytes.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                track.sizeBytes,
+            ),
+        )
         InfoRow(R.string.track_info_path, path)
         TextButton(onClick = { clipboard.setText(AnnotatedString(path)) }) { Text(stringResource(R.string.track_info_copy_path)) }
     }

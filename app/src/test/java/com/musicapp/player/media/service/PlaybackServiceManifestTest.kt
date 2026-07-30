@@ -20,6 +20,7 @@ class PlaybackServiceManifestTest {
 
         assertEquals("true", playbackService.getAttribute("android:exported"))
         assertEquals("mediaPlayback", playbackService.getAttribute("android:foregroundServiceType"))
+        assertEquals("ExportedService", playbackService.getAttribute("tools:ignore"))
         assertFalse(playbackService.hasAttribute("android:permission"))
         val actions = playbackService.getElementsByTagName("action")
         val actionNames =

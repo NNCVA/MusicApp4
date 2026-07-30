@@ -4,13 +4,17 @@
     <string name="playback_mode_list_repeat">Repeat all</string>
     <string name="playback_mode_single_repeat">Repeat one</string>
     <string name="playback_mode_shuffle">Shuffle</string>
-    <string name="playback_buffering">Buffering…</string>
-    <string name="playback_error_unreadable">This track could not be played. Trying the next track.</string>
-    <string name="playback_error_no_playable_tracks">No playable tracks remain in this queue.</string>
     <string name="playback_previous">Previous</string>
+    <string name="playback_previous_short">⏮</string>
+    <string name="playback_rewind_10_seconds">Rewind 10 seconds</string>
+    <string name="playback_rewind_10_seconds_short">−10s</string>
     <string name="playback_play_pause">Play or pause</string>
+    <string name="playback_play_short">▶</string>
+    <string name="playback_pause_short">⏸</string>
+    <string name="playback_forward_10_seconds">Forward 10 seconds</string>
+    <string name="playback_forward_10_seconds_short">+10s</string>
     <string name="playback_next">Next</string>
-    <string name="playback_notification_channel">Playback</string>
+    <string name="playback_next_short">⏭</string>
     <string name="loading">Loading…</string>
     <string name="empty_state_title">Nothing here yet</string>
     <string name="error_state_title">Something went wrong</string>
@@ -65,7 +69,10 @@
     <string name="sort_direction_descending"> ↓</string>
     <string name="tracks_menu">Menu</string>
     <string name="selection_close">Done</string>
-    <string name="selection_count">%1$d selected</string>
+    <plurals name="selection_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
     <string name="selection_select_all">Select all</string>
     <string name="selection_hide">Hide</string>
     <string name="scan_result_title">Scan complete</string>
@@ -78,7 +85,6 @@
     <string name="player_collapse">Collapse</string>
     <string name="player_preparing">Preparing track…</string>
     <string name="player_buffering">Buffering…</string>
-    <string name="player_error">This track could not be played</string>
     <string name="player_error_source_not_found">The audio source was not found</string>
     <string name="player_error_access_denied">MusicApp cannot access this audio source</string>
     <string name="player_error_unsupported_format">This audio format is not supported</string>
@@ -88,9 +94,6 @@
     <string name="player_error_unknown">This track could not be played</string>
     <string name="player_artwork_placeholder">Artwork</string>
     <string name="player_artwork_description">Album artwork</string>
-    <string name="player_lyrics_previous">Previous lyric</string>
-    <string name="player_lyrics_current">Synchronized lyrics will appear here</string>
-    <string name="player_lyrics_next">Next lyric</string>
     <string name="lyrics_not_found">Lyrics not found</string>
     <string name="lyrics_loading">Loading lyrics</string>
     <string name="lyrics_return_to_current">Return to current line</string>
@@ -106,15 +109,24 @@
     <string name="track_info_sample_rate">Sample rate</string>
     <string name="track_info_sample_rate_value">%1$d Hz</string>
     <string name="track_info_file_size">File size</string>
-    <string name="track_info_file_size_value">%1$d bytes</string>
+    <plurals name="track_info_file_size_value">
+        <item quantity="one">%1$d byte</item>
+        <item quantity="other">%1$d bytes</item>
+    </plurals>
     <string name="track_info_path">Path</string>
     <string name="track_info_copy_path">Copy path</string>
     <string name="track_info_unknown">Unknown</string>
     <string name="category_back">Back</string>
     <string name="category_menu">Menu</string>
     <string name="category_play_all">Play all</string>
-    <string name="category_track_count">%1$d tracks</string>
-    <string name="category_album_count">%1$d albums</string>
+    <plurals name="category_track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
+    <plurals name="category_album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="other">%1$d albums</item>
+    </plurals>
     <string name="albums_empty_title">No albums</string>
     <string name="albums_empty_description">Albums from your music library will appear here.</string>
     <string name="album_unknown_title">Unknown album</string>
@@ -154,10 +166,12 @@
     <string name="playlist_deleted">Playlist deleted</string>
     <string name="playlist_tracks_removed">Tracks removed</string>
     <string name="playlist_operation_failed">Playlist operation failed</string>
-    <string name="playlist_add_result">Added %1$d, skipped %2$d</string>
     <string name="playlist_remove_result">Removed %1$d, skipped %2$d</string>
     <string name="playlist_playback_result_title">Playlist playback</string>
-    <string name="playlist_playback_result">Playing %1$d tracks; skipped %2$d.</string>
+    <plurals name="playlist_playback_result">
+        <item quantity="one">Playing %1$d track; skipped items: %2$d.</item>
+        <item quantity="other">Playing %1$d tracks; skipped items: %2$d.</item>
+    </plurals>
     <string name="selection_more_actions">More actions</string>
     <string name="selection_add_to_queue">Add to queue</string>
     <string name="selection_play_next">Play next</string>
@@ -171,15 +185,15 @@
     <string name="history_empty_description">Tracks you finish listening to will appear here.</string>
     <string name="history_no_results_title">No matching history</string>
     <string name="history_no_results_description">Try another title, artist, album, or file name.</string>
-    <string name="history_selection_actions">Actions</string>
-    <string name="history_add_to_queue">Add to queue</string>
-    <string name="history_play_next">Play next</string>
     <string name="history_clear_confirm_title">Clear playback history?</string>
     <string name="history_clear_confirm_description">This removes all playback history and cannot be undone.</string>
     <string name="history_clear_confirm_action">Clear</string>
     <string name="history_clear_cancel">Cancel</string>
     <string name="history_missing_track">Missing track (%1$s:%2$d)</string>
-    <string name="history_play_count">Played %1$d times</string>
+    <plurals name="history_play_count">
+        <item quantity="one">Played %1$d time</item>
+        <item quantity="other">Played %1$d times</item>
+    </plurals>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_color_source">Color source</string>
     <string name="settings_color_dynamic">Material You</string>
@@ -251,7 +265,10 @@
     <string name="settings_rebuild_library_done">Library cache rebuilt</string>
     <string name="settings_action_failed">The settings action could not be completed.</string>
     <string name="settings_sync_result_title">Library scan</string>
-    <string name="settings_sync_result">Updated %1$d tracks and removed %2$d missing tracks.</string>
+    <plurals name="settings_sync_result">
+        <item quantity="one">Updated %1$d track; removed missing items: %2$d.</item>
+        <item quantity="other">Updated %1$d tracks; removed missing items: %2$d.</item>
+    </plurals>
     <string name="settings_sync_failed">The library scan failed. Cached data was kept.</string>
     <string name="about_version_format">Version %1$s (%2$d)</string>
     <string name="about_developer">Developer</string>

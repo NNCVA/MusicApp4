@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
@@ -125,7 +126,11 @@ private fun HistoryScreen(
         CategoryHeader(
             title =
                 if (state.isSelectionMode) {
-                    stringResource(R.string.selection_count, state.selectedTrackIds.size)
+                    pluralStringResource(
+                        R.plurals.selection_count,
+                        state.selectedTrackIds.size,
+                        state.selectedTrackIds.size,
+                    )
                 } else {
                     stringResource(R.string.navigation_history)
                 },
@@ -377,7 +382,12 @@ private fun HistoryRow(
                 )
             }
             Text(
-                text = stringResource(R.string.history_play_count, entry.history.playCount),
+                text =
+                    pluralStringResource(
+                        R.plurals.history_play_count,
+                        entry.history.playCount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                        entry.history.playCount,
+                    ),
                 style = MusicTheme.typography.labelMedium,
                 color = MusicTheme.colors.onSurfaceVariant,
             )

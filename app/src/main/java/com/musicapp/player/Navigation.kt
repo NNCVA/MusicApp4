@@ -377,7 +377,7 @@ private fun PermissionPrompt(
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = permissionContentModifier(contentInsets),
+        modifier = Modifier.permissionContent(contentInsets),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
     ) {
@@ -414,7 +414,7 @@ private fun PermissionProgress(
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = permissionContentModifier(contentInsets),
+        modifier = Modifier.permissionContent(contentInsets),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
     ) {
@@ -429,9 +429,9 @@ private fun PermissionProgress(
 }
 
 @Composable
-private fun permissionContentModifier(contentInsets: WindowInsets): Modifier {
+private fun Modifier.permissionContent(contentInsets: WindowInsets): Modifier {
     val dimensions = MusicTheme.dimensions
-    return Modifier.fillMaxSize()
+    return fillMaxSize()
         .windowInsetsPadding(contentInsets)
         .padding(
             horizontal = dimensions.contentHorizontalPadding,

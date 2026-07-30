@@ -35,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
@@ -222,7 +223,11 @@ private fun PlaylistCard(
         ) {
             Text(playlist.displayName, style = MusicTheme.typography.titleLarge, maxLines = 2)
             Text(
-                stringResource(R.string.category_track_count, playlist.trackIds.size),
+                pluralStringResource(
+                    R.plurals.category_track_count,
+                    playlist.trackIds.size,
+                    playlist.trackIds.size,
+                ),
                 style = MusicTheme.typography.labelMedium,
                 color = MusicTheme.colors.onSurfaceVariant,
             )
@@ -285,7 +290,11 @@ private fun PlaylistDetailScreen(
         CategoryHeader(
             title =
                 if (state.isSelectionMode) {
-                    stringResource(R.string.selection_count, state.selectedTrackIds.size)
+                    pluralStringResource(
+                        R.plurals.selection_count,
+                        state.selectedTrackIds.size,
+                        state.selectedTrackIds.size,
+                    )
                 } else {
                     state.playlist?.displayName ?: stringResource(R.string.playlist_unknown_name)
                 },
@@ -353,8 +362,9 @@ private fun PlaylistDetailScreen(
             title = { Text(stringResource(R.string.playlist_playback_result_title)) },
             text = {
                 Text(
-                    stringResource(
-                        R.string.playlist_playback_result,
+                    pluralStringResource(
+                        R.plurals.playlist_playback_result,
+                        feedback.playedCount,
                         feedback.playedCount,
                         feedback.skippedCount,
                     ),

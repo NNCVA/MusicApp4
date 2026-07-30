@@ -129,6 +129,10 @@ class PlayerViewModel @Inject constructor(
 
     fun seekToPosition(positionMs: Long) = playbackController.seekTo(positionMs.coerceAtLeast(0))
 
+    fun rewind() = seekBy(-SEEK_INTERVAL_MS)
+
+    fun fastForward() = seekBy(SEEK_INTERVAL_MS)
+
     fun cyclePlaybackMode() = playbackController.setPlaybackMode(uiState.value.playbackMode.nextMode())
     fun jumpToQueueItem(queueItemId: QueueItemId) = playbackController.jumpToQueueItem(queueItemId)
     fun removeFromQueue(queueItemId: QueueItemId) = playbackController.removeFromQueue(queueItemId)
@@ -155,8 +159,24 @@ class PlayerViewModel @Inject constructor(
         fullPlayerPage.value = page
     }
 
+    private fun seekBy(deltaMs: Long) {
+        val state = uiState.value
+        if (state.durationMs <= 0) return
+        val currentPositionMs = state.positionMs.coerceIn(0, state.durationMs)
+        val targetPositionMs =
+            if (deltaMs < 0) {
+                (currentPositionMs + deltaMs).coerceAtLeast(0)
+            } else if (currentPositionMs > state.durationMs - deltaMs) {
+                state.durationMs
+            } else {
+                currentPositionMs + deltaMs
+            }
+        playbackController.seekTo(targetPositionMs)
+    }
+
     private companion object {
         const val ARTWORK_TARGET_PX = 1_024
+        const val SEEK_INTERVAL_MS = 10_000L
     }
 }
 

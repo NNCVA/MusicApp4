@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -127,7 +128,11 @@ private fun AlbumsScreen(
                             Text(album.title, style = MusicTheme.typography.titleLarge, maxLines = 2)
                             Text(album.artistName, style = MusicTheme.typography.bodyMedium, maxLines = 1)
                             Text(
-                                stringResource(R.string.category_track_count, album.trackCount),
+                                pluralStringResource(
+                                    R.plurals.category_track_count,
+                                    album.trackCount,
+                                    album.trackCount,
+                                ),
                                 style = MusicTheme.typography.labelMedium,
                                 color = MusicTheme.colors.onSurfaceVariant,
                             )

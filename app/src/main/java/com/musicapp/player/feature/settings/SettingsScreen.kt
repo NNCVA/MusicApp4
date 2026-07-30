@@ -36,6 +36,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
@@ -177,11 +178,13 @@ private fun SettingsScreen(
     state.pendingSyncFeedback?.let { feedback ->
         val message =
             when (val event = feedback.event) {
-                is LibrarySyncEvent.Completed -> stringResource(
-                    R.string.settings_sync_result,
-                    event.result.upsertedTrackCount,
-                    event.result.removedTrackCount,
-                )
+                is LibrarySyncEvent.Completed ->
+                    pluralStringResource(
+                        R.plurals.settings_sync_result,
+                        event.result.upsertedTrackCount,
+                        event.result.upsertedTrackCount,
+                        event.result.removedTrackCount,
+                    )
                 is LibrarySyncEvent.Failed -> stringResource(R.string.settings_sync_failed)
             }
         AlertDialog(

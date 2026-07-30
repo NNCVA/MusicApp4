@@ -1,5 +1,6 @@
 package com.musicapp.player.feature.permission
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -30,6 +31,7 @@ class AndroidPermissionGateway(
     override fun shouldShowRationale(permission: MediaPermission): Boolean =
         ActivityCompat.shouldShowRequestPermissionRationale(activity, permission.manifestName)
 
+    @SuppressLint("UseKtx")
     override fun requestPermission(permission: MediaPermission) {
         check(requestHistory.edit().putBoolean(permission.manifestName, true).commit()) {
             "Unable to persist permission request history"

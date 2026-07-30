@@ -6,7 +6,7 @@
 
 - Preferences DataStore 已通过 `StateFlow` 提供七类设置、逐项更新与默认值重置；路径规则未进入 DataStore。
 - 读取 `IOException` 时回退默认设置，其他异常继续上抛；Auto Backup 仅白名单包含 `files/datastore/`，数据库不进入备份。
-- English 与简体中文资源已建立自动键一致性检查，后续新增 `string`/`plurals` 必须同步提供。
+- English 与简体中文资源已建立自动键一致性检查，数量文案使用 `plurals` 提供英语单复数与简体中文回退；后续新增 `string`/`plurals` 必须同步提供。
 - 设置页已组装主题、明暗、语言、Aero、淡出淡入、扫描模式与 Room 路径规则；路径变更可取消立即重扫并持久化待同步 revision，只有该 revision 确认发起的成功完整扫描可清除。
 - 主题、明暗与 Aero 由根 Compose 树响应式消费；应用语言通过 `AppCompatDelegate.setApplicationLocales` 统一切换，AGP 从资源配置自动生成 LocaleConfig。
 - 重置配置、清空历史、删除全部播放列表和重建媒体库缓存均已接入独立确认与作用域测试；重置不清除 Room 业务数据。

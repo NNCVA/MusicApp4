@@ -160,6 +160,58 @@ class PlayerViewModelTest {
     }
 
     @Test
+    fun `rewind and fast forward use ten seconds and clamp to track bounds`() = runTest(dispatcher) {
+        val current = track(1)
+        val controller = RecordingController(
+            PlaybackControllerState(
+                connectionState = PlaybackConnectionState.CONNECTED,
+                currentTrackId = current.id,
+                positionMs = 5_000,
+                durationMs = 20_000,
+            ),
+        )
+        val viewModel = subject(controller, listOf(current))
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        viewModel.rewind()
+        assertEquals(0L, controller.seekPosition)
+
+        controller.update { copy(positionMs = 15_000) }
+        advanceUntilIdle()
+        viewModel.fastForward()
+        assertEquals(20_000L, controller.seekPosition)
+
+        controller.update { copy(positionMs = 12_000) }
+        advanceUntilIdle()
+        viewModel.rewind()
+        assertEquals(2_000L, controller.seekPosition)
+        collection.cancel()
+    }
+
+    @Test
+    fun `relative seek is ignored until duration is known`() = runTest(dispatcher) {
+        val current = track(1)
+        val controller = RecordingController(
+            PlaybackControllerState(
+                connectionState = PlaybackConnectionState.CONNECTED,
+                currentTrackId = current.id,
+                positionMs = 5_000,
+                durationMs = null,
+            ),
+        )
+        val viewModel = subject(controller, emptyList())
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        viewModel.rewind()
+        viewModel.fastForward()
+
+        assertEquals(null, controller.seekPosition)
+        collection.cancel()
+    }
+
+    @Test
     fun `track information loads metadata on demand`() = runTest(dispatcher) {
         val current = track(1)
         val controller = RecordingController(

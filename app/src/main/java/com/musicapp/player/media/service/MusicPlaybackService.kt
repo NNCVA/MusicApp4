@@ -92,10 +92,13 @@ class MusicPlaybackService : MediaLibraryService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val errorRecovery = PlaybackErrorRecovery<QueueItemId>()
     private val interruptionPolicy = AudioInterruptionPolicy()
+    private val dismissIntentAuthenticator = NotificationDismissIntentAuthenticator.create()
 
     override fun onCreate() {
         super.onCreate()
-        setMediaNotificationProvider(DismissAwareMediaNotificationProvider(this))
+        setMediaNotificationProvider(
+            DismissAwareMediaNotificationProvider(this, dismissIntentAuthenticator),
+        )
         val servicePlayer =
             ExoPlayer.Builder(this)
                 .setAudioAttributes(
@@ -186,6 +189,7 @@ class MusicPlaybackService : MediaLibraryService() {
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 when (playbackState) {
+                    Player.STATE_IDLE -> cancelNaturalTransition()
                     Player.STATE_READY -> {
                         coordinator.clearPlaybackFailure()
                         errorRecovery.onReady()
@@ -265,6 +269,7 @@ class MusicPlaybackService : MediaLibraryService() {
                 }
             }
 
+            @Suppress("DEPRECATION")
             override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {
                 when (playbackSuppressionReason) {
                     Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS -> {
@@ -275,13 +280,17 @@ class MusicPlaybackService : MediaLibraryService() {
                         interruptFade(FadePlaybackEvent.AUDIO_FOCUS_LOSS, servicePlayer)
                     }
 
-                    Player.PLAYBACK_SUPPRESSION_REASON_UNSUITABLE_AUDIO_OUTPUT -> {
+                    Player.PLAYBACK_SUPPRESSION_REASON_UNSUITABLE_AUDIO_OUTPUT,
+                    Player.PLAYBACK_SUPPRESSION_REASON_UNSUITABLE_AUDIO_ROUTE,
+                    -> {
                         interruptionPolicy.onInterruption(
                             AudioInterruption.PRIVATE_OUTPUT_LOST,
                             wasPlaying = servicePlayer.playWhenReady,
                         )
                         interruptFade(FadePlaybackEvent.PRIVATE_OUTPUT_LOST, servicePlayer)
                     }
+
+                    Player.PLAYBACK_SUPPRESSION_REASON_SCRUBBING -> Unit
 
                     Player.PLAYBACK_SUPPRESSION_REASON_NONE -> {
                         val action = interruptionPolicy.onInterruption(
@@ -348,7 +357,7 @@ class MusicPlaybackService : MediaLibraryService() {
         mediaLibrarySession
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_DISMISS) {
+        if (dismissIntentAuthenticator.authenticates(intent)) {
             playbackResumptionAllowed = PlaybackResumptionPolicy.decide(
                 PlaybackResumptionEvent.NotificationDismissed,
             ).playbackResumptionAllowed
@@ -504,7 +513,6 @@ class MusicPlaybackService : MediaLibraryService() {
         }
 
     companion object {
-        internal const val ACTION_DISMISS = "com.musicapp.player.action.DISMISS_PLAYBACK_NOTIFICATION"
         private const val SESSION_ACTIVITY_REQUEST_CODE = 100
         private const val HISTORY_TICK_MS = 250L
     }

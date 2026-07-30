@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
@@ -218,7 +219,11 @@ private fun FolderRow(folder: FolderNode, onClick: (FolderId) -> Unit) {
             )
         }
         Text(
-            stringResource(R.string.category_track_count, folder.recursiveTrackCount),
+            pluralStringResource(
+                R.plurals.category_track_count,
+                folder.recursiveTrackCount,
+                folder.recursiveTrackCount,
+            ),
             style = MusicTheme.typography.labelMedium,
         )
     }

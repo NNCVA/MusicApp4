@@ -7,6 +7,17 @@ import org.junit.Test
 import org.w3c.dom.Element
 
 class StringResourceParityTest {
+  private val quantityResources =
+    setOf(
+      "selection_count",
+      "track_info_file_size_value",
+      "category_track_count",
+      "category_album_count",
+      "playlist_playback_result",
+      "history_play_count",
+      "settings_sync_result",
+    )
+
   @Test
   fun defaultAndSimplifiedChineseStringKeysMatch() {
     val resourceRoot = locateResourceRoot()
@@ -14,6 +25,35 @@ class StringResourceParityTest {
     val simplifiedChineseKeys = parseKeys(File(resourceRoot, "values-zh-rCN"))
 
     assertEquals(defaultKeys, simplifiedChineseKeys)
+  }
+
+  @Test
+  fun englishQuantityResourcesDefineSingularAndFallbackForms() {
+    val stringsFile = File(locateResourceRoot(), "values/strings.xml")
+    val factory = DocumentBuilderFactory.newInstance()
+    factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+    factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
+    factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+    val document = factory.newDocumentBuilder().parse(stringsFile)
+    val plurals = document.getElementsByTagName("plurals")
+    val quantitiesByName = buildMap {
+      for (index in 0 until plurals.length) {
+        val plural = plurals.item(index) as Element
+        val items = plural.getElementsByTagName("item")
+        put(
+          plural.getAttribute("name"),
+          buildSet {
+            for (itemIndex in 0 until items.length) {
+              add((items.item(itemIndex) as Element).getAttribute("quantity"))
+            }
+          },
+        )
+      }
+    }
+
+    quantityResources.forEach { name ->
+      assertEquals("Plural $name", setOf("one", "other"), quantitiesByName[name])
+    }
   }
 
   private fun parseKeys(directory: File): Set<ResourceKey> {

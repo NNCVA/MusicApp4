@@ -2,7 +2,6 @@ package com.musicapp.player.media.service
 
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CommandButton
@@ -15,6 +14,7 @@ import com.google.common.collect.ImmutableList
 @OptIn(UnstableApi::class)
 internal class DismissAwareMediaNotificationProvider(
     private val context: Context,
+    private val dismissIntentAuthenticator: NotificationDismissIntentAuthenticator,
 ) : MediaNotification.Provider {
     private val delegate = DefaultMediaNotificationProvider.Builder(context).build()
 
@@ -32,7 +32,7 @@ internal class DismissAwareMediaNotificationProvider(
         mediaNotification.notification.deleteIntent = PendingIntent.getService(
             context,
             DISMISS_REQUEST_CODE,
-            Intent(context, MusicPlaybackService::class.java).setAction(MusicPlaybackService.ACTION_DISMISS),
+            dismissIntentAuthenticator.createIntent(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         mediaNotification.notification.flags =

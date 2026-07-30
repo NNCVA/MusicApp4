@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
@@ -119,11 +120,19 @@ private fun ArtistsScreen(
                         ) {
                             Text(artist.displayName, style = MusicTheme.typography.titleLarge, maxLines = 2)
                             Text(
-                                stringResource(R.string.category_track_count, artist.trackCount),
+                                pluralStringResource(
+                                    R.plurals.category_track_count,
+                                    artist.trackCount,
+                                    artist.trackCount,
+                                ),
                                 style = MusicTheme.typography.bodyMedium,
                             )
                             Text(
-                                stringResource(R.string.category_album_count, artist.albumCount),
+                                pluralStringResource(
+                                    R.plurals.category_album_count,
+                                    artist.albumCount,
+                                    artist.albumCount,
+                                ),
                                 style = MusicTheme.typography.labelMedium,
                                 color = MusicTheme.colors.onSurfaceVariant,
                             )
