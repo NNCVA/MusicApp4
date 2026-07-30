@@ -10,14 +10,16 @@ import androidx.media3.common.util.UnstableApi
 internal class QueueManagedPlayer(
     player: Player,
     private val coordinator: PlaybackQueueCoordinator,
+    private val requestNext: () -> Unit = coordinator::manualNext,
+    private val requestPrevious: () -> Unit = coordinator::manualPrevious,
 ) : ForwardingPlayer(player) {
-    override fun seekToNextMediaItem() = coordinator.manualNext()
+    override fun seekToNextMediaItem() = requestNext()
 
-    override fun seekToNext() = coordinator.manualNext()
+    override fun seekToNext() = requestNext()
 
-    override fun seekToPreviousMediaItem() = coordinator.manualPrevious()
+    override fun seekToPreviousMediaItem() = requestPrevious()
 
-    override fun seekToPrevious() = coordinator.manualPrevious()
+    override fun seekToPrevious() = requestPrevious()
 
     override fun hasNextMediaItem(): Boolean = coordinator.canNavigate
 

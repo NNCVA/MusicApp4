@@ -18,6 +18,7 @@ data class PlaybackControllerState(
     val connectionState: PlaybackConnectionState = PlaybackConnectionState.DISCONNECTED,
     val currentTrackId: TrackId? = null,
     val isPlaying: Boolean = false,
+    val isBuffering: Boolean = false,
     val positionMs: Long = 0,
     val durationMs: Long? = null,
     val canSkipPrevious: Boolean = false,

@@ -3,6 +3,9 @@ package com.musicapp.player.media.playback
 import android.content.ComponentName
 import android.content.Context
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -15,6 +18,7 @@ import com.musicapp.player.core.domain.model.PlaybackQueue
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.playback.PlaybackConnectionState
 import com.musicapp.player.core.playback.PlaybackControllerState
+import com.musicapp.player.core.playback.BufferingVisibilityPolicy
 import com.musicapp.player.media.service.MusicPlaybackService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.ArrayDeque
@@ -31,6 +35,9 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     private val mainExecutor = ContextCompat.getMainExecutor(context)
     private val pendingCommands = ArrayDeque<(MediaController) -> Unit>()
     private val mutableState = MutableStateFlow(PlaybackControllerState())
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val bufferingPolicy = BufferingVisibilityPolicy()
+    private var bufferingUpdateScheduled = false
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
     private var connectionRequested = false
@@ -41,8 +48,16 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
+            updateBuffering(player)
             updateState(player)
         }
+    }
+
+    private val showBuffering = Runnable {
+        bufferingUpdateScheduled = false
+        val connectedController = controller ?: return@Runnable
+        if (connectedController.playbackState != Player.STATE_BUFFERING) return@Runnable
+        updateState(connectedController)
     }
 
     private val controllerListener = object : MediaController.Listener {
@@ -55,6 +70,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             mainExecutor.execute {
                 if (this@Media3PlaybackControllerConnection.controller !== controller) return@execute
                 controller.removeListener(playerListener)
+                resetBuffering()
                 this@Media3PlaybackControllerConnection.controller = null
                 val disconnectedFuture = controllerFuture
                 controllerFuture = null
@@ -118,6 +134,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             connectionRequested = false
             pendingCommands.clear()
             controller?.removeListener(playerListener)
+            resetBuffering()
             controller = null
             val future = controllerFuture
             controllerFuture = null
@@ -200,6 +217,10 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             currentTrackId = QueueMediaIdCodec.decode(player.currentMediaItem?.mediaId.orEmpty())?.trackId
                 ?: playbackQueue.currentItem?.trackId,
             isPlaying = player.isPlaying,
+            isBuffering = bufferingPolicy.update(
+                isBuffering = player.playbackState == Player.STATE_BUFFERING,
+                nowMs = SystemClock.elapsedRealtime(),
+            ),
             positionMs = player.currentPosition.coerceAtLeast(0),
             durationMs = duration,
             canSkipPrevious = playbackQueue.originalQueue.size > 1,
@@ -214,5 +235,22 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             playbackMode = mode
             playbackQueue = queue
         }
+    }
+
+    private fun updateBuffering(player: Player) {
+        if (player.playbackState != Player.STATE_BUFFERING) {
+            resetBuffering()
+            return
+        }
+        if (bufferingUpdateScheduled) return
+        bufferingPolicy.update(isBuffering = true, nowMs = SystemClock.elapsedRealtime())
+        bufferingUpdateScheduled = true
+        mainHandler.postDelayed(showBuffering, BufferingVisibilityPolicy.DEFAULT_DELAY_MS)
+    }
+
+    private fun resetBuffering() {
+        mainHandler.removeCallbacks(showBuffering)
+        bufferingUpdateScheduled = false
+        bufferingPolicy.reset()
     }
 }

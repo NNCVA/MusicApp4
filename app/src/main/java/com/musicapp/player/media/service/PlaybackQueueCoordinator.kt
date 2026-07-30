@@ -120,6 +120,38 @@ internal class PlaybackQueueCoordinator(
         seekToCurrent()
     }
 
+    fun naturalNext() {
+        if (state.queue.currentItemId == null) return
+        val previousRound = state.queue.shuffleRound
+        state = reducer.naturalEnd(state)
+        if (state.queue.shuffleRound != previousRound) {
+            applyTimeline(positionMs = 0, playWhenReady = player.playWhenReady)
+        } else {
+            seekToCurrent()
+        }
+    }
+
+    fun recoverTo(queueItemId: QueueItemId): Boolean {
+        if (state.queue.originalQueue.none { it.id == queueItemId }) return false
+        state = state.copy(
+            queue = state.queue.copy(
+                currentItemId = queueItemId,
+                shuffleCursor = if (state.mode == PlaybackMode.SHUFFLE) {
+                    state.queue.stableShuffleSequence.indexOf(queueItemId).takeIf { it >= 0 }
+                } else {
+                    null
+                },
+            ),
+        )
+        seekToCurrent()
+        return true
+    }
+
+    fun stopPlayback() {
+        player.stop()
+        publish()
+    }
+
     fun onMediaItemTransition(mediaItem: MediaItem?) {
         if (rebuildingShuffleRound) return
         val transitioned = QueueMediaIdCodec.decode(mediaItem?.mediaId.orEmpty()) ?: return
@@ -142,8 +174,7 @@ internal class PlaybackQueueCoordinator(
         if (state.queue.currentItemId == null || rebuildingShuffleRound) return
         rebuildingShuffleRound = true
         try {
-            state = reducer.naturalEnd(state)
-            applyTimeline(positionMs = 0, playWhenReady = player.playWhenReady)
+            naturalNext()
         } finally {
             rebuildingShuffleRound = false
         }

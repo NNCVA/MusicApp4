@@ -4,6 +4,9 @@
     <string name="playback_mode_list_repeat">Repeat all</string>
     <string name="playback_mode_single_repeat">Repeat one</string>
     <string name="playback_mode_shuffle">Shuffle</string>
+    <string name="playback_buffering">Buffering…</string>
+    <string name="playback_error_unreadable">This track could not be played. Trying the next track.</string>
+    <string name="playback_error_no_playable_tracks">No playable tracks remain in this queue.</string>
     <string name="loading">Loading…</string>
     <string name="empty_state_title">Nothing here yet</string>
     <string name="error_state_title">Something went wrong</string>
