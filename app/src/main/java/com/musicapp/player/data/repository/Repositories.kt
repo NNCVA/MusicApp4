@@ -60,6 +60,7 @@ interface PlaylistRepository {
         updatedAtMs: Long,
     )
     suspend fun deletePlaylist(playlistId: PlaylistId)
+    suspend fun deleteAllPlaylists()
     suspend fun addTracks(
         playlistId: PlaylistId,
         trackIds: List<TrackId>,

@@ -130,6 +130,24 @@ class MediaLibraryRepositoryTest {
     }
 
     @Test
+    fun roomAndFakeNormalizePathRulesBeforeUniquenessChecks() = runTest {
+        val repositories: List<MediaLibraryRepository> = listOf(
+            repository,
+            FakeMediaLibraryRepository(),
+        )
+
+        repositories.forEach { subject ->
+            val rule = subject.addPathRule("external_primary", "./Music/Live/..", PathRuleKind.INCLUDE)
+            val duplicate = runCatching {
+                subject.addPathRule("external_primary", "Music/", PathRuleKind.INCLUDE)
+            }.exceptionOrNull()
+
+            assertEquals("Music", rule.directory)
+            assertTrue(duplicate != null)
+        }
+    }
+
+    @Test
     fun batchVisibilityChangesAreAtomicAndNeverDeleteTracks() = runTest {
         val first = track(mediaStoreId = 101, title = "First")
         val second = track(mediaStoreId = 102, title = "Second")

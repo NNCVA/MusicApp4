@@ -28,6 +28,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -162,10 +163,23 @@ class SettingsRepositoryTest {
         repository.setAeroMode(AeroMode.SOLID)
         repository.setFadeThroughDurationMs(2_000)
         repository.setScanMode(ScanMode.SELECTED_DIRECTORIES)
+        val firstPendingRevision = repository.markLibrarySyncPending()
+        val pendingRevision = repository.markLibrarySyncPending()
+        assertEquals(firstPendingRevision + 1, pendingRevision)
 
         repository.reset()
 
         assertEquals(AppSettings(), repository.settings.first { it == AppSettings() })
+        assertEquals(
+            PendingLibrarySyncState(pendingRevision, isPending = true),
+            repository.pendingLibrarySync.first { it.isPending },
+        )
+        assertFalse(repository.clearLibrarySyncPending(firstPendingRevision))
+        assertTrue(repository.clearLibrarySyncPending(pendingRevision))
+        assertEquals(
+            PendingLibrarySyncState(pendingRevision, isPending = false),
+            repository.pendingLibrarySync.first { !it.isPending && it.revision == pendingRevision },
+        )
     }
 
     private fun TestScope.createRepository(): SettingsRepository {

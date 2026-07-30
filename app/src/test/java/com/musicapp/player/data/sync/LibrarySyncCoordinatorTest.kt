@@ -2,6 +2,7 @@ package com.musicapp.player.data.sync
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -145,6 +146,39 @@ class LibrarySyncCoordinatorTest {
         assertTrue(fixture.synchronizer.cache.hasSuccessfulScan)
     }
 
+    @Test
+    fun concurrentAwaitedManualRequestsCompleteWithTheirOwnQueuedBatches() = runTest {
+        val fixture = fixture(cache(true, "v1"), snapshot("v1"))
+        val firstGate = CompletableDeferred<Unit>()
+        val secondGate = CompletableDeferred<Unit>()
+        fixture.synchronizer.syncGates += firstGate
+        fixture.synchronizer.syncGates += secondGate
+        fixture.synchronizer.results += successfulReport(generation = 101)
+        fixture.synchronizer.results += successfulReport(generation = 202)
+
+        val first = async { fixture.coordinator.requestManualSyncAndAwait() }
+        runCurrent()
+        val second = async { fixture.coordinator.requestManualSyncAndAwait() }
+        runCurrent()
+        assertTrue(first.isActive)
+        assertTrue(second.isActive)
+
+        firstGate.complete(Unit)
+        runCurrent()
+        val firstEvent = first.await() as LibrarySyncEvent.Completed
+        assertEquals(101L, firstEvent.result.generation)
+        assertTrue(second.isActive)
+
+        secondGate.complete(Unit)
+        runCurrent()
+        val secondEvent = second.await() as LibrarySyncEvent.Completed
+        assertEquals(202L, secondEvent.result.generation)
+        assertEquals(
+            listOf(MediaLibrarySyncMode.FULL, MediaLibrarySyncMode.FULL),
+            fixture.synchronizer.modes,
+        )
+    }
+
     private fun kotlinx.coroutines.test.TestScope.fixture(
         cache: MediaLibraryCacheSnapshot,
         snapshot: MediaStoreSnapshot,
@@ -176,6 +210,7 @@ class LibrarySyncCoordinatorTest {
     ) : MediaLibrarySynchronizer {
         val modes = mutableListOf<MediaLibrarySyncMode>()
         val results = ArrayDeque<MediaLibrarySyncResult>()
+        val syncGates = ArrayDeque<CompletableDeferred<Unit>>()
         var blockFirstSync: CompletableDeferred<Unit>? = null
 
         override suspend fun synchronize(
@@ -183,7 +218,11 @@ class LibrarySyncCoordinatorTest {
             source: MediaLibraryScanSource,
         ): MediaLibrarySyncResult {
             modes += mode
-            if (modes.size == 1) blockFirstSync?.await()
+            if (syncGates.isNotEmpty()) {
+                syncGates.removeFirst().await()
+            } else if (modes.size == 1) {
+                blockFirstSync?.await()
+            }
             val scan = source.queryMountedAudio()
             val result = if (results.isEmpty()) successfulReport(scan.summary) else results.removeFirst()
             if (result.succeeded) {
@@ -215,6 +254,13 @@ class LibrarySyncCoordinatorTest {
             removedTrackCount = 0,
             temporarilyUnavailableVolumeNames = emptySet(),
             scanSummary = summary,
+        )
+
+        fun successfulReport(generation: Long) = SyncReport(
+            generation = generation,
+            upsertedTrackCount = 0,
+            removedTrackCount = 0,
+            temporarilyUnavailableVolumeNames = emptySet(),
         )
 
         fun failedReport() = SyncReport(

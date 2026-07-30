@@ -68,12 +68,15 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.aero.AeroRuntimeSignals
+import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.feature.lyrics.LyricsPaneRoute
 import com.musicapp.player.feature.lyrics.LyricsViewModel
+import com.musicapp.player.feature.aero.AeroBackground
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
 import kotlin.math.roundToInt
@@ -83,6 +86,8 @@ import java.util.Locale
 fun PlayerSheetRoute(
     viewModel: PlayerViewModel,
     lyricsViewModel: LyricsViewModel,
+    aeroMode: AeroMode,
+    aeroSignals: AeroRuntimeSignals,
     contentInsets: WindowInsets,
     onExpansionChanged: (Boolean) -> Unit,
 ) {
@@ -98,6 +103,8 @@ fun PlayerSheetRoute(
     PlayerSheet(
         state = state,
         lyricsViewModel = lyricsViewModel,
+        aeroMode = aeroMode,
+        aeroSignals = aeroSignals,
         contentInsets = contentInsets,
         onTogglePlayback = viewModel::togglePlayback,
         onPrevious = viewModel::skipPrevious,
@@ -117,6 +124,8 @@ fun PlayerSheetRoute(
 fun PlayerSheet(
     state: PlayerUiState,
     lyricsViewModel: LyricsViewModel,
+    aeroMode: AeroMode,
+    aeroSignals: AeroRuntimeSignals,
     contentInsets: WindowInsets,
     onTogglePlayback: () -> Unit,
     onPrevious: () -> Unit,
@@ -179,26 +188,34 @@ fun PlayerSheet(
                         ),
                 )
                 if (progress > 0f) {
-                    FullPlayer(
-                        state = state,
-                        lyricsViewModel = lyricsViewModel,
-                        track = track,
-                        contentInsets = contentInsets,
-                        onCollapse = { progress = 0f },
-                        onTogglePlayback = onTogglePlayback,
-                        onPrevious = onPrevious,
-                        onNext = onNext,
-                        onSeek = onSeek,
-                        onCycleMode = onCycleMode,
-                        onJumpToQueueItem = onJumpToQueueItem,
-                        onRemoveQueueItem = onRemoveQueueItem,
-                        onShowInfo = onShowInfo,
-                        initialPage = state.fullPlayerPage,
-                        onPageChanged = onPageChanged,
-                        onSheetDrag = dragSheet,
-                        onSheetSettle = settleSheet,
-                        modifier = Modifier.graphicsLayer { alpha = PlayerLayerAlpha.full(progress) },
-                    )
+                    AeroBackground(
+                        preferredMode = aeroMode,
+                        signals = aeroSignals,
+                        artwork = (state.artwork as? ArtworkResult.Embedded)?.image,
+                        mixArtworkColors = true,
+                        modifier = Modifier.fillMaxSize()
+                            .graphicsLayer { alpha = PlayerLayerAlpha.full(progress) },
+                    ) {
+                        FullPlayer(
+                            state = state,
+                            lyricsViewModel = lyricsViewModel,
+                            track = track,
+                            contentInsets = contentInsets,
+                            onCollapse = { progress = 0f },
+                            onTogglePlayback = onTogglePlayback,
+                            onPrevious = onPrevious,
+                            onNext = onNext,
+                            onSeek = onSeek,
+                            onCycleMode = onCycleMode,
+                            onJumpToQueueItem = onJumpToQueueItem,
+                            onRemoveQueueItem = onRemoveQueueItem,
+                            onShowInfo = onShowInfo,
+                            initialPage = state.fullPlayerPage,
+                            onPageChanged = onPageChanged,
+                            onSheetDrag = dragSheet,
+                            onSheetSettle = settleSheet,
+                        )
+                    }
                 }
             }
         }

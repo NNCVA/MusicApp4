@@ -52,6 +52,11 @@ import com.musicapp.player.navigation.TopLevelNavKey
 import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
 import com.musicapp.player.navigation.topLevelNavKeys
+import com.musicapp.player.core.aero.AeroRuntimeSignals
+import com.musicapp.player.core.domain.model.AeroMode
+import com.musicapp.player.feature.about.AboutScreenRoute
+import com.musicapp.player.feature.about.AboutViewModel
+import com.musicapp.player.feature.aero.AeroBackground
 import com.musicapp.player.feature.permission.MediaPermissionState
 import com.musicapp.player.feature.albums.AlbumDetailScreenRoute
 import com.musicapp.player.feature.albums.AlbumDetailViewModel
@@ -75,6 +80,8 @@ import com.musicapp.player.feature.playlists.PlaylistDetailScreenRoute
 import com.musicapp.player.feature.playlists.PlaylistDetailViewModel
 import com.musicapp.player.feature.playlists.PlaylistsScreenRoute
 import com.musicapp.player.feature.playlists.PlaylistsViewModel
+import com.musicapp.player.feature.settings.SettingsScreenRoute
+import com.musicapp.player.feature.settings.SettingsViewModel
 import com.musicapp.player.feature.tracks.TracksScreenRoute
 import com.musicapp.player.feature.tracks.TracksViewModel
 import com.musicapp.player.theme.MusicTheme
@@ -85,6 +92,8 @@ import com.musicapp.player.ui.shell.WindowLayoutPolicy
 
 @Composable
 fun MainNavigation(
+    aeroMode: AeroMode,
+    aeroSignals: AeroRuntimeSignals,
     onExit: () -> Unit,
     permissionState: MediaPermissionState,
     onConfirmPermission: () -> Unit,
@@ -119,7 +128,13 @@ fun MainNavigation(
         }
     }
 
-    AppShell(
+    AeroBackground(
+        preferredMode =
+            if (playerExpanded || navigationState.currentBackStack.size > 1) AeroMode.SOLID else aeroMode,
+        signals = aeroSignals,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+      AppShell(
         drawerGesturesEnabled = !playerExpanded,
         playerSheetVisible = playerState.currentTrack != null,
         navigationContent = { policy, closeDrawer ->
@@ -207,8 +222,22 @@ fun MainNavigation(
                                     },
                                 )
                             }
-                            entry<SettingsRoute> { DestinationPlaceholder(SettingsRoute, contentInsets, policy, openDrawer) }
-                            entry<AboutRoute> { DestinationPlaceholder(AboutRoute, contentInsets, policy, openDrawer) }
+                            entry<SettingsRoute> {
+                                SettingsScreenRoute(
+                                    viewModel = viewModel<SettingsViewModel>(),
+                                    contentInsets = contentInsets,
+                                    policy = policy,
+                                    openDrawer = openDrawer,
+                                )
+                            }
+                            entry<AboutRoute> {
+                                AboutScreenRoute(
+                                    viewModel = viewModel<AboutViewModel>(),
+                                    contentInsets = contentInsets,
+                                    policy = policy,
+                                    openDrawer = openDrawer,
+                                )
+                            }
                             entry<TrackInfoRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
                             entry<AlbumDetailRoute> { key ->
                                 AlbumDetailScreenRoute(
@@ -265,11 +294,14 @@ fun MainNavigation(
             PlayerSheetRoute(
                 viewModel = playerViewModel,
                 lyricsViewModel = lyricsViewModel,
+                aeroMode = aeroMode,
+                aeroSignals = aeroSignals,
                 contentInsets = contentInsets,
                 onExpansionChanged = { playerExpanded = it },
             )
         },
-    )
+      )
+    }
 }
 
 @Composable

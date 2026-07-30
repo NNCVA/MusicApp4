@@ -1,21 +1,23 @@
 package com.musicapp.player
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import com.musicapp.player.core.aero.platform.AeroSignalSource
+import com.musicapp.player.core.domain.model.AppLanguage
 import com.musicapp.player.feature.permission.AndroidPermissionGateway
 import com.musicapp.player.feature.permission.MediaPermissionCoordinator
 import com.musicapp.player.feature.permission.MediaPermissionState
 import com.musicapp.player.data.sync.LibrarySyncCoordinator
+import com.musicapp.player.data.settings.SettingsRepository
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicDimensions
@@ -23,9 +25,11 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
   @Inject lateinit var librarySyncCoordinator: LibrarySyncCoordinator
   @Inject lateinit var playbackController: PlaybackControllerFacade
+  @Inject lateinit var settingsRepository: SettingsRepository
+  @Inject lateinit var aeroSignalSource: AeroSignalSource
 
   private lateinit var mediaPermissionCoordinator: MediaPermissionCoordinator
   private var isActivityStarted = false
@@ -55,18 +59,28 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     setContent {
       val permissionState by mediaPermissionCoordinator.state.collectAsStateWithLifecycle()
+      val appSettings by settingsRepository.settings.collectAsStateWithLifecycle()
+      val aeroSignals by aeroSignalSource.signals.collectAsStateWithLifecycle()
+      LaunchedEffect(appSettings.appLanguage) {
+        applyAppLanguage(appSettings.appLanguage)
+      }
       BoxWithConstraints {
         val windowWidthTier = MusicDimensions.tierForWidth(maxWidth)
-        MusicAppTheme(windowWidthTier = windowWidthTier) {
-          Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            MainNavigation(
-              onExit = ::finish,
-              permissionState = permissionState,
-              onConfirmPermission = mediaPermissionCoordinator::confirmPurposeExplanation,
-              onRetryPermission = mediaPermissionCoordinator::retryPermissionRequest,
-              onOpenPermissionSettings = mediaPermissionCoordinator::openApplicationSettings,
-            )
-          }
+        MusicAppTheme(
+          presetTheme = appSettings.presetTheme,
+          colorSource = appSettings.colorSource,
+          themeMode = appSettings.themeMode,
+          windowWidthTier = windowWidthTier,
+        ) {
+          MainNavigation(
+            aeroMode = appSettings.aeroMode,
+            aeroSignals = aeroSignals,
+            onExit = ::finish,
+            permissionState = permissionState,
+            onConfirmPermission = mediaPermissionCoordinator::confirmPurposeExplanation,
+            onRetryPermission = mediaPermissionCoordinator::retryPermissionRequest,
+            onOpenPermissionSettings = mediaPermissionCoordinator::openApplicationSettings,
+          )
         }
       }
     }
@@ -111,8 +125,27 @@ class MainActivity : ComponentActivity() {
       if (isGranted) librarySyncCoordinator.startForeground() else librarySyncCoordinator.stopForeground()
     }
   }
+
+  private fun applyAppLanguage(language: AppLanguage) {
+    if (ProcessLanguageState.appliedLanguage == language) return
+    ProcessLanguageState.appliedLanguage = language
+    AppCompatDelegate.setApplicationLocales(
+      LocaleListCompat.forLanguageTags(language.languageTags()),
+    )
+  }
 }
+
+internal fun AppLanguage.languageTags(): String =
+  when (this) {
+    AppLanguage.SYSTEM -> ""
+    AppLanguage.SIMPLIFIED_CHINESE -> "zh-CN"
+    AppLanguage.ENGLISH -> "en"
+  }
 
 private object ProcessSyncLifecycle {
   var coldStartDispatched: Boolean = false
+}
+
+private object ProcessLanguageState {
+  var appliedLanguage: AppLanguage? = null
 }

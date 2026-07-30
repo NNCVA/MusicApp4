@@ -4,6 +4,7 @@ import com.musicapp.player.core.common.coroutines.ApplicationCoroutineScope
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -71,6 +72,19 @@ class LibrarySyncCoordinator @Inject constructor(
                 feedback = MediaLibrarySyncFeedback.RESULT_DIALOG,
             ),
         )
+    }
+
+    suspend fun requestManualSyncAndAwait(): LibrarySyncEvent {
+        val completion = CompletableDeferred<LibrarySyncEvent>()
+        enqueue(
+            SyncRequest(
+                trigger = MediaLibrarySyncTrigger.MANUAL,
+                mode = MediaLibrarySyncMode.FULL,
+                feedback = MediaLibrarySyncFeedback.RESULT_DIALOG,
+                completions = listOf(completion),
+            ),
+        )
+        return completion.await()
     }
 
     @OptIn(FlowPreview::class)
@@ -159,6 +173,7 @@ class LibrarySyncCoordinator @Inject constructor(
         val result = try {
             synchronizer.synchronize(effectiveRequest.mode, scanSource)
         } catch (cancellation: CancellationException) {
+            effectiveRequest.completions.forEach { it.cancel(cancellation) }
             throw cancellation
         } catch (_: Exception) {
             SyncReport(
@@ -175,6 +190,7 @@ class LibrarySyncCoordinator @Inject constructor(
                 hasSuccessfulScan = true,
                 pendingFeedback = event.pendingFeedbackOr(previousFeedback),
             )
+            effectiveRequest.completions.forEach { it.complete(event) }
             mutableEvents.emit(event)
         } else {
             val failure = checkNotNull(result.failure)
@@ -185,6 +201,7 @@ class LibrarySyncCoordinator @Inject constructor(
                 failure = failure,
                 pendingFeedback = event.pendingFeedbackOr(previousFeedback),
             )
+            effectiveRequest.completions.forEach { it.complete(event) }
             mutableEvents.emit(event)
         }
     }
@@ -202,6 +219,7 @@ class LibrarySyncCoordinator @Inject constructor(
         val trigger: MediaLibrarySyncTrigger,
         val mode: MediaLibrarySyncMode,
         val feedback: MediaLibrarySyncFeedback,
+        val completions: List<CompletableDeferred<LibrarySyncEvent>> = emptyList(),
     ) {
         fun merge(other: SyncRequest): SyncRequest {
             val preferred = if (priority >= other.priority) this else other
@@ -219,6 +237,7 @@ class LibrarySyncCoordinator @Inject constructor(
                 } else {
                     MediaLibrarySyncFeedback.SILENT
                 },
+                completions = completions + other.completions,
             )
         }
 

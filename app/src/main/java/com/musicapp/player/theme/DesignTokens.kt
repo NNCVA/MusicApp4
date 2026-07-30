@@ -29,6 +29,7 @@ data class MusicDimensions(
     val playerSheetElevation: Dp = 6.dp,
     val statusIndicatorSize: Dp = 24.dp,
     val trackInfoDialogMaxWidth: Dp = 640.dp,
+    val settingsContentMaxWidth: Dp = 720.dp,
     val adaptiveGridMinimumCellWidth: Dp = 160.dp,
     val categoryCardMinHeight: Dp = 112.dp,
     val minimumTouchTarget: Dp = 48.dp,

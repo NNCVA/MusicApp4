@@ -2,6 +2,7 @@ package com.musicapp.player.data.settings
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -48,6 +49,22 @@ class PreferencesSettingsRepository @Inject constructor(
             initialValue = AppSettings(),
         )
 
+    override val pendingLibrarySync: StateFlow<PendingLibrarySyncState> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(emptyPreferences()) else throw exception
+        }
+        .map { preferences ->
+            PendingLibrarySyncState(
+                revision = preferences[Keys.LIBRARY_SYNC_REVISION] ?: 0,
+                isPending = preferences[Keys.LIBRARY_SYNC_PENDING] ?: false,
+            )
+        }
+        .stateIn(
+            scope = applicationScope,
+            started = SharingStarted.Eagerly,
+            initialValue = PendingLibrarySyncState(),
+        )
+
     override suspend fun currentSettings(): AppSettings = settingsFlow.first()
 
     override suspend fun setColorSource(value: ColorSource) {
@@ -81,8 +98,41 @@ class PreferencesSettingsRepository @Inject constructor(
         setEnum(Keys.SCAN_MODE, value)
     }
 
+    override suspend fun markLibrarySyncPending(): Long {
+        var markedRevision = 0L
+        dataStore.edit { preferences ->
+            val currentRevision = preferences[Keys.LIBRARY_SYNC_REVISION] ?: 0
+            check(currentRevision < Long.MAX_VALUE) { "library sync revision exhausted" }
+            markedRevision = currentRevision + 1
+            preferences[Keys.LIBRARY_SYNC_REVISION] = markedRevision
+            preferences[Keys.LIBRARY_SYNC_PENDING] = true
+        }
+        return markedRevision
+    }
+
+    override suspend fun clearLibrarySyncPending(expectedRevision: Long): Boolean {
+        require(expectedRevision >= 0) { "expectedRevision must not be negative" }
+        var cleared = false
+        dataStore.edit { preferences ->
+            val currentRevision = preferences[Keys.LIBRARY_SYNC_REVISION] ?: 0
+            if (currentRevision == expectedRevision && preferences[Keys.LIBRARY_SYNC_PENDING] == true) {
+                preferences[Keys.LIBRARY_SYNC_PENDING] = false
+                cleared = true
+            }
+        }
+        return cleared
+    }
+
     override suspend fun reset() {
-        dataStore.edit { preferences -> preferences.clear() }
+        dataStore.edit { preferences ->
+            preferences.remove(Keys.COLOR_SOURCE)
+            preferences.remove(Keys.PRESET_THEME)
+            preferences.remove(Keys.THEME_MODE)
+            preferences.remove(Keys.APP_LANGUAGE)
+            preferences.remove(Keys.AERO_MODE)
+            preferences.remove(Keys.FADE_THROUGH_DURATION_MS)
+            preferences.remove(Keys.SCAN_MODE)
+        }
     }
 
     private suspend fun setEnum(key: Preferences.Key<String>, value: Enum<*>) {
@@ -123,5 +173,7 @@ class PreferencesSettingsRepository @Inject constructor(
         val AERO_MODE = stringPreferencesKey("aero_mode")
         val FADE_THROUGH_DURATION_MS = longPreferencesKey("fade_through_duration_ms")
         val SCAN_MODE = stringPreferencesKey("scan_mode")
+        val LIBRARY_SYNC_PENDING = booleanPreferencesKey("library_sync_pending")
+        val LIBRARY_SYNC_REVISION = longPreferencesKey("library_sync_revision")
     }
 }

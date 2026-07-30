@@ -109,10 +109,11 @@ class FakeMediaLibraryRepository(
         kind: PathRuleKind,
     ): PathRule = mutex.withLock {
         require(volumeName.isNotBlank())
+        val normalizedDirectory = normalizeFolderDirectoryPath(directory)
         require(rules.value.none {
-            it.volumeName == volumeName && it.directory == directory && it.kind == kind
+            it.volumeName == volumeName && it.directory == normalizedDirectory && it.kind == kind
         })
-        PathRule(PathRuleId(nextRuleId++), volumeName, directory, kind).also {
+        PathRule(PathRuleId(nextRuleId++), volumeName, normalizedDirectory, kind).also {
             rules.value += it
         }
     }
@@ -120,7 +121,11 @@ class FakeMediaLibraryRepository(
     override suspend fun replacePathRules(rules: List<PathRule>) {
         if (rules.isEmpty()) return
         require(rules.map(PathRule::id).distinct().size == rules.size)
-        mutex.withLock { this.rules.value = rules }
+        val normalizedRules = rules.map { rule ->
+            rule.copy(directory = normalizeFolderDirectoryPath(rule.directory))
+        }
+        require(normalizedRules.distinctBy { Triple(it.volumeName, it.directory, it.kind) }.size == rules.size)
+        mutex.withLock { this.rules.value = normalizedRules }
     }
 
     override suspend fun removePathRule(ruleId: PathRuleId) {
@@ -190,6 +195,10 @@ class FakePlaylistRepository(
 
     override suspend fun deletePlaylist(playlistId: PlaylistId) {
         mutex.withLock { playlists.value -= playlistId }
+    }
+
+    override suspend fun deleteAllPlaylists() {
+        mutex.withLock { playlists.value = emptyMap() }
     }
 
     override suspend fun addTracks(

@@ -135,8 +135,9 @@ class RoomMediaLibraryRepository @Inject constructor(
         kind: PathRuleKind,
     ): PathRule = database.withTransaction {
         require(volumeName.isNotBlank()) { "volumeName must not be blank" }
+        val normalizedDirectory = normalizeFolderDirectoryPath(directory)
         val id = pathRuleDao.insert(
-            PathRuleEntity(volumeName = volumeName, directory = directory, kind = kind.name),
+            PathRuleEntity(volumeName = volumeName, directory = normalizedDirectory, kind = kind.name),
         )
         checkNotNull(pathRuleDao.getAll().firstOrNull { it.pathRuleId == id }).toDomain()
     }
@@ -146,9 +147,15 @@ class RoomMediaLibraryRepository @Inject constructor(
         require(rules.map(PathRule::id).distinct().size == rules.size) {
             "rules must have unique ids"
         }
+        val normalizedRules = rules.map { rule ->
+            rule.copy(directory = normalizeFolderDirectoryPath(rule.directory))
+        }
+        require(normalizedRules.distinctBy { Triple(it.volumeName, it.directory, it.kind) }.size == rules.size) {
+            "rules must not contain semantically duplicate paths"
+        }
         database.withTransaction {
             pathRuleDao.deleteAll()
-            rules.forEach { rule ->
+            normalizedRules.forEach { rule ->
                 pathRuleDao.insert(
                     PathRuleEntity(
                         pathRuleId = rule.id.value,
@@ -223,6 +230,8 @@ class RoomPlaylistRepository @Inject constructor(
     }
 
     override suspend fun deletePlaylist(playlistId: PlaylistId) = playlistDao.delete(playlistId.value)
+
+    override suspend fun deleteAllPlaylists() = playlistDao.deleteAll()
 
     override suspend fun addTracks(
         playlistId: PlaylistId,
