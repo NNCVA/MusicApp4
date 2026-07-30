@@ -41,6 +41,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     private val mainHandler = Handler(Looper.getMainLooper())
     private val bufferingPolicy = BufferingVisibilityPolicy()
     private var bufferingUpdateScheduled = false
+    private var positionUpdateScheduled = false
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
     private var connectionRequested = false
@@ -54,6 +55,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         override fun onEvents(player: Player, events: Player.Events) {
             updateBuffering(player)
             updateState(player)
+            updatePositionRefresh(player)
         }
     }
 
@@ -62,6 +64,15 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         val connectedController = controller ?: return@Runnable
         if (connectedController.playbackState != Player.STATE_BUFFERING) return@Runnable
         updateState(connectedController)
+    }
+
+    private val refreshPosition = object : Runnable {
+        override fun run() {
+            positionUpdateScheduled = false
+            val connectedController = controller ?: return
+            updateState(connectedController)
+            updatePositionRefresh(connectedController)
+        }
     }
 
     private val controllerListener = object : MediaController.Listener {
@@ -75,6 +86,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
                 if (this@Media3PlaybackControllerConnection.controller !== controller) return@execute
                 controller.removeListener(playerListener)
                 resetBuffering()
+                stopPositionRefresh()
                 serviceFailure = null
                 this@Media3PlaybackControllerConnection.controller = null
                 val disconnectedFuture = controllerFuture
@@ -118,6 +130,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
                         connectedController.addListener(playerListener)
                         updateQueueState(connectedController.sessionExtras)
                         updateState(connectedController)
+                        updatePositionRefresh(connectedController)
                         while (pendingCommands.isNotEmpty()) {
                             pendingCommands.removeFirst().invoke(connectedController)
                         }
@@ -140,6 +153,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             pendingCommands.clear()
             controller?.removeListener(playerListener)
             resetBuffering()
+            stopPositionRefresh()
             serviceFailure = null
             controller = null
             val future = controllerFuture
@@ -290,5 +304,24 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         mainHandler.removeCallbacks(showBuffering)
         bufferingUpdateScheduled = false
         bufferingPolicy.reset()
+    }
+
+    private fun updatePositionRefresh(player: Player) {
+        val delayMs = PlaybackPositionRefreshPolicy.nextDelayMs(
+            isConnected = controller != null,
+            isPlaying = player.isPlaying,
+        )
+        if (delayMs == null) {
+            stopPositionRefresh()
+            return
+        }
+        if (positionUpdateScheduled) return
+        positionUpdateScheduled = true
+        mainHandler.postDelayed(refreshPosition, delayMs)
+    }
+
+    private fun stopPositionRefresh() {
+        mainHandler.removeCallbacks(refreshPosition)
+        positionUpdateScheduled = false
     }
 }

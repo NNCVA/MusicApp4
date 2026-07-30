@@ -127,6 +127,8 @@ class PlayerViewModel @Inject constructor(
         playbackController.seekTo((duration * fraction.coerceIn(0f, 1f)).toLong())
     }
 
+    fun seekToPosition(positionMs: Long) = playbackController.seekTo(positionMs.coerceAtLeast(0))
+
     fun cyclePlaybackMode() = playbackController.setPlaybackMode(uiState.value.playbackMode.nextMode())
     fun jumpToQueueItem(queueItemId: QueueItemId) = playbackController.jumpToQueueItem(queueItemId)
     fun removeFromQueue(queueItemId: QueueItemId) = playbackController.removeFromQueue(queueItemId)

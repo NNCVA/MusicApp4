@@ -74,3 +74,10 @@ internal object Media3PlaybackFailureMapper {
         },
     )
 }
+
+internal object PlaybackPositionRefreshPolicy {
+    const val INTERVAL_MS = 200L
+
+    fun nextDelayMs(isConnected: Boolean, isPlaying: Boolean): Long? =
+        INTERVAL_MS.takeIf { isConnected && isPlaying }
+}

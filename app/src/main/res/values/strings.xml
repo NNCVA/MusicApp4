@@ -88,6 +88,9 @@
     <string name="player_lyrics_previous">Previous lyric</string>
     <string name="player_lyrics_current">Synchronized lyrics will appear here</string>
     <string name="player_lyrics_next">Next lyric</string>
+    <string name="lyrics_not_found">Lyrics not found</string>
+    <string name="lyrics_loading">Loading lyrics</string>
+    <string name="lyrics_return_to_current">Return to current line</string>
     <string name="player_queue_title">Queue</string>
     <string name="player_queue_empty">The playback queue is empty</string>
     <string name="player_unknown_track">Unknown track</string>

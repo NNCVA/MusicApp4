@@ -141,6 +141,8 @@ class PlayerViewModelTest {
 
         viewModel.togglePlayback()
         viewModel.seekToFraction(0.25f)
+        assertEquals(2_000L, controller.seekPosition)
+        viewModel.seekToPosition(3_500L)
         viewModel.cyclePlaybackMode()
         viewModel.skipPrevious()
         viewModel.skipNext()
@@ -148,7 +150,7 @@ class PlayerViewModelTest {
         viewModel.removeFromQueue(id(1))
 
         assertEquals(1, controller.playCalls)
-        assertEquals(2_000L, controller.seekPosition)
+        assertEquals(3_500L, controller.seekPosition)
         assertEquals(PlaybackMode.SINGLE_REPEAT, controller.mode)
         assertEquals(id(1), controller.removed)
         assertEquals(id(1), controller.jumped)

@@ -85,6 +85,9 @@
     <string name="player_lyrics_previous">上一行歌词</string>
     <string name="player_lyrics_current">同步歌词将显示在此处</string>
     <string name="player_lyrics_next">下一行歌词</string>
+    <string name="lyrics_not_found">未找到歌词</string>
+    <string name="lyrics_loading">正在加载歌词</string>
+    <string name="lyrics_return_to_current">回到当前行</string>
     <string name="player_queue_title">播放队列</string>
     <string name="player_queue_empty">播放队列为空</string>
     <string name="player_unknown_track">未知曲目</string>

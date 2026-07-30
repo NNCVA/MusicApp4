@@ -92,6 +92,13 @@ class PlaybackStateProtocolTest {
         )
     }
 
+    @Test
+    fun `position refresh runs every two hundred milliseconds only while connected and playing`() {
+        assertEquals(200L, PlaybackPositionRefreshPolicy.nextDelayMs(isConnected = true, isPlaying = true))
+        assertNull(PlaybackPositionRefreshPolicy.nextDelayMs(isConnected = true, isPlaying = false))
+        assertNull(PlaybackPositionRefreshPolicy.nextDelayMs(isConnected = false, isPlaying = true))
+    }
+
     private fun resolve(
         playerState: Int,
         isPlaying: Boolean = false,

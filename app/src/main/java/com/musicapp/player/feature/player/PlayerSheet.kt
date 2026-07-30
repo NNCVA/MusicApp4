@@ -72,6 +72,8 @@ import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkResult
+import com.musicapp.player.feature.lyrics.LyricsPaneRoute
+import com.musicapp.player.feature.lyrics.LyricsViewModel
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
 import kotlin.math.roundToInt
@@ -80,15 +82,22 @@ import java.util.Locale
 @Composable
 fun PlayerSheetRoute(
     viewModel: PlayerViewModel,
+    lyricsViewModel: LyricsViewModel,
     contentInsets: WindowInsets,
     onExpansionChanged: (Boolean) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.currentTrack) {
         if (state.currentTrack == null) onExpansionChanged(false)
+        lyricsViewModel.load(state.currentTrack)
+    }
+    LaunchedEffect(state.positionMs) { lyricsViewModel.updatePlaybackPosition(state.positionMs) }
+    LaunchedEffect(lyricsViewModel, viewModel) {
+        lyricsViewModel.seekRequests.collect(viewModel::seekToPosition)
     }
     PlayerSheet(
         state = state,
+        lyricsViewModel = lyricsViewModel,
         contentInsets = contentInsets,
         onTogglePlayback = viewModel::togglePlayback,
         onPrevious = viewModel::skipPrevious,
@@ -107,6 +116,7 @@ fun PlayerSheetRoute(
 @Composable
 fun PlayerSheet(
     state: PlayerUiState,
+    lyricsViewModel: LyricsViewModel,
     contentInsets: WindowInsets,
     onTogglePlayback: () -> Unit,
     onPrevious: () -> Unit,
@@ -171,6 +181,7 @@ fun PlayerSheet(
                 if (progress > 0f) {
                     FullPlayer(
                         state = state,
+                        lyricsViewModel = lyricsViewModel,
                         track = track,
                         contentInsets = contentInsets,
                         onCollapse = { progress = 0f },
@@ -236,6 +247,7 @@ private fun MiniPlayer(
 @Composable
 private fun FullPlayer(
     state: PlayerUiState,
+    lyricsViewModel: LyricsViewModel,
     track: Track,
     contentInsets: WindowInsets,
     onCollapse: () -> Unit,
@@ -302,7 +314,12 @@ private fun FullPlayer(
         ) { page ->
             when (FullPlayerPage.entries[page]) {
                 FullPlayerPage.ARTWORK -> ArtworkPage(state, track)
-                FullPlayerPage.LYRICS -> LyricsPage()
+                FullPlayerPage.LYRICS -> LyricsPaneRoute(
+                    viewModel = lyricsViewModel,
+                    missingText = stringResource(R.string.lyrics_not_found),
+                    loadingText = stringResource(R.string.lyrics_loading),
+                    returnToCurrentText = stringResource(R.string.lyrics_return_to_current),
+                )
                 FullPlayerPage.QUEUE -> QueuePage(
                     rows = state.queue,
                     playbackMode = state.playbackMode,
@@ -357,20 +374,6 @@ private fun ArtworkPage(state: PlayerUiState, track: Track) {
         )
         Text(track.title, style = MusicTheme.typography.headlineMedium, maxLines = 2)
         Text(track.artistName, style = MusicTheme.typography.titleMedium, color = MusicTheme.colors.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun LyricsPage() {
-    val dimensions = MusicTheme.dimensions
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium, Alignment.CenterVertically),
-    ) {
-        Text(stringResource(R.string.player_lyrics_previous), style = MusicTheme.typography.bodyLarge, color = MusicTheme.colors.onSurfaceVariant)
-        Text(stringResource(R.string.player_lyrics_current), style = MusicTheme.typography.headlineMedium)
-        Text(stringResource(R.string.player_lyrics_next), style = MusicTheme.typography.bodyLarge, color = MusicTheme.colors.onSurfaceVariant)
     }
 }
 
