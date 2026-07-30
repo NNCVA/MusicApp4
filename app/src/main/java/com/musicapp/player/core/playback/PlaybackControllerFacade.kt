@@ -1,6 +1,9 @@
 package com.musicapp.player.core.playback
 
 import com.musicapp.player.core.domain.model.PlaybackContext
+import com.musicapp.player.core.domain.model.PlaybackMode
+import com.musicapp.player.core.domain.model.PlaybackQueue
+import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.TrackId
 import kotlinx.coroutines.flow.StateFlow
 
@@ -19,6 +22,8 @@ data class PlaybackControllerState(
     val durationMs: Long? = null,
     val canSkipPrevious: Boolean = false,
     val canSkipNext: Boolean = false,
+    val playbackMode: PlaybackMode = PlaybackMode.DEFAULT,
+    val queue: PlaybackQueue = PlaybackQueue(),
 ) {
     init {
         require(positionMs >= 0) { "positionMs must not be negative" }
@@ -48,4 +53,12 @@ interface PlaybackControllerFacade {
     fun skipToNext()
 
     fun seekTo(positionMs: Long)
+
+    fun setPlaybackMode(mode: PlaybackMode) = Unit
+
+    fun addToQueue(trackIds: List<TrackId>) = Unit
+
+    fun playNext(trackIds: List<TrackId>) = Unit
+
+    fun removeFromQueue(queueItemId: QueueItemId) = Unit
 }

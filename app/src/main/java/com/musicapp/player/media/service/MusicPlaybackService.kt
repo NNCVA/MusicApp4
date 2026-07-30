@@ -11,6 +11,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.musicapp.player.MainActivity
+import com.musicapp.player.core.common.random.RandomSource
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -20,8 +21,13 @@ class MusicPlaybackService : MediaLibraryService() {
     @Inject
     internal lateinit var callbackFactory: MusicLibrarySessionCallbackFactory
 
+    @Inject
+    internal lateinit var randomSource: RandomSource
+
     private var player: ExoPlayer? = null
     private var mediaLibrarySession: MediaLibrarySession? = null
+    private var queueCoordinator: PlaybackQueueCoordinator? = null
+    private var playerListener: Player.Listener? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -35,12 +41,28 @@ class MusicPlaybackService : MediaLibraryService() {
                     true,
                 )
                 .build()
-                .apply { repeatMode = Player.REPEAT_MODE_ALL }
+        val coordinator = PlaybackQueueCoordinator(Media3QueuePlayer(servicePlayer), randomSource)
+        val managedPlayer = QueueManagedPlayer(servicePlayer, coordinator)
+        val callback = callbackFactory.create(coordinator)
+        val listener = object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+                coordinator.onMediaItemTransition(mediaItem)
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                coordinator.onPlaybackStateChanged(playbackState)
+            }
+        }
+        servicePlayer.addListener(listener)
         player = servicePlayer
-        mediaLibrarySession =
-            MediaLibrarySession.Builder(this, servicePlayer, callbackFactory.create())
+        queueCoordinator = coordinator
+        playerListener = listener
+        val session =
+            MediaLibrarySession.Builder(this, managedPlayer, callback)
                 .setSessionActivity(createSessionActivity())
                 .build()
+        mediaLibrarySession = session
+        coordinator.attachStatePublisher { extras -> callback.publishState(session, extras) }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
@@ -49,6 +71,9 @@ class MusicPlaybackService : MediaLibraryService() {
     override fun onDestroy() {
         mediaLibrarySession?.release()
         mediaLibrarySession = null
+        playerListener?.let { listener -> player?.removeListener(listener) }
+        playerListener = null
+        queueCoordinator = null
         player?.release()
         player = null
         super.onDestroy()

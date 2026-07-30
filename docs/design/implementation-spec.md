@@ -25,7 +25,7 @@
 
 - 仓库只有 `:app` 模块，`minSdk 26`、`targetSdk 36`，Kotlin/JVM 使用 17。
 - 已接入 Compose、Material 3、Navigation 3、四套 Light/Dark 主题、动态取色、统一设计令牌与共享加载/空态/错误态；八个一级栈、详情 Route Key、三档自适应壳层及应用级 Player Sheet 占位已建立，单曲页已实现，其余业务页面仍为占位内容。
-- 已建立 Hilt Application/Activity/Service 入口、应用级协程作用域、可替换时钟与随机源、平台无关领域模型与纯业务策略、Room v2（七张业务表、同步代次与每卷状态）、Repository/Fake、Preferences DataStore 设置 Repository、MediaStore 多卷查询/准入适配、原子媒体库同步、冷启动/前台自动同步协调、单曲 ViewModel 及 Snackbar 队列。高级元数据与内嵌封面已实现按需读取、修改时间换键、有界内存缓存、同键请求合并及全局二并发限制；MediaLibraryService 已建立单 ExoPlayer、MediaSession、应用内 MediaController 门面、列表循环基础队列和控制器授权白名单，其余播放规则与业务页面待后续过程实现。
+- 已建立 Hilt Application/Activity/Service 入口、应用级协程作用域、可替换时钟与随机源、平台无关领域模型与纯业务策略、Room v2（七张业务表、同步代次与每卷状态）、Repository/Fake、Preferences DataStore 设置 Repository、MediaStore 多卷查询/准入适配、原子媒体库同步、冷启动/前台自动同步协调、单曲 ViewModel 及 Snackbar 队列。高级元数据与内嵌封面已实现按需读取、修改时间换键、有界内存缓存、同键请求合并及全局二并发限制；MediaLibraryService 已以单一会话状态驱动三种播放模式、原始队列、稳定随机序列、跨轮重生成与队列编辑；应用内 MediaController 通过严格命名命令读写，外部可信控制器仅保留基础媒体命令。淡入淡出、播放历史与快照持久化待后续过程实现。
 - Manifest 已声明分版本音频读取权限，未声明 `POST_NOTIFICATIONS`；Hilt Application、启动 Activity、设置白名单备份规则与运行时权限 Gateway 已接入。
 
 所有 Wave 均以“从空白骨架新增能力”为基线，不得把设计文档描述误报为已存在代码。

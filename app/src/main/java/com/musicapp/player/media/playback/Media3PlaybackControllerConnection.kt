@@ -1,20 +1,18 @@
 package com.musicapp.player.media.playback
 
 import android.content.ComponentName
-import android.content.ContentUris
 import android.content.Context
-import android.os.Build
-import android.provider.MediaStore
+import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.musicapp.player.core.domain.model.Track
-import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.domain.model.PlaybackMode
+import com.musicapp.player.core.domain.model.PlaybackQueue
+import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.playback.PlaybackConnectionState
 import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.media.service.MusicPlaybackService
@@ -35,6 +33,9 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     private val mutableState = MutableStateFlow(PlaybackControllerState())
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
+    private var connectionRequested = false
+    private var playbackMode = PlaybackMode.DEFAULT
+    private var playbackQueue = PlaybackQueue()
 
     override val state: StateFlow<PlaybackControllerState> = mutableState.asStateFlow()
 
@@ -44,45 +45,77 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         }
     }
 
+    private val controllerListener = object : MediaController.Listener {
+        override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
+            updateQueueState(extras)
+            updateState(controller)
+        }
+
+        override fun onDisconnected(controller: MediaController) {
+            mainExecutor.execute {
+                if (this@Media3PlaybackControllerConnection.controller !== controller) return@execute
+                controller.removeListener(playerListener)
+                this@Media3PlaybackControllerConnection.controller = null
+                val disconnectedFuture = controllerFuture
+                controllerFuture = null
+                disconnectedFuture?.let(MediaController::releaseFuture)
+                mutableState.value = PlaybackControllerState(
+                    connectionState = if (connectionRequested) {
+                        PlaybackConnectionState.CONNECTING
+                    } else {
+                        PlaybackConnectionState.DISCONNECTED
+                    },
+                )
+                if (connectionRequested) buildController()
+            }
+        }
+    }
+
     override fun connect() {
         mainExecutor.execute {
+            connectionRequested = true
             if (controller != null || controllerFuture != null) return@execute
             mutableState.value = PlaybackControllerState(
                 connectionState = PlaybackConnectionState.CONNECTING,
             )
-            val future =
-                MediaController.Builder(
-                    context,
-                    SessionToken(context, ComponentName(context, MusicPlaybackService::class.java)),
-                ).buildAsync()
-            controllerFuture = future
-            future.addListener(
-                {
-                    if (controllerFuture !== future) return@addListener
-                    runCatching { future.get() }
-                        .onSuccess { connectedController ->
-                            controller = connectedController
-                            connectedController.addListener(playerListener)
-                            updateState(connectedController)
-                            while (pendingCommands.isNotEmpty()) {
-                                pendingCommands.removeFirst().invoke(connectedController)
-                            }
-                        }
-                        .onFailure {
-                            controllerFuture = null
-                            pendingCommands.clear()
-                            mutableState.value = PlaybackControllerState(
-                                connectionState = PlaybackConnectionState.UNAVAILABLE,
-                            )
-                        }
-                },
-                mainExecutor,
-            )
+            buildController()
         }
+    }
+
+    private fun buildController() {
+        val future = MediaController.Builder(
+                context,
+                SessionToken(context, ComponentName(context, MusicPlaybackService::class.java)),
+            ).setListener(controllerListener).buildAsync()
+        controllerFuture = future
+        future.addListener(
+            {
+                if (controllerFuture !== future) return@addListener
+                runCatching { future.get() }
+                    .onSuccess { connectedController ->
+                        controller = connectedController
+                        connectedController.addListener(playerListener)
+                        updateQueueState(connectedController.sessionExtras)
+                        updateState(connectedController)
+                        while (pendingCommands.isNotEmpty()) {
+                            pendingCommands.removeFirst().invoke(connectedController)
+                        }
+                    }
+                    .onFailure {
+                        controllerFuture = null
+                        pendingCommands.clear()
+                        mutableState.value = PlaybackControllerState(
+                            connectionState = PlaybackConnectionState.UNAVAILABLE,
+                        )
+                    }
+            },
+            mainExecutor,
+        )
     }
 
     override fun disconnect() {
         mainExecutor.execute {
+            connectionRequested = false
             pendingCommands.clear()
             controller?.removeListener(playerListener)
             controller = null
@@ -92,6 +125,8 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             mutableState.value = PlaybackControllerState(
                 connectionState = PlaybackConnectionState.DISCONNECTED,
             )
+            playbackMode = PlaybackMode.DEFAULT
+            playbackQueue = PlaybackQueue()
         }
     }
 
@@ -103,10 +138,10 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         require(tracks.isNotEmpty()) { "tracks must not be empty" }
         require(startIndex in tracks.indices) { "startIndex must be within tracks" }
         dispatch { mediaController ->
-            mediaController.setMediaItems(tracks.map(::toMediaItem), startIndex, 0)
-            mediaController.repeatMode = Player.REPEAT_MODE_ALL
-            mediaController.prepare()
-            if (playWhenReady) mediaController.play()
+            mediaController.sendCustomCommand(
+                PlaybackSessionProtocol.replaceQueueCommand,
+                PlaybackSessionProtocol.tracksArgs(tracks, startIndex, playWhenReady),
+            )
         }
     }
 
@@ -120,6 +155,37 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
 
     override fun seekTo(positionMs: Long) = dispatch { it.seekTo(positionMs.coerceAtLeast(0)) }
 
+    override fun setPlaybackMode(mode: PlaybackMode) = dispatch {
+        it.sendCustomCommand(PlaybackSessionProtocol.setModeCommand, PlaybackSessionProtocol.modeArgs(mode))
+    }
+
+    override fun addToQueue(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        dispatch {
+            it.sendCustomCommand(
+                PlaybackSessionProtocol.addToQueueCommand,
+                PlaybackSessionProtocol.tracksArgs(tracks),
+            )
+        }
+    }
+
+    override fun playNext(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        dispatch {
+            it.sendCustomCommand(
+                PlaybackSessionProtocol.playNextCommand,
+                PlaybackSessionProtocol.tracksArgs(tracks),
+            )
+        }
+    }
+
+    override fun removeFromQueue(queueItemId: QueueItemId) = dispatch {
+        it.sendCustomCommand(
+            PlaybackSessionProtocol.removeFromQueueCommand,
+            PlaybackSessionProtocol.removeArgs(queueItemId),
+        )
+    }
+
     private fun dispatch(command: (MediaController) -> Unit) {
         mainExecutor.execute {
             controller?.let(command)
@@ -131,36 +197,22 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         val duration = player.duration.takeUnless { it == C.TIME_UNSET }?.coerceAtLeast(0)
         mutableState.value = PlaybackControllerState(
             connectionState = PlaybackConnectionState.CONNECTED,
-            currentTrackId = TrackMediaIdCodec.decode(player.currentMediaItem?.mediaId.orEmpty()),
+            currentTrackId = QueueMediaIdCodec.decode(player.currentMediaItem?.mediaId.orEmpty())?.trackId
+                ?: playbackQueue.currentItem?.trackId,
             isPlaying = player.isPlaying,
             positionMs = player.currentPosition.coerceAtLeast(0),
             durationMs = duration,
-            canSkipPrevious = player.hasPreviousMediaItem(),
-            canSkipNext = player.hasNextMediaItem(),
+            canSkipPrevious = playbackQueue.originalQueue.size > 1,
+            canSkipNext = playbackQueue.originalQueue.size > 1,
+            playbackMode = playbackMode,
+            queue = playbackQueue,
         )
     }
 
-    private fun toMediaItem(track: Track): MediaItem =
-        MediaItem.Builder()
-            .setMediaId(TrackMediaIdCodec.encode(track.id))
-            .setUri(track.id.toContentUri())
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(track.title)
-                    .setArtist(track.artistName)
-                    .setAlbumTitle(track.albumTitle)
-                    .setDurationMs(track.durationMs)
-                    .build(),
-            )
-            .build()
-
-    private fun TrackId.toContentUri() =
-        ContentUris.withAppendedId(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.Audio.Media.getContentUri(volumeName)
-            } else {
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-            },
-            mediaStoreId,
-        )
+    private fun updateQueueState(extras: Bundle) {
+        PlaybackSessionProtocol.decodeState(extras)?.let { (mode, queue) ->
+            playbackMode = mode
+            playbackQueue = queue
+        }
+    }
 }

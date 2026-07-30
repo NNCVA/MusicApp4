@@ -2,6 +2,9 @@ package com.musicapp.player.media.playback
 
 import com.musicapp.player.core.common.coroutines.ApplicationCoroutineScope
 import com.musicapp.player.core.domain.model.PlaybackContext
+import com.musicapp.player.core.domain.model.PlaybackMode
+import com.musicapp.player.core.domain.model.QueueItemId
+import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.data.repository.MediaLibraryRepository
@@ -68,4 +71,24 @@ internal class DefaultPlaybackControllerFacade @Inject constructor(
     override fun skipToNext() = connection.skipToNext()
 
     override fun seekTo(positionMs: Long) = connection.seekTo(positionMs.coerceAtLeast(0))
+
+    override fun setPlaybackMode(mode: PlaybackMode) = connection.setPlaybackMode(mode)
+
+    override fun addToQueue(trackIds: List<TrackId>) = loadTracks(trackIds, connection::addToQueue)
+
+    override fun playNext(trackIds: List<TrackId>) = loadTracks(trackIds, connection::playNext)
+
+    override fun removeFromQueue(queueItemId: QueueItemId) = connection.removeFromQueue(queueItemId)
+
+    private fun loadTracks(
+        trackIds: List<TrackId>,
+        command: (List<com.musicapp.player.core.domain.model.Track>) -> Unit,
+    ) {
+        if (trackIds.isEmpty()) return
+        queueLoadJob?.cancel()
+        queueLoadJob = applicationScope.launch {
+            val tracks = trackIds.mapNotNull { mediaLibraryRepository.getTrack(it) }
+            if (tracks.isNotEmpty()) command(tracks)
+        }
+    }
 }

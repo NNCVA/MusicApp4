@@ -1,6 +1,7 @@
 package com.musicapp.player.media.service
 
 import android.content.Context
+import android.os.Bundle
 import android.os.Process
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
@@ -14,10 +15,12 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionCommands
 import androidx.media3.session.SessionError
+import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.musicapp.player.R
+import com.musicapp.player.media.playback.PlaybackSessionProtocol
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,10 +29,11 @@ import javax.inject.Singleton
 internal class MusicLibrarySessionCallbackFactory @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
-    fun create(): MusicLibrarySessionCallback =
+    fun create(queueCoordinator: PlaybackQueueCoordinator): MusicLibrarySessionCallback =
         MusicLibrarySessionCallback(
             connectionPolicy = ControllerConnectionPolicy(context.packageName, Process.myUid()),
             libraryRootTitle = context.getString(R.string.media_library_root_title),
+            queueCoordinator = queueCoordinator,
         )
 }
 
@@ -37,7 +41,9 @@ internal class MusicLibrarySessionCallbackFactory @Inject constructor(
 internal class MusicLibrarySessionCallback(
     private val connectionPolicy: ControllerConnectionPolicy,
     libraryRootTitle: String,
+    private val queueCoordinator: PlaybackQueueCoordinator,
 ) : MediaLibrarySession.Callback {
+    private val applicationControllers = linkedSetOf<MediaSession.ControllerInfo>()
     private val libraryRoot =
         MediaItem.Builder()
             .setMediaId(LIBRARY_ROOT_ID)
@@ -64,7 +70,11 @@ internal class MusicLibrarySessionCallback(
             )
         ) {
             ControllerAccess.APPLICATION ->
-                MediaSession.ConnectionResult.AcceptedResultBuilder(session).build()
+                MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                    .setAvailableSessionCommands(ApplicationControllerCommands.sessionCommands)
+                    .setAvailablePlayerCommands(ApplicationControllerCommands.playerCommands)
+                    .setSessionExtras(queueCoordinator.stateExtras())
+                    .build()
             ControllerAccess.TRUSTED_SYSTEM ->
                 MediaSession.ConnectionResult.accept(
                     TrustedSystemControllerCommands.sessionCommands,
@@ -72,6 +82,60 @@ internal class MusicLibrarySessionCallback(
                 )
             ControllerAccess.REJECTED -> MediaSession.ConnectionResult.reject()
         }
+
+    override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
+        if (accessFor(controller) == ControllerAccess.APPLICATION) {
+            applicationControllers += controller
+            session.setSessionExtras(controller, queueCoordinator.stateExtras())
+        }
+    }
+
+    override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
+        applicationControllers -= controller
+    }
+
+    override fun onCustomCommand(
+        session: MediaSession,
+        controller: MediaSession.ControllerInfo,
+        customCommand: SessionCommand,
+        args: Bundle,
+    ): ListenableFuture<SessionResult> {
+        if (accessFor(controller) != ControllerAccess.APPLICATION) return badCommandResult()
+        val accepted = when (customCommand.customAction) {
+            PlaybackSessionProtocol.replaceQueueCommand.customAction -> {
+                val tracks = PlaybackSessionProtocol.decodeTracks(args)
+                val startIndex = PlaybackSessionProtocol.startIndex(args)
+                if (tracks == null || tracks.isEmpty() || startIndex == null || startIndex !in tracks.indices) {
+                    false
+                } else {
+                    queueCoordinator.replaceQueue(
+                        tracks = tracks,
+                        startIndex = startIndex,
+                        playWhenReady = PlaybackSessionProtocol.playWhenReady(args),
+                    )
+                    true
+                }
+            }
+            PlaybackSessionProtocol.setModeCommand.customAction ->
+                PlaybackSessionProtocol.decodeMode(args)?.let { queueCoordinator.setMode(it); true } ?: false
+            PlaybackSessionProtocol.addToQueueCommand.customAction ->
+                PlaybackSessionProtocol.decodeTracks(args)?.let { queueCoordinator.addToQueue(it); true } ?: false
+            PlaybackSessionProtocol.playNextCommand.customAction ->
+                PlaybackSessionProtocol.decodeTracks(args)?.let { queueCoordinator.playNext(it); true } ?: false
+            PlaybackSessionProtocol.removeFromQueueCommand.customAction ->
+                PlaybackSessionProtocol.decodeQueueItemId(args)?.let { queueCoordinator.remove(it); true } ?: false
+            else -> false
+        }
+        return if (accepted) {
+            Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        } else {
+            badCommandResult()
+        }
+    }
+
+    fun publishState(session: MediaSession, extras: Bundle) {
+        applicationControllers.forEach { session.setSessionExtras(it, extras) }
+    }
 
     override fun onGetLibraryRoot(
         session: MediaLibrarySession,
@@ -97,6 +161,29 @@ internal class MusicLibrarySessionCallback(
     private companion object {
         const val LIBRARY_ROOT_ID = "musicapp:root"
     }
+
+    private fun accessFor(controller: MediaSession.ControllerInfo): ControllerAccess =
+        connectionPolicy.accessFor(
+            ControllerIdentity(
+                packageName = controller.packageName,
+                uid = controller.uid,
+                isTrusted = controller.isTrusted,
+            ),
+        )
+
+    private fun badCommandResult(): ListenableFuture<SessionResult> =
+        Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+}
+
+@OptIn(UnstableApi::class)
+internal object ApplicationControllerCommands {
+    val sessionCommands: SessionCommands =
+        MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
+            .buildUpon()
+            .apply { PlaybackSessionProtocol.applicationCommands.forEach(::add) }
+            .build()
+
+    val playerCommands: Player.Commands = TrustedSystemControllerCommands.playerCommands
 }
 
 @OptIn(UnstableApi::class)

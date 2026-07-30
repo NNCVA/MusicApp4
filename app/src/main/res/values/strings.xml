@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">MusicApp</string>
     <string name="media_library_root_title">Music library</string>
+    <string name="playback_mode_list_repeat">Repeat all</string>
+    <string name="playback_mode_single_repeat">Repeat one</string>
+    <string name="playback_mode_shuffle">Shuffle</string>
     <string name="loading">Loading…</string>
     <string name="empty_state_title">Nothing here yet</string>
     <string name="error_state_title">Something went wrong</string>

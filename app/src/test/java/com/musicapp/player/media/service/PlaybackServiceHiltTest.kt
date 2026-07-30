@@ -29,6 +29,6 @@ class PlaybackServiceHiltTest {
 
     @Test
     fun serviceCallbackFactoryIsAvailableFromTheRealHiltGraph() {
-        assertNotNull(callbackFactory.create())
+        assertNotNull(callbackFactory)
     }
 }

@@ -2,6 +2,8 @@ package com.musicapp.player.media.playback
 
 import com.musicapp.player.core.domain.model.PlaybackContext
 import com.musicapp.player.core.domain.model.PlaybackContextSource
+import com.musicapp.player.core.domain.model.PlaybackMode
+import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.playback.PlaybackConnectionState
@@ -106,6 +108,27 @@ class PlaybackControllerFacadeTest {
         assertNull(connection.replacedTracks)
     }
 
+    @Test
+    fun forwardsModeAndQueueEditsThroughThePlatformFreeFacade() {
+        val scope = TestScope(StandardTestDispatcher())
+        val first = track(1)
+        val second = track(2)
+        val connection = RecordingConnection()
+        val facade = facade(connection, scope, listOf(first, second))
+
+        facade.setPlaybackMode(PlaybackMode.SHUFFLE)
+        facade.addToQueue(listOf(second.id, first.id))
+        scope.advanceUntilIdle()
+        facade.playNext(listOf(first.id))
+        scope.advanceUntilIdle()
+        facade.removeFromQueue(QueueItemId(9))
+
+        assertEquals(PlaybackMode.SHUFFLE, connection.mode)
+        assertEquals(listOf(second.id, first.id), connection.addedTracks.map(Track::id))
+        assertEquals(listOf(first.id), connection.nextTracks.map(Track::id))
+        assertEquals(QueueItemId(9), connection.removedId)
+    }
+
     private fun facade(
         connection: RecordingConnection,
         scope: TestScope = TestScope(StandardTestDispatcher()),
@@ -138,6 +161,10 @@ class PlaybackControllerFacadeTest {
         var replacedTracks: List<Track>? = null
         var startIndex: Int? = null
         var playWhenReady: Boolean? = null
+        var mode: PlaybackMode? = null
+        var addedTracks: List<Track> = emptyList()
+        var nextTracks: List<Track> = emptyList()
+        var removedId: QueueItemId? = null
 
         override fun connect() {
             commands += "connect"
@@ -171,6 +198,22 @@ class PlaybackControllerFacadeTest {
 
         override fun seekTo(positionMs: Long) {
             commands += "seek:$positionMs"
+        }
+
+        override fun setPlaybackMode(mode: PlaybackMode) {
+            this.mode = mode
+        }
+
+        override fun addToQueue(tracks: List<Track>) {
+            addedTracks = tracks
+        }
+
+        override fun playNext(tracks: List<Track>) {
+            nextTracks = tracks
+        }
+
+        override fun removeFromQueue(queueItemId: QueueItemId) {
+            removedId = queueItemId
         }
     }
 }

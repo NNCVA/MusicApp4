@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">MusicApp</string>
     <string name="media_library_root_title">音乐库</string>
+    <string name="playback_mode_list_repeat">列表循环</string>
+    <string name="playback_mode_single_repeat">单曲循环</string>
+    <string name="playback_mode_shuffle">随机播放</string>
     <string name="loading">正在加载…</string>
     <string name="empty_state_title">暂无内容</string>
     <string name="error_state_title">出现错误</string>
