@@ -1,5 +1,9 @@
 package com.musicapp.player.ui.shell
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -9,15 +13,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.DismissibleDrawerSheet
+import androidx.compose.material3.DismissibleNavigationDrawer
+import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -49,11 +60,22 @@ fun AppShell(
         val dimensions = MusicTheme.dimensions
         val availableWidth = maxWidth
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
             if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
                 val drawerWidth = availableWidth * policy.drawerFraction
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
+                val drawerWidthPx = with(LocalDensity.current) { drawerWidth.toPx() }
+                val isDrawerVisible by
+                    remember(drawerState, drawerWidthPx) {
+                        derivedStateOf {
+                            compactDrawerProgress(
+                                drawerOffsetPx = drawerState.currentOffset,
+                                drawerWidthPx = drawerWidthPx,
+                                fallbackOpen = drawerState.isOpen,
+                            ) > 0f
+                        }
+                    }
                 fun openDrawer() {
                     scope.launch { drawerState.open() }
                 }
@@ -61,12 +83,12 @@ fun AppShell(
                     scope.launch { drawerState.close() }
                 }
 
-                ModalNavigationDrawer(
+                DismissibleNavigationDrawer(
                     drawerState = drawerState,
                     gesturesEnabled = drawerGesturesEnabled,
-                    scrimColor = Color.Black.copy(alpha = COMPACT_DRAWER_SCRIM_ALPHA),
                     drawerContent = {
-                        ModalDrawerSheet(
+                        DismissibleDrawerSheet(
+                            drawerState = drawerState,
                             modifier = Modifier.width(drawerWidth),
                             drawerShape = RectangleShape,
                             drawerContainerColor = Color.Transparent,
@@ -77,14 +99,23 @@ fun AppShell(
                         }
                     },
                     content = {
-                        ShellContent(
-                            contentInsets = contentInsets,
-                            contentBottomPadding =
-                                if (playerSheetVisible) dimensions.miniPlayerHeight else 0.dp,
-                            content = { insets -> content(insets, policy, ::openDrawer) },
-                        )
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            ShellContent(
+                                contentInsets = contentInsets,
+                                contentBottomPadding =
+                                    if (playerSheetVisible) dimensions.miniPlayerHeight else 0.dp,
+                                content = { insets -> content(insets, policy, ::openDrawer) },
+                            )
+                            CompactPushDrawerScrim(
+                                drawerState = drawerState,
+                                drawerWidthPx = drawerWidthPx,
+                                enabled = isDrawerVisible,
+                                onClose = ::closeDrawer,
+                            )
+                        }
                     },
                 )
+                BackHandler(enabled = isDrawerVisible, onBack = ::closeDrawer)
             } else {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Box(
@@ -124,6 +155,48 @@ private fun ShellContent(
     Box(modifier = Modifier.fillMaxSize().padding(bottom = contentBottomPadding)) {
         content(contentInsets)
     }
+}
+
+@Composable
+private fun CompactPushDrawerScrim(
+    drawerState: DrawerState,
+    drawerWidthPx: Float,
+    enabled: Boolean,
+    onClose: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    alpha =
+                        compactDrawerProgress(
+                            drawerOffsetPx = drawerState.currentOffset,
+                            drawerWidthPx = drawerWidthPx,
+                            fallbackOpen = drawerState.isOpen,
+                        )
+                }
+                .background(Color.Black.copy(alpha = COMPACT_DRAWER_SCRIM_ALPHA))
+                .clickable(
+                    enabled = enabled,
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClose,
+                ),
+    )
+}
+
+internal fun compactDrawerProgress(
+    drawerOffsetPx: Float,
+    drawerWidthPx: Float,
+    fallbackOpen: Boolean,
+): Float {
+    if (!drawerOffsetPx.isFinite() || !drawerWidthPx.isFinite() || drawerWidthPx <= 0f) {
+        return if (fallbackOpen) 1f else 0f
+    }
+    return ((drawerOffsetPx + drawerWidthPx) / drawerWidthPx).coerceIn(0f, 1f)
 }
 
 private const val COMPACT_DRAWER_SCRIM_ALPHA = 0.18f
