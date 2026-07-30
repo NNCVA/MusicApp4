@@ -90,11 +90,14 @@ class FakeMediaLibraryRepository(
         }
     }
 
-    override suspend fun setHidden(trackId: TrackId, hidden: Boolean, changedAtMs: Long) {
+    override suspend fun setHidden(trackIds: List<TrackId>, hidden: Boolean, changedAtMs: Long) {
         require(changedAtMs >= 0)
+        val distinctTrackIds = trackIds.distinct()
+        if (distinctTrackIds.isEmpty()) return
         mutex.withLock {
-            require(trackId in tracks.value) { "track does not exist" }
-            hiddenIds.value = if (hidden) hiddenIds.value + trackId else hiddenIds.value - trackId
+            require(distinctTrackIds.all(tracks.value::containsKey)) { "track does not exist" }
+            hiddenIds.value =
+                if (hidden) hiddenIds.value + distinctTrackIds else hiddenIds.value - distinctTrackIds.toSet()
         }
     }
 
@@ -193,15 +196,35 @@ class FakePlaylistRepository(
         playlistId: PlaylistId,
         trackIds: List<TrackId>,
         updatedAtMs: Long,
-    ) {
-        if (trackIds.isEmpty()) return
-        mutex.withLock {
+    ): PlaylistTrackChangeResult {
+        if (trackIds.isEmpty()) return PlaylistTrackChangeResult(0, 0)
+        return mutex.withLock {
             val old = requireNotNull(playlists.value[playlistId])
             require(trackIds.all(existingTrackIds::contains)) { "every referenced track must exist" }
+            val additions = trackIds.distinct().filterNot(old.trackIds::contains)
+            if (additions.isEmpty()) return@withLock PlaylistTrackChangeResult(0, trackIds.size)
             playlists.value += playlistId to old.copy(
-                trackIds = old.trackIds + trackIds.distinct().filterNot(old.trackIds::contains),
+                trackIds = old.trackIds + additions,
                 updatedAtMs = updatedAtMs,
             )
+            PlaylistTrackChangeResult(additions.size, trackIds.size - additions.size)
+        }
+    }
+
+    override suspend fun removeTracks(
+        playlistId: PlaylistId,
+        trackIds: List<TrackId>,
+        updatedAtMs: Long,
+    ): PlaylistTrackChangeResult {
+        if (trackIds.isEmpty()) return PlaylistTrackChangeResult(0, 0)
+        return mutex.withLock {
+            val old = requireNotNull(playlists.value[playlistId])
+            val requestedIds = trackIds.toSet()
+            val remaining = old.trackIds.filterNot(requestedIds::contains)
+            val removedCount = old.trackIds.size - remaining.size
+            if (removedCount == 0) return@withLock PlaylistTrackChangeResult(0, trackIds.size)
+            playlists.value += playlistId to old.copy(trackIds = remaining, updatedAtMs = updatedAtMs)
+            PlaylistTrackChangeResult(removedCount, trackIds.size - removedCount)
         }
     }
 

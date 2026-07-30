@@ -52,12 +52,14 @@ import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.ErrorState
 import com.musicapp.player.core.domain.model.Availability
+import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.media.MediaAudioCandidate
 import com.musicapp.player.data.sync.LibrarySyncEvent
 import com.musicapp.player.data.sync.MediaLibraryScanSkipReason
 import com.musicapp.player.data.sync.MediaLibraryScanSummary
 import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
+import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
@@ -96,8 +98,12 @@ fun TracksScreenRoute(
         },
         onSelectAll = viewModel::selectAllCurrentResults,
         onClearSelection = viewModel::clearSelection,
+        onAddToPlaylist = viewModel::addSelectedToPlaylist,
+        onAddToQueue = viewModel::addSelectedToQueue,
+        onPlayNext = viewModel::playSelectedNext,
         onHideSelected = viewModel::hideSelected,
         onAcknowledgeFeedback = viewModel::acknowledgeFeedback,
+        onAcknowledgeBatchResult = viewModel::acknowledgeBatchResult,
     )
 }
 
@@ -114,8 +120,12 @@ fun TracksScreen(
     onTrackLongClick: (Track) -> Unit,
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
+    onAddToPlaylist: (PlaylistId) -> Unit,
+    onAddToQueue: () -> Unit,
+    onPlayNext: () -> Unit,
     onHideSelected: () -> Unit,
     onAcknowledgeFeedback: (Long) -> Unit,
+    onAcknowledgeBatchResult: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
@@ -132,6 +142,9 @@ fun TracksScreen(
             onSortSelected = onSortSelected,
             onSelectAll = onSelectAll,
             onClearSelection = onClearSelection,
+            onAddToPlaylist = onAddToPlaylist,
+            onAddToQueue = onAddToQueue,
+            onPlayNext = onPlayNext,
             onHideSelected = onHideSelected,
         )
         when {
@@ -177,6 +190,9 @@ fun TracksScreen(
     state.pendingFeedback?.let { feedback ->
         ScanFeedbackDialog(feedback, onAcknowledgeFeedback)
     }
+    state.batchResult?.let { result ->
+        BatchResultDialog(result, onAcknowledgeBatchResult)
+    }
 }
 
 @Composable
@@ -188,10 +204,14 @@ private fun TracksTopBar(
     onSortSelected: (TrackSortField) -> Unit,
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
+    onAddToPlaylist: (PlaylistId) -> Unit,
+    onAddToQueue: () -> Unit,
+    onPlayNext: () -> Unit,
     onHideSelected: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     var sortMenuExpanded by remember { mutableStateOf(false) }
+    var batchMenuExpanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.minimumTouchTarget),
         verticalAlignment = Alignment.CenterVertically,
@@ -209,8 +229,64 @@ private fun TracksTopBar(
             TextButton(onClick = onSelectAll, shape = MusicTheme.shapes.small) {
                 Text(stringResource(R.string.selection_select_all))
             }
-            TextButton(onClick = onHideSelected, shape = MusicTheme.shapes.small) {
-                Text(stringResource(R.string.selection_hide))
+            Box {
+                TextButton(
+                    onClick = { batchMenuExpanded = true },
+                    enabled = !state.isBatchActionRunning,
+                    shape = MusicTheme.shapes.small,
+                ) {
+                    Text(stringResource(R.string.selection_more_actions))
+                }
+                DropdownMenu(
+                    expanded = batchMenuExpanded && !state.isBatchActionRunning,
+                    onDismissRequest = { batchMenuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.selection_add_to_queue)) },
+                        onClick = {
+                            batchMenuExpanded = false
+                            onAddToQueue()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.selection_play_next)) },
+                        onClick = {
+                            batchMenuExpanded = false
+                            onPlayNext()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.selection_hide)) },
+                        onClick = {
+                            batchMenuExpanded = false
+                            onHideSelected()
+                        },
+                    )
+                    if (state.playlists.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.selection_no_playlists)) },
+                            onClick = {},
+                            enabled = false,
+                        )
+                    } else {
+                        state.playlists.forEach { playlist ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(
+                                            R.string.selection_add_to_playlist_named,
+                                            playlist.displayName,
+                                        ),
+                                    )
+                                },
+                                onClick = {
+                                    batchMenuExpanded = false
+                                    onAddToPlaylist(playlist.id)
+                                },
+                            )
+                        }
+                    }
+                }
             }
         } else {
             if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
@@ -258,6 +334,34 @@ private fun TracksTopBar(
             }
         }
     }
+}
+
+@Composable
+private fun BatchResultDialog(
+    result: BatchTrackActionResult,
+    onDismiss: () -> Unit,
+) {
+    if (result is BatchTrackActionResult.EmptySelection) return
+    val message =
+        when (result) {
+            is BatchTrackActionResult.Completed ->
+                stringResource(
+                    R.string.batch_result_counts,
+                    result.affectedCount,
+                    result.skippedCount,
+                )
+            is BatchTrackActionResult.Failed -> stringResource(R.string.batch_result_failed)
+            BatchTrackActionResult.EmptySelection -> return
+        }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.selection_close))
+            }
+        },
+    )
 }
 
 @Composable

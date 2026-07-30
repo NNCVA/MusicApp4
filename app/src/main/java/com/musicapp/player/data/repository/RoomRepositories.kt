@@ -108,16 +108,20 @@ class RoomMediaLibraryRepository @Inject constructor(
         trackDao.updateAvailabilityForVolume(volumeName, availability.name)
     }
 
-    override suspend fun setHidden(trackId: TrackId, hidden: Boolean, changedAtMs: Long) {
+    override suspend fun setHidden(trackIds: List<TrackId>, hidden: Boolean, changedAtMs: Long) {
         require(changedAtMs >= 0) { "changedAtMs must not be negative" }
+        val distinctTrackIds = trackIds.distinct()
+        if (distinctTrackIds.isEmpty()) return
         database.withTransaction {
-            require(trackDao.exists(trackId.volumeName, trackId.mediaStoreId)) { "track does not exist" }
-            if (hidden) {
-                hiddenTrackDao.insert(
-                    HiddenTrackEntity(trackId.volumeName, trackId.mediaStoreId, changedAtMs),
-                )
-            } else {
-                hiddenTrackDao.delete(trackId.volumeName, trackId.mediaStoreId)
+            distinctTrackIds.forEach { trackId ->
+                require(trackDao.exists(trackId.volumeName, trackId.mediaStoreId)) { "track does not exist" }
+                if (hidden) {
+                    hiddenTrackDao.insert(
+                        HiddenTrackEntity(trackId.volumeName, trackId.mediaStoreId, changedAtMs),
+                    )
+                } else {
+                    hiddenTrackDao.delete(trackId.volumeName, trackId.mediaStoreId)
+                }
             }
         }
     }
@@ -224,9 +228,9 @@ class RoomPlaylistRepository @Inject constructor(
         playlistId: PlaylistId,
         trackIds: List<TrackId>,
         updatedAtMs: Long,
-    ) {
-        if (trackIds.isEmpty()) return
-        database.withTransaction {
+    ): PlaylistTrackChangeResult {
+        if (trackIds.isEmpty()) return PlaylistTrackChangeResult(0, 0)
+        return database.withTransaction {
             val playlist = requireNotNull(playlistDao.get(playlistId.value)) { "playlist does not exist" }
             requireTracksExist(trackIds)
             val existing = playlistTrackDao.getForPlaylist(playlistId.value)
@@ -234,7 +238,9 @@ class RoomPlaylistRepository @Inject constructor(
                 TrackId(it.trackVolumeName, it.trackMediaStoreId)
             }.toSet()
             val additions = trackIds.distinct().filterNot(existingIds::contains)
-            if (additions.isEmpty()) return@withTransaction
+            if (additions.isEmpty()) {
+                return@withTransaction PlaylistTrackChangeResult(0, trackIds.size)
+            }
             val firstPosition = playlistTrackDao.maxPosition(playlistId.value) + 1
             playlistTrackDao.insert(
                 additions.mapIndexed { index, trackId ->
@@ -247,6 +253,28 @@ class RoomPlaylistRepository @Inject constructor(
                 },
             )
             playlistDao.update(playlist.withUpdatedAt(updatedAtMs))
+            PlaylistTrackChangeResult(additions.size, trackIds.size - additions.size)
+        }
+    }
+
+    override suspend fun removeTracks(
+        playlistId: PlaylistId,
+        trackIds: List<TrackId>,
+        updatedAtMs: Long,
+    ): PlaylistTrackChangeResult {
+        if (trackIds.isEmpty()) return PlaylistTrackChangeResult(0, 0)
+        return database.withTransaction {
+            val playlist = requireNotNull(playlistDao.get(playlistId.value)) { "playlist does not exist" }
+            val requestedIds = trackIds.toSet()
+            val removals = playlistTrackDao.getForPlaylist(playlistId.value).filter { relation ->
+                TrackId(relation.trackVolumeName, relation.trackMediaStoreId) in requestedIds
+            }
+            if (removals.isEmpty()) {
+                return@withTransaction PlaylistTrackChangeResult(0, trackIds.size)
+            }
+            playlistTrackDao.delete(removals)
+            playlistDao.update(playlist.withUpdatedAt(updatedAtMs))
+            PlaylistTrackChangeResult(removals.size, trackIds.size - removals.size)
         }
     }
 

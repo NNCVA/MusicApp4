@@ -23,7 +23,9 @@ interface MediaLibraryRepository {
     suspend fun mergeTracks(tracks: List<Track>)
     suspend fun replaceTracksForVolume(volumeName: String, tracks: List<Track>)
     suspend fun setVolumeAvailability(volumeName: String, availability: Availability)
-    suspend fun setHidden(trackId: TrackId, hidden: Boolean, changedAtMs: Long)
+    suspend fun setHidden(trackId: TrackId, hidden: Boolean, changedAtMs: Long) =
+        setHidden(listOf(trackId), hidden, changedAtMs)
+    suspend fun setHidden(trackIds: List<TrackId>, hidden: Boolean, changedAtMs: Long)
     fun observePathRules(): Flow<List<PathRule>>
     suspend fun addPathRule(volumeName: String, directory: String, kind: PathRuleKind): PathRule
     suspend fun replacePathRules(rules: List<PathRule>)
@@ -58,9 +60,28 @@ interface PlaylistRepository {
         updatedAtMs: Long,
     )
     suspend fun deletePlaylist(playlistId: PlaylistId)
-    suspend fun addTracks(playlistId: PlaylistId, trackIds: List<TrackId>, updatedAtMs: Long)
+    suspend fun addTracks(
+        playlistId: PlaylistId,
+        trackIds: List<TrackId>,
+        updatedAtMs: Long,
+    ): PlaylistTrackChangeResult
+    suspend fun removeTracks(
+        playlistId: PlaylistId,
+        trackIds: List<TrackId>,
+        updatedAtMs: Long,
+    ): PlaylistTrackChangeResult
     suspend fun replaceTracks(playlistId: PlaylistId, trackIds: List<TrackId>, updatedAtMs: Long)
     suspend fun clearTracks(playlistId: PlaylistId, updatedAtMs: Long)
+}
+
+data class PlaylistTrackChangeResult(
+    val changedCount: Int,
+    val skippedCount: Int,
+) {
+    init {
+        require(changedCount >= 0) { "changedCount must not be negative" }
+        require(skippedCount >= 0) { "skippedCount must not be negative" }
+    }
 }
 
 interface HistoryRepository {

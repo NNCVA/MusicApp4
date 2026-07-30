@@ -129,6 +129,53 @@ class MediaLibraryRepositoryTest {
         }
     }
 
+    @Test
+    fun batchVisibilityChangesAreAtomicAndNeverDeleteTracks() = runTest {
+        val first = track(mediaStoreId = 101, title = "First")
+        val second = track(mediaStoreId = 102, title = "Second")
+        repository.mergeTracks(listOf(first, second))
+        val repositories: List<MediaLibraryRepository> = listOf(
+            repository,
+            FakeMediaLibraryRepository(initialTracks = listOf(first, second)),
+        )
+
+        repositories.forEach { subject ->
+            subject.setHidden(listOf(first.id, second.id, first.id), hidden = true, changedAtMs = 10)
+            assertEquals(emptyList<TrackId>(), subject.observeTracks().first().map { it.id })
+            assertEquals(
+                setOf(first.id, second.id),
+                subject.observeTracks(includeHidden = true).first().mapTo(mutableSetOf()) { it.id },
+            )
+
+            subject.setHidden(listOf(second.id, first.id), hidden = false, changedAtMs = 11)
+            assertEquals(
+                setOf(first.id, second.id),
+                subject.observeTracks().first().mapTo(mutableSetOf()) { it.id },
+            )
+        }
+    }
+
+    @Test
+    fun mixedValidAndMissingBatchRollsBackEarlierVisibilityChanges() = runTest {
+        val existing = track(mediaStoreId = 201, title = "Existing")
+        repository.mergeTracks(listOf(existing))
+        val repositories: List<MediaLibraryRepository> = listOf(
+            repository,
+            FakeMediaLibraryRepository(initialTracks = listOf(existing)),
+        )
+        val missing = TrackId(existing.id.volumeName, 999)
+
+        repositories.forEach { subject ->
+            val failure = runCatching {
+                subject.setHidden(listOf(existing.id, missing), hidden = true, changedAtMs = 20)
+            }.exceptionOrNull()
+
+            assertTrue(failure is IllegalArgumentException)
+            assertEquals(listOf(existing.id), subject.observeTracks().first().map { it.id })
+            assertEquals(existing, subject.getTrack(existing.id))
+        }
+    }
+
     private suspend fun assertIllegalArgument(block: suspend () -> Unit) {
         assertTrue(runCatching { block() }.exceptionOrNull() is IllegalArgumentException)
     }

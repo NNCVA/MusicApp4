@@ -8,7 +8,9 @@ import com.musicapp.player.core.media.MediaAudioCandidate
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.data.repository.FakeMediaLibraryRepository
+import com.musicapp.player.data.repository.FakePlaylistRepository
 import com.musicapp.player.data.repository.MediaLibraryRepository
+import com.musicapp.player.data.repository.PlaylistRepository
 import com.musicapp.player.data.sync.LibrarySyncEvent
 import com.musicapp.player.data.sync.LibrarySyncState
 import com.musicapp.player.data.sync.MediaLibraryScanSummary
@@ -17,7 +19,12 @@ import com.musicapp.player.data.sync.MediaLibrarySyncFailure
 import com.musicapp.player.data.sync.MediaLibrarySyncTrigger
 import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
 import com.musicapp.player.data.sync.SyncReport
+import com.musicapp.player.feature.tracks.batch.BatchTrackAction
+import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
+import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
+import com.musicapp.player.feature.tracks.batch.DefaultBatchTrackActionExecutor
 import com.musicapp.player.fakes.FakeClock
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -213,6 +220,87 @@ class TracksViewModelTest {
     }
 
     @Test
+    fun `batch actions preserve user selection order and empty selection is not dispatched`() =
+        runTest(dispatcher) {
+            val tracks = listOf(track(1, "Charlie"), track(2, "Alpha"), track(3, "Beta"))
+            val executor = RecordingBatchTrackActionExecutor()
+            val viewModel = subject(tracks = tracks, batchActionExecutor = executor)
+            collectState(viewModel)
+
+            viewModel.toggleSelection(tracks[2].id)
+            viewModel.toggleSelection(tracks[0].id)
+            viewModel.toggleSelection(tracks[1].id)
+            viewModel.addSelectedToQueue()
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(
+                listOf(tracks[2].id, tracks[0].id, tracks[1].id),
+                executor.requests.single().second,
+            )
+            assertFalse(viewModel.uiState.value.isSelectionMode)
+            viewModel.addSelectedToQueue()
+            testScheduler.advanceUntilIdle()
+            assertEquals(1, executor.requests.size)
+        }
+
+    @Test
+    fun `select all dispatches current sorted results and failure keeps selection`() =
+        runTest(dispatcher) {
+            val tracks = listOf(track(1, "Charlie"), track(2, "Alpha"), track(3, "Beta"))
+            val executor =
+                RecordingBatchTrackActionExecutor(
+                    resultFactory = { action, ids -> BatchTrackActionResult.Failed(action, ids.size) },
+                )
+            val viewModel = subject(tracks = tracks, batchActionExecutor = executor)
+            collectState(viewModel)
+
+            viewModel.selectAllCurrentResults()
+            viewModel.playSelectedNext()
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(
+                listOf(tracks[1].id, tracks[2].id, tracks[0].id),
+                executor.requests.single().second,
+            )
+            assertEquals(3, viewModel.uiState.value.selectedTrackIds.size)
+            assertTrue(viewModel.uiState.value.batchResult is BatchTrackActionResult.Failed)
+            viewModel.acknowledgeBatchResult()
+            testScheduler.runCurrent()
+            assertEquals(null, viewModel.uiState.value.batchResult)
+        }
+
+    @Test
+    fun `running batch action rejects repeated queue and play next commands without result race`() =
+        runTest(dispatcher) {
+            val track = track(1, "Track")
+            val executor = SuspendingBatchTrackActionExecutor()
+            val viewModel = subject(tracks = listOf(track), batchActionExecutor = executor)
+            collectState(viewModel)
+            viewModel.toggleSelection(track.id)
+
+            viewModel.addSelectedToQueue()
+            viewModel.addSelectedToQueue()
+            viewModel.playSelectedNext()
+            testScheduler.runCurrent()
+
+            assertEquals(
+                listOf(BatchTrackAction.AddToQueue to listOf(track.id)),
+                executor.requests,
+            )
+            assertTrue(viewModel.uiState.value.isBatchActionRunning)
+
+            executor.release.complete(Unit)
+            testScheduler.advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isBatchActionRunning)
+            assertEquals(
+                BatchTrackAction.AddToQueue,
+                (viewModel.uiState.value.batchResult as BatchTrackActionResult.Completed).action,
+            )
+            assertEquals(1, executor.requests.size)
+        }
+
+    @Test
     fun `feedback acknowledgement delegates event id and clears pending state`() = runTest(dispatcher) {
         val feedback = completedFeedback(eventId = 42)
         val controller = FakeTracksSyncController(LibrarySyncState.Idle(true, feedback))
@@ -255,14 +343,26 @@ class TracksViewModelTest {
         syncController: FakeTracksSyncController = FakeTracksSyncController(syncState),
         savedState: SavedStateHandle = SavedStateHandle(),
         playbackController: PlaybackControllerFacade = RecordingPlaybackControllerFacade(),
-    ): TracksViewModel =
-        TracksViewModel(
+        playlistRepository: PlaylistRepository = FakePlaylistRepository(),
+        batchActionExecutor: BatchTrackActionExecutor? = null,
+    ): TracksViewModel {
+        val clock = FakeClock(123)
+        return TracksViewModel(
             mediaLibraryRepository = repository,
+            playlistRepository = playlistRepository,
             syncCoordinator = syncController,
-            clock = FakeClock(123),
             savedStateHandle = savedState,
             playbackController = playbackController,
+            batchActionExecutor =
+                batchActionExecutor
+                    ?: DefaultBatchTrackActionExecutor(
+                        playlistRepository = playlistRepository,
+                        mediaLibraryRepository = repository,
+                        playbackController = playbackController,
+                        clock = clock,
+                    ),
         )
+    }
 
     private class RecordingPlaybackControllerFacade : PlaybackControllerFacade {
         override val state: StateFlow<PlaybackControllerState> = MutableStateFlow(PlaybackControllerState())
@@ -332,6 +432,42 @@ class TracksViewModelTest {
                 feedback = MediaLibrarySyncFeedback.RESULT_DIALOG,
                 result = report,
             ),
+        )
+    }
+}
+
+private class RecordingBatchTrackActionExecutor(
+    private val resultFactory: (BatchTrackAction, List<TrackId>) -> BatchTrackActionResult =
+        { action, ids ->
+            BatchTrackActionResult.Completed(action, ids.size, ids.size, skippedCount = 0)
+        },
+) : BatchTrackActionExecutor {
+    val requests = mutableListOf<Pair<BatchTrackAction, List<TrackId>>>()
+
+    override suspend fun execute(
+        action: BatchTrackAction,
+        orderedTrackIds: List<TrackId>,
+    ): BatchTrackActionResult {
+        requests += action to orderedTrackIds
+        return resultFactory(action, orderedTrackIds)
+    }
+}
+
+private class SuspendingBatchTrackActionExecutor : BatchTrackActionExecutor {
+    val requests = mutableListOf<Pair<BatchTrackAction, List<TrackId>>>()
+    val release = CompletableDeferred<Unit>()
+
+    override suspend fun execute(
+        action: BatchTrackAction,
+        orderedTrackIds: List<TrackId>,
+    ): BatchTrackActionResult {
+        requests += action to orderedTrackIds
+        release.await()
+        return BatchTrackActionResult.Completed(
+            action = action,
+            selectedCount = orderedTrackIds.size,
+            affectedCount = orderedTrackIds.size,
+            skippedCount = 0,
         )
     }
 }

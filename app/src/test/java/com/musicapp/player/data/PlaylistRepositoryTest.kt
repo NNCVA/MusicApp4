@@ -40,8 +40,10 @@ class PlaylistRepositoryTest {
         val tracks = listOf(track(mediaStoreId = 1), track(mediaStoreId = 2), track(mediaStoreId = 3))
         mediaRepository.mergeTracks(tracks)
         val playlistId = repository.createPlaylist("Road", "road", 1)
-        repository.addTracks(playlistId, listOf(tracks[1].id, tracks[0].id, tracks[1].id), 2)
+        val added = repository.addTracks(playlistId, listOf(tracks[1].id, tracks[0].id, tracks[1].id), 2)
 
+        assertEquals(2, added.changedCount)
+        assertEquals(1, added.skippedCount)
         assertEquals(listOf(tracks[1].id, tracks[0].id), repository.observePlaylist(playlistId).first()?.trackIds)
         val duplicatePositionFailure = runCatching {
             database.playlistTrackDao().insert(
@@ -60,6 +62,15 @@ class PlaylistRepositoryTest {
             repository.createPlaylist("ROAD", "ROAD", 3)
         }.exceptionOrNull()
         assertTrue(duplicateNameFailure is SQLiteConstraintException)
+
+        val removed = repository.removeTracks(
+            playlistId,
+            listOf(tracks[0].id, TrackId("external_primary", 999)),
+            4,
+        )
+        assertEquals(1, removed.changedCount)
+        assertEquals(1, removed.skippedCount)
+        assertEquals(listOf(tracks[1].id), repository.observePlaylist(playlistId).first()?.trackIds)
     }
 
     @Test
@@ -81,6 +92,21 @@ class PlaylistRepositoryTest {
         assertEquals(listOf(existing.id), repository.observePlaylist(playlistId).first()?.trackIds)
 
         repository.replaceTracks(playlistId, emptyList(), 4)
+        assertEquals(listOf(existing.id), repository.observePlaylist(playlistId).first()?.trackIds)
+    }
+
+    @Test
+    fun failedBatchRemovalRollsBackDeletedRelations() = runTest {
+        val existing = track(mediaStoreId = 1)
+        mediaRepository.mergeTracks(listOf(existing))
+        val playlistId = repository.createPlaylist("Atomic", "atomic", 10)
+        repository.addTracks(playlistId, listOf(existing.id), 11)
+
+        val failure = runCatching {
+            repository.removeTracks(playlistId, listOf(existing.id), updatedAtMs = 1)
+        }.exceptionOrNull()
+
+        assertTrue(failure is IllegalArgumentException)
         assertEquals(listOf(existing.id), repository.observePlaylist(playlistId).first()?.trackIds)
     }
 

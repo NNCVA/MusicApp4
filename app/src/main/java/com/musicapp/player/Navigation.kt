@@ -66,9 +66,15 @@ import com.musicapp.player.feature.folders.FolderDetailViewModel
 import com.musicapp.player.feature.folders.FolderId
 import com.musicapp.player.feature.folders.FoldersScreenRoute
 import com.musicapp.player.feature.folders.FoldersViewModel
+import com.musicapp.player.feature.history.HistoryScreenRoute
+import com.musicapp.player.feature.history.HistoryViewModel
 import com.musicapp.player.feature.lyrics.LyricsViewModel
 import com.musicapp.player.feature.player.PlayerSheetRoute
 import com.musicapp.player.feature.player.PlayerViewModel
+import com.musicapp.player.feature.playlists.PlaylistDetailScreenRoute
+import com.musicapp.player.feature.playlists.PlaylistDetailViewModel
+import com.musicapp.player.feature.playlists.PlaylistsScreenRoute
+import com.musicapp.player.feature.playlists.PlaylistsViewModel
 import com.musicapp.player.feature.tracks.TracksScreenRoute
 import com.musicapp.player.feature.tracks.TracksViewModel
 import com.musicapp.player.theme.MusicTheme
@@ -169,8 +175,25 @@ fun MainNavigation(
                                     },
                                 )
                             }
-                            entry<PlaylistsRoute> { DestinationPlaceholder(PlaylistsRoute, contentInsets, policy, openDrawer) }
-                            entry<HistoryRoute> { DestinationPlaceholder(HistoryRoute, contentInsets, policy, openDrawer) }
+                            entry<PlaylistsRoute> {
+                                PlaylistsScreenRoute(
+                                    viewModel = viewModel<PlaylistsViewModel>(),
+                                    contentInsets = contentInsets,
+                                    policy = policy,
+                                    openDrawer = openDrawer,
+                                    onPlaylistClick = { playlistId ->
+                                        commitNavigation { navigate(PlaylistDetailRoute(playlistId.value)) }
+                                    },
+                                )
+                            }
+                            entry<HistoryRoute> {
+                                HistoryScreenRoute(
+                                    viewModel = viewModel<HistoryViewModel>(),
+                                    contentInsets = contentInsets,
+                                    policy = policy,
+                                    openDrawer = openDrawer,
+                                )
+                            }
                             entry<FoldersRoute> {
                                 FoldersScreenRoute(
                                     viewModel = viewModel<FoldersViewModel>(),
@@ -207,7 +230,14 @@ fun MainNavigation(
                                     onBack = ::handleBack,
                                 )
                             }
-                            entry<PlaylistDetailRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
+                            entry<PlaylistDetailRoute> { key ->
+                                PlaylistDetailScreenRoute(
+                                    playlistId = com.musicapp.player.core.domain.model.PlaylistId(key.playlistId),
+                                    viewModel = viewModel<PlaylistDetailViewModel>(key = "playlist:${key.playlistId}"),
+                                    contentInsets = contentInsets,
+                                    onBack = ::handleBack,
+                                )
+                            }
                             entry<FolderDetailRoute> { key ->
                                 FolderDetailScreenRoute(
                                     folderId = FolderId(key.volumeName, key.relativePath),
