@@ -16,8 +16,11 @@ import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.PlaybackQueue
 import com.musicapp.player.core.domain.model.QueueItemId
+import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.playback.PlaybackConnectionState
 import com.musicapp.player.core.playback.PlaybackControllerState
+import com.musicapp.player.core.playback.PlaybackFailure
+import com.musicapp.player.core.playback.PlaybackStatus
 import com.musicapp.player.core.playback.BufferingVisibilityPolicy
 import com.musicapp.player.media.service.MusicPlaybackService
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -43,6 +46,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     private var connectionRequested = false
     private var playbackMode = PlaybackMode.DEFAULT
     private var playbackQueue = PlaybackQueue()
+    private var serviceFailure: PlaybackFailure? = null
 
     override val state: StateFlow<PlaybackControllerState> = mutableState.asStateFlow()
 
@@ -71,6 +75,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
                 if (this@Media3PlaybackControllerConnection.controller !== controller) return@execute
                 controller.removeListener(playerListener)
                 resetBuffering()
+                serviceFailure = null
                 this@Media3PlaybackControllerConnection.controller = null
                 val disconnectedFuture = controllerFuture
                 controllerFuture = null
@@ -135,6 +140,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             pendingCommands.clear()
             controller?.removeListener(playerListener)
             resetBuffering()
+            serviceFailure = null
             controller = null
             val future = controllerFuture
             controllerFuture = null
@@ -154,7 +160,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     ) {
         require(tracks.isNotEmpty()) { "tracks must not be empty" }
         require(startIndex in tracks.indices) { "startIndex must be within tracks" }
-        dispatch { mediaController ->
+        dispatchPreparing(tracks[startIndex].id) { mediaController ->
             mediaController.sendCustomCommand(
                 PlaybackSessionProtocol.replaceQueueCommand,
                 PlaybackSessionProtocol.tracksArgs(tracks, startIndex, playWhenReady),
@@ -162,7 +168,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         }
     }
 
-    override fun play() = dispatch(MediaController::play)
+    override fun play() = dispatchPreparing(mutableState.value.currentTrackId, MediaController::play)
 
     override fun pause() = dispatch(MediaController::pause)
 
@@ -196,10 +202,19 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         }
     }
 
+    override fun jumpToQueueItem(queueItemId: QueueItemId) = dispatchPreparing(
+        playbackQueue.originalQueue.firstOrNull { it.id == queueItemId }?.trackId,
+    ) {
+        it.sendCustomCommand(
+            PlaybackSessionProtocol.jumpToQueueItemCommand,
+            PlaybackSessionProtocol.queueItemArgs(queueItemId),
+        )
+    }
+
     override fun removeFromQueue(queueItemId: QueueItemId) = dispatch {
         it.sendCustomCommand(
             PlaybackSessionProtocol.removeFromQueueCommand,
-            PlaybackSessionProtocol.removeArgs(queueItemId),
+            PlaybackSessionProtocol.queueItemArgs(queueItemId),
         )
     }
 
@@ -210,17 +225,39 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         }
     }
 
+    private fun dispatchPreparing(
+        trackId: TrackId?,
+        command: (MediaController) -> Unit,
+    ) {
+        serviceFailure = null
+        mutableState.value = mutableState.value.preparingFor(trackId)
+        dispatch(command)
+    }
+
     private fun updateState(player: Player) {
         val duration = player.duration.takeUnless { it == C.TIME_UNSET }?.coerceAtLeast(0)
+        val bufferingVisible = bufferingPolicy.update(
+            isBuffering = player.playbackState == Player.STATE_BUFFERING,
+            nowMs = SystemClock.elapsedRealtime(),
+        )
+        val playbackFailure = serviceFailure
+            ?: player.playerError?.let { Media3PlaybackFailureMapper.from(it.errorCode) }
+        val playbackStatus = Media3PlaybackStatusResolver.resolve(
+            playerState = player.playbackState,
+            isPlaying = player.isPlaying,
+            playWhenReady = player.playWhenReady,
+            hasCurrentItem = player.currentMediaItem != null || playbackQueue.currentItem != null,
+            bufferingVisible = bufferingVisible,
+            failure = playbackFailure,
+        )
         mutableState.value = PlaybackControllerState(
             connectionState = PlaybackConnectionState.CONNECTED,
             currentTrackId = QueueMediaIdCodec.decode(player.currentMediaItem?.mediaId.orEmpty())?.trackId
                 ?: playbackQueue.currentItem?.trackId,
+            playbackStatus = playbackStatus,
+            playbackFailure = playbackFailure,
             isPlaying = player.isPlaying,
-            isBuffering = bufferingPolicy.update(
-                isBuffering = player.playbackState == Player.STATE_BUFFERING,
-                nowMs = SystemClock.elapsedRealtime(),
-            ),
+            isBuffering = playbackStatus == PlaybackStatus.BUFFERING,
             positionMs = player.currentPosition.coerceAtLeast(0),
             durationMs = duration,
             canSkipPrevious = playbackQueue.originalQueue.size > 1,
@@ -231,6 +268,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     }
 
     private fun updateQueueState(extras: Bundle) {
+        serviceFailure = PlaybackSessionProtocol.decodePlaybackFailure(extras)
         PlaybackSessionProtocol.decodeState(extras)?.let { (mode, queue) ->
             playbackMode = mode
             playbackQueue = queue

@@ -8,6 +8,8 @@ import com.musicapp.player.core.domain.model.QueueItem
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.playback.PlaybackFailure
+import com.musicapp.player.core.playback.PlaybackFailureCode
 import com.musicapp.player.media.service.ApplicationControllerCommands
 import com.musicapp.player.media.service.TrustedSystemControllerCommands
 import org.junit.Assert.assertEquals
@@ -57,6 +59,24 @@ class PlaybackSessionProtocolTest {
         assertEquals(PlaybackMode.LIST_REPEAT to queue, PlaybackSessionProtocol.decodeState(extras))
         extras.putLongArray("com.musicapp.player.session.v1.track_media_store_ids", longArrayOf())
         assertNull(PlaybackSessionProtocol.decodeState(extras))
+    }
+
+    @Test
+    fun `state extras expose only a stable application playback failure code`() {
+        val failure = PlaybackFailure(PlaybackFailureCode.DECODING_FAILED)
+        val extras = PlaybackSessionProtocol.stateExtras(
+            mode = PlaybackMode.DEFAULT,
+            queue = PlaybackQueue(),
+            playbackFailure = failure,
+        )
+
+        assertEquals(failure, PlaybackSessionProtocol.decodePlaybackFailure(extras))
+        assertFalse(extras.keySet().any { key -> key.contains("message") || key.contains("stack") })
+        assertNull(
+            PlaybackSessionProtocol.decodePlaybackFailure(
+                PlaybackSessionProtocol.stateExtras(PlaybackMode.DEFAULT, PlaybackQueue()),
+            ),
+        )
     }
 
     @Test

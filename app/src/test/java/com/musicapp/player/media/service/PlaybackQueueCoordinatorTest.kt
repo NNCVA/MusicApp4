@@ -5,6 +5,8 @@ import androidx.media3.common.Player
 import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.playback.PlaybackFailure
+import com.musicapp.player.core.playback.PlaybackFailureCode
 import com.musicapp.player.media.playback.PlaybackSessionProtocol
 import com.musicapp.player.media.playback.PlaybackTrackPayload
 import com.musicapp.player.media.playback.QueueMediaIdCodec
@@ -12,6 +14,7 @@ import java.lang.reflect.Proxy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -140,6 +143,27 @@ class PlaybackQueueCoordinatorTest {
 
         assertEquals(coordinator.currentState.mode, decoded?.first)
         assertEquals(coordinator.currentState.queue, decoded?.second)
+    }
+
+    @Test
+    fun `playback failure is published separately and cleared after recovery`() {
+        var publishedFailure: PlaybackFailure? = null
+        var queueChangeCount = 0
+        coordinator.attachStatePublisher { extras ->
+            publishedFailure = PlaybackSessionProtocol.decodePlaybackFailure(extras)
+        }
+        coordinator.attachQueueStateListener { queueChangeCount += 1 }
+
+        val failure = PlaybackFailure(PlaybackFailureCode.IO_ERROR)
+        coordinator.reportPlaybackFailure(failure)
+
+        assertEquals(failure, publishedFailure)
+        assertEquals(0, queueChangeCount)
+
+        coordinator.clearPlaybackFailure()
+
+        assertNull(publishedFailure)
+        assertEquals(0, queueChangeCount)
     }
 
     @Test

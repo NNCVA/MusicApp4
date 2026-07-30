@@ -78,6 +78,8 @@ internal class DefaultPlaybackControllerFacade @Inject constructor(
 
     override fun playNext(trackIds: List<TrackId>) = loadTracks(trackIds, connection::playNext)
 
+    override fun jumpToQueueItem(queueItemId: QueueItemId) = connection.jumpToQueueItem(queueItemId)
+
     override fun removeFromQueue(queueItemId: QueueItemId) = connection.removeFromQueue(queueItemId)
 
     private fun loadTracks(

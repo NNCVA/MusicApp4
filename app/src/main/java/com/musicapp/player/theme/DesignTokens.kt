@@ -21,11 +21,20 @@ data class MusicDimensions(
     val permanentSidebarWidth: Dp = 256.dp,
     val trackListItemHeight: Dp = 80.dp,
     val miniPlayerHeight: Dp = 80.dp,
+    val miniArtworkSize: Dp = 56.dp,
+    val miniArtworkCornerRadius: Dp,
+    val fullPlayerArtworkSize: Dp = 280.dp,
+    val playerHeaderHeight: Dp = 64.dp,
+    val playerControlsHeight: Dp = 80.dp,
+    val playerSheetElevation: Dp = 6.dp,
+    val statusIndicatorSize: Dp = 24.dp,
+    val trackInfoDialogMaxWidth: Dp = 640.dp,
     val adaptiveGridMinimumCellWidth: Dp = 160.dp,
     val minimumTouchTarget: Dp = 48.dp,
     val radarSize: Dp = 176.dp,
     val radarStrokeWidth: Dp = 2.dp,
     val dialogListMaxHeight: Dp = 360.dp,
+    val queueEdgeResistanceDistance: Dp = 24.dp,
     val spaceExtraSmall: Dp = 4.dp,
     val spaceSmall: Dp = 8.dp,
     val spaceMedium: Dp = 16.dp,
@@ -34,9 +43,21 @@ data class MusicDimensions(
     val contentHorizontalPadding: Dp,
 ) {
     companion object {
-        val Compact = MusicDimensions(windowWidthTier = MusicWindowWidthTier.COMPACT, contentHorizontalPadding = 16.dp)
-        val Medium = MusicDimensions(windowWidthTier = MusicWindowWidthTier.MEDIUM, contentHorizontalPadding = 24.dp)
-        val Expanded = MusicDimensions(windowWidthTier = MusicWindowWidthTier.EXPANDED, contentHorizontalPadding = 32.dp)
+        val Compact = MusicDimensions(
+            windowWidthTier = MusicWindowWidthTier.COMPACT,
+            miniArtworkCornerRadius = 16.dp,
+            contentHorizontalPadding = 16.dp,
+        )
+        val Medium = MusicDimensions(
+            windowWidthTier = MusicWindowWidthTier.MEDIUM,
+            miniArtworkCornerRadius = 20.dp,
+            contentHorizontalPadding = 24.dp,
+        )
+        val Expanded = MusicDimensions(
+            windowWidthTier = MusicWindowWidthTier.EXPANDED,
+            miniArtworkCornerRadius = 20.dp,
+            contentHorizontalPadding = 32.dp,
+        )
 
         fun forTier(tier: MusicWindowWidthTier): MusicDimensions =
             when (tier) {

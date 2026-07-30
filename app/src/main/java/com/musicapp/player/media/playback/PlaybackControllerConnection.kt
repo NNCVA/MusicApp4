@@ -35,5 +35,7 @@ internal interface PlaybackControllerConnection {
 
     fun playNext(tracks: List<Track>) = Unit
 
+    fun jumpToQueueItem(queueItemId: QueueItemId) = Unit
+
     fun removeFromQueue(queueItemId: QueueItemId) = Unit
 }

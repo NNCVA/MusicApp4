@@ -14,9 +14,37 @@ enum class PlaybackConnectionState {
     UNAVAILABLE,
 }
 
+/** Stable application playback lifecycle; independent from controller connectivity. */
+enum class PlaybackStatus {
+    IDLE,
+    PREPARING,
+    BUFFERING,
+    READY,
+    PLAYING,
+    PAUSED,
+    ERROR,
+}
+
+/** Stable failure categories safe to expose to application controllers. */
+enum class PlaybackFailureCode {
+    SOURCE_NOT_FOUND,
+    ACCESS_DENIED,
+    UNSUPPORTED_FORMAT,
+    DECODING_FAILED,
+    AUDIO_OUTPUT_FAILED,
+    IO_ERROR,
+    UNKNOWN,
+}
+
+data class PlaybackFailure(
+    val code: PlaybackFailureCode,
+)
+
 data class PlaybackControllerState(
     val connectionState: PlaybackConnectionState = PlaybackConnectionState.DISCONNECTED,
     val currentTrackId: TrackId? = null,
+    val playbackStatus: PlaybackStatus = PlaybackStatus.IDLE,
+    val playbackFailure: PlaybackFailure? = null,
     val isPlaying: Boolean = false,
     val isBuffering: Boolean = false,
     val positionMs: Long = 0,
@@ -60,6 +88,8 @@ interface PlaybackControllerFacade {
     fun addToQueue(trackIds: List<TrackId>) = Unit
 
     fun playNext(trackIds: List<TrackId>) = Unit
+
+    fun jumpToQueueItem(queueItemId: QueueItemId) = Unit
 
     fun removeFromQueue(queueItemId: QueueItemId) = Unit
 }

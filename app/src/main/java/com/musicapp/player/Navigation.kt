@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.musicapp.player.navigation.AboutRoute
@@ -52,11 +53,12 @@ import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
 import com.musicapp.player.navigation.topLevelNavKeys
 import com.musicapp.player.feature.permission.MediaPermissionState
+import com.musicapp.player.feature.player.PlayerSheetRoute
+import com.musicapp.player.feature.player.PlayerViewModel
 import com.musicapp.player.feature.tracks.TracksScreenRoute
 import com.musicapp.player.feature.tracks.TracksViewModel
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.AppShell
-import com.musicapp.player.ui.shell.PlayerSheetPlaceholder
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 
 @Composable
@@ -77,6 +79,9 @@ fun MainNavigation(
     }
     val navigator = remember(navigationState) { Navigator(navigationState) }
     val saveableStateHolder = rememberSaveableStateHolder()
+    val playerViewModel = viewModel<PlayerViewModel>()
+    val playerState by playerViewModel.uiState.collectAsStateWithLifecycle()
+    var playerExpanded by rememberSaveable { mutableStateOf(false) }
 
     fun commitNavigation(action: Navigator.() -> Unit) {
         navigator.action()
@@ -92,6 +97,8 @@ fun MainNavigation(
     }
 
     AppShell(
+        drawerGesturesEnabled = !playerExpanded,
+        playerSheetVisible = playerState.currentTrack != null,
         navigationContent = { policy, closeDrawer ->
             NavigationMenu(
                 policy = policy,
@@ -141,7 +148,13 @@ fun MainNavigation(
                 onBack = ::handleBack,
             )
         },
-        playerSheetContent = { PlayerSheetPlaceholder() },
+        playerSheetContent = { contentInsets ->
+            PlayerSheetRoute(
+                viewModel = playerViewModel,
+                contentInsets = contentInsets,
+                onExpansionChanged = { playerExpanded = it },
+            )
+        },
     )
 }
 

@@ -13,6 +13,7 @@ import com.musicapp.player.core.domain.model.QueueItem
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.playback.PlaybackQueueReducer
 import com.musicapp.player.core.playback.PlaybackQueueState
+import com.musicapp.player.core.playback.PlaybackFailure
 import com.musicapp.player.media.playback.PlaybackSessionProtocol
 import com.musicapp.player.media.playback.PlaybackTrackPayload
 import com.musicapp.player.media.playback.QueueMediaIdCodec
@@ -28,6 +29,7 @@ internal class PlaybackQueueCoordinator(
     private var publishState: (android.os.Bundle) -> Unit = {}
     private var onQueueStateChanged: () -> Unit = {}
     private var rebuildingShuffleRound = false
+    private var playbackFailure: PlaybackFailure? = null
 
     val currentState: PlaybackQueueState
         get() = state
@@ -51,6 +53,7 @@ internal class PlaybackQueueCoordinator(
     ) {
         require(tracks.isNotEmpty()) { "tracks must not be empty" }
         require(startIndex in tracks.indices) { "startIndex must be within tracks" }
+        playbackFailure = null
         mediaItemsById.clear()
         val items = tracks.map { track ->
             QueueItem(QueueItemId(nextQueueItemId++), track.trackId).also { queueItem ->
@@ -70,6 +73,7 @@ internal class PlaybackQueueCoordinator(
         require(snapshot.queue.originalQueue.all { it.id in tracksByQueueItemId }) {
             "every restored queue item must have track metadata"
         }
+        playbackFailure = null
         mediaItemsById.clear()
         snapshot.queue.originalQueue.forEach { queueItem ->
             mediaItemsById[queueItem.id] = tracksByQueueItemId.getValue(queueItem.id).toMediaItem(queueItem.id)
@@ -164,8 +168,11 @@ internal class PlaybackQueueCoordinator(
         }
     }
 
-    fun recoverTo(queueItemId: QueueItemId): Boolean {
+    fun recoverTo(queueItemId: QueueItemId): Boolean = jumpToQueueItem(queueItemId)
+
+    fun jumpToQueueItem(queueItemId: QueueItemId): Boolean {
         if (state.queue.originalQueue.none { it.id == queueItemId }) return false
+        playbackFailure = null
         state = state.copy(
             queue = state.queue.copy(
                 currentItemId = queueItemId,
@@ -183,6 +190,17 @@ internal class PlaybackQueueCoordinator(
     fun stopPlayback() {
         player.stop()
         publish()
+    }
+
+    fun reportPlaybackFailure(failure: PlaybackFailure) {
+        playbackFailure = failure
+        publishProtocolState()
+    }
+
+    fun clearPlaybackFailure() {
+        if (playbackFailure == null) return
+        playbackFailure = null
+        publishProtocolState()
     }
 
     fun onMediaItemTransition(mediaItem: MediaItem?) {
@@ -213,7 +231,11 @@ internal class PlaybackQueueCoordinator(
         }
     }
 
-    fun stateExtras() = PlaybackSessionProtocol.stateExtras(state.mode, state.queue)
+    fun stateExtras() = PlaybackSessionProtocol.stateExtras(
+        mode = state.mode,
+        queue = state.queue,
+        playbackFailure = playbackFailure,
+    )
 
     private fun createQueueItems(tracks: List<PlaybackTrackPayload>): List<QueueItem> =
         tracks.map { track ->
@@ -252,12 +274,17 @@ internal class PlaybackQueueCoordinator(
     }
 
     private fun publish() {
-        publishState(stateExtras())
+        publishProtocolState()
         onQueueStateChanged()
+    }
+
+    private fun publishProtocolState() {
+        publishState(stateExtras())
     }
 
     fun clearRuntimeQueue() {
         state = PlaybackQueueState(mode = state.mode)
+        playbackFailure = null
         mediaItemsById.clear()
         player.stop()
         player.clearMediaItems()

@@ -8,6 +8,8 @@ import com.musicapp.player.core.domain.model.QueueItem
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.playback.PlaybackFailure
+import com.musicapp.player.core.playback.PlaybackFailureCode
 
 internal object PlaybackSessionProtocol {
     private const val PREFIX = "com.musicapp.player.session.v1"
@@ -16,6 +18,7 @@ internal object PlaybackSessionProtocol {
     val setModeCommand = SessionCommand("$PREFIX.SET_MODE", Bundle.EMPTY)
     val addToQueueCommand = SessionCommand("$PREFIX.ADD_TO_QUEUE", Bundle.EMPTY)
     val playNextCommand = SessionCommand("$PREFIX.PLAY_NEXT", Bundle.EMPTY)
+    val jumpToQueueItemCommand = SessionCommand("$PREFIX.JUMP_TO_QUEUE_ITEM", Bundle.EMPTY)
     val removeFromQueueCommand = SessionCommand("$PREFIX.REMOVE_FROM_QUEUE", Bundle.EMPTY)
 
     val applicationCommands = listOf(
@@ -23,6 +26,7 @@ internal object PlaybackSessionProtocol {
         setModeCommand,
         addToQueueCommand,
         playNextCommand,
+        jumpToQueueItemCommand,
         removeFromQueueCommand,
     )
 
@@ -54,7 +58,7 @@ internal object PlaybackSessionProtocol {
             PlaybackMode.entries.firstOrNull { it.name == encoded }
         }
 
-    fun removeArgs(queueItemId: QueueItemId): Bundle =
+    fun queueItemArgs(queueItemId: QueueItemId): Bundle =
         Bundle().apply { putLong(KEY_QUEUE_ITEM_ID, queueItemId.value) }
 
     fun decodeQueueItemId(args: Bundle): QueueItemId? =
@@ -63,6 +67,7 @@ internal object PlaybackSessionProtocol {
     fun stateExtras(
         mode: PlaybackMode,
         queue: PlaybackQueue,
+        playbackFailure: PlaybackFailure? = null,
     ): Bundle = Bundle().apply {
         putString(KEY_MODE, mode.name)
         putLongArray(KEY_QUEUE_ITEM_IDS, queue.originalQueue.map { it.id.value }.toLongArray())
@@ -78,6 +83,14 @@ internal object PlaybackSessionProtocol {
         putLong(KEY_CURRENT_QUEUE_ITEM_ID, queue.currentItemId?.value ?: 0L)
         putLong(KEY_SHUFFLE_ROUND, queue.shuffleRound)
         putInt(KEY_SHUFFLE_CURSOR, queue.shuffleCursor ?: -1)
+        playbackFailure?.let { putString(KEY_PLAYBACK_FAILURE_CODE, it.code.name) }
+    }
+
+    fun decodePlaybackFailure(extras: Bundle): PlaybackFailure? {
+        val encoded = extras.getString(KEY_PLAYBACK_FAILURE_CODE) ?: return null
+        val code = PlaybackFailureCode.entries.firstOrNull { it.name == encoded }
+            ?: PlaybackFailureCode.UNKNOWN
+        return PlaybackFailure(code)
     }
 
     fun decodeState(extras: Bundle): Pair<PlaybackMode, PlaybackQueue>? = runCatching {
@@ -145,6 +158,7 @@ internal object PlaybackSessionProtocol {
     private const val KEY_CURRENT_QUEUE_ITEM_ID = "$PREFIX.current_queue_item_id"
     private const val KEY_SHUFFLE_ROUND = "$PREFIX.shuffle_round"
     private const val KEY_SHUFFLE_CURSOR = "$PREFIX.shuffle_cursor"
+    private const val KEY_PLAYBACK_FAILURE_CODE = "$PREFIX.playback_failure_code"
 }
 
 internal data class PlaybackTrackPayload(

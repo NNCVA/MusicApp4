@@ -24,7 +24,7 @@
 ## 3. 当前基线
 
 - 仓库只有 `:app` 模块，`minSdk 26`、`targetSdk 36`，Kotlin/JVM 使用 17。
-- 已接入 Compose、Material 3、Navigation 3、四套 Light/Dark 主题、动态取色、统一设计令牌与共享加载/空态/错误态；八个一级栈、详情 Route Key、三档自适应壳层及应用级 Player Sheet 占位已建立，单曲页已实现，其余业务页面仍为占位内容。
+- 已接入 Compose、Material 3、Navigation 3、四套 Light/Dark 主题、动态取色、统一设计令牌与共享加载/空态/错误态；八个一级栈、详情 Route Key、三档自适应壳层及应用级 Player Sheet 已建立。Player Sheet 具备 `80 dp` Mini、Full 三子页、队列跳转/移除、进度与模式控制及自适应歌曲信息查看器，并直接消费 MediaController 的稳定播放状态与分类失败代码显示双语错误文案；其余业务页面仍为占位内容。
 - 已建立 Hilt Application/Activity/Service 入口、应用级协程作用域、可替换时钟与随机源、平台无关领域模型与纯业务策略、Room v2（七张业务表、同步代次与每卷状态）、Repository/Fake、Preferences DataStore 设置 Repository、MediaStore 多卷查询/准入适配、原子媒体库同步、冷启动/前台自动同步协调、单曲 ViewModel 及 Snackbar 队列。高级元数据与内嵌封面已实现按需读取、修改时间换键、有界内存缓存、同键请求合并及全局二并发限制；MediaLibraryService 已以单一会话状态驱动三种播放模式、原始队列、稳定随机序列、跨轮重生成与队列编辑；手动/自然切歌使用可设置的单播放器淡出淡入，坏文件单轮遍历后停止，Media3 处理音频焦点与私密输出断开，实际播放达 `min(30 秒, 50% 时长)` 后更新 Room 历史，超过 300 ms 的缓冲向 UI 显示。播放快照已在队列/切歌/Seek/暂停/销毁及播放中每 5 秒写入 Room，Media3 Playback Resumption 仅在系统或用户触发时恢复队列与位置；通知仅显示三个主操作，划除后保留快照、清空运行时队列并撤销恢复资格。应用内 MediaController 通过严格命名命令读写，外部可信控制器仅保留基础媒体命令。
 - Manifest 已声明分版本音频读取权限，未声明 `POST_NOTIFICATIONS`；Hilt Application、启动 Activity、设置白名单备份规则与运行时权限 Gateway 已接入。
 
@@ -249,12 +249,13 @@ DataStore 只保存用户设置：
 
 ### 10.3 播放器界面
 
-- 曲目列表项和迷你播放器固定 `80 dp`。
+- 曲目列表项和迷你播放器固定 `80 dp`；Mini 可见时应用壳层统一为业务内容保留 `80 dp` 底部空间。
 - 同一个应用级 Player Sheet 内重叠放置 Mini 与 Full 两层；折叠锚点露出 `80 dp` Mini，展开锚点铺满可用窗口，不提供隐藏态或半展开态。
 - 点击 Mini 直接展开；纵向拖动时 Sheet 跟手移动，Mini 在进度 `0%–25%` 淡出，Full 在 `25%–100%` 淡入；不做封面连续缩放、共享元素形变或 Navigation 3 路由切换。
 - 返回、全屏顶部下拉按钮或向下拖动将 Sheet 折叠并恢复原业务页面；展开及拖动期间禁用抽屉侧滑手势。
 - 全屏页面顺序为封面、歌词、队列；进程内记忆页码，进程重启回封面。
 - 全屏手势优先级为歌词/队列纵向滚动、子页横向翻页、Player Sheet 纵向折叠；列表到顶部继续下拉时移交 Player Sheet，列表底部继续上拉只做阻尼回弹。
+- Mini 封面圆角从设计令牌读取：紧凑窗口 `16 dp`，中等与展开窗口 `20 dp`。
 - 全屏封面为圆形，其余封面为圆角矩形。
 - 队列支持移除和点击跳转，所有模式均不提供拖拽排序。
 - 歌曲信息展示编码、比特率、采样率、文件大小和路径等元数据，只允许复制路径。

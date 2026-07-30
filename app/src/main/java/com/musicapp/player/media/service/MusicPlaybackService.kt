@@ -38,6 +38,7 @@ import com.musicapp.player.core.playback.system.SystemPlaybackCommand
 import com.musicapp.player.data.repository.HistoryRepository
 import com.musicapp.player.data.repository.PlaybackSnapshotRepository
 import com.musicapp.player.data.settings.SettingsRepository
+import com.musicapp.player.media.playback.Media3PlaybackFailureMapper
 import com.musicapp.player.media.playback.QueueMediaIdCodec
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -186,6 +187,7 @@ class MusicPlaybackService : MediaLibraryService() {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 when (playbackState) {
                     Player.STATE_READY -> {
+                        coordinator.clearPlaybackFailure()
                         errorRecovery.onReady()
                         startHistoryInstance(servicePlayer, servicePlayer.currentMediaItem, null)
                         pendingRestoredItemId = null
@@ -295,6 +297,7 @@ class MusicPlaybackService : MediaLibraryService() {
             override fun onPlayerError(error: PlaybackException) {
                 cancelNaturalTransition()
                 fade.onTargetFailure()
+                coordinator.reportPlaybackFailure(Media3PlaybackFailureMapper.from(error.errorCode))
                 val failedId = coordinator.currentState.queue.currentItemId ?: return
                 when (
                     val action = errorRecovery.onFailure(

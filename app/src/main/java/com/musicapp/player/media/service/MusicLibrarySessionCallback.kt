@@ -124,7 +124,7 @@ internal class MusicLibrarySessionCallback(
         customCommand: SessionCommand,
         args: Bundle,
     ): ListenableFuture<SessionResult> {
-        if (accessFor(controller) != ControllerAccess.APPLICATION) return badCommandResult()
+        if (accessFor(controller) != ControllerAccess.APPLICATION) return permissionDeniedResult()
         val accepted = when (customCommand.customAction) {
             PlaybackSessionProtocol.replaceQueueCommand.customAction -> {
                 val tracks = PlaybackSessionProtocol.decodeTracks(args)
@@ -146,6 +146,8 @@ internal class MusicLibrarySessionCallback(
                 PlaybackSessionProtocol.decodeTracks(args)?.let { queueCoordinator.addToQueue(it); true } ?: false
             PlaybackSessionProtocol.playNextCommand.customAction ->
                 PlaybackSessionProtocol.decodeTracks(args)?.let { queueCoordinator.playNext(it); true } ?: false
+            PlaybackSessionProtocol.jumpToQueueItemCommand.customAction ->
+                PlaybackSessionProtocol.decodeQueueItemId(args)?.let(queueCoordinator::jumpToQueueItem) ?: false
             PlaybackSessionProtocol.removeFromQueueCommand.customAction ->
                 PlaybackSessionProtocol.decodeQueueItemId(args)?.let { queueCoordinator.remove(it); true } ?: false
             else -> false
@@ -258,6 +260,9 @@ internal class MusicLibrarySessionCallback(
 
     private fun badCommandResult(): ListenableFuture<SessionResult> =
         Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+
+    private fun permissionDeniedResult(): ListenableFuture<SessionResult> =
+        Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
 }
 
 private fun Track.toPayload() = PlaybackTrackPayload(

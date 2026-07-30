@@ -37,6 +37,13 @@ class DesignTokenPolicyTest {
     }
 
     @Test
+    fun `mini artwork corner follows the window width tier`() {
+        assertEquals(16.dp, MusicDimensions.Compact.miniArtworkCornerRadius)
+        assertEquals(20.dp, MusicDimensions.Medium.miniArtworkCornerRadius)
+        assertEquals(20.dp, MusicDimensions.Expanded.miniArtworkCornerRadius)
+    }
+
+    @Test
     fun `shape and typography token objects are complete`() {
         val shapes = MusicShapes()
         val typography = MusicTypography()
