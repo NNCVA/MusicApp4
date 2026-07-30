@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -129,6 +130,14 @@ class PlaybackControllerFacadeTest {
         assertEquals(QueueItemId(9), connection.removedId)
     }
 
+    @Test
+    fun forwardsFullExitAndReturnsServiceAcknowledgement() = runTest {
+        val connection = RecordingConnection(fullExitResult = true)
+
+        assertEquals(true, facade(connection = connection).requestFullExit())
+        assertEquals(listOf("fullExit"), connection.commands)
+    }
+
     private fun facade(
         connection: RecordingConnection,
         scope: TestScope = TestScope(StandardTestDispatcher()),
@@ -155,6 +164,7 @@ class PlaybackControllerFacadeTest {
 
     private class RecordingConnection(
         initialState: PlaybackControllerState = PlaybackControllerState(),
+        private val fullExitResult: Boolean = false,
     ) : PlaybackControllerConnection {
         override val state: StateFlow<PlaybackControllerState> = MutableStateFlow(initialState)
         val commands = mutableListOf<String>()
@@ -214,6 +224,11 @@ class PlaybackControllerFacadeTest {
 
         override fun removeFromQueue(queueItemId: QueueItemId) {
             removedId = queueItemId
+        }
+
+        override suspend fun requestFullExit(): Boolean {
+            commands += "fullExit"
+            return fullExitResult
         }
     }
 }

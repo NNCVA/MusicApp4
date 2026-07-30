@@ -12,13 +12,14 @@ class WindowLayoutPolicyTest {
     }
 
     @Test
-    fun compactBreakpointStartsNavigationRail() {
-        assertEquals(WindowLayoutPolicy.MEDIUM_RAIL, WindowLayoutPolicy.forWidth(600.dp))
+    fun compactBreakpointStartsPersistentMediumSidebar() {
+        assertEquals(WindowLayoutPolicy.MEDIUM_SIDEBAR, WindowLayoutPolicy.forWidth(600.dp))
+        assertEquals(240.dp, WindowLayoutPolicy.MEDIUM_SIDEBAR.sidebarWidth)
     }
 
     @Test
-    fun widthsThroughMediumRangeStayOnNavigationRail() {
-        assertEquals(WindowLayoutPolicy.MEDIUM_RAIL, WindowLayoutPolicy.forWidth(839.dp))
+    fun widthsThroughMediumRangeStayOnPersistentMediumSidebar() {
+        assertEquals(WindowLayoutPolicy.MEDIUM_SIDEBAR, WindowLayoutPolicy.forWidth(839.dp))
     }
 
     @Test

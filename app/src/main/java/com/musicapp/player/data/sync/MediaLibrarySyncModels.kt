@@ -179,3 +179,12 @@ sealed interface LibrarySyncEvent {
 }
 
 typealias MediaLibrarySyncResult = SyncReport
+
+fun MediaAudioCandidate.scanResultTitle(): String {
+    title?.trim()?.takeIf(String::isNotEmpty)?.let { return it }
+    val normalizedDisplayName = displayName.trim()
+    if (normalizedDisplayName.isNotEmpty()) {
+        return normalizedDisplayName.substringBeforeLast('.').ifBlank { normalizedDisplayName }
+    }
+    return mediaStoreId.toString()
+}

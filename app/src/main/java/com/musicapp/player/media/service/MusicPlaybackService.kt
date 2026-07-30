@@ -13,6 +13,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionError
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import com.musicapp.player.MainActivity
 import com.musicapp.player.core.common.random.RandomSource
 import com.musicapp.player.core.common.time.Clock
@@ -93,6 +97,7 @@ class MusicPlaybackService : MediaLibraryService() {
     private val errorRecovery = PlaybackErrorRecovery<QueueItemId>()
     private val interruptionPolicy = AudioInterruptionPolicy()
     private val dismissIntentAuthenticator = NotificationDismissIntentAuthenticator.create()
+    private val shutdownCoordinator = PlaybackServiceShutdownCoordinator()
 
     override fun onCreate() {
         super.onCreate()
@@ -178,6 +183,7 @@ class MusicPlaybackService : MediaLibraryService() {
                     recorder.restoreInstance(instance, durationMs, isPlaying = false)
                 }
             },
+            onFullExit = ::requestFullExit,
         )
         val listener = object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
@@ -396,6 +402,37 @@ class MusicPlaybackService : MediaLibraryService() {
             finalSnapshotWrite.invokeOnCompletion { serviceScope.cancel() }
         }
         super.onDestroy()
+    }
+
+    private fun requestFullExit(): ListenableFuture<SessionResult> {
+        val result = SettableFuture.create<SessionResult>()
+        playbackResumptionAllowed =
+            PlaybackResumptionPolicy.decide(PlaybackResumptionEvent.PlaybackStopped)
+                .playbackResumptionAllowed
+        snapshotCoordinator?.onPaused()
+        val finalWrite = snapshotCoordinator?.onDestroyed()
+        snapshotFinalWriteJob = finalWrite
+        player?.pause()
+        serviceScope.launch {
+            val failure =
+                runCatching {
+                    shutdownCoordinator.shutdown(
+                        persistFinalSnapshot = { finalWrite?.join() },
+                        clearRuntimeQueue = { queueCoordinator?.clearRuntimeQueue() },
+                        stopPlaybackService = ::stopSelf,
+                    )
+                }.exceptionOrNull()
+            result.set(
+                SessionResult(
+                    if (failure == null) {
+                        SessionResult.RESULT_SUCCESS
+                    } else {
+                        SessionError.ERROR_UNKNOWN
+                    },
+                ),
+            )
+        }
+        return result
     }
 
     private fun currentPlaybackSnapshot(

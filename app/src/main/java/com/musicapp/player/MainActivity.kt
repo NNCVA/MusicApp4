@@ -1,5 +1,6 @@
 package com.musicapp.player
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
@@ -9,6 +10,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import com.musicapp.player.core.aero.platform.AeroSignalSource
@@ -16,17 +18,22 @@ import com.musicapp.player.core.domain.model.AppLanguage
 import com.musicapp.player.feature.permission.AndroidPermissionGateway
 import com.musicapp.player.feature.permission.MediaPermissionCoordinator
 import com.musicapp.player.feature.permission.MediaPermissionState
+import com.musicapp.player.feature.tracks.TracksSyncController
 import com.musicapp.player.data.sync.LibrarySyncCoordinator
 import com.musicapp.player.data.settings.SettingsRepository
 import com.musicapp.player.core.playback.PlaybackControllerFacade
+import com.musicapp.player.media.service.MusicPlaybackService
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicDimensions
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
   @Inject lateinit var librarySyncCoordinator: LibrarySyncCoordinator
+  @Inject lateinit var tracksSyncController: TracksSyncController
   @Inject lateinit var playbackController: PlaybackControllerFacade
   @Inject lateinit var settingsRepository: SettingsRepository
   @Inject lateinit var aeroSignalSource: AeroSignalSource
@@ -60,6 +67,7 @@ class MainActivity : AppCompatActivity() {
     setContent {
       val permissionState by mediaPermissionCoordinator.state.collectAsStateWithLifecycle()
       val appSettings by settingsRepository.settings.collectAsStateWithLifecycle()
+      val librarySyncState by tracksSyncController.state.collectAsStateWithLifecycle()
       val aeroSignals by aeroSignalSource.signals.collectAsStateWithLifecycle()
       LaunchedEffect(appSettings.appLanguage) {
         applyAppLanguage(appSettings.appLanguage)
@@ -75,7 +83,16 @@ class MainActivity : AppCompatActivity() {
           MainNavigation(
             aeroMode = appSettings.aeroMode,
             aeroSignals = aeroSignals,
+            themeMode = appSettings.themeMode,
+            librarySyncState = librarySyncState,
             onExit = ::finish,
+            onFullExit = ::fullyExitApplication,
+            onReturnToDesktop = { moveTaskToBack(true) },
+            onThemeModeChange = { mode ->
+              runCatching { settingsRepository.setThemeMode(mode) }.isSuccess
+            },
+            onScanMusic = tracksSyncController::requestManualSync,
+            onAcknowledgeSyncFeedback = tracksSyncController::acknowledgeFeedback,
             permissionState = permissionState,
             onConfirmPermission = mediaPermissionCoordinator::confirmPurposeExplanation,
             onRetryPermission = mediaPermissionCoordinator::retryPermissionRequest,
@@ -132,6 +149,23 @@ class MainActivity : AppCompatActivity() {
     AppCompatDelegate.setApplicationLocales(
       LocaleListCompat.forLanguageTags(language.languageTags()),
     )
+  }
+
+  private fun fullyExitApplication() {
+    lifecycleScope.launch {
+      val stoppedThroughSession =
+        withTimeoutOrNull(FULL_EXIT_TIMEOUT_MS) {
+          playbackController.requestFullExit()
+        } == true
+      if (!stoppedThroughSession) {
+        stopService(Intent(this@MainActivity, MusicPlaybackService::class.java))
+      }
+      finishAndRemoveTask()
+    }
+  }
+
+  private companion object {
+    const val FULL_EXIT_TIMEOUT_MS = 3_000L
   }
 }
 

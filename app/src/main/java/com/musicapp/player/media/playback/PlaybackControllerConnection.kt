@@ -38,4 +38,6 @@ internal interface PlaybackControllerConnection {
     fun jumpToQueueItem(queueItemId: QueueItemId) = Unit
 
     fun removeFromQueue(queueItemId: QueueItemId) = Unit
+
+    suspend fun requestFullExit(): Boolean = false
 }

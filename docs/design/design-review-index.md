@@ -27,3 +27,4 @@
 - [首版短计划](../plan/implementation-plan.md)
 - [首版逐过程执行计划](../plan/implementation-execution-plan.md)
 - [首版开发 Wave Plan](../plan/implementation-wave-plan.md)
+- [侧边栏三组卡片改造方案](../plan/sidebar-redesign-plan.md)

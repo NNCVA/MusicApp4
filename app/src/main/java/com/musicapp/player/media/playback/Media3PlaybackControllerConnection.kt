@@ -11,6 +11,7 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.ListenableFuture
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.PlaybackMode
@@ -30,6 +31,8 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 @Singleton
 internal class Media3PlaybackControllerConnection @Inject constructor(
@@ -231,6 +234,36 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             PlaybackSessionProtocol.queueItemArgs(queueItemId),
         )
     }
+
+    override suspend fun requestFullExit(): Boolean =
+        suspendCancellableCoroutine { continuation ->
+            mainExecutor.execute {
+                val command: (MediaController) -> Unit = { mediaController ->
+                    val resultFuture =
+                        mediaController.sendCustomCommand(
+                            PlaybackSessionProtocol.fullExitCommand,
+                            Bundle.EMPTY,
+                        )
+                    continuation.invokeOnCancellation { resultFuture.cancel(false) }
+                    resultFuture.addListener(
+                        {
+                            if (!continuation.isActive) return@addListener
+                            val succeeded =
+                                runCatching {
+                                    resultFuture.get().resultCode == SessionResult.RESULT_SUCCESS
+                                }.getOrDefault(false)
+                            continuation.resume(succeeded)
+                        },
+                        mainExecutor,
+                    )
+                }
+                when {
+                    controller != null -> command(checkNotNull(controller))
+                    controllerFuture != null -> pendingCommands.addLast(command)
+                    continuation.isActive -> continuation.resume(false)
+                }
+            }
+        }
 
     private fun dispatch(command: (MediaController) -> Unit) {
         mainExecutor.execute {

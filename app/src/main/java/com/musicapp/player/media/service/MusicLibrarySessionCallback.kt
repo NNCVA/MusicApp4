@@ -45,6 +45,7 @@ internal class MusicLibrarySessionCallbackFactory @Inject constructor(
     fun create(
         queueCoordinator: PlaybackQueueCoordinator,
         onSnapshotRestored: (PlaybackSnapshot, Long) -> Unit,
+        onFullExit: () -> ListenableFuture<SessionResult>,
     ): MusicLibrarySessionCallback =
         MusicLibrarySessionCallback(
             connectionPolicy = ControllerConnectionPolicy(context.packageName, Process.myUid()),
@@ -54,6 +55,7 @@ internal class MusicLibrarySessionCallbackFactory @Inject constructor(
             playbackSnapshotRepository = playbackSnapshotRepository,
             applicationScope = applicationScope,
             onSnapshotRestored = onSnapshotRestored,
+            onFullExit = onFullExit,
         )
 }
 
@@ -66,6 +68,7 @@ internal class MusicLibrarySessionCallback(
     private val playbackSnapshotRepository: PlaybackSnapshotRepository,
     private val applicationScope: CoroutineScope,
     private val onSnapshotRestored: (PlaybackSnapshot, Long) -> Unit,
+    private val onFullExit: () -> ListenableFuture<SessionResult>,
 ) : MediaLibrarySession.Callback {
     private val applicationControllers = linkedSetOf<MediaSession.ControllerInfo>()
     private val libraryRoot =
@@ -125,6 +128,9 @@ internal class MusicLibrarySessionCallback(
         args: Bundle,
     ): ListenableFuture<SessionResult> {
         if (accessFor(controller) != ControllerAccess.APPLICATION) return permissionDeniedResult()
+        if (customCommand.customAction == PlaybackSessionProtocol.fullExitCommand.customAction) {
+            return onFullExit()
+        }
         val accepted = when (customCommand.customAction) {
             PlaybackSessionProtocol.replaceQueueCommand.customAction -> {
                 val tracks = PlaybackSessionProtocol.decodeTracks(args)

@@ -16,6 +16,8 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -45,85 +47,86 @@ fun AppShell(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val policy = WindowLayoutPolicy.forWidth(maxWidth)
         val dimensions = MusicTheme.dimensions
+        val availableWidth = maxWidth
 
-        if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
-            val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-            val scope = rememberCoroutineScope()
-            fun openDrawer() {
-                scope.launch { drawerState.open() }
-            }
-            fun closeDrawer() {
-                scope.launch { drawerState.close() }
-            }
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
+                val drawerWidth = availableWidth * policy.drawerFraction
+                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                val scope = rememberCoroutineScope()
+                fun openDrawer() {
+                    scope.launch { drawerState.open() }
+                }
+                fun closeDrawer() {
+                    scope.launch { drawerState.close() }
+                }
 
-            ModalNavigationDrawer(
-                drawerState = drawerState,
-                gesturesEnabled = drawerGesturesEnabled,
-                drawerContent = {
-                    ModalDrawerSheet(
-                        modifier = Modifier.width(maxWidth * policy.drawerFraction),
-                    ) {
-                        navigationContent(policy, ::closeDrawer)
-                    }
-                },
-                content = {
-                    ShellBody(
-                        contentInsets = contentInsets,
-                        contentBottomPadding = if (playerSheetVisible) dimensions.miniPlayerHeight else 0.dp,
-                        content = { insets -> content(insets, policy, ::openDrawer) },
-                        playerSheetContent = playerSheetContent,
-                    )
-                },
-            )
-        } else {
-            Row(modifier = Modifier.fillMaxSize()) {
-                if (policy == WindowLayoutPolicy.MEDIUM_RAIL) {
-                    Box(modifier = Modifier.fillMaxHeight()) {
-                        navigationContent(policy) {}
-                    }
-                } else {
+                ModalNavigationDrawer(
+                    drawerState = drawerState,
+                    gesturesEnabled = drawerGesturesEnabled,
+                    scrimColor = Color.Black.copy(alpha = COMPACT_DRAWER_SCRIM_ALPHA),
+                    drawerContent = {
+                        ModalDrawerSheet(
+                            modifier = Modifier.width(drawerWidth),
+                            drawerShape = RectangleShape,
+                            drawerContainerColor = Color.Transparent,
+                            drawerTonalElevation = 0.dp,
+                            windowInsets = WindowInsets(0, 0, 0, 0),
+                        ) {
+                            navigationContent(policy, ::closeDrawer)
+                        }
+                    },
+                    content = {
+                        ShellContent(
+                            contentInsets = contentInsets,
+                            contentBottomPadding =
+                                if (playerSheetVisible) dimensions.miniPlayerHeight else 0.dp,
+                            content = { insets -> content(insets, policy, ::openDrawer) },
+                        )
+                    },
+                )
+            } else {
+                Row(modifier = Modifier.fillMaxSize()) {
                     Box(
-                        modifier =
-                            Modifier.width(dimensions.permanentSidebarWidth).fillMaxHeight(),
+                        modifier = Modifier.width(policy.sidebarWidth).fillMaxHeight(),
                     ) {
                         navigationContent(policy) {}
                     }
+                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        ShellContent(
+                            contentInsets = contentInsets,
+                            contentBottomPadding =
+                                if (playerSheetVisible) dimensions.miniPlayerHeight else 0.dp,
+                            content = { insets -> content(insets, policy) {} },
+                        )
+                    }
                 }
-                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                    ShellBody(
-                        contentInsets = contentInsets,
-                        contentBottomPadding = if (playerSheetVisible) dimensions.miniPlayerHeight else 0.dp,
-                        content = { insets -> content(insets, policy) {} },
-                        playerSheetContent = playerSheetContent,
-                    )
-                }
+            }
+
+            // The application player sheet is above both navigation and content,
+            // so Mini remains full-window-width while the compact drawer is open.
+            Box(
+                modifier = Modifier.fillMaxSize().zIndex(1f),
+                propagateMinConstraints = true,
+            ) {
+                playerSheetContent(contentInsets)
             }
         }
     }
 }
 
 @Composable
-private fun ShellBody(
+private fun ShellContent(
     contentInsets: WindowInsets,
     contentBottomPadding: Dp,
     content: @Composable (WindowInsets) -> Unit,
-    playerSheetContent: @Composable (WindowInsets) -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().padding(bottom = contentBottomPadding)) {
-            content(contentInsets)
-        }
-
-        // The player sheet belongs to the app shell rather than a navigation
-        // destination.  No inset modifier is applied here; the slot owns it.
-        Box(
-            modifier = Modifier.fillMaxSize().zIndex(1f),
-            propagateMinConstraints = true,
-        ) {
-            playerSheetContent(contentInsets)
-        }
+    Box(modifier = Modifier.fillMaxSize().padding(bottom = contentBottomPadding)) {
+        content(contentInsets)
     }
 }
+
+private const val COMPACT_DRAWER_SCRIM_ALPHA = 0.18f
 
 /** A small named placeholder useful while the real player sheet is pending. */
 @Composable

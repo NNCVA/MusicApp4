@@ -15,7 +15,7 @@ enum class WindowLayoutPolicy(
     val sidebarWidth: Dp = Dp.Unspecified,
 ) {
     COMPACT_DRAWER(drawerFraction = 0.5f),
-    MEDIUM_RAIL,
+    MEDIUM_SIDEBAR(sidebarWidth = MusicDimensions.Medium.mediumSidebarWidth),
     EXPANDED_SIDEBAR(sidebarWidth = MusicDimensions.Expanded.permanentSidebarWidth),
 
     ;
@@ -25,7 +25,7 @@ enum class WindowLayoutPolicy(
         fun forWidth(width: Dp): WindowLayoutPolicy =
             when {
                 width < MusicDimensions.Compact.compactWidthBreakpoint -> COMPACT_DRAWER
-                width < MusicDimensions.Compact.expandedWidthBreakpoint -> MEDIUM_RAIL
+                width < MusicDimensions.Compact.expandedWidthBreakpoint -> MEDIUM_SIDEBAR
                 else -> EXPANDED_SIDEBAR
             }
 

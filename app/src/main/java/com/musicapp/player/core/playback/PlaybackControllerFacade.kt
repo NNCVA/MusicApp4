@@ -92,4 +92,11 @@ interface PlaybackControllerFacade {
     fun jumpToQueueItem(queueItemId: QueueItemId) = Unit
 
     fun removeFromQueue(queueItemId: QueueItemId) = Unit
+
+    /**
+     * Persists the final playback snapshot and stops the playback service.
+     *
+     * Returns false when no application controller is available to deliver the request.
+     */
+    suspend fun requestFullExit(): Boolean = false
 }

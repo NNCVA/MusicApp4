@@ -91,7 +91,7 @@ Wave 1 的设置流、Repository Fake 与领域模型。
 - 实现 `MusicDimensions`、`MusicShapes`、`MusicTypography` 的紧凑/中等/展开令牌。
 - 实现动态取色、四套预设、Light/Dark 和系统栏图标策略。
 - 实现 Navigation 3 八个一级可保存返回栈、详情路由与应用级 Player Sheet 占位。
-- 实现 `<600/600–839/≥840 dp` 的 Drawer/Rail/`256 dp` 常驻侧栏。
+- 实现 `<600 dp` 半宽模态侧栏、`600–839 dp` 的 `240 dp` 常驻侧栏和 `≥840 dp` 的 `256 dp` 常驻侧栏，三档统一使用三组卡片。
 - 实现共享 Scaffold、位于导航内容之上的 Player Sheet 占位区、Snackbar 队列、加载/空态/错误态组件。
 - 实现可复用的曲目列表项、网格卡片、多选上下文栏和详情承载组件，先使用 Fake 数据验证。
 - 接入应用语言切换、自动 LocaleConfig 与 Edge-to-Edge Insets。

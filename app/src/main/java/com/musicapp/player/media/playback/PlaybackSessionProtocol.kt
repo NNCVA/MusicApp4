@@ -20,6 +20,7 @@ internal object PlaybackSessionProtocol {
     val playNextCommand = SessionCommand("$PREFIX.PLAY_NEXT", Bundle.EMPTY)
     val jumpToQueueItemCommand = SessionCommand("$PREFIX.JUMP_TO_QUEUE_ITEM", Bundle.EMPTY)
     val removeFromQueueCommand = SessionCommand("$PREFIX.REMOVE_FROM_QUEUE", Bundle.EMPTY)
+    val fullExitCommand = SessionCommand("$PREFIX.FULL_EXIT", Bundle.EMPTY)
 
     val applicationCommands = listOf(
         replaceQueueCommand,
@@ -28,6 +29,7 @@ internal object PlaybackSessionProtocol {
         playNextCommand,
         jumpToQueueItemCommand,
         removeFromQueueCommand,
+        fullExitCommand,
     )
 
     fun tracksArgs(

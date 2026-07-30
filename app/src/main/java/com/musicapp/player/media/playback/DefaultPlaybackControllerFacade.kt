@@ -82,6 +82,8 @@ internal class DefaultPlaybackControllerFacade @Inject constructor(
 
     override fun removeFromQueue(queueItemId: QueueItemId) = connection.removeFromQueue(queueItemId)
 
+    override suspend fun requestFullExit(): Boolean = connection.requestFullExit()
+
     private fun loadTracks(
         trackIds: List<TrackId>,
         command: (List<com.musicapp.player.core.domain.model.Track>) -> Unit,

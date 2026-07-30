@@ -143,8 +143,8 @@ flowchart TD
 ### 07. Navigation 3、多返回栈与自适应壳层
 
 - **前置**：过程 06。
-- **实现**：建立八个可保存一级返回栈、详情 Route Key、Drawer/Rail/常驻侧栏、共享 Scaffold、导航内容之上的应用级 Player Sheet 占位与 Edge-to-Edge Insets；`≥840 dp` 侧栏固定 `256 dp`。
-- **聚焦验证**：`NavigationStateTest` 覆盖切栈、重复点击回根、非单曲根页返回单曲、退出路径、配置与进程状态序列化；`WindowLayoutPolicyTest` 覆盖 `<600`、`600–839`、`≥840 dp` 及 `256 dp`。
+- **实现**：建立八个可保存一级返回栈、详情 Route Key、紧凑模态侧栏与中等/展开常驻三组卡片、共享 Scaffold、导航内容之上的应用级 Player Sheet 占位与 Edge-to-Edge Insets；中等和展开侧栏分别固定 `240 dp` 与 `256 dp`。
+- **聚焦验证**：`NavigationStateTest` 覆盖切栈、重复点击回根、非单曲根页返回单曲、退出路径、配置与进程状态序列化；`WindowLayoutPolicyTest` 覆盖 `<600`、`600–839`、`≥840 dp` 及 `240/256 dp`。
 - **完成条件**：业务页面只通过 Route Key 导航；Insets 在具体屏幕/列表消费，避免双重 padding。
 - **用户验收清单**：自行检查三档窗口、旋转、语言重建、1.5 字体、系统栏与键盘避让。
 - **回退边界**：壳层、Route Key 和共享导航状态为同一回退单元。

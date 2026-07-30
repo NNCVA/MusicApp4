@@ -36,7 +36,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
@@ -49,7 +48,6 @@ import com.musicapp.player.core.domain.model.PathRuleKind
 import com.musicapp.player.core.domain.model.PresetTheme
 import com.musicapp.player.core.domain.model.ScanMode
 import com.musicapp.player.core.domain.model.ThemeMode
-import com.musicapp.player.data.sync.LibrarySyncEvent
 import com.musicapp.player.data.sync.LibrarySyncState
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.theme.MusicTheme
@@ -84,7 +82,6 @@ fun SettingsScreenRoute(
         onCancelConfirmation = viewModel::cancelConfirmation,
         onConfirmAction = viewModel::confirmAction,
         onAcknowledgeMessage = viewModel::acknowledgeMessage,
-        onAcknowledgeSyncFeedback = viewModel::acknowledgeSyncFeedback,
     )
 }
 
@@ -109,7 +106,6 @@ private fun SettingsScreen(
     onCancelConfirmation: () -> Unit,
     onConfirmAction: () -> Unit,
     onAcknowledgeMessage: () -> Unit,
-    onAcknowledgeSyncFeedback: (Long) -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     val snackbarHostState = remember { SnackbarHostState() }
@@ -173,29 +169,6 @@ private fun SettingsScreen(
             confirmLabel = stringResource(confirmation.actionRes()),
             onConfirm = onConfirmAction,
             onDismiss = onCancelConfirmation,
-        )
-    }
-    state.pendingSyncFeedback?.let { feedback ->
-        val message =
-            when (val event = feedback.event) {
-                is LibrarySyncEvent.Completed ->
-                    pluralStringResource(
-                        R.plurals.settings_sync_result,
-                        event.result.upsertedTrackCount,
-                        event.result.upsertedTrackCount,
-                        event.result.removedTrackCount,
-                    )
-                is LibrarySyncEvent.Failed -> stringResource(R.string.settings_sync_failed)
-            }
-        AlertDialog(
-            onDismissRequest = { onAcknowledgeSyncFeedback(feedback.eventId) },
-            title = { Text(stringResource(R.string.settings_sync_result_title)) },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = { onAcknowledgeSyncFeedback(feedback.eventId) }) {
-                    Text(stringResource(R.string.settings_done))
-                }
-            },
         )
     }
 }

@@ -56,10 +56,8 @@ import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.media.MediaAudioCandidate
-import com.musicapp.player.data.sync.LibrarySyncEvent
 import com.musicapp.player.data.sync.MediaLibraryScanSkipReason
-import com.musicapp.player.data.sync.MediaLibraryScanSummary
-import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
+import com.musicapp.player.data.sync.scanResultTitle as sharedScanResultTitle
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
@@ -103,7 +101,6 @@ fun TracksScreenRoute(
         onAddToQueue = viewModel::addSelectedToQueue,
         onPlayNext = viewModel::playSelectedNext,
         onHideSelected = viewModel::hideSelected,
-        onAcknowledgeFeedback = viewModel::acknowledgeFeedback,
         onAcknowledgeBatchResult = viewModel::acknowledgeBatchResult,
     )
 }
@@ -125,7 +122,6 @@ fun TracksScreen(
     onAddToQueue: () -> Unit,
     onPlayNext: () -> Unit,
     onHideSelected: () -> Unit,
-    onAcknowledgeFeedback: (Long) -> Unit,
     onAcknowledgeBatchResult: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -187,9 +183,6 @@ fun TracksScreen(
                 }
             }
         }
-    }
-    state.pendingFeedback?.let { feedback ->
-        ScanFeedbackDialog(feedback, onAcknowledgeFeedback)
     }
     state.batchResult?.let { result ->
         BatchResultDialog(result, onAcknowledgeBatchResult)
@@ -534,90 +527,6 @@ private fun TrackRow(
 private fun String.localizedArtistName(): String =
     if (this == UNKNOWN_ARTIST_SENTINEL) stringResource(R.string.unknown_artist) else this
 
-@Composable
-private fun ScanFeedbackDialog(
-    feedback: PendingLibrarySyncFeedback,
-    onAcknowledge: (Long) -> Unit,
-) {
-    when (val event = feedback.event) {
-        is LibrarySyncEvent.Completed -> {
-            val summary = event.result.scanSummary ?: MediaLibraryScanSummary.EMPTY
-            ScanResultDialog(summary = summary, onDismiss = { onAcknowledge(feedback.eventId) })
-        }
-        is LibrarySyncEvent.Failed ->
-            AlertDialog(
-                onDismissRequest = { onAcknowledge(feedback.eventId) },
-                title = { Text(stringResource(R.string.scan_result_failed_title)) },
-                text = { Text(stringResource(R.string.scan_error_description)) },
-                confirmButton = {
-                    TextButton(onClick = { onAcknowledge(feedback.eventId) }) {
-                        Text(stringResource(R.string.dismiss))
-                    }
-                },
-            )
-    }
-}
-
-@Composable
-private fun ScanResultDialog(
-    summary: MediaLibraryScanSummary,
-    onDismiss: () -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    val successfulTitles =
-        remember(summary) {
-            summary.acceptedCandidates.map(MediaAudioCandidate::scanResultTitle)
-                .sortedWith(String.CASE_INSENSITIVE_ORDER)
-        }
-    val skippedGroups = remember(summary) { summary.skippedItems.groupBy { it.reason } }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.scan_result_title)) },
-        text = {
-            Column {
-                Text(
-                    text =
-                        stringResource(
-                            R.string.scan_result_stats,
-                            summary.queriedCandidateCount,
-                            summary.acceptedCandidates.size,
-                            summary.skippedItems.size,
-                        ),
-                    style = MusicTheme.typography.bodyMedium,
-                )
-                Spacer(modifier = Modifier.height(dimensions.spaceSmall))
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = dimensions.dialogListMaxHeight),
-                    verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-                ) {
-                    if (successfulTitles.isNotEmpty()) {
-                        item { Text(stringResource(R.string.scan_result_added), style = MusicTheme.typography.titleSmall) }
-                        items(successfulTitles) { title -> Text(title, style = MusicTheme.typography.bodyMedium) }
-                    }
-                    skippedGroups.entries.sortedBy { it.key.ordinal }.forEach { (reason, skipped) ->
-                        item {
-                            Text(
-                                text = stringResource(R.string.scan_result_skip_group, stringResource(reason.labelResId()), skipped.size),
-                                style = MusicTheme.typography.titleSmall,
-                            )
-                        }
-                        items(skipped) { item ->
-                            Text(
-                                text = item.displayName?.trim()?.takeIf(String::isNotEmpty)
-                                    ?: stringResource(R.string.scan_unknown_item),
-                                style = MusicTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dismiss)) }
-        },
-    )
-}
-
 private fun formatDuration(durationMs: Long): String {
     val totalSeconds = durationMs / 1_000
     val minutes = totalSeconds / 60
@@ -626,12 +535,7 @@ private fun formatDuration(durationMs: Long): String {
 }
 
 internal fun MediaAudioCandidate.scanResultTitle(): String {
-    title?.trim()?.takeIf(String::isNotEmpty)?.let { return it }
-    val normalizedDisplayName = displayName.trim()
-    if (normalizedDisplayName.isNotEmpty()) {
-        return normalizedDisplayName.substringBeforeLast('.').ifBlank { normalizedDisplayName }
-    }
-    return mediaStoreId.toString()
+    return sharedScanResultTitle()
 }
 
 private fun TrackSortField.labelResId(): Int =

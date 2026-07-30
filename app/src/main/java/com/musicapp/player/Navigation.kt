@@ -3,29 +3,28 @@ package com.musicapp.player
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -53,7 +52,10 @@ import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
 import com.musicapp.player.navigation.topLevelNavKeys
 import com.musicapp.player.core.aero.AeroRuntimeSignals
+import com.musicapp.player.core.designsystem.snackbar.SnackbarQueue
 import com.musicapp.player.core.domain.model.AeroMode
+import com.musicapp.player.core.domain.model.ThemeMode
+import com.musicapp.player.data.sync.LibrarySyncState
 import com.musicapp.player.feature.about.AboutScreenRoute
 import com.musicapp.player.feature.about.AboutViewModel
 import com.musicapp.player.feature.aero.AeroBackground
@@ -88,13 +90,27 @@ import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.ui.shell.AppShell
+import com.musicapp.player.ui.shell.LibrarySyncFeedbackDialog
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
+import com.musicapp.player.ui.sidebar.SidebarExitChoice
+import com.musicapp.player.ui.sidebar.SidebarExitDialog
+import com.musicapp.player.ui.sidebar.SidebarNavigation
+import com.musicapp.player.ui.sidebar.dispatchSidebarExitChoice
+import com.musicapp.player.ui.sidebar.nextSidebarMode
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainNavigation(
     aeroMode: AeroMode,
     aeroSignals: AeroRuntimeSignals,
+    themeMode: ThemeMode,
+    librarySyncState: LibrarySyncState,
     onExit: () -> Unit,
+    onFullExit: () -> Unit,
+    onReturnToDesktop: () -> Unit,
+    onThemeModeChange: suspend (ThemeMode) -> Boolean,
+    onScanMusic: () -> Unit,
+    onAcknowledgeSyncFeedback: (Long) -> Unit,
     permissionState: MediaPermissionState,
     onConfirmPermission: () -> Unit,
     onRetryPermission: () -> Unit,
@@ -114,6 +130,28 @@ fun MainNavigation(
     val lyricsViewModel = viewModel<LyricsViewModel>()
     val playerState by playerViewModel.uiState.collectAsStateWithLifecycle()
     var playerExpanded by rememberSaveable { mutableStateOf(false) }
+    var showExitDialog by rememberSaveable { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarQueue = remember { SnackbarQueue() }
+    val snackbarRequest by snackbarQueue.current.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
+    val nextThemeMode = themeMode.nextSidebarMode()
+    val nextThemeMessageRes =
+        when (nextThemeMode) {
+            ThemeMode.SYSTEM -> R.string.sidebar_theme_changed_system
+            ThemeMode.LIGHT -> R.string.sidebar_theme_changed_light
+            ThemeMode.DARK -> R.string.sidebar_theme_changed_dark
+        }
+    val snackbarMessage =
+        snackbarRequest?.let { request ->
+            stringResource(request.messageResId, *request.messageFormatArgs.toTypedArray())
+        }
+    LaunchedEffect(snackbarRequest?.id, snackbarMessage) {
+        val request = snackbarRequest ?: return@LaunchedEffect
+        val message = snackbarMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        snackbarQueue.dismiss(request.id)
+    }
 
     fun commitNavigation(action: Navigator.() -> Unit) {
         navigator.action()
@@ -128,26 +166,56 @@ fun MainNavigation(
         }
     }
 
-    AeroBackground(
-        preferredMode =
-            if (playerExpanded || navigationState.currentBackStack.size > 1) AeroMode.SOLID else aeroMode,
-        signals = aeroSignals,
-        modifier = Modifier.fillMaxSize(),
-    ) {
-      AppShell(
-        drawerGesturesEnabled = !playerExpanded,
-        playerSheetVisible = playerState.currentTrack != null,
-        navigationContent = { policy, closeDrawer ->
-            NavigationMenu(
-                policy = policy,
-                selectedRoute = navigationState.currentTopLevelRoute,
-                onSelect = { route ->
-                    commitNavigation { navigate(route) }
-                    closeDrawer()
+    Box(modifier = Modifier.fillMaxSize()) {
+        AeroBackground(
+            preferredMode =
+                if (playerExpanded || navigationState.currentBackStack.size > 1) {
+                    AeroMode.SOLID
+                } else {
+                    aeroMode
                 },
-            )
-        },
-        content = { contentInsets, policy, openDrawer ->
+            signals = aeroSignals,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+          AppShell(
+            drawerGesturesEnabled = !playerExpanded,
+            playerSheetVisible = playerState.currentTrack != null,
+            navigationContent = { policy, closeDrawer ->
+                SidebarNavigation(
+                    policy = policy,
+                    selectedRoute = navigationState.currentTopLevelRoute,
+                    themeMode = themeMode,
+                    isLibrarySyncing = librarySyncState is LibrarySyncState.Syncing,
+                    canScanMusic = permissionState is MediaPermissionState.Granted,
+                    onSelect = { route ->
+                        commitNavigation { navigate(route) }
+                        closeDrawer()
+                    },
+                    onRequestExit = {
+                        showExitDialog = true
+                        closeDrawer()
+                    },
+                    onCycleTheme = {
+                        coroutineScope.launch {
+                            snackbarQueue.enqueue(
+                                if (onThemeModeChange(nextThemeMode)) {
+                                    nextThemeMessageRes
+                                } else {
+                                    R.string.settings_action_failed
+                                },
+                            )
+                        }
+                    },
+                    onEqualizer = {
+                        snackbarQueue.enqueue(R.string.sidebar_equalizer_placeholder)
+                    },
+                    onScanMusic = {
+                        onScanMusic()
+                        closeDrawer()
+                    },
+                )
+            },
+            content = { contentInsets, policy, openDrawer ->
             val saveableStackKey = topLevelNavKeys.indexOf(navigationState.currentTopLevelRoute)
             saveableStateHolder.SaveableStateProvider(saveableStackKey) {
                 NavDisplay(
@@ -289,18 +357,54 @@ fun MainNavigation(
                 enabled = navigationState.currentBackStack.size == 1,
                 onBack = ::handleBack,
             )
-        },
-        playerSheetContent = { contentInsets ->
-            PlayerSheetRoute(
-                viewModel = playerViewModel,
-                lyricsViewModel = lyricsViewModel,
-                aeroMode = aeroMode,
-                aeroSignals = aeroSignals,
-                contentInsets = contentInsets,
-                onExpansionChanged = { playerExpanded = it },
+            },
+            playerSheetContent = { contentInsets ->
+                PlayerSheetRoute(
+                    viewModel = playerViewModel,
+                    lyricsViewModel = lyricsViewModel,
+                    aeroMode = aeroMode,
+                    aeroSignals = aeroSignals,
+                    contentInsets = contentInsets,
+                    onExpansionChanged = { playerExpanded = it },
+                )
+            },
+          )
+        }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier =
+                Modifier.align(Alignment.BottomCenter)
+                    .padding(
+                        bottom =
+                            if (playerState.currentTrack != null) {
+                                MusicTheme.dimensions.miniPlayerHeight
+                            } else {
+                                MusicTheme.dimensions.spaceMedium
+                            },
+                    ),
+        )
+    }
+    librarySyncState.pendingFeedback?.let { feedback ->
+        LibrarySyncFeedbackDialog(
+            feedback = feedback,
+            onAcknowledge = onAcknowledgeSyncFeedback,
+        )
+    }
+    if (showExitDialog) {
+        SidebarExitDialog { choice ->
+            dispatchSidebarExitChoice(
+                choice = choice,
+                onFullExit = {
+                    showExitDialog = false
+                    onFullExit()
+                },
+                onReturnToDesktop = {
+                    showExitDialog = false
+                    onReturnToDesktop()
+                },
+                onCancel = { showExitDialog = false },
             )
-        },
-      )
+        }
     }
 }
 
@@ -437,51 +541,6 @@ private fun Modifier.permissionContent(contentInsets: WindowInsets): Modifier {
             horizontal = dimensions.contentHorizontalPadding,
             vertical = dimensions.spaceMedium,
         )
-}
-
-@Composable
-private fun NavigationMenu(
-    policy: WindowLayoutPolicy,
-    selectedRoute: TopLevelNavKey,
-    onSelect: (TopLevelNavKey) -> Unit,
-) {
-    if (policy == WindowLayoutPolicy.MEDIUM_RAIL) {
-        NavigationRail(modifier = Modifier.fillMaxHeight()) {
-            topLevelNavKeys.forEach { route ->
-                val label = stringResource(route.titleResId())
-                NavigationRailItem(
-                    selected = route == selectedRoute,
-                    onClick = { onSelect(route) },
-                    icon = { Text(text = label.take(1), style = MusicTheme.typography.labelLarge) },
-                    label = { Text(text = label, style = MusicTheme.typography.labelSmall) },
-                )
-            }
-        }
-    } else {
-        val dimensions = MusicTheme.dimensions
-        val navigationModifier =
-            if (policy == WindowLayoutPolicy.EXPANDED_SIDEBAR) {
-                Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
-            } else {
-                Modifier.fillMaxSize()
-            }
-        Column(
-            modifier =
-                navigationModifier.padding(
-                    horizontal = dimensions.spaceSmall,
-                    vertical = dimensions.spaceMedium,
-                ),
-            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-        ) {
-            topLevelNavKeys.forEach { route ->
-                NavigationDrawerItem(
-                    label = { Text(text = stringResource(route.titleResId())) },
-                    selected = route == selectedRoute,
-                    onClick = { onSelect(route) },
-                )
-            }
-        }
-    }
 }
 
 @Composable

@@ -15,7 +15,6 @@ class StringResourceParityTest {
       "category_album_count",
       "playlist_playback_result",
       "history_play_count",
-      "settings_sync_result",
     )
 
   @Test
