@@ -18,7 +18,7 @@ interface MediaLibraryRepository {
     fun observeTracks(includeHidden: Boolean = false): Flow<List<Track>>
     fun observeAlbumTracks(albumId: AlbumId): Flow<List<Track>>
     fun observeArtistTracks(artistId: ArtistId): Flow<List<Track>>
-    fun observeFolderTracks(volumeName: String, directoryPrefix: String): Flow<List<Track>>
+    fun observeFolderTracks(volumeName: String, directoryPath: String): Flow<List<Track>>
     suspend fun getTrack(trackId: TrackId): Track?
     suspend fun mergeTracks(tracks: List<Track>)
     suspend fun replaceTracksForVolume(volumeName: String, tracks: List<Track>)
@@ -29,6 +29,18 @@ interface MediaLibraryRepository {
     suspend fun replacePathRules(rules: List<PathRule>)
     suspend fun removePathRule(ruleId: PathRuleId)
     suspend fun clearPathRules()
+}
+
+internal fun normalizeFolderDirectoryPath(path: String): String {
+    val segments = ArrayDeque<String>()
+    path.replace('\\', '/').split('/').forEach { segment ->
+        when (segment) {
+            "", "." -> Unit
+            ".." -> if (segments.isNotEmpty()) segments.removeLast()
+            else -> segments.addLast(segment)
+        }
+    }
+    return segments.joinToString("/")
 }
 
 interface PlaylistRepository {

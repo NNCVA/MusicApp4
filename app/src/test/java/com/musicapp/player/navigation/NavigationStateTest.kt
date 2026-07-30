@@ -84,7 +84,7 @@ class NavigationStateTest {
     fun detailNavigationUsesItsOwningStack() {
         val state = NavigationState.initial()
         val navigator = Navigator(state)
-        val folderDetail = FolderDetailRoute(relativePath = "Music/Live/")
+        val folderDetail = FolderDetailRoute(volumeName = "sdcard", relativePath = "Music/Live")
 
         navigator.navigate(AboutRoute)
         navigator.navigate(folderDetail)
@@ -100,6 +100,8 @@ class NavigationStateTest {
         val navigator = Navigator(state)
         navigator.navigate(TrackInfoRoute(volumeName = "external", mediaStoreId = 2))
         navigator.navigate(AlbumDetailRoute(volumeName = "external", mediaStoreId = 3))
+        navigator.navigate(ArtistDetailRoute(mediaStoreId = 5))
+        navigator.navigate(FolderDetailRoute(volumeName = "sdcard", relativePath = "Music"))
         navigator.navigate(PlaylistDetailRoute(playlistId = 4))
         navigator.navigate(AlbumsRoute)
 

@@ -53,11 +53,27 @@ import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
 import com.musicapp.player.navigation.topLevelNavKeys
 import com.musicapp.player.feature.permission.MediaPermissionState
+import com.musicapp.player.feature.albums.AlbumDetailScreenRoute
+import com.musicapp.player.feature.albums.AlbumDetailViewModel
+import com.musicapp.player.feature.albums.AlbumsScreenRoute
+import com.musicapp.player.feature.albums.AlbumsViewModel
+import com.musicapp.player.feature.artists.ArtistDetailScreenRoute
+import com.musicapp.player.feature.artists.ArtistDetailViewModel
+import com.musicapp.player.feature.artists.ArtistsScreenRoute
+import com.musicapp.player.feature.artists.ArtistsViewModel
+import com.musicapp.player.feature.folders.FolderDetailScreenRoute
+import com.musicapp.player.feature.folders.FolderDetailViewModel
+import com.musicapp.player.feature.folders.FolderId
+import com.musicapp.player.feature.folders.FoldersScreenRoute
+import com.musicapp.player.feature.folders.FoldersViewModel
+import com.musicapp.player.feature.lyrics.LyricsViewModel
 import com.musicapp.player.feature.player.PlayerSheetRoute
 import com.musicapp.player.feature.player.PlayerViewModel
 import com.musicapp.player.feature.tracks.TracksScreenRoute
 import com.musicapp.player.feature.tracks.TracksViewModel
 import com.musicapp.player.theme.MusicTheme
+import com.musicapp.player.core.domain.model.AlbumId
+import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.ui.shell.AppShell
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 
@@ -80,6 +96,7 @@ fun MainNavigation(
     val navigator = remember(navigationState) { Navigator(navigationState) }
     val saveableStateHolder = rememberSaveableStateHolder()
     val playerViewModel = viewModel<PlayerViewModel>()
+    val lyricsViewModel = viewModel<LyricsViewModel>()
     val playerState by playerViewModel.uiState.collectAsStateWithLifecycle()
     var playerExpanded by rememberSaveable { mutableStateOf(false) }
 
@@ -128,18 +145,84 @@ fun MainNavigation(
                                     onOpenPermissionSettings = onOpenPermissionSettings,
                                 )
                             }
-                            entry<AlbumsRoute> { DestinationPlaceholder(AlbumsRoute, contentInsets, policy, openDrawer) }
-                            entry<ArtistsRoute> { DestinationPlaceholder(ArtistsRoute, contentInsets, policy, openDrawer) }
+                            entry<AlbumsRoute> {
+                                AlbumsScreenRoute(
+                                    viewModel = viewModel<AlbumsViewModel>(),
+                                    contentInsets = contentInsets,
+                                    policy = policy,
+                                    openDrawer = openDrawer,
+                                    onAlbumClick = { albumId ->
+                                        commitNavigation {
+                                            navigate(AlbumDetailRoute(albumId.volumeName, albumId.mediaStoreId))
+                                        }
+                                    },
+                                )
+                            }
+                            entry<ArtistsRoute> {
+                                ArtistsScreenRoute(
+                                    viewModel = viewModel<ArtistsViewModel>(),
+                                    contentInsets = contentInsets,
+                                    policy = policy,
+                                    openDrawer = openDrawer,
+                                    onArtistClick = { artistId ->
+                                        commitNavigation { navigate(ArtistDetailRoute(artistId.mediaStoreId)) }
+                                    },
+                                )
+                            }
                             entry<PlaylistsRoute> { DestinationPlaceholder(PlaylistsRoute, contentInsets, policy, openDrawer) }
                             entry<HistoryRoute> { DestinationPlaceholder(HistoryRoute, contentInsets, policy, openDrawer) }
-                            entry<FoldersRoute> { DestinationPlaceholder(FoldersRoute, contentInsets, policy, openDrawer) }
+                            entry<FoldersRoute> {
+                                FoldersScreenRoute(
+                                    viewModel = viewModel<FoldersViewModel>(),
+                                    contentInsets = contentInsets,
+                                    policy = policy,
+                                    openDrawer = openDrawer,
+                                    onFolderClick = { folderId ->
+                                        commitNavigation {
+                                            navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))
+                                        }
+                                    },
+                                )
+                            }
                             entry<SettingsRoute> { DestinationPlaceholder(SettingsRoute, contentInsets, policy, openDrawer) }
                             entry<AboutRoute> { DestinationPlaceholder(AboutRoute, contentInsets, policy, openDrawer) }
                             entry<TrackInfoRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
-                            entry<AlbumDetailRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
-                            entry<ArtistDetailRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
+                            entry<AlbumDetailRoute> { key ->
+                                AlbumDetailScreenRoute(
+                                    albumId = AlbumId(key.volumeName, key.mediaStoreId),
+                                    viewModel = viewModel<AlbumDetailViewModel>(
+                                        key = "album:${key.volumeName}:${key.mediaStoreId}",
+                                    ),
+                                    contentInsets = contentInsets,
+                                    onBack = ::handleBack,
+                                )
+                            }
+                            entry<ArtistDetailRoute> { key ->
+                                ArtistDetailScreenRoute(
+                                    artistId = ArtistId(key.mediaStoreId),
+                                    viewModel = viewModel<ArtistDetailViewModel>(
+                                        key = "artist:${key.mediaStoreId}",
+                                    ),
+                                    contentInsets = contentInsets,
+                                    onBack = ::handleBack,
+                                )
+                            }
                             entry<PlaylistDetailRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
-                            entry<FolderDetailRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
+                            entry<FolderDetailRoute> { key ->
+                                FolderDetailScreenRoute(
+                                    folderId = FolderId(key.volumeName, key.relativePath),
+                                    viewModel = viewModel<FolderDetailViewModel>(
+                                        key = "folder:${key.volumeName}:${key.relativePath}",
+                                    ),
+                                    contentInsets = contentInsets,
+                                    onBack = ::handleBack,
+                                    onFolderClick = { folderId ->
+                                        commitNavigation {
+                                            navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))
+                                        }
+                                    },
+                                )
+                            }
                         },
                 )
             }
@@ -151,6 +234,7 @@ fun MainNavigation(
         playerSheetContent = { contentInsets ->
             PlayerSheetRoute(
                 viewModel = playerViewModel,
+                lyricsViewModel = lyricsViewModel,
                 contentInsets = contentInsets,
                 onExpansionChanged = { playerExpanded = it },
             )

@@ -39,16 +39,24 @@ class FakeMediaLibraryRepository(
         }
 
     override fun observeAlbumTracks(albumId: AlbumId): Flow<List<Track>> =
-        tracks.map { values -> values.values.filter { it.albumId == albumId }.sortedWith(trackComparator) }
+        combine(tracks, hiddenIds) { values, hidden ->
+            values.values.filter { it.albumId == albumId && it.id !in hidden }.sortedWith(trackComparator)
+        }
 
     override fun observeArtistTracks(artistId: ArtistId): Flow<List<Track>> =
-        tracks.map { values -> values.values.filter { it.artistId == artistId }.sortedWith(trackComparator) }
+        combine(tracks, hiddenIds) { values, hidden ->
+            values.values.filter { it.artistId == artistId && it.id !in hidden }.sortedWith(trackComparator)
+        }
 
-    override fun observeFolderTracks(volumeName: String, directoryPrefix: String): Flow<List<Track>> {
+    override fun observeFolderTracks(volumeName: String, directoryPath: String): Flow<List<Track>> {
         require(volumeName.isNotBlank()) { "volumeName must not be blank" }
-        return tracks.map { values ->
+        val normalizedDirectory = normalizeFolderDirectoryPath(directoryPath)
+        return combine(tracks, hiddenIds) { values, hidden ->
             values.values.filter {
-                it.id.volumeName == volumeName && it.relativePath.startsWith(directoryPrefix)
+                val trackDirectory = normalizeFolderDirectoryPath(it.relativePath)
+                it.id.volumeName == volumeName && it.id !in hidden &&
+                    (normalizedDirectory.isEmpty() || trackDirectory == normalizedDirectory ||
+                        trackDirectory.startsWith("$normalizedDirectory/"))
             }.sortedWith(compareBy(Track::relativePath).then(trackComparator))
         }
     }

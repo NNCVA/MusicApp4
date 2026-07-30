@@ -51,9 +51,21 @@ class RoomMediaLibraryRepository @Inject constructor(
         trackDao.observeArtistTracks(artistId.mediaStoreId)
             .map { entities -> entities.map { it.toDomain() } }
 
-    override fun observeFolderTracks(volumeName: String, directoryPrefix: String): Flow<List<Track>> =
-        trackDao.observeFolderTracks(volumeName.requireNonBlank("volumeName"), directoryPrefix.escapeSqlLike())
-            .map { entities -> entities.map { it.toDomain() } }
+    override fun observeFolderTracks(volumeName: String, directoryPath: String): Flow<List<Track>> {
+        val checkedVolumeName = volumeName.requireNonBlank("volumeName")
+        val normalizedDirectory = normalizeFolderDirectoryPath(directoryPath)
+        val entities =
+            if (normalizedDirectory.isEmpty()) {
+                trackDao.observeRootFolderTracks(checkedVolumeName)
+            } else {
+                trackDao.observeFolderTracks(
+                    volumeName = checkedVolumeName,
+                    directoryPath = normalizedDirectory,
+                    escapedDescendantPrefix = "$normalizedDirectory/".escapeSqlLike(),
+                )
+            }
+        return entities.map { rows -> rows.map { it.toDomain() } }
+    }
 
     override suspend fun getTrack(trackId: TrackId): Track? =
         trackDao.get(trackId.volumeName, trackId.mediaStoreId)?.toDomain()

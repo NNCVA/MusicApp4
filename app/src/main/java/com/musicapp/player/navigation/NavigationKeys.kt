@@ -84,9 +84,19 @@ data class PlaylistDetailRoute(val playlistId: Long) : MusicNavKey {
 
 @Serializable
 @SerialName("folder_detail")
-data class FolderDetailRoute(val relativePath: String) : MusicNavKey {
+data class FolderDetailRoute(
+    val volumeName: String,
+    val relativePath: String,
+) : MusicNavKey {
     init {
-        require(relativePath.isNotBlank()) { "relativePath must not be blank" }
+        require(volumeName.isNotBlank()) { "volumeName must not be blank" }
+        require(
+            relativePath.isEmpty() ||
+                (!relativePath.startsWith('/') && !relativePath.endsWith('/') &&
+                    "//" !in relativePath && '\\' !in relativePath),
+        ) {
+            "relativePath must be a normalized directory path without a trailing slash"
+        }
     }
 }
 

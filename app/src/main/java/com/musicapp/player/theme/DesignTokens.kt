@@ -30,6 +30,7 @@ data class MusicDimensions(
     val statusIndicatorSize: Dp = 24.dp,
     val trackInfoDialogMaxWidth: Dp = 640.dp,
     val adaptiveGridMinimumCellWidth: Dp = 160.dp,
+    val categoryCardMinHeight: Dp = 112.dp,
     val minimumTouchTarget: Dp = 48.dp,
     val radarSize: Dp = 176.dp,
     val radarStrokeWidth: Dp = 2.dp,

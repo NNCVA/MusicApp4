@@ -58,6 +58,9 @@
     <string name="sort_album">Album</string>
     <string name="sort_date_added">Date added</string>
     <string name="sort_duration">Duration</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_track_count">Track count</string>
+    <string name="sort_album_count">Album count</string>
     <string name="sort_direction_ascending"> ↑</string>
     <string name="sort_direction_descending"> ↓</string>
     <string name="tracks_menu">Menu</string>
@@ -107,4 +110,27 @@
     <string name="track_info_path">Path</string>
     <string name="track_info_copy_path">Copy path</string>
     <string name="track_info_unknown">Unknown</string>
+    <string name="category_back">Back</string>
+    <string name="category_menu">Menu</string>
+    <string name="category_play_all">Play all</string>
+    <string name="category_track_count">%1$d tracks</string>
+    <string name="category_album_count">%1$d albums</string>
+    <string name="albums_empty_title">No albums</string>
+    <string name="albums_empty_description">Albums from your music library will appear here.</string>
+    <string name="album_unknown_title">Unknown album</string>
+    <string name="album_empty_title">This album is empty</string>
+    <string name="album_empty_description">No available library tracks belong to this album.</string>
+    <string name="artists_empty_title">No artists</string>
+    <string name="artists_empty_description">Artists from your music library will appear here.</string>
+    <string name="artist_unknown_name">Unknown artist</string>
+    <string name="artist_empty_title">This artist has no tracks</string>
+    <string name="artist_empty_description">No available library tracks belong to this artist.</string>
+    <string name="folders_empty_title">No folders</string>
+    <string name="folders_empty_description">Folders containing library tracks will appear here.</string>
+    <string name="folder_unknown_name">Unknown folder</string>
+    <string name="folder_empty_title">This folder is empty</string>
+    <string name="folder_empty_description">This folder has no direct tracks or subfolders.</string>
+    <string name="folder_subfolders_section">Folders</string>
+    <string name="folder_tracks_section">Tracks in this folder</string>
+    <string name="folder_volume_root">Storage volume</string>
 </resources>

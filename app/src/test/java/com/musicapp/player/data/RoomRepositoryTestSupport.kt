@@ -20,7 +20,7 @@ internal fun track(
     title: String = "Track $mediaStoreId",
     artistId: Long = 7,
     albumId: Long = 8,
-    relativePath: String = "Music/Album/",
+    relativePath: String = "Music/Album",
 ) = Track(
     id = TrackId(volumeName, mediaStoreId),
     title = title,

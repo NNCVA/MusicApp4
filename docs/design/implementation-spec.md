@@ -24,7 +24,8 @@
 ## 3. 当前基线
 
 - 仓库只有 `:app` 模块，`minSdk 26`、`targetSdk 36`，Kotlin/JVM 使用 17。
-- 已接入 Compose、Material 3、Navigation 3、四套 Light/Dark 主题、动态取色、统一设计令牌与共享加载/空态/错误态；八个一级栈、详情 Route Key、三档自适应壳层及应用级 Player Sheet 已建立。Player Sheet 具备 `80 dp` Mini、Full 三子页、队列跳转/移除、进度与模式控制及自适应歌曲信息查看器，并直接消费 MediaController 的稳定播放状态与分类失败代码显示双语错误文案；其余业务页面仍为占位内容。
+- 已接入 Compose、Material 3、Navigation 3、四套 Light/Dark 主题、动态取色、统一设计令牌与共享加载/空态/错误态；八个一级栈、详情 Route Key、三档自适应壳层及应用级 Player Sheet 已建立。Player Sheet 具备 `80 dp` Mini、Full 三子页、队列跳转/移除、进度与模式控制及自适应歌曲信息查看器，并直接消费 MediaController 的稳定播放状态与分类失败代码显示双语错误文案。
+- 专辑、艺术家与跨卷文件夹分类/详情已实现派生查询、独立排序、空态和播放全部；播放列表、历史、设置与关于等后续业务页面仍待实现。
 - 已建立 Hilt Application/Activity/Service 入口、应用级协程作用域、可替换时钟与随机源、平台无关领域模型与纯业务策略、Room v2（七张业务表、同步代次与每卷状态）、Repository/Fake、Preferences DataStore 设置 Repository、MediaStore 多卷查询/准入适配、原子媒体库同步、冷启动/前台自动同步协调、单曲 ViewModel 及 Snackbar 队列。高级元数据与内嵌封面已实现按需读取、修改时间换键、有界内存缓存、同键请求合并及全局二并发限制；MediaLibraryService 已以单一会话状态驱动三种播放模式、原始队列、稳定随机序列、跨轮重生成与队列编辑；手动/自然切歌使用可设置的单播放器淡出淡入，坏文件单轮遍历后停止，Media3 处理音频焦点与私密输出断开，实际播放达 `min(30 秒, 50% 时长)` 后更新 Room 历史，超过 300 ms 的缓冲向 UI 显示。播放快照已在队列/切歌/Seek/暂停/销毁及播放中每 5 秒写入 Room，Media3 Playback Resumption 仅在系统或用户触发时恢复队列与位置；通知仅显示三个主操作，划除后保留快照、清空运行时队列并撤销恢复资格。应用内 MediaController 通过严格命名命令读写，外部可信控制器仅保留基础媒体命令。
 - Manifest 已声明分版本音频读取权限，未声明 `POST_NOTIFICATIONS`；Hilt Application、启动 Activity、设置白名单备份规则与运行时权限 Gateway 已接入。
 
@@ -133,7 +134,7 @@ DataStore 只保存用户设置：
 - 卷卸载、权限丢失或查询整体失败时保留曲目及关联并标记不可用；重新发现相同身份后恢复。
 - 已挂载存储卷完成一次成功的完整同步后，仍未发现的曲目判定为缺失曲目，并从媒体库及播放列表关系、历史、隐藏状态和播放快照引用中直接移除。
 - 专辑按“存储卷 + MediaStore Album ID”分组，艺术家按 MediaStore Artist ID 分组且不拆分合作标签。
-- 文件夹页展示按存储卷划分的真实目录树，“播放全部”递归包含后代曲目。
+- 文件夹页展示按存储卷划分的真实目录树；`relative_path` 规范为无首尾斜杠的目录值，根目录为空字符串，递归查询只匹配直接目录及 `目录/后代`；“播放全部”按当前稳定排序递归包含后代曲目。
 
 ### 7.3 同步状态机
 

@@ -49,22 +49,63 @@ interface TrackDao {
         """
         SELECT * FROM tracks
         WHERE album_volume_name = :volumeName AND album_media_store_id = :albumMediaStoreId
+          AND NOT EXISTS (
+              SELECT 1 FROM hidden_tracks
+              WHERE track_volume_name = tracks.volume_name
+                AND track_media_store_id = tracks.media_store_id
+          )
         ORDER BY title COLLATE NOCASE, media_store_id
         """,
     )
     fun observeAlbumTracks(volumeName: String, albumMediaStoreId: Long): Flow<List<TrackEntity>>
 
     @Query(
-        "SELECT * FROM tracks WHERE artist_media_store_id = :artistMediaStoreId " +
-            "ORDER BY album_title COLLATE NOCASE, title COLLATE NOCASE, volume_name, media_store_id",
+        """
+        SELECT * FROM tracks
+        WHERE artist_media_store_id = :artistMediaStoreId
+          AND NOT EXISTS (
+              SELECT 1 FROM hidden_tracks
+              WHERE track_volume_name = tracks.volume_name
+                AND track_media_store_id = tracks.media_store_id
+          )
+        ORDER BY album_title COLLATE NOCASE, title COLLATE NOCASE, volume_name, media_store_id
+        """,
     )
     fun observeArtistTracks(artistMediaStoreId: Long): Flow<List<TrackEntity>>
 
     @Query(
-        "SELECT * FROM tracks WHERE volume_name = :volumeName AND relative_path LIKE :escapedPrefix || '%' ESCAPE '\\' " +
-            "ORDER BY relative_path COLLATE NOCASE, title COLLATE NOCASE, media_store_id",
+        """
+        SELECT * FROM tracks
+        WHERE volume_name = :volumeName
+          AND (relative_path = :directoryPath
+            OR relative_path LIKE :escapedDescendantPrefix || '%' ESCAPE '\')
+          AND NOT EXISTS (
+              SELECT 1 FROM hidden_tracks
+              WHERE track_volume_name = tracks.volume_name
+                AND track_media_store_id = tracks.media_store_id
+          )
+        ORDER BY relative_path COLLATE NOCASE, title COLLATE NOCASE, media_store_id
+        """,
     )
-    fun observeFolderTracks(volumeName: String, escapedPrefix: String): Flow<List<TrackEntity>>
+    fun observeFolderTracks(
+        volumeName: String,
+        directoryPath: String,
+        escapedDescendantPrefix: String,
+    ): Flow<List<TrackEntity>>
+
+    @Query(
+        """
+        SELECT * FROM tracks
+        WHERE volume_name = :volumeName
+          AND NOT EXISTS (
+              SELECT 1 FROM hidden_tracks
+              WHERE track_volume_name = tracks.volume_name
+                AND track_media_store_id = tracks.media_store_id
+          )
+        ORDER BY relative_path COLLATE NOCASE, title COLLATE NOCASE, media_store_id
+        """,
+    )
+    fun observeRootFolderTracks(volumeName: String): Flow<List<TrackEntity>>
 
     @Upsert
     suspend fun upsert(entities: List<TrackEntity>)

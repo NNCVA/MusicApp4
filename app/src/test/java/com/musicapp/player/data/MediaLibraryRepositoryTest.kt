@@ -38,13 +38,13 @@ class MediaLibraryRepositoryTest {
     fun compositeTrackIdentityAndDerivedQueriesArePreserved() = runTest {
         val primary = track(mediaStoreId = 42, title = "Primary")
         val removable = track(mediaStoreId = 43, title = "Remove")
-        val card = track(volumeName = "card", mediaStoreId = 42, title = "Card", relativePath = "Podcasts/")
+        val card = track(volumeName = "card", mediaStoreId = 42, title = "Card", relativePath = "Podcasts")
         repository.mergeTracks(listOf(primary, removable, card))
 
         assertEquals(3, repository.observeTracks(includeHidden = true).first().size)
         assertEquals(listOf(primary), repository.observeAlbumTracks(AlbumId("external_primary", 8)).first().filter { it.id == primary.id })
         assertEquals(3, repository.observeArtistTracks(ArtistId(7)).first().size)
-        assertEquals(listOf(card), repository.observeFolderTracks("card", "Podcasts/").first())
+        assertEquals(listOf(card), repository.observeFolderTracks("card", "Podcasts").first())
 
         repository.replaceTracksForVolume("external_primary", listOf(primary.copy(title = "Updated")))
         assertEquals("Updated", repository.getTrack(primary.id)?.title)
@@ -85,6 +85,47 @@ class MediaLibraryRepositoryTest {
             assertIllegalArgument { subject.addPathRule(" ", "Music/", PathRuleKind.INCLUDE) }
             assertIllegalArgument { subject.setHidden(missing, hidden = true, changedAtMs = 1) }
             assertIllegalArgument { subject.setHidden(missing, hidden = false, changedAtMs = 1) }
+        }
+    }
+
+    @Test
+    fun roomAndFakeDerivedQueriesExcludeHiddenAndRespectExactRecursiveFolders() = runTest {
+        val root = track(mediaStoreId = 1, title = "Root", relativePath = "")
+        val direct = track(mediaStoreId = 2, title = "Direct", relativePath = "Music")
+        val descendant = track(mediaStoreId = 3, title = "Descendant", relativePath = "Music/Live")
+        val prefixedSibling = track(mediaStoreId = 4, title = "Sibling", relativePath = "Music Videos")
+        val card = track(volumeName = "card", mediaStoreId = 5, title = "Card", relativePath = "Music")
+        val tracks = listOf(root, direct, descendant, prefixedSibling, card)
+        repository.mergeTracks(tracks)
+        val repositories: List<MediaLibraryRepository> = listOf(
+            repository,
+            FakeMediaLibraryRepository(initialTracks = tracks),
+        )
+
+        repositories.forEach { subject ->
+            assertEquals(
+                setOf(direct.id, descendant.id),
+                subject.observeFolderTracks("external_primary", "Music").first().map { it.id }.toSet(),
+            )
+
+            subject.setHidden(descendant.id, hidden = true, changedAtMs = 10)
+
+            assertEquals(
+                setOf(direct.id),
+                subject.observeFolderTracks("external_primary", "Music/").first().map { it.id }.toSet(),
+            )
+            assertEquals(
+                setOf(root.id, direct.id, prefixedSibling.id),
+                subject.observeFolderTracks("external_primary", "").first().map { it.id }.toSet(),
+            )
+            assertEquals(
+                setOf(root.id, direct.id, prefixedSibling.id),
+                subject.observeAlbumTracks(AlbumId("external_primary", 8)).first().map { it.id }.toSet(),
+            )
+            assertEquals(
+                setOf(root.id, direct.id, prefixedSibling.id, card.id),
+                subject.observeArtistTracks(ArtistId(7)).first().map { it.id }.toSet(),
+            )
         }
     }
 

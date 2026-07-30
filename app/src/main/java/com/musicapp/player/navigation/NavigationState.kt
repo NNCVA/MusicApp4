@@ -26,7 +26,7 @@ data class NavigationSnapshot(
 }
 
 private object NavigationSnapshotCodec {
-    private const val VERSION = 1
+    private const val VERSION = 2
     private const val MAX_STACK_SIZE = 1_024
 
     fun encode(snapshot: NavigationSnapshot): String {
@@ -94,6 +94,7 @@ private object NavigationSnapshotCodec {
             }
             is FolderDetailRoute -> {
                 writeByte(12)
+                writeUTF(route.volumeName)
                 writeUTF(route.relativePath)
             }
         }
@@ -113,7 +114,7 @@ private object NavigationSnapshotCodec {
             9 -> AlbumDetailRoute(volumeName = readUTF(), mediaStoreId = readLong())
             10 -> ArtistDetailRoute(mediaStoreId = readLong())
             11 -> PlaylistDetailRoute(playlistId = readLong())
-            12 -> FolderDetailRoute(relativePath = readUTF())
+            12 -> FolderDetailRoute(volumeName = readUTF(), relativePath = readUTF())
             else -> throw IllegalArgumentException("unknown navigation route type: $routeType")
         }
 
