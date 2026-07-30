@@ -7,6 +7,10 @@
     <string name="playback_buffering">正在缓冲…</string>
     <string name="playback_error_unreadable">无法播放当前单曲，正在尝试下一首。</string>
     <string name="playback_error_no_playable_tracks">当前队列中没有可播放的单曲。</string>
+    <string name="playback_previous">上一首</string>
+    <string name="playback_play_pause">播放或暂停</string>
+    <string name="playback_next">下一首</string>
+    <string name="playback_notification_channel">播放</string>
     <string name="loading">正在加载…</string>
     <string name="empty_state_title">暂无内容</string>
     <string name="error_state_title">出现错误</string>

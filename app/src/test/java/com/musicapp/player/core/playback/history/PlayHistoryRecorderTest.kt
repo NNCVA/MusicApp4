@@ -1,6 +1,7 @@
 package com.musicapp.player.core.playback.history
 
 import com.musicapp.player.core.domain.model.QueueItemId
+import com.musicapp.player.core.domain.model.PlaybackInstance
 import com.musicapp.player.core.domain.model.TrackId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -127,6 +128,27 @@ class PlayHistoryRecorderTest {
         fixture.monotonicMs = 9
 
         assertThrows(IllegalArgumentException::class.java) { fixture.recorder.tick() }
+    }
+
+    @Test
+    fun `restored playback instance continues accumulated time without duplicate history`() {
+        val fixture = Fixture()
+        fixture.recorder.restoreInstance(
+            instance = PlaybackInstance(
+                queueItemId = item(1),
+                trackId = track(1),
+                startedAtMs = 100,
+                actualPlayedDurationMs = 4_000,
+                historyRecorded = false,
+            ),
+            durationMs = 10_000,
+            isPlaying = true,
+        )
+        fixture.advanceMonotonic(1_000)
+        fixture.recorder.tick()
+
+        assertEquals(5_000L, fixture.recorder.snapshot()?.actualPlayedDurationMs)
+        assertEquals(listOf(HistoryRecord(track(1), 1_000)), fixture.records)
     }
 
     private class Fixture {

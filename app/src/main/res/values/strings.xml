@@ -7,6 +7,10 @@
     <string name="playback_buffering">Buffering…</string>
     <string name="playback_error_unreadable">This track could not be played. Trying the next track.</string>
     <string name="playback_error_no_playable_tracks">No playable tracks remain in this queue.</string>
+    <string name="playback_previous">Previous</string>
+    <string name="playback_play_pause">Play or pause</string>
+    <string name="playback_next">Next</string>
+    <string name="playback_notification_channel">Playback</string>
     <string name="loading">Loading…</string>
     <string name="empty_state_title">Nothing here yet</string>
     <string name="error_state_title">Something went wrong</string>

@@ -49,6 +49,25 @@ class PlayHistoryRecorder(
         emitIfThresholdReached()
     }
 
+    fun restoreInstance(
+        instance: PlaybackInstance,
+        durationMs: Long,
+        isPlaying: Boolean,
+    ) {
+        require(durationMs > 0) { "durationMs must be positive" }
+        val nowMs = monotonicNowMs().also(::requireNonNegativeClock)
+        current = ActivePlaybackInstance(
+            queueItemId = instance.queueItemId,
+            trackId = instance.trackId,
+            durationMs = durationMs,
+            startedAtMs = instance.startedAtMs,
+            actualPlayedDurationMs = instance.actualPlayedDurationMs,
+            historyRecorded = instance.historyRecorded,
+            playingSinceMs = nowMs.takeIf { isPlaying },
+        )
+        emitIfThresholdReached()
+    }
+
     fun updateIsPlaying(isPlaying: Boolean) {
         val nowMs = monotonicNowMs()
         settleAt(nowMs)

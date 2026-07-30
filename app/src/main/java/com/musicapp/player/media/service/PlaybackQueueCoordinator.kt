@@ -8,6 +8,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import com.musicapp.player.core.common.random.RandomSource
 import com.musicapp.player.core.domain.model.PlaybackMode
+import com.musicapp.player.core.domain.model.PlaybackSnapshot
 import com.musicapp.player.core.domain.model.QueueItem
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.playback.PlaybackQueueReducer
@@ -25,6 +26,7 @@ internal class PlaybackQueueCoordinator(
     private var nextQueueItemId = 1L
     private var state = PlaybackQueueState()
     private var publishState: (android.os.Bundle) -> Unit = {}
+    private var onQueueStateChanged: () -> Unit = {}
     private var rebuildingShuffleRound = false
 
     val currentState: PlaybackQueueState
@@ -36,6 +38,10 @@ internal class PlaybackQueueCoordinator(
     fun attachStatePublisher(publisher: (android.os.Bundle) -> Unit) {
         publishState = publisher
         publish()
+    }
+
+    fun attachQueueStateListener(listener: () -> Unit) {
+        onQueueStateChanged = listener
     }
 
     fun replaceQueue(
@@ -53,6 +59,33 @@ internal class PlaybackQueueCoordinator(
         }
         state = reducer.replaceQueue(items, items[startIndex].id, state.mode)
         applyTimeline(positionMs = 0, playWhenReady = playWhenReady)
+    }
+
+    /** Restores identities before Media3 applies the returned playback-resumption timeline. */
+    fun restoreSnapshot(
+        snapshot: PlaybackSnapshot,
+        tracksByQueueItemId: Map<QueueItemId, PlaybackTrackPayload>,
+    ) {
+        require(snapshot.queue.originalQueue.isNotEmpty()) { "snapshot queue must not be empty" }
+        require(snapshot.queue.originalQueue.all { it.id in tracksByQueueItemId }) {
+            "every restored queue item must have track metadata"
+        }
+        mediaItemsById.clear()
+        snapshot.queue.originalQueue.forEach { queueItem ->
+            mediaItemsById[queueItem.id] = tracksByQueueItemId.getValue(queueItem.id).toMediaItem(queueItem.id)
+        }
+        nextQueueItemId = (snapshot.queue.originalQueue.maxOfOrNull { it.id.value } ?: 0L) + 1
+        state = PlaybackQueueState(snapshot.queue, snapshot.playbackMode)
+        publishState(stateExtras())
+    }
+
+    fun mediaItemsInPlaybackOrder(): List<MediaItem> =
+        state.queue.playbackOrder.map { mediaItemsById.getValue(it.id) }
+
+    fun advanceRestoredPastEnd() {
+        if (state.queue.currentItemId == null) return
+        state = reducer.naturalEnd(state)
+        publishState(stateExtras())
     }
 
     fun setMode(mode: PlaybackMode) {
@@ -218,7 +251,18 @@ internal class PlaybackQueueCoordinator(
         publish()
     }
 
-    private fun publish() = publishState(stateExtras())
+    private fun publish() {
+        publishState(stateExtras())
+        onQueueStateChanged()
+    }
+
+    fun clearRuntimeQueue() {
+        state = PlaybackQueueState(mode = state.mode)
+        mediaItemsById.clear()
+        player.stop()
+        player.clearMediaItems()
+        publish()
+    }
 }
 
 internal interface QueuePlayer {
@@ -259,7 +303,7 @@ internal class Media3QueuePlayer(private val player: Player) : QueuePlayer {
     override fun clearMediaItems() = player.clearMediaItems()
 }
 
-private fun PlaybackTrackPayload.toMediaItem(queueItemId: QueueItemId): MediaItem =
+internal fun PlaybackTrackPayload.toMediaItem(queueItemId: QueueItemId): MediaItem =
     MediaItem.Builder()
         .setMediaId(QueueMediaIdCodec.encode(queueItemId, trackId))
         .setUri(

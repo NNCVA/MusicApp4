@@ -19,21 +19,41 @@ import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import com.musicapp.player.R
+import com.musicapp.player.core.common.coroutines.ApplicationCoroutineScope
+import com.musicapp.player.core.domain.model.PlaybackSnapshot
+import com.musicapp.player.core.domain.model.Track
+import com.musicapp.player.core.playback.snapshot.PlaybackSnapshotRestorer
+import com.musicapp.player.data.repository.MediaLibraryRepository
+import com.musicapp.player.data.repository.PlaybackSnapshotRepository
 import com.musicapp.player.media.playback.PlaybackSessionProtocol
+import com.musicapp.player.media.playback.PlaybackTrackPayload
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @Singleton
 internal class MusicLibrarySessionCallbackFactory @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val mediaLibraryRepository: MediaLibraryRepository,
+    private val playbackSnapshotRepository: PlaybackSnapshotRepository,
+    @param:ApplicationCoroutineScope private val applicationScope: CoroutineScope,
 ) {
-    fun create(queueCoordinator: PlaybackQueueCoordinator): MusicLibrarySessionCallback =
+    fun create(
+        queueCoordinator: PlaybackQueueCoordinator,
+        onSnapshotRestored: (PlaybackSnapshot, Long) -> Unit,
+    ): MusicLibrarySessionCallback =
         MusicLibrarySessionCallback(
             connectionPolicy = ControllerConnectionPolicy(context.packageName, Process.myUid()),
             libraryRootTitle = context.getString(R.string.media_library_root_title),
             queueCoordinator = queueCoordinator,
+            mediaLibraryRepository = mediaLibraryRepository,
+            playbackSnapshotRepository = playbackSnapshotRepository,
+            applicationScope = applicationScope,
+            onSnapshotRestored = onSnapshotRestored,
         )
 }
 
@@ -42,6 +62,10 @@ internal class MusicLibrarySessionCallback(
     private val connectionPolicy: ControllerConnectionPolicy,
     libraryRootTitle: String,
     private val queueCoordinator: PlaybackQueueCoordinator,
+    private val mediaLibraryRepository: MediaLibraryRepository,
+    private val playbackSnapshotRepository: PlaybackSnapshotRepository,
+    private val applicationScope: CoroutineScope,
+    private val onSnapshotRestored: (PlaybackSnapshot, Long) -> Unit,
 ) : MediaLibrarySession.Callback {
     private val applicationControllers = linkedSetOf<MediaSession.ControllerInfo>()
     private val libraryRoot =
@@ -133,6 +157,67 @@ internal class MusicLibrarySessionCallback(
         }
     }
 
+    override fun onPlaybackResumption(
+        mediaSession: MediaSession,
+        controller: MediaSession.ControllerInfo,
+        isForPlayback: Boolean,
+    ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+        val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+        applicationScope.launch {
+            runCatching {
+                val stored = playbackSnapshotRepository.getSnapshot()
+                    ?.takeIf { it.playbackResumptionAllowed && it.queue.currentItemId != null }
+                    ?: error("playback resumption is unavailable")
+                val tracksByItemId = buildMap {
+                    stored.queue.originalQueue.forEach { item ->
+                        mediaLibraryRepository.getTrack(item.trackId)?.let { put(item.id, it) }
+                    }
+                }
+                var snapshot = PlaybackSnapshotRestorer.restore(stored, tracksByItemId.keys)
+                    ?.snapshot
+                    ?.takeIf { it.queue.currentItemId != null }
+                    ?: error("playback resumption queue is empty")
+                val payloads = snapshot.queue.originalQueue.associate { item ->
+                    item.id to requireNotNull(tracksByItemId[item.id]).toPayload()
+                }
+                var currentDurationMs = requireNotNull(payloads[snapshot.queue.currentItemId]).durationMs
+                if (isForPlayback) {
+                    queueCoordinator.restoreSnapshot(snapshot, payloads)
+                    if (snapshot.positionMs >= currentDurationMs) {
+                        queueCoordinator.advanceRestoredPastEnd()
+                        snapshot = snapshot.copy(
+                            queue = queueCoordinator.currentState.queue,
+                            positionMs = 0,
+                            playbackInstance = null,
+                        )
+                        currentDurationMs = requireNotNull(payloads[snapshot.queue.currentItemId]).durationMs
+                    }
+                    playbackSnapshotRepository.saveSnapshot(snapshot)
+                    onSnapshotRestored(snapshot, currentDurationMs)
+                }
+                val playbackItems = if (isForPlayback) {
+                    queueCoordinator.mediaItemsInPlaybackOrder()
+                } else {
+                    listOf(payloads.getValue(requireNotNull(snapshot.queue.currentItemId)).toMediaItem(
+                        requireNotNull(snapshot.queue.currentItemId),
+                    ))
+                }
+                val startIndex = if (isForPlayback) {
+                    snapshot.queue.playbackOrder.indexOfFirst { it.id == snapshot.queue.currentItemId }
+                } else {
+                    0
+                }
+                MediaSession.MediaItemsWithStartPosition(
+                    playbackItems,
+                    startIndex,
+                    snapshot.positionMs,
+                )
+            }.onSuccess(future::set)
+                .onFailure(future::setException)
+        }
+        return future
+    }
+
     fun publishState(session: MediaSession, extras: Bundle) {
         applicationControllers.forEach { session.setSessionExtras(it, extras) }
     }
@@ -174,6 +259,14 @@ internal class MusicLibrarySessionCallback(
     private fun badCommandResult(): ListenableFuture<SessionResult> =
         Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
 }
+
+private fun Track.toPayload() = PlaybackTrackPayload(
+    trackId = id,
+    title = title,
+    artistName = artistName,
+    albumTitle = albumTitle,
+    durationMs = durationMs,
+)
 
 @OptIn(UnstableApi::class)
 internal object ApplicationControllerCommands {

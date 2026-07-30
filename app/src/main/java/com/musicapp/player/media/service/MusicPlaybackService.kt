@@ -10,11 +10,14 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.musicapp.player.MainActivity
 import com.musicapp.player.core.common.random.RandomSource
+import com.musicapp.player.core.common.time.Clock
 import com.musicapp.player.core.domain.model.QueueItemId
+import com.musicapp.player.core.domain.model.PlaybackSnapshot
 import com.musicapp.player.core.playback.fade.FadePlaybackEvent
 import com.musicapp.player.core.playback.fade.FadeSwitchReason
 import com.musicapp.player.core.playback.fade.FadeThroughCoordinator
@@ -25,7 +28,15 @@ import com.musicapp.player.core.playback.recovery.AudioInterruption
 import com.musicapp.player.core.playback.recovery.AudioInterruptionPolicy
 import com.musicapp.player.core.playback.recovery.PlaybackErrorRecovery
 import com.musicapp.player.core.playback.recovery.PlaybackRecoveryAction
+import com.musicapp.player.core.playback.snapshot.PlaybackSnapshotClock
+import com.musicapp.player.core.playback.snapshot.PlaybackSnapshotCoordinator
+import com.musicapp.player.core.playback.snapshot.PlaybackSnapshotSink
+import com.musicapp.player.core.playback.system.NotificationCommandPolicy
+import com.musicapp.player.core.playback.system.PlaybackResumptionEvent
+import com.musicapp.player.core.playback.system.PlaybackResumptionPolicy
+import com.musicapp.player.core.playback.system.SystemPlaybackCommand
 import com.musicapp.player.data.repository.HistoryRepository
+import com.musicapp.player.data.repository.PlaybackSnapshotRepository
 import com.musicapp.player.data.settings.SettingsRepository
 import com.musicapp.player.media.playback.QueueMediaIdCodec
 import dagger.hilt.android.AndroidEntryPoint
@@ -54,23 +65,36 @@ class MusicPlaybackService : MediaLibraryService() {
     @Inject
     internal lateinit var historyRepository: HistoryRepository
 
+    @Inject
+    internal lateinit var playbackSnapshotRepository: PlaybackSnapshotRepository
+
+    @Inject
+    internal lateinit var clock: Clock
+
     private var player: ExoPlayer? = null
     private var mediaLibrarySession: MediaLibrarySession? = null
     private var queueCoordinator: PlaybackQueueCoordinator? = null
     private var playerListener: Player.Listener? = null
     private var fadeCoordinator: FadeThroughCoordinator<FadeNavigationRequest>? = null
     private var historyRecorder: PlayHistoryRecorder? = null
+    private var snapshotCoordinator: PlaybackSnapshotCoordinator? = null
+    private var snapshotFinalWriteJob: Job? = null
     private var automaticTransitionJob: Job? = null
     private var settingsJob: Job? = null
     private var historyTickerJob: Job? = null
     private var historyItemId: QueueItemId? = null
+    private var restoredHistoryPending = false
+    private var pendingRestoredItemId: QueueItemId? = null
+    private var pendingRestoredPositionMs: Long? = null
     private var ignoreNextPauseChange = false
+    private var playbackResumptionAllowed = true
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val errorRecovery = PlaybackErrorRecovery<QueueItemId>()
     private val interruptionPolicy = AudioInterruptionPolicy()
 
     override fun onCreate() {
         super.onCreate()
+        setMediaNotificationProvider(DismissAwareMediaNotificationProvider(this))
         val servicePlayer =
             ExoPlayer.Builder(this)
                 .setAudioAttributes(
@@ -132,11 +156,30 @@ class MusicPlaybackService : MediaLibraryService() {
                 }
             },
         )
-        val callback = callbackFactory.create(coordinator)
+        val snapshots = PlaybackSnapshotCoordinator(
+            scope = serviceScope,
+            snapshotProvider = { currentPlaybackSnapshot(servicePlayer, coordinator, recorder) },
+            sink = PlaybackSnapshotSink { write -> playbackSnapshotRepository.saveSnapshot(write.snapshot) },
+            clock = PlaybackSnapshotClock(clock::currentTimeMillis),
+        )
+        val callback = callbackFactory.create(
+            queueCoordinator = coordinator,
+            onSnapshotRestored = { snapshot, durationMs ->
+                playbackResumptionAllowed = snapshot.playbackResumptionAllowed
+                pendingRestoredItemId = snapshot.queue.currentItemId
+                pendingRestoredPositionMs = snapshot.positionMs
+                snapshot.playbackInstance?.let { instance ->
+                    historyItemId = instance.queueItemId
+                    restoredHistoryPending = true
+                    recorder.restoreInstance(instance, durationMs, isPlaying = false)
+                }
+            },
+        )
         val listener = object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
                 coordinator.onMediaItemTransition(mediaItem)
                 startHistoryInstance(servicePlayer, mediaItem, reason)
+                snapshots.onTrackChanged()
                 scheduleNaturalTransition(servicePlayer)
             }
 
@@ -145,6 +188,8 @@ class MusicPlaybackService : MediaLibraryService() {
                     Player.STATE_READY -> {
                         errorRecovery.onReady()
                         startHistoryInstance(servicePlayer, servicePlayer.currentMediaItem, null)
+                        pendingRestoredItemId = null
+                        pendingRestoredPositionMs = null
                         scheduleNaturalTransition(servicePlayer)
                     }
 
@@ -158,7 +203,13 @@ class MusicPlaybackService : MediaLibraryService() {
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 recorder.updateIsPlaying(isPlaying)
-                if (isPlaying) scheduleNaturalTransition(servicePlayer) else cancelNaturalTransition()
+                if (isPlaying) {
+                    snapshots.onPlaying()
+                    scheduleNaturalTransition(servicePlayer)
+                } else {
+                    snapshots.onNotPlaying()
+                    cancelNaturalTransition()
+                }
             }
 
             override fun onPositionDiscontinuity(
@@ -169,18 +220,25 @@ class MusicPlaybackService : MediaLibraryService() {
                 recorder.onSeekStarted()
                 recorder.onSeekCompleted(servicePlayer.isPlaying)
                 fade.onPlaybackEvent(FadePlaybackEvent.SEEK)
+                snapshots.onSeekCompleted()
                 scheduleNaturalTransition(servicePlayer)
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 if (playWhenReady) {
+                    playbackResumptionAllowed = PlaybackResumptionPolicy.decide(
+                        PlaybackResumptionEvent.UserPlayRequested,
+                    ).playbackResumptionAllowed
+                    snapshots.onPlaying()
                     fade.onPlaybackEvent(FadePlaybackEvent.RESUME)
                     return
                 }
                 if (ignoreNextPauseChange) {
                     ignoreNextPauseChange = false
+                    snapshots.onPaused()
                     return
                 }
+                snapshots.onPaused()
                 when (reason) {
                     Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS -> {
                         interruptionPolicy.onInterruption(
@@ -263,12 +321,15 @@ class MusicPlaybackService : MediaLibraryService() {
         playerListener = listener
         fadeCoordinator = fade
         historyRecorder = recorder
+        snapshotCoordinator = snapshots
         val session =
             MediaLibrarySession.Builder(this, managedPlayer, callback)
                 .setSessionActivity(createSessionActivity())
+                .setMediaButtonPreferences(notificationButtons())
                 .build()
         mediaLibrarySession = session
         coordinator.attachStatePublisher { extras -> callback.publishState(session, extras) }
+        coordinator.attachQueueStateListener(snapshots::onQueueChanged)
         settingsJob = serviceScope.launch {
             settingsRepository.settings.drop(1).collect { scheduleNaturalTransition(servicePlayer) }
         }
@@ -283,8 +344,25 @@ class MusicPlaybackService : MediaLibraryService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
         mediaLibrarySession
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_DISMISS) {
+            playbackResumptionAllowed = PlaybackResumptionPolicy.decide(
+                PlaybackResumptionEvent.NotificationDismissed,
+            ).playbackResumptionAllowed
+            snapshotCoordinator?.onPaused()
+            snapshotFinalWriteJob = snapshotCoordinator?.onDestroyed()
+            queueCoordinator?.clearRuntimeQueue()
+            pauseAllPlayersAndStopSelf()
+            return START_NOT_STICKY
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     override fun onDestroy() {
         cancelNaturalTransition()
+        val finalSnapshotWrite = snapshotFinalWriteJob ?: snapshotCoordinator?.onDestroyed()
+        snapshotFinalWriteJob = finalSnapshotWrite
+        snapshotCoordinator = null
         settingsJob?.cancel()
         settingsJob = null
         historyTickerJob?.cancel()
@@ -300,8 +378,33 @@ class MusicPlaybackService : MediaLibraryService() {
         queueCoordinator = null
         player?.release()
         player = null
-        serviceScope.cancel()
+        if (finalSnapshotWrite == null) {
+            serviceScope.cancel()
+        } else {
+            finalSnapshotWrite.invokeOnCompletion { serviceScope.cancel() }
+        }
         super.onDestroy()
+    }
+
+    private fun currentPlaybackSnapshot(
+        servicePlayer: ExoPlayer,
+        coordinator: PlaybackQueueCoordinator,
+        recorder: PlayHistoryRecorder,
+    ): PlaybackSnapshot {
+        val queue = coordinator.currentState.queue
+        val instance = recorder.snapshot()?.takeIf { it.queueItemId == queue.currentItemId }
+        return PlaybackSnapshot(
+            queue = queue,
+            positionMs = when {
+                queue.currentItemId == null -> 0
+                queue.currentItemId == pendingRestoredItemId -> pendingRestoredPositionMs ?: 0
+                else -> servicePlayer.currentPosition.coerceAtLeast(0)
+            },
+            playbackMode = coordinator.currentState.mode,
+            playbackInstance = instance,
+            updatedAtMs = clock.currentTimeMillis().coerceAtLeast(0),
+            playbackResumptionAllowed = playbackResumptionAllowed,
+        )
     }
 
     private fun requestFade(
@@ -350,9 +453,12 @@ class MusicPlaybackService : MediaLibraryService() {
             ?: servicePlayer.duration.takeUnless { it == C.TIME_UNSET }?.takeIf { it > 0 }
             ?: return
         val startsNewInstance = historyItemId != item.id ||
-            transitionReason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
-            transitionReason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT ||
-            transitionReason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+            (!restoredHistoryPending && (
+                transitionReason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                    transitionReason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT ||
+                    transitionReason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                ))
+        restoredHistoryPending = false
         if (startsNewInstance) {
             historyRecorder?.stopInstance()
             historyItemId = item.id
@@ -375,9 +481,29 @@ class MusicPlaybackService : MediaLibraryService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-    private companion object {
-        const val SESSION_ACTIVITY_REQUEST_CODE = 100
-        const val HISTORY_TICK_MS = 250L
+    private fun notificationButtons(): List<CommandButton> =
+        NotificationCommandPolicy.primaryCommands.map { command ->
+            when (command) {
+                SystemPlaybackCommand.PREVIOUS -> CommandButton.Builder(CommandButton.ICON_PREVIOUS)
+                    .setDisplayName(getString(com.musicapp.player.R.string.playback_previous))
+                    .setPlayerCommand(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                    .build()
+                SystemPlaybackCommand.PLAY_PAUSE -> CommandButton.Builder(CommandButton.ICON_PLAY)
+                    .setDisplayName(getString(com.musicapp.player.R.string.playback_play_pause))
+                    .setPlayerCommand(Player.COMMAND_PLAY_PAUSE)
+                    .build()
+                SystemPlaybackCommand.NEXT -> CommandButton.Builder(CommandButton.ICON_NEXT)
+                    .setDisplayName(getString(com.musicapp.player.R.string.playback_next))
+                    .setPlayerCommand(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                    .build()
+                else -> error("non-primary notification command")
+            }
+        }
+
+    companion object {
+        internal const val ACTION_DISMISS = "com.musicapp.player.action.DISMISS_PLAYBACK_NOTIFICATION"
+        private const val SESSION_ACTIVITY_REQUEST_CODE = 100
+        private const val HISTORY_TICK_MS = 250L
     }
 }
 
