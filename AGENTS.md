@@ -4,6 +4,7 @@
 - 必须使用中文输出！！！
 - 注意，必要时使用 .agents/skills/ 目录下的skills ！！！
 - 项目文档全放在 docs/ 目录下！！！
+- 项目说明与开发入口：[`README.md`](README.md)。
 - 多使用子代理并行执行
 - 调用所有工具（Tool）时，必须严格检查并填写当前 schema 规定的全部必填字段，杜绝 SchemaError。
 
@@ -12,8 +13,8 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 首版目标包括 7 种主流音频格式、基于 MediaStore 的媒体库同步、Media3/ExoPlayer 与 MediaSession、同步歌词、多主题与 Material You、Aero 动态背景、中英双语、播放列表、播放历史，以及单播放器淡出淡入切歌。
 
 ## 当前实施状态
-- 当前仓库只有可编译的 Compose/Navigation 3 空白骨架。
-- Room、DataStore、Hilt、Media3、媒体库、业务页面和测试基础设施均属于待实现目标，不得将设计文档描述误报为已完成代码。
+- 首版 26 项核心需求已基本完成代码实现，Room、DataStore、Hilt、Media3、媒体库、业务页面和测试基础设施均已接入。
+- 当前处于首版收口与人工验收阶段；实现状态以当前代码、自动门禁结果和 [`docs/design/implementation-spec.md`](docs/design/implementation-spec.md) 的“当前基线”为准。
 
 ## 核心功能与需求汇总（26 核心需求）
 1. **音频文件扫描器**：通过 MediaStore 同步 7 种音频格式（.mp3, .flac, .wav, .aac, .m4a, .ogg, .opus），支持“扫描全部”和“仅扫描指定目录”两种路径模式，排除规则优先。
