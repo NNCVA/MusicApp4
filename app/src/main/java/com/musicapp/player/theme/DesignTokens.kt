@@ -33,6 +33,11 @@ data class MusicDimensions(
     val playerHeaderHeight: Dp = 64.dp,
     val playerControlsHeight: Dp = 80.dp,
     val playerSheetElevation: Dp = 6.dp,
+    val messageBubbleMaxWidth: Dp = 560.dp,
+    val messageBubbleHorizontalPadding: Dp = 24.dp,
+    val messageBubbleVerticalPadding: Dp = 12.dp,
+    val messageBubbleElevation: Dp = 6.dp,
+    val messageBubbleBottomLift: Dp = 16.dp,
     val statusIndicatorSize: Dp = 24.dp,
     val trackInfoDialogMaxWidth: Dp = 640.dp,
     val settingsContentMaxWidth: Dp = 720.dp,
@@ -90,6 +95,7 @@ data class MusicShapes(
     val medium: CornerBasedShape = RoundedCornerShape(12.dp),
     val large: CornerBasedShape = RoundedCornerShape(16.dp),
     val extraLarge: CornerBasedShape = RoundedCornerShape(28.dp),
+    val pill: CornerBasedShape = RoundedCornerShape(percent = 50),
 ) {
     val material: Shapes
         get() =

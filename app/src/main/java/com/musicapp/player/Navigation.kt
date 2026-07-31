@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,7 +50,8 @@ import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
 import com.musicapp.player.navigation.topLevelNavKeys
 import com.musicapp.player.core.aero.AeroRuntimeSignals
-import com.musicapp.player.core.designsystem.snackbar.SnackbarQueue
+import com.musicapp.player.core.designsystem.snackbar.MessageBubbleHost
+import com.musicapp.player.core.designsystem.snackbar.MessageBubbleQueue
 import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.data.sync.LibrarySyncState
@@ -131,9 +130,8 @@ fun MainNavigation(
     val playerState by playerViewModel.uiState.collectAsStateWithLifecycle()
     var playerExpanded by rememberSaveable { mutableStateOf(false) }
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
-    val snackbarQueue = remember { SnackbarQueue() }
-    val snackbarRequest by snackbarQueue.current.collectAsStateWithLifecycle()
+    val messageBubbleQueue = remember { MessageBubbleQueue() }
+    val messageBubbleRequest by messageBubbleQueue.current.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val nextThemeMode = themeMode.nextSidebarMode()
     val nextThemeMessageRes =
@@ -142,16 +140,10 @@ fun MainNavigation(
             ThemeMode.LIGHT -> R.string.sidebar_theme_changed_light
             ThemeMode.DARK -> R.string.sidebar_theme_changed_dark
         }
-    val snackbarMessage =
-        snackbarRequest?.let { request ->
+    val messageBubbleText =
+        messageBubbleRequest?.let { request ->
             stringResource(request.messageResId, *request.messageFormatArgs.toTypedArray())
         }
-    LaunchedEffect(snackbarRequest?.id, snackbarMessage) {
-        val request = snackbarRequest ?: return@LaunchedEffect
-        val message = snackbarMessage ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(message)
-        snackbarQueue.dismiss(request.id)
-    }
 
     fun commitNavigation(action: Navigator.() -> Unit) {
         navigator.action()
@@ -197,7 +189,7 @@ fun MainNavigation(
                     },
                     onCycleTheme = {
                         coroutineScope.launch {
-                            snackbarQueue.enqueue(
+                            messageBubbleQueue.enqueue(
                                 if (onThemeModeChange(nextThemeMode)) {
                                     nextThemeMessageRes
                                 } else {
@@ -207,7 +199,7 @@ fun MainNavigation(
                         }
                     },
                     onEqualizer = {
-                        snackbarQueue.enqueue(R.string.sidebar_equalizer_placeholder)
+                        messageBubbleQueue.enqueue(R.string.sidebar_equalizer_placeholder)
                     },
                     onScanMusic = {
                         onScanMusic()
@@ -296,6 +288,9 @@ fun MainNavigation(
                                     contentInsets = contentInsets,
                                     policy = policy,
                                     onBack = ::handleBack,
+                                    onShowMessage = { messageResId ->
+                                        messageBubbleQueue.enqueue(messageResId)
+                                    },
                                 )
                             }
                             entry<AboutRoute> {
@@ -370,17 +365,20 @@ fun MainNavigation(
             },
           )
         }
-        SnackbarHost(
-            hostState = snackbarHostState,
+        MessageBubbleHost(
+            request = messageBubbleRequest,
+            message = messageBubbleText,
+            onDismiss = { requestId -> messageBubbleQueue.dismiss(requestId) },
+            onAction = { requestId -> messageBubbleQueue.performAction(requestId) },
             modifier =
                 Modifier.align(Alignment.BottomCenter)
                     .padding(
                         bottom =
-                            if (playerState.currentTrack != null) {
+                            (if (playerState.currentTrack != null) {
                                 MusicTheme.dimensions.miniPlayerHeight
                             } else {
                                 MusicTheme.dimensions.spaceMedium
-                            },
+                            }) + MusicTheme.dimensions.messageBubbleBottomLift,
                     ),
         )
     }

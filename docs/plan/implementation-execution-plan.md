@@ -134,8 +134,8 @@ flowchart TD
 ### 06. 设计令牌、主题与双语资源
 
 - **前置**：过程 04、05。
-- **实现**：建立 `MusicDimensions`、`MusicShapes`、`MusicTypography`，四套预设色板、动态取色、Light/Dark、English 与简体中文资源一致性检查、共享加载/空态/错误态和 Snackbar 队列。
-- **聚焦验证**：`DesignTokenPolicyTest` 检查三档窗口令牌，`StringResourceParityTest` 检查双语键一致，`SnackbarQueueTest` 检查单条展示和顺序排队；运行固定自动门禁。
+- **实现**：建立 `MusicDimensions`、`MusicShapes`、`MusicTypography`，四套预设色板、动态取色、Light/Dark、English 与简体中文资源一致性检查、共享加载/空态/错误态和应用级消息气泡。
+- **聚焦验证**：`DesignTokenPolicyTest` 检查三档窗口令牌，`StringResourceParityTest` 检查双语键一致，`MessageBubbleQueueTest` 检查单条展示和新消息覆盖；运行固定自动门禁。
 - **完成条件**：页面不得硬编码可见文本、间距、圆角和字号；所有点击目标令牌至少 `48 dp`。
 - **用户验收清单**：预览默认蓝与四套预设的 Light/Dark，确认文字和系统栏图标可读。
 - **回退边界**：设计令牌与主题资源整体回退；下游消费后只兼容扩展。

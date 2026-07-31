@@ -21,8 +21,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,6 +59,7 @@ fun SettingsScreenRoute(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     onBack: () -> Unit,
+    onShowMessage: (Int) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SettingsScreen(
@@ -83,6 +82,7 @@ fun SettingsScreenRoute(
         onCancelConfirmation = viewModel::cancelConfirmation,
         onConfirmAction = viewModel::confirmAction,
         onAcknowledgeMessage = viewModel::acknowledgeMessage,
+        onShowMessage = onShowMessage,
     )
 }
 
@@ -107,15 +107,13 @@ private fun SettingsScreen(
     onCancelConfirmation: () -> Unit,
     onConfirmAction: () -> Unit,
     onAcknowledgeMessage: () -> Unit,
+    onShowMessage: (Int) -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
-    val snackbarHostState = remember { SnackbarHostState() }
-    val messageText = state.message?.let { stringResource(it.labelRes()) }
-    LaunchedEffect(state.message, messageText) {
-        if (messageText != null) {
-            snackbarHostState.showSnackbar(messageText)
-            onAcknowledgeMessage()
-        }
+    LaunchedEffect(state.message) {
+        val message = state.message ?: return@LaunchedEffect
+        onShowMessage(message.labelRes())
+        onAcknowledgeMessage()
     }
     Box(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
@@ -150,10 +148,6 @@ private fun SettingsScreen(
                 item { DataManagementSettings(onRequestConfirmation) }
             }
         }
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
     }
     if (state.rescanPromptVisible) {
         ConfirmationDialog(

@@ -5,8 +5,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** A resource-backed snackbar request waiting to be presented by the application host. */
-data class SnackbarRequest(
+/** A resource-backed message bubble request presented by the application host. */
+data class MessageBubbleRequest(
   val id: Long,
   @param:StringRes val messageResId: Int,
   val messageFormatArgs: List<Any> = emptyList(),
@@ -15,19 +15,17 @@ data class SnackbarRequest(
 )
 
 /**
- * Serializes snackbar requests so that hosts only ever observe one request at a time.
+ * Holds the single message bubble currently visible to the application.
  *
- * All queue transitions are guarded by the same monitor. This keeps concurrent producers ordered
- * by the point at which their [enqueue] call acquires the monitor and makes completing the current
- * request plus selecting its successor one atomic operation.
+ * A new request replaces the current request immediately. There is no pending queue, so an older
+ * bubble can never reappear after a newer message has been shown.
  */
-class SnackbarQueue {
+class MessageBubbleQueue {
   private val lock = Any()
   private var nextId = 0L
-  private val pending = ArrayDeque<SnackbarRequest>()
-  private val _current = MutableStateFlow<SnackbarRequest?>(null)
+  private val _current = MutableStateFlow<MessageBubbleRequest?>(null)
 
-  val current: StateFlow<SnackbarRequest?> = _current.asStateFlow()
+  val current: StateFlow<MessageBubbleRequest?> = _current.asStateFlow()
 
   fun enqueue(
     @StringRes messageResId: Int,
@@ -38,18 +36,14 @@ class SnackbarQueue {
     val formatArgs = messageFormatArgs.toList()
     return synchronized(lock) {
       val request =
-        SnackbarRequest(
+        MessageBubbleRequest(
           id = ++nextId,
           messageResId = messageResId,
           messageFormatArgs = formatArgs,
           actionLabelResId = actionLabelResId,
           onAction = onAction,
         )
-      if (_current.value == null) {
-        _current.value = request
-      } else {
-        pending.addLast(request)
-      }
+      _current.value = request
       request.id
     }
   }
@@ -57,7 +51,7 @@ class SnackbarQueue {
   fun dismiss(requestId: Long? = current.value?.id) {
     if (requestId == null) return
     synchronized(lock) {
-      if (_current.value?.id == requestId) advanceLocked()
+      if (_current.value?.id == requestId) _current.value = null
     }
   }
 
@@ -67,13 +61,9 @@ class SnackbarQueue {
       synchronized(lock) {
         val active = _current.value
         if (active?.id != requestId) return
-        advanceLocked()
+        _current.value = null
         active.onAction
       }
     action?.invoke()
-  }
-
-  private fun advanceLocked() {
-    _current.value = pending.removeFirstOrNull()
   }
 }
