@@ -44,6 +44,7 @@ import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
+import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
@@ -122,7 +123,8 @@ private fun PlaylistsScreen(
         CategoryHeader(
             title = stringResource(R.string.navigation_playlists),
             policy = policy,
-            openDrawer = openDrawer,
+            navigationAction = CategoryNavigationAction.DRAWER,
+            onNavigationClick = openDrawer,
             trailingContent = {
                 TextButton(
                     onClick = {

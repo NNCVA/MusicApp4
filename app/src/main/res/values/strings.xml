@@ -82,7 +82,6 @@
     <string name="sort_album_count">Album count</string>
     <string name="sort_direction_ascending"> ↑</string>
     <string name="sort_direction_descending"> ↓</string>
-    <string name="tracks_menu">Menu</string>
     <string name="selection_close">Done</string>
     <plurals name="selection_count">
         <item quantity="one">%1$d selected</item>
@@ -132,7 +131,6 @@
     <string name="track_info_copy_path">Copy path</string>
     <string name="track_info_unknown">Unknown</string>
     <string name="category_back">Back</string>
-    <string name="category_menu">Menu</string>
     <string name="category_play_all">Play all</string>
     <plurals name="category_track_count">
         <item quantity="one">%1$d track</item>

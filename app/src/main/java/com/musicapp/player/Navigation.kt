@@ -274,7 +274,7 @@ fun MainNavigation(
                                     viewModel = viewModel<HistoryViewModel>(),
                                     contentInsets = contentInsets,
                                     policy = policy,
-                                    openDrawer = openDrawer,
+                                    onBack = ::handleBack,
                                 )
                             }
                             entry<FoldersRoute> {
@@ -295,7 +295,7 @@ fun MainNavigation(
                                     viewModel = viewModel<SettingsViewModel>(),
                                     contentInsets = contentInsets,
                                     policy = policy,
-                                    openDrawer = openDrawer,
+                                    onBack = ::handleBack,
                                 )
                             }
                             entry<AboutRoute> {
@@ -303,7 +303,7 @@ fun MainNavigation(
                                     viewModel = viewModel<AboutViewModel>(),
                                     contentInsets = contentInsets,
                                     policy = policy,
-                                    openDrawer = openDrawer,
+                                    onBack = ::handleBack,
                                 )
                             }
                             entry<TrackInfoRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }

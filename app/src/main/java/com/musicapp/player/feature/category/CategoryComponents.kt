@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.DropdownMenu
@@ -23,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.Availability
@@ -31,12 +35,44 @@ import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 import java.util.Locale
 
+enum class CategoryNavigationAction {
+    DRAWER,
+    BACK,
+}
+
+@Composable
+fun CategoryNavigationIconButton(
+    action: CategoryNavigationAction,
+    onClick: () -> Unit,
+) {
+    val dimensions = MusicTheme.dimensions
+    val iconResId =
+        when (action) {
+            CategoryNavigationAction.DRAWER -> R.drawable.ic_navigation_menu
+            CategoryNavigationAction.BACK -> R.drawable.ic_navigation_back
+        }
+    val descriptionResId =
+        when (action) {
+            CategoryNavigationAction.DRAWER -> R.string.open_navigation
+            CategoryNavigationAction.BACK -> R.string.category_back
+        }
+    IconButton(onClick = onClick, modifier = Modifier.size(dimensions.minimumTouchTarget)) {
+        Icon(
+            painter = painterResource(iconResId),
+            contentDescription = stringResource(descriptionResId),
+            tint = MusicTheme.colors.onSurface,
+            modifier = Modifier.size(dimensions.spaceLarge),
+        )
+    }
+}
+
 @Composable
 fun CategoryHeader(
     title: String,
     policy: WindowLayoutPolicy? = null,
-    openDrawer: () -> Unit = {},
     onBack: (() -> Unit)? = null,
+    navigationAction: CategoryNavigationAction? = null,
+    onNavigationClick: () -> Unit = {},
     trailingContent: @Composable () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
@@ -47,8 +83,11 @@ fun CategoryHeader(
     ) {
         when {
             onBack != null -> TextButton(onClick = onBack) { Text(stringResource(R.string.category_back)) }
-            policy == WindowLayoutPolicy.COMPACT_DRAWER ->
-                TextButton(onClick = openDrawer) { Text(stringResource(R.string.category_menu)) }
+            policy == WindowLayoutPolicy.COMPACT_DRAWER && navigationAction != null ->
+                CategoryNavigationIconButton(
+                    action = navigationAction,
+                    onClick = onNavigationClick,
+                )
         }
         Text(
             text = title,

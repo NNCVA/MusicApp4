@@ -42,6 +42,7 @@ import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
+import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.feature.tracks.batch.BatchTrackAction
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
@@ -55,7 +56,7 @@ fun HistoryScreenRoute(
     viewModel: HistoryViewModel,
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
-    openDrawer: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
@@ -64,7 +65,7 @@ fun HistoryScreenRoute(
         state = state,
         contentInsets = contentInsets,
         policy = policy,
-        openDrawer = openDrawer,
+        onBack = onBack,
         onQueryChange = viewModel::setQuery,
         onTrackClick = { entry ->
             if (state.isSelectionMode) {
@@ -101,7 +102,7 @@ private fun HistoryScreen(
     state: HistoryUiState,
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
-    openDrawer: () -> Unit,
+    onBack: () -> Unit,
     onQueryChange: (String) -> Unit,
     onTrackClick: (HistoryEntry) -> Unit,
     onTrackLongClick: (HistoryEntry) -> Unit,
@@ -135,7 +136,8 @@ private fun HistoryScreen(
                     stringResource(R.string.navigation_history)
                 },
             policy = policy,
-            openDrawer = openDrawer,
+            navigationAction = CategoryNavigationAction.BACK,
+            onNavigationClick = onBack,
             trailingContent = {
                 if (state.isSelectionMode) {
                     HistorySelectionActions(

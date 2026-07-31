@@ -32,6 +32,7 @@ import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
+import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.feature.category.CategorySortDirection
 import com.musicapp.player.feature.category.CategoryTrackList
@@ -97,7 +98,8 @@ private fun AlbumsScreen(
         CategoryHeader(
             title = stringResource(R.string.navigation_albums),
             policy = policy,
-            openDrawer = openDrawer,
+            navigationAction = CategoryNavigationAction.DRAWER,
+            onNavigationClick = openDrawer,
             trailingContent = { AlbumSortMenu(state.sort, onSortSelected) },
         )
         if (state.albums.isEmpty()) {

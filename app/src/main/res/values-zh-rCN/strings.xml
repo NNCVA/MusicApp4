@@ -79,7 +79,6 @@
     <string name="sort_album_count">专辑数量</string>
     <string name="sort_direction_ascending"> ↑</string>
     <string name="sort_direction_descending"> ↓</string>
-    <string name="tracks_menu">菜单</string>
     <string name="selection_close">完成</string>
     <plurals name="selection_count">
         <item quantity="other">已选 %1$d 首</item>
@@ -130,7 +129,6 @@
     <string name="track_info_copy_path">复制路径</string>
     <string name="track_info_unknown">未知</string>
     <string name="category_back">返回</string>
-    <string name="category_menu">菜单</string>
     <string name="category_play_all">播放全部</string>
     <plurals name="category_track_count">
         <item quantity="other">%1$d 首单曲</item>

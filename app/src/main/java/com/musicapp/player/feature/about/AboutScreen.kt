@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
@@ -33,14 +34,14 @@ fun AboutScreenRoute(
     viewModel: AboutViewModel,
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
-    openDrawer: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     AboutScreen(
         state = state,
         contentInsets = contentInsets,
         policy = policy,
-        openDrawer = openDrawer,
+        onBack = onBack,
         onShowLicenses = viewModel::showLicenses,
         onDismissLicenses = viewModel::dismissLicenses,
     )
@@ -51,7 +52,7 @@ fun AboutScreen(
     state: AboutUiState,
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
-    openDrawer: () -> Unit,
+    onBack: () -> Unit,
     onShowLicenses: () -> Unit,
     onDismissLicenses: () -> Unit,
 ) {
@@ -71,7 +72,8 @@ fun AboutScreen(
                 CategoryHeader(
                     title = stringResource(R.string.navigation_about),
                     policy = policy,
-                    openDrawer = openDrawer,
+                    navigationAction = CategoryNavigationAction.BACK,
+                    onNavigationClick = onBack,
                 )
             }
             if (state.loadFailed) {

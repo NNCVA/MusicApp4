@@ -49,6 +49,7 @@ import com.musicapp.player.core.domain.model.PresetTheme
 import com.musicapp.player.core.domain.model.ScanMode
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.data.sync.LibrarySyncState
+import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
@@ -59,14 +60,14 @@ fun SettingsScreenRoute(
     viewModel: SettingsViewModel,
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
-    openDrawer: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SettingsScreen(
         state = state,
         contentInsets = contentInsets,
         policy = policy,
-        openDrawer = openDrawer,
+        onBack = onBack,
         onColorSourceChange = viewModel::setColorSource,
         onPresetThemeChange = viewModel::setPresetTheme,
         onThemeModeChange = viewModel::setThemeMode,
@@ -90,7 +91,7 @@ private fun SettingsScreen(
     state: SettingsUiState,
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
-    openDrawer: () -> Unit,
+    onBack: () -> Unit,
     onColorSourceChange: (ColorSource) -> Unit,
     onPresetThemeChange: (PresetTheme) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
@@ -127,7 +128,8 @@ private fun SettingsScreen(
             CategoryHeader(
                 title = stringResource(R.string.navigation_settings),
                 policy = policy,
-                openDrawer = openDrawer,
+                navigationAction = CategoryNavigationAction.BACK,
+                onNavigationClick = onBack,
             )
             if (state.isWorking || state.syncState is LibrarySyncState.Syncing) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())

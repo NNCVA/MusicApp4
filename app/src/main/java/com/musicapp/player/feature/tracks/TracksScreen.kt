@@ -58,6 +58,8 @@ import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.media.MediaAudioCandidate
 import com.musicapp.player.data.sync.MediaLibraryScanSkipReason
 import com.musicapp.player.data.sync.scanResultTitle as sharedScanResultTitle
+import com.musicapp.player.feature.category.CategoryNavigationAction
+import com.musicapp.player.feature.category.CategoryNavigationIconButton
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
@@ -289,9 +291,7 @@ private fun TracksTopBar(
             }
         } else {
             if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
-                TextButton(onClick = openDrawer, shape = MusicTheme.shapes.small) {
-                    Text(stringResource(R.string.tracks_menu))
-                }
+                CategoryNavigationIconButton(CategoryNavigationAction.DRAWER, openDrawer)
             }
             Text(
                 text = stringResource(R.string.navigation_tracks),

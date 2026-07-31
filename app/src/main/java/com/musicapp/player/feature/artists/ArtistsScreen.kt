@@ -33,6 +33,7 @@ import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
+import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.feature.category.CategorySortDirection
 import com.musicapp.player.feature.category.CategoryTrackList
@@ -90,7 +91,8 @@ private fun ArtistsScreen(
         CategoryHeader(
             title = stringResource(R.string.navigation_artists),
             policy = policy,
-            openDrawer = openDrawer,
+            navigationAction = CategoryNavigationAction.DRAWER,
+            onNavigationClick = openDrawer,
             trailingContent = { ArtistSortMenu(state.sort, onSortSelected) },
         )
         if (state.artists.isEmpty()) {

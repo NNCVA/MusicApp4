@@ -34,6 +34,7 @@ import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
+import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.feature.category.CategoryTrackRow
 import com.musicapp.player.feature.category.CategoryTrackSortField
@@ -93,7 +94,8 @@ private fun FoldersScreen(
         CategoryHeader(
             title = stringResource(R.string.navigation_folders),
             policy = policy,
-            openDrawer = openDrawer,
+            navigationAction = CategoryNavigationAction.DRAWER,
+            onNavigationClick = openDrawer,
             trailingContent = { FolderSortMenu(state.sort, onSortSelected) },
         )
         if (state.roots.isEmpty()) {
