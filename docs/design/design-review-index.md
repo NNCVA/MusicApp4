@@ -24,7 +24,9 @@
 ## 实施文档
 
 - [首版实现规格](implementation-spec.md)
+- [资源治理](resource-governance.md)
 - [首版短计划](../plan/implementation-plan.md)
 - [首版逐过程执行计划](../plan/implementation-execution-plan.md)
 - [首版开发 Wave Plan](../plan/implementation-wave-plan.md)
 - [侧边栏三组卡片改造方案](../plan/sidebar-redesign-plan.md)
+- [SaltUI 风格页面重构计划](../plan/saltui-style-refactor-plan.md)

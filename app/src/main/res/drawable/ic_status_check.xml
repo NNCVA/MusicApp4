@@ -1,0 +1,19 @@
+<!--
+  Derived from Salt UI:
+  ui2/src/commonMain/kotlin/com/moriafly/salt/ui/icons/Check.kt
+  Copyright (C) 2025 Moriafly
+  Licensed under the Apache License, Version 2.0.
+  Modified by MusicApp: converted from Compose ImageVector to Android VectorDrawable
+  and renamed for the project resource namespace.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    tools:ignore="UnusedResources">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10s10,-4.48 10,-10S17.52,2 12,2zM9.29,16.29L5.7,12.7c-0.39,-0.39 -0.39,-1.02 0,-1.41c0.39,-0.39 1.02,-0.39 1.41,0L10,14.17l6.88,-6.88c0.39,-0.39 1.02,-0.39 1.41,0c0.39,0.39 0.39,1.02 0,1.41l-7.59,7.59c-0.38,0.39 -1.02,0.39 -1.41,0z" />
+</vector>

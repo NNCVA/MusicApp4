@@ -57,6 +57,15 @@ Release runtime direct dependency notices:
   Copyright The Android Open Source Project.
   License: Apache License 2.0.
 
+Bundled visual asset notices:
+
+- Salt UI icon resources, source revision c2888ce11de992b277a355fa47a30013b360aede
+  Copyright Moriafly; converted ImageVector source files are Copyright (C) 2025 Moriafly.
+  Source: https://github.com/Moriafly/SaltUI
+  License: Apache License 2.0.
+  Modifications: resources were renamed for MusicApp; ChevronRight, Check, and Success
+  were converted from Compose ImageVector definitions to Android VectorDrawable XML.
+
 The complete common license text follows. Component-specific NOTICE attribution is retained above.
 
 Apache License
