@@ -32,12 +32,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.navigation.TopLevelNavKey
@@ -150,26 +155,97 @@ internal fun SidebarNavigation(
 internal fun SidebarExitDialog(
     onChoice: (SidebarExitChoice) -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = { onChoice(SidebarExitChoice.CANCEL) },
-        title = { Text(stringResource(R.string.sidebar_exit_dialog_title)) },
-        text = { Text(stringResource(R.string.sidebar_exit_dialog_description)) },
-        confirmButton = {
-            TextButton(onClick = { onChoice(SidebarExitChoice.FULL_EXIT) }) {
-                Text(stringResource(R.string.sidebar_exit_fully))
-            }
+    Dialog(
+        onDismissRequest = {
+            onChoice(SidebarExitChoice.CANCEL)
         },
-        dismissButton = {
-            Row {
-                TextButton(onClick = { onChoice(SidebarExitChoice.RETURN_TO_DESKTOP) }) {
-                    Text(stringResource(R.string.sidebar_return_to_desktop))
-                }
-                TextButton(onClick = { onChoice(SidebarExitChoice.CANCEL) }) {
-                    Text(stringResource(R.string.sidebar_cancel))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // 标题卡片 + 退出选项
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = stringResource(R.string.sidebar_exit_dialog_title),
+                        modifier = Modifier.padding(
+                            start = 24.dp,
+                            top = 24.dp,
+                            end = 24.dp,
+                            bottom = 16.dp,
+                        ),
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+
+                    HorizontalDivider()
+
+                    DialogOptionRow(
+                        text = stringResource(R.string.sidebar_exit_fully),
+                        onClick = {
+                            onChoice(SidebarExitChoice.FULL_EXIT)
+                        },
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                    )
+
+                    DialogOptionRow(
+                        text = stringResource(R.string.sidebar_return_to_desktop),
+                        onClick = {
+                            onChoice(SidebarExitChoice.RETURN_TO_DESKTOP)
+                        },
+                    )
                 }
             }
-        },
-    )
+
+            // 单独的取消卡片
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+            ) {
+                DialogOptionRow(
+                    text = stringResource(R.string.sidebar_cancel),
+                    onClick = {
+                        onChoice(SidebarExitChoice.CANCEL)
+                    },
+                    textStyle = MaterialTheme.typography.titleMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DialogOptionRow(
+    text: String,
+    onClick: () -> Unit,
+    textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(
+                horizontal = 24.dp,
+                vertical = 18.dp,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f),
+            style = textStyle,
+        )
+    }
 }
 
 @Composable

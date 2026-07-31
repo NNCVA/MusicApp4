@@ -185,7 +185,7 @@ fun MainNavigation(
                     },
                     onRequestExit = {
                         showExitDialog = true
-                        closeDrawer()
+                        //closeDrawer()
                     },
                     onCycleTheme = {
                         coroutineScope.launch {

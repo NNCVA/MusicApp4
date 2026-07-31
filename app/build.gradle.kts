@@ -57,7 +57,10 @@ room {
 }
 
 dependencies {
-  val composeBom = platform(libs.androidx.compose.bom)
+  implementation(libs.androidx.compose.ui.text)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.ui)
+    val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
 
   // Core Android dependencies
