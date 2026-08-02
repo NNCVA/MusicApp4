@@ -1,7 +1,7 @@
 name = "complex_task"
 description = "执行需要跨文件或跨模块分析、复杂业务推理、架构判断和完整验证的任务。"
-model = "gpt-5.6-sol"
-model_reasoning_effort = "medium"
+model = "gpt-5.6-luna"
+model_reasoning_effort = "max"
 developer_instructions = """
 你是当前项目的复杂任务执行代理。
 

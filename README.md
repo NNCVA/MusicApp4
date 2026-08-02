@@ -11,11 +11,12 @@ MusicApp 是一款使用 Kotlin 与 Jetpack Compose 构建的现代化 Android �
 ### 当前 App 页面
 
 <p align="center">
-  <img src="docs/pic_app/tracks.jpg" width="19%" alt="单曲页面" />
-  <img src="docs/pic_app/albums.jpg" width="19%" alt="专辑页面" />
-  <img src="docs/pic_app/artists.jpg" width="19%" alt="艺术家页面" />
-  <img src="docs/pic_app/playlists.jpg" width="19%" alt="播放列表页面" />
-  <img src="docs/pic_app/sidebar.jpg" width="19%" alt="侧边栏导航" />
+  <img src="docs/pic_app/tracks.png" width="30%" alt="单曲页面" />
+  <img src="docs/pic_app/albums.png" width="30%" alt="专辑页面" />
+  <img src="docs/pic_app/artists.png" width="30%" alt="艺术家页面" />
+  <img src="docs/pic_app/playlists.png" width="30%" alt="播放列表页面" />
+  <img src="docs/pic_app/sidebar.png" width="30%" alt="侧边栏导航" />
+  <img src="docs/pic_app/folders.png" width="30%" alt="文件夹页面" />
 </p>
 
 ### 目标页面样式
@@ -23,12 +24,17 @@ MusicApp 是一款使用 Kotlin 与 Jetpack Compose 构建的现代化 Android �
 以下图片是后续视觉与交互验收的目标样式，不代表当前 App 已达到完全一致的视觉效果。
 
 <p align="center">
-  <img src="docs/pic/tracks.jpg" width="16%" alt="目标单曲页面" />
-  <img src="docs/pic/albums.jpg" width="16%" alt="目标专辑页面" />
-  <img src="docs/pic/artists.jpg" width="16%" alt="目标艺术家页面" />
-  <img src="docs/pic/playlists.jpg" width="16%" alt="目标播放列表页面" />
-  <img src="docs/pic/sidebar.jpg" width="16%" alt="目标侧边栏导航" />
-  <img src="docs/pic/scan_screen.jpg" width="16%" alt="目标扫描页面" />
+  <img src="docs/pic/tracks.png" width="30%" alt="目标单曲页面" />
+  <img src="docs/pic/albums.png" width="30%" alt="目标专辑页面" />
+  <img src="docs/pic/artists.png" width="30%" alt="目标艺术家页面" />
+  <img src="docs/pic/playlists.png" width="30%" alt="目标播放列表页面" />
+  <img src="docs/pic/sidebar.png" width="30%" alt="目标侧边栏导航" />
+  <img src="docs/pic/scan_screen.png" width="30%" alt="目标扫描页面" />
+  <img src="docs/pic/folders.png" width="30%" alt="文件夹页面" />
+  <img src="docs/pic/scan_permission.png" width="30%" alt="扫描权限弹窗" />
+  <img src="docs/pic/Permission.png" width="30%" alt="权限弹窗" />
+  <img src="docs/pic/playlist_null.png" width="30%" alt="歌单空状态页面" />
+  <img src="docs/pic/player_detail.png" width="30%" alt="歌曲详情页面" />
 </p>
 
 ## 核心功能
