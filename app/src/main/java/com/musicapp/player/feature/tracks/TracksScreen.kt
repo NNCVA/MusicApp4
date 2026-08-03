@@ -2,12 +2,6 @@ package com.musicapp.player.feature.tracks
 
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,7 +32,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,9 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -67,16 +58,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
-import com.musicapp.player.core.designsystem.component.ErrorState
 import com.musicapp.player.core.designsystem.component.SectionIndexBar
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.metadata.ArtworkResult
-import com.musicapp.player.core.media.MediaAudioCandidate
-import com.musicapp.player.data.sync.MediaLibraryScanSkipReason
-import com.musicapp.player.data.sync.scanResultTitle as sharedScanResultTitle
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryNavigationIconButton
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
@@ -101,8 +88,6 @@ fun TracksScreenRoute(
         contentInsets = contentInsets,
         policy = policy,
         openDrawer = openDrawer,
-        onManualSync = viewModel::requestManualSync,
-        onRetry = viewModel::retrySync,
         onSortSelected = viewModel::selectSort,
         onTrackArtworkRequested = viewModel::requestArtwork,
         onTrackAddToQueue = viewModel::addTrackToQueue,
@@ -139,8 +124,6 @@ fun TracksScreen(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
-    onManualSync: () -> Unit,
-    onRetry: () -> Unit,
     onSortSelected: (TrackSortField) -> Unit,
     onTrackArtworkRequested: (Track) -> Unit,
     onTrackAddToQueue: (TrackId) -> Unit,
@@ -193,7 +176,6 @@ fun TracksScreen(
                 state = state,
                 policy = policy,
                 openDrawer = openDrawer,
-                onManualSync = onManualSync,
                 onSortSelected = onSortSelected,
                 searchActive = searchActive,
                 searchQuery = searchQuery,
@@ -216,59 +198,38 @@ fun TracksScreen(
                 onPlayNext = onPlayNext,
                 onHideSelected = onHideSelected,
             )
-            when {
-                state.isInitialLoading -> ScanRadar(modifier = Modifier.weight(1f))
-                state.fullScreenFailure ->
-                    ErrorState(
-                        onRetry = onRetry,
-                        modifier = Modifier.weight(1f),
-                        description = stringResource(R.string.scan_error_description),
-                    )
-                else -> {
-                    if (state.isRefreshing) {
-                        val refreshingDescription = stringResource(R.string.scan_refreshing)
-                        LinearProgressIndicator(
-                            modifier =
-                                Modifier.fillMaxWidth().semantics {
-                                    contentDescription = refreshingDescription
-                                },
-                        )
-                    }
-                    if (state.cachedFailure) {
-                        CachedScanError(onRetry = onRetry)
-                    }
-                    if (state.tracks.isEmpty()) {
-                        EmptyState(
-                            modifier = Modifier.weight(1f),
-                            title = stringResource(R.string.tracks_empty_title),
-                            description = stringResource(R.string.tracks_empty_description),
-                        )
-                    } else if (filteredTracks.isEmpty()) {
-                        EmptyState(
-                            modifier = Modifier.weight(1f),
-                            title = stringResource(R.string.tracks_no_results_title),
-                            description = stringResource(R.string.tracks_no_results_description),
-                        )
-                    } else {
-                        TrackList(
-                            tracks = filteredTracks,
-                            sections = sections,
-                            listState = listState,
-                            selectedIds = state.selectedTrackIds,
-                            selectionMode = state.isSelectionMode,
-                            artworkByTrackId = state.artworkByTrackId,
-                            playlists = state.playlists,
-                            onArtworkRequested = onTrackArtworkRequested,
-                            onAddToQueue = onTrackAddToQueue,
-                            onPlayNext = onTrackPlayNext,
-                            onHide = onTrackHide,
-                            onAddToPlaylist = onTrackAddToPlaylist,
-                            onTrackClick = onTrackClick,
-                            onTrackLongClick = onTrackLongClick,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
+            if (!state.isLibraryLoaded) {
+                Spacer(modifier = Modifier.weight(1f))
+            } else if (state.tracks.isEmpty()) {
+                EmptyState(
+                    modifier = Modifier.weight(1f),
+                    title = stringResource(R.string.tracks_empty_title),
+                    description = stringResource(R.string.tracks_empty_description),
+                )
+            } else if (filteredTracks.isEmpty()) {
+                EmptyState(
+                    modifier = Modifier.weight(1f),
+                    title = stringResource(R.string.tracks_no_results_title),
+                    description = stringResource(R.string.tracks_no_results_description),
+                )
+            } else {
+                TrackList(
+                    tracks = filteredTracks,
+                    sections = sections,
+                    listState = listState,
+                    selectedIds = state.selectedTrackIds,
+                    selectionMode = state.isSelectionMode,
+                    artworkByTrackId = state.artworkByTrackId,
+                    playlists = state.playlists,
+                    onArtworkRequested = onTrackArtworkRequested,
+                    onAddToQueue = onTrackAddToQueue,
+                    onPlayNext = onTrackPlayNext,
+                    onHide = onTrackHide,
+                    onAddToPlaylist = onTrackAddToPlaylist,
+                    onTrackClick = onTrackClick,
+                    onTrackLongClick = onTrackLongClick,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
         if (showSectionIndex) {
@@ -303,7 +264,6 @@ private fun TracksTopBar(
     state: TracksUiState,
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
-    onManualSync: () -> Unit,
     onSortSelected: (TrackSortField) -> Unit,
     searchActive: Boolean,
     searchQuery: String,
@@ -506,17 +466,6 @@ private fun TracksTopBar(
                             }
                         }
                     }
-                    IconButton(
-                        onClick = onManualSync,
-                        modifier = Modifier.size(dimensions.minimumTouchTarget),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_sidebar_scan),
-                            contentDescription = stringResource(R.string.tracks_scan_label),
-                            tint = MusicTheme.colors.onSurface,
-                            modifier = Modifier.size(dimensions.spaceLarge),
-                        )
-                    }
                 }
             }
         }
@@ -549,88 +498,6 @@ private fun BatchResultDialog(
             }
         },
     )
-}
-
-@Composable
-private fun ScanRadar(modifier: Modifier = Modifier) {
-    val dimensions = MusicTheme.dimensions
-    val primary = MusicTheme.colors.primary
-    val radarDescription = stringResource(R.string.scan_radar_accessibility)
-    val transition = rememberInfiniteTransition(label = "scan-radar")
-    val sweep by
-        transition.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(durationMillis = 1_200), RepeatMode.Restart),
-            label = "scan-radar-sweep",
-        )
-    Column(
-        modifier = modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium, Alignment.CenterVertically),
-    ) {
-        Canvas(
-            modifier =
-                Modifier.size(dimensions.radarSize).semantics {
-                    contentDescription = radarDescription
-                },
-        ) {
-            val radius = size.minDimension / 2f
-            repeat(3) { index ->
-                drawCircle(
-                    color = primary.copy(alpha = 0.22f + index * 0.12f),
-                    radius = radius * (index + 1) / 3f,
-                    style = Stroke(width = dimensions.radarStrokeWidth.toPx()),
-                )
-            }
-            val angle = sweep * (Math.PI * 2.0)
-            drawLine(
-                color = primary,
-                start = center,
-                end = Offset(
-                    x = center.x + (kotlin.math.cos(angle) * radius).toFloat(),
-                    y = center.y + (kotlin.math.sin(angle) * radius).toFloat(),
-                ),
-                strokeWidth = dimensions.radarStrokeWidth.toPx(),
-            )
-        }
-        Text(
-            text = stringResource(R.string.scan_first_library),
-            style = MusicTheme.typography.titleLarge,
-            color = MusicTheme.colors.onSurface,
-        )
-        Text(
-            text = stringResource(R.string.scan_first_library_description),
-            style = MusicTheme.typography.bodyMedium,
-            color = MusicTheme.colors.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun CachedScanError(onRetry: () -> Unit) {
-    val dimensions = MusicTheme.dimensions
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MusicTheme.colors.errorContainer,
-        shape = MusicTheme.shapes.medium,
-    ) {
-        Row(
-            modifier = Modifier.padding(dimensions.spaceSmall),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-        ) {
-            Text(
-                text = stringResource(R.string.scan_cached_error),
-                color = MusicTheme.colors.onErrorContainer,
-                style = MusicTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onRetry, shape = MusicTheme.shapes.small) {
-                Text(stringResource(R.string.retry))
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -972,10 +839,6 @@ private fun Track.matchesSearch(query: String): Boolean {
         .any { it.contains(normalizedQuery, ignoreCase = true) }
 }
 
-internal fun MediaAudioCandidate.scanResultTitle(): String {
-    return sharedScanResultTitle()
-}
-
 private fun TrackSortField.labelResId(): Int =
     when (this) {
         TrackSortField.TITLE -> R.string.sort_title
@@ -989,17 +852,6 @@ private fun TrackSortDirection.labelResId(): Int =
     when (this) {
         TrackSortDirection.ASCENDING -> R.string.sort_direction_ascending
         TrackSortDirection.DESCENDING -> R.string.sort_direction_descending
-    }
-
-private fun MediaLibraryScanSkipReason.labelResId(): Int =
-    when (this) {
-        MediaLibraryScanSkipReason.UNSUPPORTED_FORMAT -> R.string.scan_skip_unsupported_format
-        MediaLibraryScanSkipReason.NON_POSITIVE_DURATION -> R.string.scan_skip_zero_duration
-        MediaLibraryScanSkipReason.SYSTEM_AUDIO -> R.string.scan_skip_system_audio
-        MediaLibraryScanSkipReason.EXCLUDED_PATH -> R.string.scan_skip_excluded_path
-        MediaLibraryScanSkipReason.OUTSIDE_INCLUDED_PATHS -> R.string.scan_skip_outside_included_paths
-        MediaLibraryScanSkipReason.DUPLICATE_IDENTITY -> R.string.scan_skip_duplicate
-        MediaLibraryScanSkipReason.UNREADABLE_ITEM -> R.string.scan_skip_unreadable
     }
 
 private const val UNKNOWN_ARTIST_SENTINEL = "<unknown>"

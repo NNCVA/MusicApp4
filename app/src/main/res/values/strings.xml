@@ -35,7 +35,6 @@
     <string name="tracks_no_results_title">No matching tracks</string>
     <string name="tracks_no_results_description">Try another title, artist, album, or file name.</string>
     <string name="tracks_sort_label">Sort tracks</string>
-    <string name="tracks_scan_label">Scan music</string>
     <string name="track_add_to_queue">Add to queue</string>
     <string name="track_more_actions">More actions for this track</string>
     <string name="track_artwork_description">Artwork for %1$s</string>
@@ -81,7 +80,6 @@
     <string name="scan_refreshing">Updating the music library</string>
     <string name="scan_first_library">Scanning your music</string>
     <string name="scan_first_library_description">Keep MusicApp open while it builds your library for the first time.</string>
-    <string name="scan_radar_accessibility">Music library scan in progress</string>
     <string name="scan_error_description">MusicApp could not read the music library. Check audio access and try again.</string>
     <string name="scan_cached_error">The last update failed. Your saved library remains available.</string>
     <string name="tracks_empty_title">No tracks found</string>

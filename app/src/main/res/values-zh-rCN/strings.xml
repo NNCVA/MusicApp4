@@ -32,7 +32,6 @@
     <string name="tracks_no_results_title">没有匹配的歌曲</string>
     <string name="tracks_no_results_description">请尝试其他标题、艺术家、专辑或文件名。</string>
     <string name="tracks_sort_label">排序歌曲</string>
-    <string name="tracks_scan_label">扫描音乐</string>
     <string name="track_add_to_queue">加入队列</string>
     <string name="track_more_actions">此歌曲的更多操作</string>
     <string name="track_artwork_description">%1$s 的封面</string>
@@ -78,7 +77,6 @@
     <string name="scan_refreshing">正在更新音乐库</string>
     <string name="scan_first_library">正在扫描音乐</string>
     <string name="scan_first_library_description">首次建立音乐库时，请保持 MusicApp 处于打开状态。</string>
-    <string name="scan_radar_accessibility">正在扫描音乐库</string>
     <string name="scan_error_description">无法读取音乐库，请检查音频访问权限后重试。</string>
     <string name="scan_cached_error">上次更新失败，已保存的音乐库仍可使用。</string>
     <string name="tracks_empty_title">未找到单曲</string>

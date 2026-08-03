@@ -2,6 +2,7 @@ package com.musicapp.player.feature.tracks
 
 import androidx.lifecycle.SavedStateHandle
 import com.musicapp.player.core.domain.model.PlaybackContext
+import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.media.MediaAudioCandidate
@@ -13,14 +14,7 @@ import com.musicapp.player.data.repository.FakeMediaLibraryRepository
 import com.musicapp.player.data.repository.FakePlaylistRepository
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
-import com.musicapp.player.data.sync.LibrarySyncEvent
-import com.musicapp.player.data.sync.LibrarySyncState
-import com.musicapp.player.data.sync.MediaLibraryScanSummary
-import com.musicapp.player.data.sync.MediaLibrarySyncFeedback
-import com.musicapp.player.data.sync.MediaLibrarySyncFailure
-import com.musicapp.player.data.sync.MediaLibrarySyncTrigger
-import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
-import com.musicapp.player.data.sync.SyncReport
+import com.musicapp.player.data.sync.scanResultTitle
 import com.musicapp.player.feature.tracks.batch.BatchTrackAction
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
@@ -30,7 +24,9 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
@@ -66,40 +62,46 @@ class TracksViewModelTest {
     }
 
     @Test
-    fun `no cache starts in full screen loading state`() = runTest(dispatcher) {
-        val viewModel = subject(syncState = LibrarySyncState.Idle(false))
+    fun `empty library is marked loaded after its first emission`() = runTest(dispatcher) {
+        val viewModel = subject()
+
+        assertFalse(viewModel.uiState.value.isLibraryLoaded)
         collectState(viewModel)
 
-        assertTrue(viewModel.uiState.value.isInitialLoading)
-        assertFalse(viewModel.uiState.value.fullScreenFailure)
-    }
-
-    @Test
-    fun `successful empty cache shows zero tracks without loading`() = runTest(dispatcher) {
-        val viewModel = subject(syncState = LibrarySyncState.Idle(true))
-        collectState(viewModel)
-
-        assertFalse(viewModel.uiState.value.isInitialLoading)
         assertTrue(viewModel.uiState.value.tracks.isEmpty())
+        assertTrue(viewModel.uiState.value.isLibraryLoaded)
     }
 
     @Test
-    fun `cached failure preserves tracks and exposes local error`() = runTest(dispatcher) {
-        val track = track(1, title = "Cached")
-        val viewModel =
-            subject(
-                tracks = listOf(track),
-                syncState =
-                    LibrarySyncState.Failed(
-                        hasSuccessfulScan = true,
-                        trigger = MediaLibrarySyncTrigger.CONTENT_CHANGE,
-                        failure = MediaLibrarySyncFailure.QUERY_FAILED,
-                    ),
-            )
+    fun `persisted tracks are shown`() = runTest(dispatcher) {
+        val cachedTracks = listOf(track(1, title = "Cached"))
+        val viewModel = subject(tracks = cachedTracks)
         collectState(viewModel)
 
-        assertTrue(viewModel.uiState.value.cachedFailure)
-        assertEquals(listOf(track), viewModel.uiState.value.tracks)
+        assertEquals(cachedTracks, viewModel.uiState.value.tracks)
+        assertTrue(viewModel.uiState.value.isLibraryLoaded)
+    }
+
+    @Test
+    fun `cached tracks do not wait for playlists to load`() = runTest(dispatcher) {
+        val cachedTracks = listOf(track(1, title = "Cached"))
+        val viewModel = subject(
+            tracks = cachedTracks,
+            playlistRepository = NeverEmittingPlaylistRepository(),
+        )
+        collectState(viewModel)
+
+        assertEquals(cachedTracks, viewModel.uiState.value.tracks)
+        assertTrue(viewModel.uiState.value.isLibraryLoaded)
+    }
+
+    @Test
+    fun `cached tracks stay visible`() = runTest(dispatcher) {
+        val tracks = listOf(track(1, title = "Cached"))
+        val viewModel = subject(tracks = tracks)
+        collectState(viewModel)
+
+        assertEquals(tracks, viewModel.uiState.value.tracks)
     }
 
     @Test
@@ -111,7 +113,7 @@ class TracksViewModelTest {
                 track(2, title = "Alpha", artist = "Charlie", album = "Alpha", dateAddedMs = 20, durationMs = 1_000),
                 track(3, title = "Beta", artist = "Beta", album = "Charlie", dateAddedMs = 15, durationMs = 2_000),
             )
-        val first = subject(tracks, LibrarySyncState.Idle(true), savedState = savedState)
+        val first = subject(tracks, savedState = savedState)
         collectState(first)
         assertEquals(listOf(2L, 3L, 1L), first.uiState.value.tracks.map { it.id.mediaStoreId })
         first.selectSort(TrackSortField.ARTIST)
@@ -130,7 +132,7 @@ class TracksViewModelTest {
         testScheduler.runCurrent()
         assertEquals(listOf(1L, 3L, 2L), first.uiState.value.tracks.map { it.id.mediaStoreId })
 
-        val restored = subject(tracks, LibrarySyncState.Idle(true), savedState = savedState)
+        val restored = subject(tracks, savedState = savedState)
         collectState(restored)
         testScheduler.runCurrent()
         assertEquals(TrackSort(TrackSortField.DURATION, TrackSortDirection.DESCENDING), restored.uiState.value.sort)
@@ -141,7 +143,7 @@ class TracksViewModelTest {
     fun `hide selected updates repository without deleting the track`() = runTest(dispatcher) {
         val track = track(1, title = "Hidden")
         val repository = FakeMediaLibraryRepository(listOf(track))
-        val viewModel = subject(repository = repository, syncState = LibrarySyncState.Idle(true))
+        val viewModel = subject(repository = repository)
         collectState(viewModel)
         viewModel.toggleSelection(track.id)
         testScheduler.runCurrent()
@@ -213,7 +215,7 @@ class TracksViewModelTest {
     @Test
     fun `multi selection supports current result select all and back clears first`() = runTest(dispatcher) {
         val tracks = listOf(track(1, "One"), track(2, "Two"))
-        val viewModel = subject(tracks, LibrarySyncState.Idle(true))
+        val viewModel = subject(tracks)
         collectState(viewModel)
         viewModel.toggleSelection(tracks.first().id)
         viewModel.selectAllCurrentResults()
@@ -308,20 +310,6 @@ class TracksViewModelTest {
         }
 
     @Test
-    fun `feedback acknowledgement delegates event id and clears pending state`() = runTest(dispatcher) {
-        val feedback = completedFeedback(eventId = 42)
-        val controller = FakeTracksSyncController(LibrarySyncState.Idle(true, feedback))
-        val viewModel = subject(syncController = controller)
-        collectState(viewModel)
-
-        viewModel.acknowledgeFeedback(42)
-        testScheduler.runCurrent()
-
-        assertEquals(listOf(42L), controller.acknowledgedIds)
-        assertEquals(null, viewModel.uiState.value.pendingFeedback)
-    }
-
-    @Test
     fun `track click starts a list-repeat context in the visible sort order`() = runTest(dispatcher) {
         val playbackController = RecordingPlaybackControllerFacade()
         val first = track(1, "Alpha")
@@ -345,9 +333,7 @@ class TracksViewModelTest {
 
     private fun subject(
         tracks: List<Track> = emptyList(),
-        syncState: LibrarySyncState = LibrarySyncState.Idle(true),
         repository: MediaLibraryRepository = FakeMediaLibraryRepository(tracks),
-        syncController: FakeTracksSyncController = FakeTracksSyncController(syncState),
         savedState: SavedStateHandle = SavedStateHandle(),
         playbackController: PlaybackControllerFacade = RecordingPlaybackControllerFacade(),
         playlistRepository: PlaylistRepository = FakePlaylistRepository(),
@@ -358,7 +344,6 @@ class TracksViewModelTest {
         return TracksViewModel(
             mediaLibraryRepository = repository,
             playlistRepository = playlistRepository,
-            syncCoordinator = syncController,
             savedStateHandle = savedState,
             playbackController = playbackController,
             batchActionExecutor =
@@ -416,33 +401,6 @@ class TracksViewModelTest {
             displayName = "$title.mp3",
         )
 
-    private fun completedFeedback(eventId: Long): PendingLibrarySyncFeedback {
-        val candidate =
-            MediaAudioCandidate(
-                volumeName = "external",
-                mediaStoreId = 1,
-                title = "Track",
-                displayName = "Track.mp3",
-                mimeType = "audio/mpeg",
-                durationMs = 1_000,
-            )
-        val report =
-            SyncReport(
-                generation = 1,
-                upsertedTrackCount = 1,
-                removedTrackCount = 0,
-                temporarilyUnavailableVolumeNames = emptySet(),
-                scanSummary = MediaLibraryScanSummary(1, listOf(candidate), emptyList()),
-            )
-        return PendingLibrarySyncFeedback(
-            eventId,
-            LibrarySyncEvent.Completed(
-                trigger = MediaLibrarySyncTrigger.MANUAL,
-                feedback = MediaLibrarySyncFeedback.RESULT_DIALOG,
-                result = report,
-            ),
-        )
-    }
 }
 
 private class RecordingBatchTrackActionExecutor(
@@ -492,23 +450,8 @@ private class RecordingMediaLibraryRepository(
     }
 }
 
-private class FakeTracksSyncController(initialState: LibrarySyncState) : TracksSyncController {
-    private val mutableState = MutableStateFlow(initialState)
-    override val state: StateFlow<LibrarySyncState> = mutableState
-    val acknowledgedIds = mutableListOf<Long>()
-    var manualSyncRequests: Int = 0
-
-    override fun requestManualSync() {
-        manualSyncRequests++
-    }
-
-    override fun acknowledgeFeedback(eventId: Long) {
-        acknowledgedIds += eventId
-        mutableState.value =
-            when (val current = mutableState.value) {
-                is LibrarySyncState.Idle -> current.copy(pendingFeedback = null)
-                is LibrarySyncState.Syncing -> current.copy(pendingFeedback = null)
-                is LibrarySyncState.Failed -> current.copy(pendingFeedback = null)
-            }
-    }
+private class NeverEmittingPlaylistRepository(
+    delegate: PlaylistRepository = FakePlaylistRepository(),
+) : PlaylistRepository by delegate {
+    override fun observePlaylists(): Flow<List<Playlist>> = emptyFlow()
 }
