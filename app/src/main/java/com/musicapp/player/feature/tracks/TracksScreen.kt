@@ -1,5 +1,6 @@
 package com.musicapp.player.feature.tracks
 
+import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -8,6 +9,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,27 +26,39 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -52,9 +67,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.ErrorState
+import com.musicapp.player.core.designsystem.component.SectionIndexBar
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
+import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.media.MediaAudioCandidate
 import com.musicapp.player.data.sync.MediaLibraryScanSkipReason
 import com.musicapp.player.data.sync.scanResultTitle as sharedScanResultTitle
@@ -64,6 +82,7 @@ import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
@@ -84,6 +103,11 @@ fun TracksScreenRoute(
         onManualSync = viewModel::requestManualSync,
         onRetry = viewModel::retrySync,
         onSortSelected = viewModel::selectSort,
+        onTrackArtworkRequested = viewModel::requestArtwork,
+        onTrackAddToQueue = viewModel::addTrackToQueue,
+        onTrackPlayNext = viewModel::playTrackNext,
+        onTrackHide = viewModel::hideTrack,
+        onTrackAddToPlaylist = viewModel::addTrackToPlaylist,
         onTrackClick = { track ->
             if (state.isSelectionMode) {
                 viewModel.toggleSelection(track.id)
@@ -98,6 +122,7 @@ fun TracksScreenRoute(
             viewModel.toggleSelection(track.id)
         },
         onSelectAll = viewModel::selectAllCurrentResults,
+        onSelectTracks = viewModel::selectTracks,
         onClearSelection = viewModel::clearSelection,
         onAddToPlaylist = viewModel::addSelectedToPlaylist,
         onAddToQueue = viewModel::addSelectedToQueue,
@@ -116,9 +141,15 @@ fun TracksScreen(
     onManualSync: () -> Unit,
     onRetry: () -> Unit,
     onSortSelected: (TrackSortField) -> Unit,
+    onTrackArtworkRequested: (Track) -> Unit,
+    onTrackAddToQueue: (TrackId) -> Unit,
+    onTrackPlayNext: (TrackId) -> Unit,
+    onTrackHide: (TrackId) -> Unit,
+    onTrackAddToPlaylist: (TrackId, PlaylistId) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
     onSelectAll: () -> Unit,
+    onSelectTracks: (Collection<TrackId>) -> Unit,
     onClearSelection: () -> Unit,
     onAddToPlaylist: (PlaylistId) -> Unit,
     onAddToQueue: () -> Unit,
@@ -127,6 +158,12 @@ fun TracksScreen(
     onAcknowledgeBatchResult: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
+    var searchActive by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val filteredTracks =
+        remember(state.tracks, searchQuery) {
+            state.tracks.filter { it.matchesSearch(searchQuery) }
+        }
     Column(
         modifier =
             Modifier.fillMaxSize()
@@ -139,7 +176,21 @@ fun TracksScreen(
             openDrawer = openDrawer,
             onManualSync = onManualSync,
             onSortSelected = onSortSelected,
-            onSelectAll = onSelectAll,
+            searchActive = searchActive,
+            searchQuery = searchQuery,
+            onOpenSearch = { searchActive = true },
+            onCloseSearch = {
+                searchActive = false
+                searchQuery = ""
+            },
+            onSearchQueryChange = { searchQuery = it },
+            onSelectAll = {
+                if (searchQuery.isBlank()) {
+                    onSelectAll()
+                } else {
+                    onSelectTracks(filteredTracks.map(Track::id))
+                }
+            },
             onClearSelection = onClearSelection,
             onAddToPlaylist = onAddToPlaylist,
             onAddToQueue = onAddToQueue,
@@ -173,11 +224,25 @@ fun TracksScreen(
                         title = stringResource(R.string.tracks_empty_title),
                         description = stringResource(R.string.tracks_empty_description),
                     )
+                } else if (filteredTracks.isEmpty()) {
+                    EmptyState(
+                        modifier = Modifier.weight(1f),
+                        title = stringResource(R.string.tracks_no_results_title),
+                        description = stringResource(R.string.tracks_no_results_description),
+                    )
                 } else {
                     TrackList(
-                        tracks = state.tracks,
+                        tracks = filteredTracks,
+                        sectionField = state.sort.field,
                         selectedIds = state.selectedTrackIds,
                         selectionMode = state.isSelectionMode,
+                        artworkByTrackId = state.artworkByTrackId,
+                        playlists = state.playlists,
+                        onArtworkRequested = onTrackArtworkRequested,
+                        onAddToQueue = onTrackAddToQueue,
+                        onPlayNext = onTrackPlayNext,
+                        onHide = onTrackHide,
+                        onAddToPlaylist = onTrackAddToPlaylist,
                         onTrackClick = onTrackClick,
                         onTrackLongClick = onTrackLongClick,
                         modifier = Modifier.weight(1f),
@@ -198,6 +263,11 @@ private fun TracksTopBar(
     openDrawer: () -> Unit,
     onManualSync: () -> Unit,
     onSortSelected: (TrackSortField) -> Unit,
+    searchActive: Boolean,
+    searchQuery: String,
+    onOpenSearch: () -> Unit,
+    onCloseSearch: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
     onAddToPlaylist: (PlaylistId) -> Unit,
@@ -290,46 +360,121 @@ private fun TracksTopBar(
                 }
             }
         } else {
-            if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
-                CategoryNavigationIconButton(CategoryNavigationAction.DRAWER, openDrawer)
-            }
-            Text(
-                text = stringResource(R.string.navigation_tracks),
-                style = MusicTheme.typography.headlineMedium,
-                modifier = Modifier.weight(1f),
-            )
-            Box {
-                TextButton(
-                    onClick = { sortMenuExpanded = true },
-                    shape = MusicTheme.shapes.small,
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(dimensions.playerHeaderHeight),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
                 ) {
-                    Text(stringResource(state.sort.field.labelResId()))
-                }
-                DropdownMenu(
-                    expanded = sortMenuExpanded,
-                    onDismissRequest = { sortMenuExpanded = false },
-                ) {
-                    TrackSortField.entries.forEach { field ->
-                        DropdownMenuItem(
-                            text = {
-                                val suffix =
-                                    if (field == state.sort.field) {
-                                        stringResource(state.sort.direction.labelResId())
-                                    } else {
-                                        ""
+                    if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
+                        CategoryNavigationIconButton(CategoryNavigationAction.DRAWER, openDrawer)
+                    }
+                    if (searchActive) {
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = onSearchQueryChange,
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            textStyle = MusicTheme.typography.titleLarge.copy(color = MusicTheme.colors.onSurface),
+                            decorationBox = { innerTextField ->
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.CenterStart,
+                                ) {
+                                    if (searchQuery.isBlank()) {
+                                        Text(
+                                            text = stringResource(R.string.tracks_search_placeholder),
+                                            style = MusicTheme.typography.titleMedium,
+                                            color = MusicTheme.colors.onSurfaceVariant,
+                                        )
                                     }
-                                Text(stringResource(field.labelResId()) + suffix)
+                                    innerTextField()
+                                }
                             },
-                            onClick = {
-                                onSortSelected(field)
-                                sortMenuExpanded = false
-                            },
+                        )
+                        IconButton(
+                            onClick = onCloseSearch,
+                            modifier = Modifier.size(dimensions.minimumTouchTarget),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_common_close),
+                                contentDescription = stringResource(R.string.tracks_search_close),
+                                tint = MusicTheme.colors.onSurface,
+                                modifier = Modifier.size(dimensions.spaceLarge),
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = stringResource(R.string.tracks_page_title),
+                            style = MusicTheme.typography.headlineMedium,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                        )
+                        IconButton(
+                            onClick = onOpenSearch,
+                            modifier = Modifier.size(dimensions.minimumTouchTarget),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_common_search),
+                                contentDescription = stringResource(R.string.tracks_search_label),
+                                tint = MusicTheme.colors.onSurface,
+                                modifier = Modifier.size(dimensions.spaceLarge),
+                            )
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(dimensions.minimumTouchTarget),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    Box {
+                        IconButton(
+                            onClick = { sortMenuExpanded = true },
+                            modifier = Modifier.size(dimensions.minimumTouchTarget),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_common_sort_alpha),
+                                contentDescription = stringResource(R.string.tracks_sort_label),
+                                tint = MusicTheme.colors.onSurface,
+                                modifier = Modifier.size(dimensions.spaceLarge),
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = sortMenuExpanded,
+                            onDismissRequest = { sortMenuExpanded = false },
+                        ) {
+                            TrackSortField.entries.forEach { field ->
+                                DropdownMenuItem(
+                                    text = {
+                                        val suffix =
+                                            if (field == state.sort.field) {
+                                                stringResource(state.sort.direction.labelResId())
+                                            } else {
+                                                ""
+                                            }
+                                        Text(stringResource(field.labelResId()) + suffix)
+                                    },
+                                    onClick = {
+                                        onSortSelected(field)
+                                        sortMenuExpanded = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    IconButton(
+                        onClick = onManualSync,
+                        modifier = Modifier.size(dimensions.minimumTouchTarget),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_sidebar_scan),
+                            contentDescription = stringResource(R.string.tracks_scan_label),
+                            tint = MusicTheme.colors.onSurface,
+                            modifier = Modifier.size(dimensions.spaceLarge),
                         )
                     }
                 }
-            }
-            TextButton(onClick = onManualSync, shape = MusicTheme.shapes.small) {
-                Text(stringResource(R.string.scan_now))
             }
         }
     }
@@ -445,27 +590,158 @@ private fun CachedScanError(onRetry: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TrackList(
     tracks: List<Track>,
-    selectedIds: Set<com.musicapp.player.core.domain.model.TrackId>,
+    sectionField: TrackSortField,
+    selectedIds: Set<TrackId>,
     selectionMode: Boolean,
+    artworkByTrackId: Map<TrackId, TrackArtworkState>,
+    playlists: List<com.musicapp.player.core.domain.model.Playlist>,
+    onArtworkRequested: (Track) -> Unit,
+    onAddToQueue: (TrackId) -> Unit,
+    onPlayNext: (TrackId) -> Unit,
+    onHide: (TrackId) -> Unit,
+    onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val sections = remember(tracks, sectionField) {
+        groupTracksIntoSections(tracks, sectionField)
+    }
+    val indexLabels = remember(sections) { sectionIndexLabels(sections) }
+    val sectionPositions = remember(sections) { sectionStartPositions(sections) }
+    val selectedSection by remember(listState, sections) {
+        derivedStateOf {
+            sectionLabelAtPosition(sections, listState.firstVisibleItemIndex)
+        }
+    }
+    val sectionDescriptions = sections.associate { section ->
+        section.label to stringResource(R.string.track_index_label, section.label)
+    }
+    Box(modifier = modifier.fillMaxWidth()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    start = dimensions.spaceSmall,
+                    top = dimensions.spaceSmall,
+                    end = if (sections.isEmpty()) dimensions.spaceSmall else dimensions.sectionIndexItemSize,
+                    bottom = dimensions.spaceSmall,
+                ),
+        ) {
+            if (sections.isEmpty()) {
+                trackItems(
+                    tracks = tracks,
+                    selectedIds = selectedIds,
+                    selectionMode = selectionMode,
+                    artworkByTrackId = artworkByTrackId,
+                    playlists = playlists,
+                    onArtworkRequested = onArtworkRequested,
+                    onAddToQueue = onAddToQueue,
+                    onPlayNext = onPlayNext,
+                    onHide = onHide,
+                    onAddToPlaylist = onAddToPlaylist,
+                    onTrackClick = onTrackClick,
+                    onTrackLongClick = onTrackLongClick,
+                )
+            } else {
+                sections.forEach { section ->
+                    stickyHeader(key = "section-header-${section.label}") {
+                        TrackSectionHeader(label = section.label)
+                    }
+                    trackItems(
+                        tracks = section.tracks,
+                        selectedIds = selectedIds,
+                        selectionMode = selectionMode,
+                        artworkByTrackId = artworkByTrackId,
+                        playlists = playlists,
+                        onArtworkRequested = onArtworkRequested,
+                        onAddToQueue = onAddToQueue,
+                        onPlayNext = onPlayNext,
+                        onHide = onHide,
+                        onAddToPlaylist = onAddToPlaylist,
+                        onTrackClick = onTrackClick,
+                        onTrackLongClick = onTrackLongClick,
+                    )
+                }
+            }
+        }
+        if (sections.isNotEmpty()) {
+            SectionIndexBar(
+                sections = indexLabels,
+                selectedSection = selectedSection,
+                onSectionClick = { label ->
+                    sectionPositions[label]?.let { position ->
+                        coroutineScope.launch { listState.animateScrollToItem(position) }
+                    }
+                },
+                sectionContentDescription = { label -> sectionDescriptions.getValue(label) },
+                modifier = Modifier.align(Alignment.CenterEnd),
+            )
+        }
+    }
+}
+
+private fun LazyListScope.trackItems(
+    tracks: List<Track>,
+    selectedIds: Set<TrackId>,
+    selectionMode: Boolean,
+    artworkByTrackId: Map<TrackId, TrackArtworkState>,
+    playlists: List<com.musicapp.player.core.domain.model.Playlist>,
+    onArtworkRequested: (Track) -> Unit,
+    onAddToQueue: (TrackId) -> Unit,
+    onPlayNext: (TrackId) -> Unit,
+    onHide: (TrackId) -> Unit,
+    onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
+    onTrackClick: (Track) -> Unit,
+    onTrackLongClick: (Track) -> Unit,
+) {
+    items(tracks, key = { track -> "${track.id.volumeName}:${track.id.mediaStoreId}" }) { track ->
+        TrackRow(
+            track = track,
+            selected = track.id in selectedIds,
+            selectionMode = selectionMode,
+            artwork = artworkByTrackId[track.id]
+                ?.takeIf { it.dateModifiedMs == track.dateModifiedMs }
+                ?.artwork
+                ?: ArtworkResult.Placeholder,
+            playlists = playlists,
+            onArtworkRequested = { onArtworkRequested(track) },
+            onAddToQueue = { onAddToQueue(track.id) },
+            onPlayNext = { onPlayNext(track.id) },
+            onHide = { onHide(track.id) },
+            onAddToPlaylist = { playlistId -> onAddToPlaylist(track.id, playlistId) },
+            onClick = { onTrackClick(track) },
+            onLongClick = { onTrackLongClick(track) },
+        )
+    }
+}
+
+@Composable
+private fun TrackSectionHeader(label: String) {
+    val dimensions = MusicTheme.dimensions
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MusicTheme.colors.background,
     ) {
-        items(tracks, key = { track -> "${track.id.volumeName}:${track.id.mediaStoreId}" }) { track ->
-            TrackRow(
-                track = track,
-                selected = track.id in selectedIds,
-                selectionMode = selectionMode,
-                onClick = { onTrackClick(track) },
-                onLongClick = { onTrackLongClick(track) },
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(dimensions.sectionHeaderHeight)
+                .padding(horizontal = dimensions.spaceSmall),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                text = label,
+                style = MusicTheme.typography.labelLarge,
+                color = MusicTheme.colors.onSurfaceVariant,
             )
         }
     }
@@ -477,11 +753,28 @@ private fun TrackRow(
     track: Track,
     selected: Boolean,
     selectionMode: Boolean,
+    artwork: ArtworkResult,
+    playlists: List<com.musicapp.player.core.domain.model.Playlist>,
+    onArtworkRequested: () -> Unit,
+    onAddToQueue: () -> Unit,
+    onPlayNext: () -> Unit,
+    onHide: () -> Unit,
+    onAddToPlaylist: (PlaylistId) -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     val compact = dimensions.windowWidthTier == MusicWindowWidthTier.COMPACT
+    val artistName = track.artistName.localizedArtistName()
+    val subtitle =
+        track.albumTitle
+            ?.takeIf(String::isNotBlank)
+            ?.let { stringResource(R.string.track_artist_album, artistName, it) }
+            ?: artistName
+    var menuExpanded by remember(track.id) { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(track.id, track.dateModifiedMs) {
+        onArtworkRequested()
+    }
     Row(
         modifier =
             Modifier.fillMaxWidth()
@@ -494,19 +787,42 @@ private fun TrackRow(
         if (selectionMode) {
             Checkbox(checked = selected, onCheckedChange = { onClick() })
         }
+        TrackArtwork(
+            artwork = artwork,
+            trackTitle = track.title,
+            modifier = Modifier.size(dimensions.trackArtworkSize),
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = track.title,
                 style = if (compact) MusicTheme.typography.compactTrackTitle else MusicTheme.typography.expandedTrackTitle,
                 color = MusicTheme.colors.onSurface,
-                maxLines = 2,
-            )
-            Text(
-                text = track.artistName.localizedArtistName(),
-                style = if (compact) MusicTheme.typography.compactTrackArtist else MusicTheme.typography.expandedTrackArtist,
-                color = MusicTheme.colors.onSurfaceVariant,
                 maxLines = 1,
             )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
+            ) {
+                track.qualityLabelResId()?.let { qualityResId ->
+                    Surface(
+                        color = MusicTheme.colors.secondaryContainer,
+                        shape = MusicTheme.shapes.extraSmall,
+                    ) {
+                        Text(
+                            text = stringResource(qualityResId),
+                            style = MusicTheme.typography.labelSmall,
+                            color = MusicTheme.colors.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = dimensions.spaceExtraSmall),
+                        )
+                    }
+                }
+                Text(
+                    text = subtitle,
+                    style = if (compact) MusicTheme.typography.compactTrackArtist else MusicTheme.typography.expandedTrackArtist,
+                    color = MusicTheme.colors.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
         }
         if (track.availability == Availability.TEMPORARILY_UNAVAILABLE) {
             Text(
@@ -515,11 +831,127 @@ private fun TrackRow(
                 color = MusicTheme.colors.onSurfaceVariant,
             )
         }
-        Text(
-            text = formatDuration(track.durationMs),
-            style = MusicTheme.typography.labelMedium,
-            color = MusicTheme.colors.onSurfaceVariant,
-        )
+        if (!selectionMode) {
+            IconButton(
+                onClick = onAddToQueue,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = androidx.compose.ui.res.painterResource(R.drawable.ic_common_add),
+                    contentDescription = stringResource(R.string.track_add_to_queue),
+                    tint = MusicTheme.colors.onSurfaceVariant,
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_more_vertical),
+                        contentDescription = stringResource(R.string.track_more_actions),
+                        tint = MusicTheme.colors.onSurfaceVariant,
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.selection_add_to_queue)) },
+                        onClick = {
+                            menuExpanded = false
+                            onAddToQueue()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.selection_play_next)) },
+                        onClick = {
+                            menuExpanded = false
+                            onPlayNext()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.selection_hide)) },
+                        onClick = {
+                            menuExpanded = false
+                            onHide()
+                        },
+                    )
+                    if (playlists.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.selection_no_playlists)) },
+                            onClick = {},
+                            enabled = false,
+                        )
+                    } else {
+                        playlists.forEach { playlist ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(
+                                            R.string.selection_add_to_playlist_named,
+                                            playlist.displayName,
+                                        ),
+                                    )
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onAddToPlaylist(playlist.id)
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TrackArtwork(
+    artwork: ArtworkResult,
+    trackTitle: String,
+    modifier: Modifier,
+) {
+    val shape = MusicTheme.shapes.small
+    val artworkDescription = stringResource(R.string.track_artwork_description, trackTitle)
+    when (artwork) {
+        ArtworkResult.Placeholder ->
+            Box(
+                modifier = modifier
+                    .clip(shape)
+                    .background(MusicTheme.colors.secondaryContainer)
+                    .semantics {
+                        contentDescription = artworkDescription
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.player_artwork_placeholder),
+                    style = MusicTheme.typography.labelSmall,
+                    color = MusicTheme.colors.onSecondaryContainer,
+                )
+            }
+        is ArtworkResult.Embedded -> {
+            val image = artwork.image
+            val bitmap = remember(image) {
+                Bitmap.createBitmap(
+                    image.argbPixels,
+                    image.width,
+                    image.height,
+                    Bitmap.Config.ARGB_8888,
+                ).asImageBitmap()
+            }
+            Image(
+                bitmap = bitmap,
+                contentDescription = artworkDescription,
+                modifier = modifier.clip(shape),
+                contentScale = ContentScale.Crop,
+            )
+        }
     }
 }
 
@@ -527,11 +959,27 @@ private fun TrackRow(
 private fun String.localizedArtistName(): String =
     if (this == UNKNOWN_ARTIST_SENTINEL) stringResource(R.string.unknown_artist) else this
 
-private fun formatDuration(durationMs: Long): String {
-    val totalSeconds = durationMs / 1_000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format(Locale.ROOT, "%d:%02d", minutes, seconds)
+private fun Track.qualityLabelResId(): Int? =
+    when (mimeType?.lowercase(Locale.ROOT)) {
+        "audio/flac",
+        "audio/wav",
+        "audio/x-wav",
+        -> R.string.track_quality_high
+        "audio/mpeg",
+        "audio/aac",
+        "audio/mp4",
+        "audio/ogg",
+        "audio/opus",
+        -> R.string.track_quality_standard
+        else -> null
+    }
+
+private fun Track.matchesSearch(query: String): Boolean {
+    val normalizedQuery = query.trim()
+    if (normalizedQuery.isEmpty()) return true
+    return listOf(title, artistName, albumTitle, displayName)
+        .filterNotNull()
+        .any { it.contains(normalizedQuery, ignoreCase = true) }
 }
 
 internal fun MediaAudioCandidate.scanResultTitle(): String {

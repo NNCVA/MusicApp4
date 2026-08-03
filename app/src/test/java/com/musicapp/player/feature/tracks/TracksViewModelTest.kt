@@ -5,6 +5,8 @@ import com.musicapp.player.core.domain.model.PlaybackContext
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.media.MediaAudioCandidate
+import com.musicapp.player.core.metadata.ArtworkRepository
+import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.data.repository.FakeMediaLibraryRepository
@@ -47,6 +49,11 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class TracksViewModelTest {
     private val dispatcher: TestDispatcher = StandardTestDispatcher()
+    private val placeholderArtworkRepository =
+        object : ArtworkRepository {
+            override suspend fun artwork(track: Track, targetPx: Int): ArtworkResult =
+                ArtworkResult.Placeholder
+        }
 
     @Before
     fun setUp() {
@@ -345,6 +352,7 @@ class TracksViewModelTest {
         playbackController: PlaybackControllerFacade = RecordingPlaybackControllerFacade(),
         playlistRepository: PlaylistRepository = FakePlaylistRepository(),
         batchActionExecutor: BatchTrackActionExecutor? = null,
+        artworkRepository: ArtworkRepository = placeholderArtworkRepository,
     ): TracksViewModel {
         val clock = FakeClock(123)
         return TracksViewModel(
@@ -361,6 +369,7 @@ class TracksViewModelTest {
                         playbackController = playbackController,
                         clock = clock,
                     ),
+            artworkRepository = artworkRepository,
         )
     }
 

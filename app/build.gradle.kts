@@ -82,6 +82,7 @@ dependencies {
   // Playback
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.session)
+  implementation(libs.icu4j)
 
   // Compose
   implementation(libs.androidx.compose.ui)
