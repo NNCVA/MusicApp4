@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -158,96 +159,137 @@ fun TracksScreen(
     onAcknowledgeBatchResult: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
+    val coroutineScope = rememberCoroutineScope()
     var searchActive by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val filteredTracks =
         remember(state.tracks, searchQuery) {
             state.tracks.filter { it.matchesSearch(searchQuery) }
         }
-    Column(
-        modifier =
-            Modifier.fillMaxSize()
-                .windowInsetsPadding(contentInsets)
-                .padding(horizontal = dimensions.contentHorizontalPadding),
-    ) {
-        TracksTopBar(
-            state = state,
-            policy = policy,
-            openDrawer = openDrawer,
-            onManualSync = onManualSync,
-            onSortSelected = onSortSelected,
-            searchActive = searchActive,
-            searchQuery = searchQuery,
-            onOpenSearch = { searchActive = true },
-            onCloseSearch = {
-                searchActive = false
-                searchQuery = ""
-            },
-            onSearchQueryChange = { searchQuery = it },
-            onSelectAll = {
-                if (searchQuery.isBlank()) {
-                    onSelectAll()
-                } else {
-                    onSelectTracks(filteredTracks.map(Track::id))
+    val listState = rememberLazyListState()
+    val sections = remember(filteredTracks, state.sort.field) {
+        groupTracksIntoSections(filteredTracks, state.sort.field)
+    }
+    val indexLabels = remember(sections) { sectionIndexLabels(sections) }
+    val sectionPositions = remember(sections) { sectionStartPositions(sections) }
+    val selectedSection by remember(listState, sections) {
+        derivedStateOf {
+            sectionLabelAtPosition(sections, listState.firstVisibleItemIndex)
+        }
+    }
+    val sectionDescriptions = sections.associate { section ->
+        section.label to stringResource(R.string.track_index_label, section.label)
+    }
+    val showSectionIndex =
+        state.tracks.isNotEmpty() && filteredTracks.isNotEmpty() && indexLabels.isNotEmpty()
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier =
+                Modifier.fillMaxSize()
+                    .windowInsetsPadding(contentInsets)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
+        ) {
+            TracksTopBar(
+                state = state,
+                policy = policy,
+                openDrawer = openDrawer,
+                onManualSync = onManualSync,
+                onSortSelected = onSortSelected,
+                searchActive = searchActive,
+                searchQuery = searchQuery,
+                onOpenSearch = { searchActive = true },
+                onCloseSearch = {
+                    searchActive = false
+                    searchQuery = ""
+                },
+                onSearchQueryChange = { searchQuery = it },
+                onSelectAll = {
+                    if (searchQuery.isBlank()) {
+                        onSelectAll()
+                    } else {
+                        onSelectTracks(filteredTracks.map(Track::id))
+                    }
+                },
+                onClearSelection = onClearSelection,
+                onAddToPlaylist = onAddToPlaylist,
+                onAddToQueue = onAddToQueue,
+                onPlayNext = onPlayNext,
+                onHideSelected = onHideSelected,
+            )
+            when {
+                state.isInitialLoading -> ScanRadar(modifier = Modifier.weight(1f))
+                state.fullScreenFailure ->
+                    ErrorState(
+                        onRetry = onRetry,
+                        modifier = Modifier.weight(1f),
+                        description = stringResource(R.string.scan_error_description),
+                    )
+                else -> {
+                    if (state.isRefreshing) {
+                        val refreshingDescription = stringResource(R.string.scan_refreshing)
+                        LinearProgressIndicator(
+                            modifier =
+                                Modifier.fillMaxWidth().semantics {
+                                    contentDescription = refreshingDescription
+                                },
+                        )
+                    }
+                    if (state.cachedFailure) {
+                        CachedScanError(onRetry = onRetry)
+                    }
+                    if (state.tracks.isEmpty()) {
+                        EmptyState(
+                            modifier = Modifier.weight(1f),
+                            title = stringResource(R.string.tracks_empty_title),
+                            description = stringResource(R.string.tracks_empty_description),
+                        )
+                    } else if (filteredTracks.isEmpty()) {
+                        EmptyState(
+                            modifier = Modifier.weight(1f),
+                            title = stringResource(R.string.tracks_no_results_title),
+                            description = stringResource(R.string.tracks_no_results_description),
+                        )
+                    } else {
+                        TrackList(
+                            tracks = filteredTracks,
+                            sections = sections,
+                            listState = listState,
+                            selectedIds = state.selectedTrackIds,
+                            selectionMode = state.isSelectionMode,
+                            artworkByTrackId = state.artworkByTrackId,
+                            playlists = state.playlists,
+                            onArtworkRequested = onTrackArtworkRequested,
+                            onAddToQueue = onTrackAddToQueue,
+                            onPlayNext = onTrackPlayNext,
+                            onHide = onTrackHide,
+                            onAddToPlaylist = onTrackAddToPlaylist,
+                            onTrackClick = onTrackClick,
+                            onTrackLongClick = onTrackLongClick,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
-            },
-            onClearSelection = onClearSelection,
-            onAddToPlaylist = onAddToPlaylist,
-            onAddToQueue = onAddToQueue,
-            onPlayNext = onPlayNext,
-            onHideSelected = onHideSelected,
-        )
-        when {
-            state.isInitialLoading -> ScanRadar(modifier = Modifier.weight(1f))
-            state.fullScreenFailure ->
-                ErrorState(
-                    onRetry = onRetry,
-                    modifier = Modifier.weight(1f),
-                    description = stringResource(R.string.scan_error_description),
+            }
+        }
+        if (showSectionIndex) {
+            Box(
+                modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+            ) {
+                SectionIndexBar(
+                    sections = indexLabels,
+                    selectedSection = selectedSection,
+                    onSectionClick = { label ->
+                        sectionPositions[label]?.let { position ->
+                            coroutineScope.launch {
+                                listState.animateScrollToItem(position)
+                            }
+                        }
+                    },
+                    sectionContentDescription = { label -> sectionDescriptions.getValue(label) },
+                    modifier =
+                        Modifier.align(Alignment.CenterEnd)
+                            .padding(end = dimensions.spaceSmall),
                 )
-            else -> {
-                if (state.isRefreshing) {
-                    val refreshingDescription = stringResource(R.string.scan_refreshing)
-                    LinearProgressIndicator(
-                        modifier =
-                            Modifier.fillMaxWidth().semantics {
-                                contentDescription = refreshingDescription
-                            },
-                    )
-                }
-                if (state.cachedFailure) {
-                    CachedScanError(onRetry = onRetry)
-                }
-                if (state.tracks.isEmpty()) {
-                    EmptyState(
-                        modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.tracks_empty_title),
-                        description = stringResource(R.string.tracks_empty_description),
-                    )
-                } else if (filteredTracks.isEmpty()) {
-                    EmptyState(
-                        modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.tracks_no_results_title),
-                        description = stringResource(R.string.tracks_no_results_description),
-                    )
-                } else {
-                    TrackList(
-                        tracks = filteredTracks,
-                        sectionField = state.sort.field,
-                        selectedIds = state.selectedTrackIds,
-                        selectionMode = state.isSelectionMode,
-                        artworkByTrackId = state.artworkByTrackId,
-                        playlists = state.playlists,
-                        onArtworkRequested = onTrackArtworkRequested,
-                        onAddToQueue = onTrackAddToQueue,
-                        onPlayNext = onTrackPlayNext,
-                        onHide = onTrackHide,
-                        onAddToPlaylist = onTrackAddToPlaylist,
-                        onTrackClick = onTrackClick,
-                        onTrackLongClick = onTrackLongClick,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
             }
         }
     }
@@ -407,6 +449,7 @@ private fun TracksTopBar(
                         Text(
                             text = stringResource(R.string.tracks_page_title),
                             style = MusicTheme.typography.headlineMedium,
+                            color = MusicTheme.colors.onSurface,
                             modifier = Modifier.weight(1f),
                             maxLines = 1,
                         )
@@ -594,7 +637,8 @@ private fun CachedScanError(onRetry: () -> Unit) {
 @Composable
 private fun TrackList(
     tracks: List<Track>,
-    sectionField: TrackSortField,
+    sections: List<TrackSection>,
+    listState: LazyListState,
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
     artworkByTrackId: Map<TrackId, TrackArtworkState>,
@@ -609,30 +653,15 @@ private fun TrackList(
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
-    val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
-    val sections = remember(tracks, sectionField) {
-        groupTracksIntoSections(tracks, sectionField)
-    }
-    val indexLabels = remember(sections) { sectionIndexLabels(sections) }
-    val sectionPositions = remember(sections) { sectionStartPositions(sections) }
-    val selectedSection by remember(listState, sections) {
-        derivedStateOf {
-            sectionLabelAtPosition(sections, listState.firstVisibleItemIndex)
-        }
-    }
-    val sectionDescriptions = sections.associate { section ->
-        section.label to stringResource(R.string.track_index_label, section.label)
-    }
     Box(modifier = modifier.fillMaxWidth()) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding =
                 PaddingValues(
-                    start = dimensions.spaceSmall,
+                    //start = dimensions.spaceSmall,
                     top = dimensions.spaceSmall,
-                    end = if (sections.isEmpty()) dimensions.spaceSmall else dimensions.sectionIndexItemSize,
+                    //end = dimensions.spaceSmall,
                     bottom = dimensions.spaceSmall,
                 ),
         ) {
@@ -653,9 +682,6 @@ private fun TrackList(
                 )
             } else {
                 sections.forEach { section ->
-                    stickyHeader(key = "section-header-${section.label}") {
-                        TrackSectionHeader(label = section.label)
-                    }
                     trackItems(
                         tracks = section.tracks,
                         selectedIds = selectedIds,
@@ -672,19 +698,6 @@ private fun TrackList(
                     )
                 }
             }
-        }
-        if (sections.isNotEmpty()) {
-            SectionIndexBar(
-                sections = indexLabels,
-                selectedSection = selectedSection,
-                onSectionClick = { label ->
-                    sectionPositions[label]?.let { position ->
-                        coroutineScope.launch { listState.animateScrollToItem(position) }
-                    }
-                },
-                sectionContentDescription = { label -> sectionDescriptions.getValue(label) },
-                modifier = Modifier.align(Alignment.CenterEnd),
-            )
         }
     }
 }
@@ -724,29 +737,6 @@ private fun LazyListScope.trackItems(
     }
 }
 
-@Composable
-private fun TrackSectionHeader(label: String) {
-    val dimensions = MusicTheme.dimensions
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MusicTheme.colors.background,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(dimensions.sectionHeaderHeight)
-                .padding(horizontal = dimensions.spaceSmall),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Text(
-                text = label,
-                style = MusicTheme.typography.labelLarge,
-                color = MusicTheme.colors.onSurfaceVariant,
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TrackRow(
@@ -779,8 +769,8 @@ private fun TrackRow(
         modifier =
             Modifier.fillMaxWidth()
                 .height(dimensions.trackListItemHeight)
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                .padding(horizontal = dimensions.spaceSmall),
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+                //.padding(horizontal = dimensions.spaceSmall),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {

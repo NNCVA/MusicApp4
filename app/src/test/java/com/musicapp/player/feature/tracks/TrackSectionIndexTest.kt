@@ -45,7 +45,7 @@ class TrackSectionIndexTest {
     }
 
     @Test
-    fun `sections preserve supplied order and calculate header positions`() {
+    fun `sections preserve supplied order and calculate section positions`() {
         val tracks = listOf(
             track(1, "Alpha"),
             track(2, "Another"),
@@ -58,7 +58,7 @@ class TrackSectionIndexTest {
         assertEquals(listOf("0", "A", "B"), sections.map(TrackSection::label))
         assertEquals(listOf("123 title"), sections[0].tracks.map(Track::title))
         assertEquals(
-            mapOf("0" to 0, "A" to 2, "B" to 5),
+            mapOf("0" to 0, "A" to 1, "B" to 3),
             sectionStartPositions(sections),
         )
     }
@@ -78,7 +78,7 @@ class TrackSectionIndexTest {
         assertEquals(listOf("0", "A", "B", "#"), sections.map(TrackSection::label))
         assertEquals(listOf("0", "A", "B", "#"), sectionIndexLabels(sections))
         assertEquals(
-            mapOf("0" to 0, "A" to 2, "B" to 4, "#" to 6),
+            mapOf("0" to 0, "A" to 1, "B" to 2, "#" to 3),
             sectionStartPositions(sections),
         )
         assertEquals(
@@ -114,7 +114,7 @@ class TrackSectionIndexTest {
             TrackSortField.TITLE,
         )
 
-        assertEquals("#", sectionLabelAtPosition(sections, 6))
+        assertEquals("#", sectionLabelAtPosition(sections, 3))
     }
 
     private fun track(

@@ -45,7 +45,7 @@ internal fun sectionStartPositions(sections: List<TrackSection>): Map<String, In
             if (!containsKey(section.label)) {
                 put(section.label, itemPosition)
             }
-            itemPosition += section.tracks.size + 1
+            itemPosition += section.tracks.size
         }
     }
 }
@@ -59,7 +59,7 @@ internal fun sectionLabelAtPosition(
     sections.forEach { section ->
         if (sectionStart > itemPosition) return@forEach
         activeLabel = section.label
-        sectionStart += section.tracks.size + 1
+        sectionStart += section.tracks.size
     }
     return activeLabel
 }
