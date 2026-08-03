@@ -77,3 +77,13 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 - 领域词汇：`docs/CONTEXT.md`
 - 架构决策：`docs/adr/`
 - `docs/design/design-review-01` 至 `09`、`11` 和 `12` 为已接受的首版实现约束。
+
+## Codex Luna/Sol 工作流
+- 日常编码、分析、测试、审查和任务编排默认使用 `gpt-5.6-luna`；`sol_advisor` 只作为按需决策顾问，不负责常规实现。
+- `LUNA_LOCAL`：需求明确、风险可控且单线程完成更高效。
+- `LUNA_PARALLEL`：至少存在两个真正独立、文件互斥、可单独验证的任务包；每个可写文件只能分配一个负责人，由主线程整合并验收。
+- `SOL_ADVISED`：仅在架构、安全、隐私、认证授权、加密、支付、破坏性迁移、数据完整性、分布式一致性、破坏性兼容变更、强歧义、多个根因无法区分，或两次基于证据的尝试失败时使用。
+- 发送给 `sol_advisor` 的内容必须是一个明确决策问题、已有证据、约束和期望返回格式；不得让它接管整个功能或常规实现。
+- 委派给 `luna_worker` 的任务包必须写明目标、上下文、范围、排除项、约束、验收标准、精确验证命令、预期返回和升级条件。
+- 主线程必须检查实际 diff 与验证结果，不能只依据 Agent 总结接受结果；没有 Agent 活动或工具结果标识时，不得声称某个模型已经实际运行。
+- 路由指南、任务包模板和验证方法分别见 [`docs/routing-guide.md`](docs/routing-guide.md)、[`docs/task-packet.md`](docs/task-packet.md) 和 [`docs/verification.md`](docs/verification.md)。
