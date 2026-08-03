@@ -171,6 +171,7 @@ private fun FolderDetailScreen(
                         Text(
                             stringResource(R.string.folder_subfolders_section),
                             style = MusicTheme.typography.titleMedium,
+                            color = MusicTheme.colors.onSurface,
                             modifier = Modifier.padding(dimensions.spaceSmall),
                         )
                     }
@@ -184,6 +185,7 @@ private fun FolderDetailScreen(
                         Text(
                             stringResource(R.string.folder_tracks_section),
                             style = MusicTheme.typography.titleMedium,
+                            color = MusicTheme.colors.onSurface,
                             modifier = Modifier.padding(dimensions.spaceSmall),
                         )
                     }
@@ -208,7 +210,12 @@ private fun FolderRow(folder: FolderNode, onClick: (FolderId) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(folder.displayName, style = MusicTheme.typography.titleMedium, maxLines = 1)
+            Text(
+                folder.displayName,
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+            )
             Text(
                 if (folder.id.relativePath.isEmpty()) {
                     stringResource(R.string.folder_volume_root)
@@ -227,6 +234,7 @@ private fun FolderRow(folder: FolderNode, onClick: (FolderId) -> Unit) {
                 folder.recursiveTrackCount,
             ),
             style = MusicTheme.typography.labelMedium,
+            color = MusicTheme.colors.onSurfaceVariant,
         )
     }
 }

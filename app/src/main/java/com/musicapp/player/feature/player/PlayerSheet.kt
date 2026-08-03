@@ -519,6 +519,7 @@ private fun QueuePage(
             Text(
                 text = stringResource(R.string.player_queue_title),
                 style = MusicTheme.typography.titleLarge,
+                color = MusicTheme.colors.onSurface,
                 modifier = Modifier.weight(1f),
             )
             TextButton(onClick = onCycleMode) { Text(stringResource(playbackMode.labelRes())) }
@@ -534,7 +535,12 @@ private fun QueuePage(
                     Box(
                         modifier = Modifier.fillParentMaxSize(),
                         contentAlignment = Alignment.Center,
-                    ) { Text(stringResource(R.string.player_queue_empty)) }
+                    ) {
+                        Text(
+                            stringResource(R.string.player_queue_empty),
+                            color = MusicTheme.colors.onSurfaceVariant,
+                        )
+                    }
                 }
             } else {
                 items(rows, key = { it.queueItemId.value }) { row ->
@@ -545,8 +551,19 @@ private fun QueuePage(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(row.track?.title ?: stringResource(R.string.player_unknown_track), style = MusicTheme.typography.titleMedium, maxLines = 1)
-                            if (row.isCurrent) Text(stringResource(R.string.player_queue_current), style = MusicTheme.typography.labelSmall)
+                            Text(
+                                row.track?.title ?: stringResource(R.string.player_unknown_track),
+                                style = MusicTheme.typography.titleMedium,
+                                color = MusicTheme.colors.onSurface,
+                                maxLines = 1,
+                            )
+                            if (row.isCurrent) {
+                                Text(
+                                    stringResource(R.string.player_queue_current),
+                                    style = MusicTheme.typography.labelSmall,
+                                    color = MusicTheme.colors.onSurfaceVariant,
+                                )
+                            }
                         }
                         TextButton(onClick = { onRemove(row.queueItemId) }) { Text(stringResource(R.string.player_queue_remove)) }
                     }

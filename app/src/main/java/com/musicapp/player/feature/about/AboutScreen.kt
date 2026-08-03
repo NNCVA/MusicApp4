@@ -146,6 +146,7 @@ private fun AboutSection(
         Text(
             text = title,
             style = MusicTheme.typography.titleLarge,
+            color = MusicTheme.colors.onSurface,
             modifier = Modifier.semantics { heading() },
         )
         body?.let {

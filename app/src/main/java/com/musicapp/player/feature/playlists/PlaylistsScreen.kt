@@ -406,7 +406,12 @@ private fun PlaylistTrackRow(
             Checkbox(checked = selected, onCheckedChange = { onClick(track) })
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(track.title, style = MusicTheme.typography.titleMedium, maxLines = 1)
+            Text(
+                track.title,
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+            )
             Text(
                 track.artistName,
                 style = MusicTheme.typography.bodySmall,

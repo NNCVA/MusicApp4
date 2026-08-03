@@ -330,7 +330,7 @@ private fun PathRuleRow(rule: PathRule, onRemove: (PathRule) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(directoryLabel)
+            Text(directoryLabel, color = MusicTheme.colors.onSurface)
             Text(
                 text = stringResource(
                     R.string.settings_path_rule_summary,

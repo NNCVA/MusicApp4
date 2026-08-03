@@ -92,6 +92,7 @@ fun CategoryHeader(
         Text(
             text = title,
             style = MusicTheme.typography.headlineMedium,
+            color = MusicTheme.colors.onSurface,
             modifier = Modifier.weight(1f),
             maxLines = 1,
         )
@@ -127,7 +128,12 @@ fun CategoryTrackRow(track: Track, onTrackClick: (Track) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(track.title, style = MusicTheme.typography.titleMedium, maxLines = 1)
+            Text(
+                track.title,
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+            )
             Text(
                 text = track.artistName,
                 style = MusicTheme.typography.bodySmall,
@@ -142,7 +148,11 @@ fun CategoryTrackRow(track: Track, onTrackClick: (Track) -> Unit) {
                 color = MusicTheme.colors.onSurfaceVariant,
             )
         }
-        Text(formatDuration(track.durationMs), style = MusicTheme.typography.labelMedium)
+        Text(
+            formatDuration(track.durationMs),
+            style = MusicTheme.typography.labelMedium,
+            color = MusicTheme.colors.onSurfaceVariant,
+        )
     }
 }
 
