@@ -1,0 +1,19 @@
+<!--
+  Derived from Salt UI:
+  ui2/src/commonMain/kotlin/com/moriafly/salt/ui/icons/Success.kt
+  Copyright (C) 2025 Moriafly
+  Licensed under the Apache License, Version 2.0.
+  Modified by MusicApp: converted from Compose ImageVector to Android VectorDrawable
+  and renamed for the project resource namespace.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48"
+    tools:ignore="UnusedResources">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M24,4C12.972,4 4,12.972 4,24s8.972,20 20,20s20,-8.972 20,-20S35.028,4 24,4zM32.561,20.561l-10,10C22.268,30.854 21.884,31 21.5,31s-0.768,-0.146 -1.061,-0.439l-5,-5c-0.586,-0.586 -0.586,-1.535 0,-2.121s1.535,-0.586 2.121,0l3.939,3.939l8.939,-8.939c0.586,-0.586 1.535,-0.586 2.121,0S33.146,19.975 32.561,20.561z" />
+</vector>

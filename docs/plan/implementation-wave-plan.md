@@ -1,16 +1,18 @@
 # MusicApp 首版开发 Wave Plan
 
-状态：可执行（2026-07-28）
+状态：可执行（2026-07-29）
+
+本文保留 Wave 范围、依赖图与需求映射；实际执行顺序和逐过程验证以 [`implementation-execution-plan.md`](implementation-execution-plan.md) 为准。
 
 ## 1. 执行原则
 
 - Wave 按依赖顺序推进；上游门禁通过后，下游才可依赖其契约。
-- 每个 Wave 同时交付实现、测试、双语资源和必要文档，不把测试或本地化集中拖到末尾。
-- 每个页面在所属 Wave 同步交付语义标签、`48 dp` 点击目标、设计令牌检查和九尺寸截图基线；Wave 8 只做全量复验。
+- 每个 Wave 同时交付实现、必要单元测试、双语资源和必要文档。
+- 每个页面在所属 Wave 同步交付语义标签、`48 dp` 点击目标和设计令牌。
 - Room Schema、Repository 接口、MediaController 命令、Route Key 和设计令牌一旦被下游使用，只能兼容扩展；破坏性变更必须在同一 Wave 内完成迁移。
 - 单个 Wave 可在冻结接口后并行实现互不重叠的包；共享 Gradle、Manifest、数据库 Schema、字符串资源和导航协议由一个所有者串行维护。
-- 每个 Wave 结束固定执行本地测试、当 Wave 设备测试、截图任务、覆盖率任务、`:app:assembleDebug` 和 `lintDebug`；任务名称与基线目录在 Wave 0 冻结。
-- 每个新增核心业务包在所属 Wave 达到行覆盖率 `80%`、分支覆盖率 `70%`；Wave 8 复验全量累计值。
+- 每个 Wave 结束固定使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`。
+- 上述三个 Gradle 任务是唯一 CI 门禁。
 
 ## 2. 依赖图
 
@@ -25,10 +27,10 @@ flowchart LR
     W4 --> W6
     W5 --> W7["Wave 7<br/>设置、Aero 与关于"]
     W6 --> W7
-    W7 --> W8["Wave 8<br/>发布硬化与首版验收"]
+    W7 --> W8["Wave 8<br/>CI 收口与首版交付"]
 ```
 
-关键路径：稳定数据身份 → 原子媒体库 → 播放服务与队列 → 播放器体验 → 完整业务面 → 发布验收。
+关键路径：稳定数据身份 → 原子媒体库 → 播放服务与队列 → 播放器体验 → 完整业务面 → CI 收口。
 
 ## 3. Wave 0：工程与质量底座
 
@@ -41,16 +43,16 @@ flowchart LR
 - 建立 `core/domain`、`core/designsystem`、`data`、`media`、`feature/*` 包边界。
 - 接入 Hilt、Room、DataStore、Media3、Lifecycle/ViewModel、协程与所需图片/元数据能力。
 - 建立 English、简体中文资源目录和字符串一致性检查。
-- 配置 JUnit4、coroutines-test、Turbine、Compose Test、设备 Runner、Room Schema 导出、JaCoCo、截图测试框架与 Fake 目录。
-- 冻结截图、覆盖率、架构静态检查的 Gradle 任务名称和产物目录；架构检查禁止 UI 直连 MediaStore/DataStore、UI 持有 Player 及页面绕过设计令牌。
-- 配置 Release R8、资源压缩、备份规则骨架、ProGuard 文件、Lint 与 Manifest 静态检查任务。
+- 配置 JUnit4、coroutines-test、Turbine、Room Schema 导出与 Fake 目录。
+- 配置 JDK 17 CI，固定 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 三个任务。
+- 配置备份规则骨架与 Lint。
 - 建立 `MusicApplication`、Hilt 测试 Application、可替换时钟与随机源。
 
 ### 门禁
 
-- `assembleDebug`、空壳 `testDebugUnitTest`、`connectedDebugAndroidTest`、`lintDebug` 可执行。
-- Release 配置可解析，Room Schema 导出配置有效；v1 Schema 在 Wave 1 创建实体后生成。
-- Manifest 仅保留当前启动 Activity 导出；未引入 `INTERNET` 或 `POST_NOTIFICATIONS`。
+- `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 可执行。
+- `testDebugUnitTest` 至少包含一个真实单元测试，不以空任务作为完成证据。
+- Room Schema 导出配置有效；v1 Schema 在 Wave 1 创建实体后生成。
 
 ## 4. Wave 1：领域、Room 与设置事实来源
 
@@ -70,14 +72,13 @@ Wave 0。
 ### 测试
 
 - 名称规范化、路径规则优先级、播放历史阈值、三种播放模式纯逻辑单元测试。
-- DAO 唯一约束、批量事务、失效关联保留、快照往返与 v1 建库设备测试。
+- DAO 唯一约束、批量事务、缺失曲目关联清理与快照往返逻辑测试。
 - DataStore 默认值、更新和“只重置设置”测试。
 
 ### 门禁
 
 - 数据库 Schema、Repository 接口和播放快照格式冻结。
-- Wave 1 范围内核心业务达到行覆盖率 `80%`、分支覆盖率 `70%`。
-- 接入 Room/Hilt 后执行一次 `assembleRelease`、Release Manifest 与 R8 冒烟检查。
+- 本 Wave 新增的纯业务逻辑有对应单元测试。
 
 ## 5. Wave 2：设计系统与应用壳层
 
@@ -89,18 +90,16 @@ Wave 1 的设置流、Repository Fake 与领域模型。
 
 - 实现 `MusicDimensions`、`MusicShapes`、`MusicTypography` 的紧凑/中等/展开令牌。
 - 实现动态取色、四套预设、Light/Dark 和系统栏图标策略。
-- 实现 Navigation 3 八个一级可保存返回栈、详情路由与全局全屏播放器路由占位。
-- 实现 `<600/600–839/≥840 dp` 的 Drawer/Rail/常驻侧栏。
-- 实现共享 Scaffold、Mini Player 占位区、Snackbar 队列、加载/空态/错误态组件。
+- 实现 Navigation 3 八个一级可保存返回栈、详情路由与应用级 Player Sheet 占位。
+- 实现 `<600 dp` 半宽推移式侧栏、`600–839 dp` 的 `240 dp` 常驻侧栏和 `≥840 dp` 的 `256 dp` 常驻侧栏，三档统一使用三组卡片。
+- 实现共享 Scaffold、位于导航内容之上的 Player Sheet 占位区、Snackbar 队列、加载/空态/错误态组件。
 - 实现可复用的曲目列表项、网格卡片、多选上下文栏和详情承载组件，先使用 Fake 数据验证。
 - 接入应用语言切换、自动 LocaleConfig 与 Edge-to-Edge Insets。
 - 建立八个一级页面的 Fake 数据占位状态，验证状态恢复。
 
 ### 测试
 
-- 八栈切换、重复点击回根、返回到单曲再退出、窗口变化和语言重建测试。
-- 三个宽度断点、Insets、字体 `1.5`、主题切换不重建 Activity 的 Compose 测试。
-- 八个一级根页面和共享壳层建立九尺寸截图基线。
+- 八栈切换、重复点击回根、返回到单曲再退出与状态恢复的纯状态单元测试。
 
 ### 门禁
 
@@ -117,7 +116,7 @@ Wave 1 数据事实来源，Wave 2 壳层与共享状态。
 
 - 实现 API 分级权限说明、请求、拒绝与系统设置引导。
 - 实现多存储卷 MediaStore 查询、MIME/扩展名准入、系统音频排除和路径规则。
-- 实现同步代次、原子 Upsert、整体失败回滚、失效曲目标记与重新发现恢复。
+- 实现同步代次、原子 Upsert、整体失败回滚、暂时不可用标记与重新发现恢复；完整同步成功后级联清理缺失曲目关联。
 - 实现 MediaStore 版本/卷集合比较、前台 ContentObserver 和 `1 秒` 防抖。
 - 实现首次雷达、缓存顶部进度、结果对话框、跳过原因和重试。
 - 实现单曲列表、独立排序记忆、隐藏状态和基本批量选择。
@@ -126,16 +125,14 @@ Wave 1 数据事实来源，Wave 2 壳层与共享状态。
 
 ### 测试
 
-- 七格式、时长、MIME 冲突、路径排除优先、卷卸载、原子同步和查询失败单元/Room 测试。
-- 权限拒绝、永久拒绝、首次扫描、缓存同步、自动同步无对话框的 Compose/设备测试。
-- 大结果列表使用惰性容器的行为测试；不执行已搁置的容量性能门禁。
-- 单曲页与扫描状态在九种尺寸建立截图基线，并完成“授权与扫描”端到端旅程。
+- 七格式、时长、MIME 冲突、路径排除优先、卷卸载、缺失曲目级联清理、原子同步和查询失败单元/Room 测试。
+- 权限状态、首次扫描、缓存同步和自动同步的协调逻辑使用 Fake 进行单元测试。
 
 ### 门禁
 
 - 用户可完成授权、扫描、查看与排序曲目，重启后媒体库一致。
 - 扫描失败不会损坏已有缓存，任何 UI 均不直接查询 MediaStore。
-- Wave 3 新增核心逻辑达到行覆盖率 `80%`、分支覆盖率 `70%`。
+- 本 Wave 新增的纯业务逻辑有对应单元测试。
 
 ## 7. Wave 4：播放内核与系统媒体
 
@@ -159,15 +156,13 @@ Wave 3 可用曲目与 URI，Wave 1 快照和设置。
 - 模式、随机轮次、双队列变更、移除当前项、坏文件遍历与历史计时单元测试。
 - 使用 Fake Player 和可控时钟覆盖淡出淡入全部竞态。
 - 使用 Fake AudioFocus/Noisy 事件覆盖短暂与永久焦点丢失、duck、私密输出断开及禁止自动恢复。
-- 在 API 26、33、36 设备端验证后台播放、通知划除、可信/不可信控制器、耳机命令、进程终止与恢复。
-- 完成“播放与通知”“进程终止与恢复”两条端到端旅程。
 
 ### 门禁
 
 - 无 UI 直接持有 Player；所有播放操作经 MediaController 门面。
 - 从媒体库点击曲目可后台播放，并通过系统媒体面板控制与恢复。
-- 检查前台服务权限、Service 导出、受信控制器和 PendingIntent；执行 `assembleRelease` 与 Release Manifest 冒烟。
-- Wave 4 新增核心逻辑达到行覆盖率 `80%`、分支覆盖率 `70%`。
+- 前台服务权限、Service 导出、受信控制器和 PendingIntent 按功能规格实现。
+- 本 Wave 新增的纯业务逻辑有对应单元测试。
 
 ## 8. Wave 5：播放器 UI、队列与歌词
 
@@ -177,8 +172,8 @@ Wave 4 播放状态与命令，Wave 3 元数据和封面。
 
 ### 实施
 
-- 实现 `80 dp` 迷你播放器、播放状态、主操作和 Snackbar 安全位置。
-- 实现全屏封面/歌词/队列三页、页码恢复和纵横手势优先级。
+- 实现一个应用级 Player Sheet 内的 `80 dp` Mini 与 Full 重叠层、折叠/展开双锚点、交叉淡入淡出、播放状态、主操作和 Snackbar 安全位置。
+- 实现全屏封面/歌词/队列三页、页码恢复、抽屉锁定和纵横手势优先级。
 - 实现完整播放控制、播放模式入口、进度拖动、缓冲与错误反馈。
 - 实现队列查看、点击跳转和移除；所有模式均不提供拖拽排序。
 - 实现外部 LRC、SYLT、USLT 解析与静态歌词兜底。
@@ -188,15 +183,14 @@ Wave 4 播放状态与命令，Wave 3 元数据和封面。
 
 ### 测试
 
-- 歌词编码、多标签、offset、坏行、静态兜底与同步控制器单元测试。
-- Mini/Full Player、队列操作、嵌套手势、窗口形态和状态恢复 Compose 测试。
-- 迷你播放器、全屏三页和歌曲信息页面建立九尺寸截图基线，并补充明暗与字体代表场景。
+- 歌词带时间戳来源优先级、编码、多标签、offset、坏行、静态兜底与同步控制器单元测试。
+- 播放器状态、队列操作、手势优先级和状态恢复的纯状态单元测试。
 
 ### 门禁
 
 - 播放器从迷你态到全屏三页形成完整可用闭环。
 - 播放 UI 状态完全来自 MediaController 与 ViewModel。
-- Wave 5 新增核心逻辑达到行覆盖率 `80%`、分支覆盖率 `70%`。
+- 本 Wave 新增的纯业务逻辑有对应单元测试。
 
 ## 9. Wave 6：分类浏览、播放列表与历史
 
@@ -218,20 +212,19 @@ Wave 2 共享曲目组件，Wave 3 媒体查询，Wave 4 播放建队；可与 W
 
 - Album ID、Artist ID、目录树、递归播放与排序查询测试。
 - 播放列表唯一名称、重复项、新增/跳过计数、不可用曲目和空列表测试。
-- 多选、批量事务、播放全部建队和历史 UI Compose 测试。
-- 分类、播放列表和历史页面建立九尺寸截图基线，并完成“播放列表”端到端旅程。
+- 多选、批量事务、播放全部建队和历史状态单元测试。
 
 ### 门禁
 
 - 八个一级入口中的全部媒体业务页面具备真实数据闭环。
 - 批量操作不物理删除音频，失败不会留下部分事务。
-- Wave 6 新增核心逻辑达到行覆盖率 `80%`、分支覆盖率 `70%`。
+- 本 Wave 新增的纯业务逻辑有对应单元测试。
 
 ## 10. Wave 7：设置、Aero、数据管理与关于
 
 ### 依赖
 
-Wave 2 主题壳层，Wave 3 扫描协调器，Wave 4 播放设置，Wave 6 数据入口。
+Wave 2 主题壳层，Wave 3 扫描协调器，Wave 4 播放设置，Wave 5 全屏播放器与封面混色，Wave 6 数据入口。
 
 ### 实施
 
@@ -247,16 +240,15 @@ Wave 2 主题壳层，Wave 3 扫描协调器，Wave 4 播放设置，Wave 6 数�
 
 - 设置默认值、生效时机、重置保留项与独立数据清理测试。
 - Aero 四类降级信号和恢复测试。
-- 语言重建后导航、播放、滚动状态恢复设备测试。
-- 设置、关于与 Aero 页面建立九尺寸截图基线，在 API 31+ 验证动态取色，并完成“语言与主题切换”端到端旅程。
+- 语言重建后导航、播放与滚动状态恢复的纯状态单元测试。
 
 ### 门禁
 
 - 26 项功能均有可访问入口。
 - 数据管理动作的删除范围与确认文案符合规格。
-- Wave 7 新增核心逻辑达到行覆盖率 `80%`、分支覆盖率 `70%`。
+- 本 Wave 新增的纯业务逻辑有对应单元测试。
 
-## 11. Wave 8：发布硬化与首版验收
+## 11. Wave 8：CI 收口与首版交付
 
 ### 依赖
 
@@ -264,24 +256,19 @@ Wave 0–7 全部完成。
 
 ### 实施
 
-- 全量审计 English/简体中文、`plurals`、格式化、无障碍语义和触觉，修正各 Wave 遗漏。
-- 全量复跑每页九尺寸截图及实施边界规定的主题、深色、动态取色、字体补充矩阵。
-- 全量复跑五条设备端旅程：授权扫描、播放通知、播放列表、语言主题、进程恢复。
-- 检查导出组件、Intent、PendingIntent、权限、备份规则和 Release 日志脱敏。
-- 验证 R8、资源压缩、Room/Hilt/Media3 保留规则与离线许可产物。
-- 运行架构静态检查，确保无硬编码字符串、圆角、间距、字号及绕过 Repository/MediaController 的调用。
+- 确认 26 项功能都已完成所属 Wave 的实现与单元测试。
+- 修复最小 CI 暴露的测试、Lint 或 Debug 构建问题。
+- 同步最终 English/简体中文资源与必要文档。
 
 ### 最终门禁
 
-- `testDebugUnitTest`、设备端 Room/Compose 测试、截图测试和五条端到端旅程通过。
-- 核心范围行覆盖率至少 `80%`、分支覆盖率至少 `70%`。
-- `lintRelease`、Release Manifest/权限检查、`:app:assembleRelease` 通过。
-- Release 冒烟验证启动、扫描、播放、通知、划除、恢复和语言切换。
-- 不以已搁置的性能文档指标阻断首版。
+- JDK 17 下 `:app:testDebugUnitTest` 通过。
+- JDK 17 下 `:app:lintDebug` 通过。
+- JDK 17 下 `:app:assembleDebug` 通过。
 
 ## 12. 需求到 Wave 的映射
 
-| 需求 | 实现 Wave | 功能测试 Wave | 最终复验 |
+| 需求 | 实现 Wave | 功能测试 Wave | CI 收口 |
 |---|---|---|---|
 | 1 音频扫描器 | 1、3 | 3 | 8 |
 | 2 曲目列表 | 2、3、6 | 3、6 | 8 |

@@ -4,6 +4,7 @@
 - 必须使用中文输出！！！
 - 注意，必要时使用 .agents/skills/ 目录下的skills ！！！
 - 项目文档全放在 docs/ 目录下！！！
+- 项目说明与开发入口：[`README.md`](README.md)。
 - 多使用子代理并行执行
 - 调用所有工具（Tool）时，必须严格检查并填写当前 schema 规定的全部必填字段，杜绝 SchemaError。
 
@@ -12,23 +13,23 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 首版目标包括 7 种主流音频格式、基于 MediaStore 的媒体库同步、Media3/ExoPlayer 与 MediaSession、同步歌词、多主题与 Material You、Aero 动态背景、中英双语、播放列表、播放历史，以及单播放器淡出淡入切歌。
 
 ## 当前实施状态
-- 当前仓库只有可编译的 Compose/Navigation 3 空白骨架。
-- Room、DataStore、Hilt、Media3、媒体库、业务页面和测试基础设施均属于待实现目标，不得将设计文档描述误报为已完成代码。
+- 首版 26 项核心需求已基本完成代码实现，Room、DataStore、Hilt、Media3、媒体库、业务页面和测试基础设施均已接入。
+- 当前处于首版收口与人工验收阶段；实现状态以当前代码、自动门禁结果和 [`docs/design/implementation-spec.md`](docs/design/implementation-spec.md) 的“当前基线”为准。
 
 ## 核心功能与需求汇总（26 核心需求）
 1. **音频文件扫描器**：通过 MediaStore 同步 7 种音频格式（.mp3, .flac, .wav, .aac, .m4a, .ogg, .opus），支持“扫描全部”和“仅扫描指定目录”两种路径模式，排除规则优先。
 2. **曲目列表**：展示所有符合规则的曲目，支持多选、加入播放列表/队列、下一首播放、隐藏曲目，以及按标题/艺术家/专辑/添加时间/时长排序；不物理删除音频文件。
-3. **侧边栏路由导航**：快速进入单曲、专辑、艺术家、播放列表、播放历史、文件夹浏览、设置、关于；`<600 dp` 使用半屏模态抽屉，`600–839 dp` 使用 Rail，`≥840 dp` 使用常驻侧栏。
+3. **侧边栏路由导航**：快速进入单曲、专辑、艺术家、播放列表、播放历史、文件夹浏览、设置、关于，并提供扫描音乐快捷操作；`<600 dp` 使用窗口宽度 `50%` 的推移式三组卡片侧栏，展开时主内容等距右移并裁切，`600–839 dp` 使用宽度 `240 dp` 的常驻三组卡片，`≥840 dp` 使用宽度 `256 dp` 的常驻三组卡片。
 4. **播放控制**：基础播放动作（播放、暂停、上一首、下一首、快进/快退、进度条拖拽控制）。
 5. **播放模式**：列表循环、单曲循环、随机播放三种模式互斥，首次启动默认列表循环。单曲循环只影响自然结束，手动上一首/下一首仍切换队列；列表循环在队尾回到队首；随机播放同时持久化原始队列与稳定随机序列，一轮结束后重新生成下一轮并继续播放，且两轮边界不连续重复同一曲目；切换到其他模式时恢复原始顺序并保留当前曲目。
 6. **淡入淡出切歌**：使用单个 ExoPlayer 将前曲淡出至静音后切歌，再将后曲淡入；不重叠播放两首曲目。总时长允许用户在 `0–2000 ms` 范围内以 `250 ms` 步进调节，默认 `500 ms`。
 7. **播放列表管理**：创建、重命名、删除播放列表，批量添加/移除曲目。
 8. **播放列表详情**：查看特定播放列表内的歌曲，并支持一键播放全列表。
 9. **播放历史记录**：曲目实际播放达到 `min(30 秒, 曲目时长的 50%)` 后记录；同一曲目更新最后播放时间与累计次数。
-10. **同步歌词**：歌词来源优先级为同名外部 `.lrc`、内嵌 SYLT、内嵌 USLT。所有来源均无时间戳时展示原始内嵌文本或 `lyrics_not_found`，并清空三行同步歌词值。
+10. **同步歌词**：先在同名外部 `.lrc`、内嵌 SYLT、内嵌 USLT 中选择带时间戳来源，再按该顺序确定优先级。所有来源均无时间戳时优先展示外部 `.lrc` 原始文本，否则展示原始内嵌文本或 `lyrics_not_found`，并清空三行同步歌词值。
 11. **专辑封面提取**：自动提取内嵌封面并提供占位图；全屏播放详情使用圆形封面，其他位置统一使用圆角矩形。
-12. **迷你播放器 (Mini Player)**：屏幕底部常驻展示当前播放曲目信息及快捷控制按钮，高度与曲目列表项统一为 `80 dp`。
-13. **全屏播放器 (Full Screen Player)**：点击或上滑迷你播放器进入独立全屏路由，返回或下滑关闭，不做跟手连续缩放；包含封面、同步歌词、当前播放队列三个横向页面。
+12. **迷你播放器 (Mini Player)**：使用一个应用级 Player Sheet 容器承载 Mini 与 Full 两个重叠内容层；折叠态在屏幕底部常驻 Mini，展示当前播放曲目信息及快捷控制按钮，高度与曲目列表项统一为 `80 dp`。
+13. **全屏播放器 (Full Screen Player)**：点击或上滑 Mini 将同一 Player Sheet 展开至全屏，返回或下滑折叠；拖动时 Sheet 跟手移动，Mini 与 Full 交叉淡入淡出，不做封面连续缩放或元素形变；Full 包含封面、同步歌词、当前播放队列三个横向页面。
 14. **播放队列**：实时查看当前播放队列，支持移除及点击跳转，不提供拖拽排序；普通加入队列时新增曲目追加到原始队列末尾并随机插入当前随机序列的未播放区间，“下一首播放”则插入当前随机项之后并追加到原始队列末尾；移除当前曲目后切到下一首。
 15. **曲目/专辑/艺术家/文件夹分类浏览**：按不同维度的分类浏览本地音乐库。
 16. **通知栏控制**：系统媒体面板显示上一首、播放/暂停、下一首及曲目信息；通知始终允许划除，划除时停止播放服务并保留持久化恢复点。
@@ -62,16 +63,27 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 - 严禁硬编码文本，所有界面字符串必须定义在资源文件中 (`values/strings.xml`, `values-zh-rCN/strings.xml`)。
 - 严禁在页面中硬编码圆角、间距和字号；统一通过 `MusicDimensions`、`MusicShapes`、`MusicTypography` 设计令牌读取。
 - 遵循 Android Edge-to-Edge 边到边沉浸式设计规范与 Material 3 设计指南。
-- Release 开启 R8 与资源压缩；发布日志不得输出路径、标题、艺术家、歌词、URI 或数据库内容。
 - 除启动 Activity 与受可信控制器校验的 MediaLibraryService 外，其他组件默认 `exported=false`；PendingIntent 默认不可变。
-- 已接受的测试策略见 `docs/design/design-review-09-security-and-testing.md`；已搁置的性能指标不得作为当前发布阻断条件。
+- CI 固定使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，不增加其他门禁。
+- 已接受的 CI 策略见 `docs/design/design-review-09-functional-testing-and-ci.md`。
 
 ## 架构与设计参考文档 (设计规范提示词)
 - 总索引：`docs/design/design-review-index.md`
 - 首版实现规格：`docs/design/implementation-spec.md`
 - 首版短计划：`docs/plan/implementation-plan.md`
+- 首版逐过程执行计划：`docs/plan/implementation-execution-plan.md`
 - 首版开发计划：`docs/plan/implementation-wave-plan.md`
+- 侧边栏改造方案：`docs/plan/sidebar-redesign-plan.md`
 - 领域词汇：`docs/CONTEXT.md`
 - 架构决策：`docs/adr/`
 - `docs/design/design-review-01` 至 `09`、`11` 和 `12` 为已接受的首版实现约束。
-- `docs/design/design-review-10-performance-release-questions.md` 已搁置，仅保留备查。
+
+## Codex Luna/Sol 工作流
+- 日常编码、分析、测试、审查和任务编排默认使用 `gpt-5.6-luna`；`sol_advisor` 只作为按需决策顾问，不负责常规实现。
+- `LUNA_LOCAL`：需求明确、风险可控且单线程完成更高效。
+- `LUNA_PARALLEL`：至少存在两个真正独立、文件互斥、可单独验证的任务包；每个可写文件只能分配一个负责人，由主线程整合并验收。
+- `SOL_ADVISED`：仅在架构、安全、隐私、认证授权、加密、支付、破坏性迁移、数据完整性、分布式一致性、破坏性兼容变更、强歧义、多个根因无法区分，或两次基于证据的尝试失败时使用。
+- 发送给 `sol_advisor` 的内容必须是一个明确决策问题、已有证据、约束和期望返回格式；不得让它接管整个功能或常规实现。
+- 委派给 `luna_worker` 的任务包必须写明目标、上下文、范围、排除项、约束、验收标准、精确验证命令、预期返回和升级条件。
+- 主线程必须检查实际 diff 与验证结果，不能只依据 Agent 总结接受结果；没有 Agent 活动或工具结果标识时，不得声称某个模型已经实际运行。
+- 路由指南、任务包模板和验证方法分别见 [`docs/routing-guide.md`](docs/routing-guide.md)、[`docs/task-packet.md`](docs/task-packet.md) 和 [`docs/verification.md`](docs/verification.md)。

@@ -2,6 +2,9 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.ksp)
+  alias(libs.plugins.hilt)
+  alias(libs.plugins.room)
 }
 
 android {
@@ -37,19 +40,48 @@ android {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
       }
     }
+    testOptions {
+      unitTests.isIncludeAndroidResources = true
+    }
+    androidResources {
+      generateLocaleConfig = true
+    }
 }
 
 kotlin {
     jvmToolchain(17)
 }
 
+room {
+  schemaDirectory("$projectDir/schemas")
+}
+
 dependencies {
-  val composeBom = platform(libs.androidx.compose.bom)
+  implementation(libs.androidx.compose.ui.text)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.ui)
+    val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
 
   // Core Android dependencies
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.activity.compose)
+  implementation(libs.androidx.appcompat)
+  implementation(libs.androidx.lifecycle.runtime.compose)
+  implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation(libs.kotlinx.coroutines.android)
+
+  // Dependency injection and persistence
+  implementation(libs.hilt.android)
+  ksp(libs.hilt.compiler)
+  implementation(libs.androidx.room.runtime)
+  implementation(libs.androidx.room.ktx)
+  ksp(libs.androidx.room.compiler)
+  implementation(libs.androidx.datastore.preferences)
+
+  // Playback
+  implementation(libs.androidx.media3.exoplayer)
+  implementation(libs.androidx.media3.session)
 
   // Compose
   implementation(libs.androidx.compose.ui)
@@ -61,4 +93,14 @@ dependencies {
   // Navigation
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
+
+  // JVM tests
+  testImplementation(libs.junit4)
+  testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.turbine)
+  testImplementation(libs.robolectric)
+  testImplementation(libs.androidx.test.core)
+  testImplementation(libs.androidx.room.testing)
+  testImplementation(libs.hilt.android.testing)
+  kspTest(libs.hilt.compiler)
 }

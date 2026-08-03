@@ -1,0 +1,20 @@
+<!--
+  Derived from Salt UI:
+  ui2/src/commonMain/kotlin/com/moriafly/salt/ui/icons/ChevronRight.kt
+  Copyright (C) 2025 Moriafly
+  Licensed under the Apache License, Version 2.0.
+  Modified by MusicApp: converted from Compose ImageVector to Android VectorDrawable
+  and renamed for the project resource namespace.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:width="24dp"
+    android:height="24dp"
+    android:autoMirrored="true"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    tools:ignore="UnusedResources">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M9.29,6.71c-0.39,0.39 -0.39,1.02 0,1.41L13.17,12l-3.88,3.88c-0.39,0.39 -0.39,1.02 0,1.41c0.39,0.39 1.02,0.39 1.41,0l4.59,-4.59c0.39,-0.39 0.39,-1.02 0,-1.41L10.7,6.7c-0.38,-0.38 -1.02,-0.38 -1.41,0.01z" />
+</vector>
