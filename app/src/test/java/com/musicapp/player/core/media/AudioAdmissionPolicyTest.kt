@@ -95,6 +95,24 @@ class AudioAdmissionPolicyTest {
     }
 
     @Test
+    fun shortAudioIsRejectedOnlyWhenTheScanOptionIsEnabled() {
+        val shortAudio = candidate(durationMs = 59_999)
+
+        assertEquals(
+            AdmissionResult.ACCEPTED,
+            AudioAdmissionPolicy.evaluate(shortAudio),
+        )
+        assertEquals(
+            AdmissionResult.REJECTED_SHORT_AUDIO,
+            AudioAdmissionPolicy.evaluate(shortAudio, rejectShortAudio = true),
+        )
+        assertEquals(
+            AdmissionResult.ACCEPTED,
+            AudioAdmissionPolicy.evaluate(candidate(durationMs = 60_000), rejectShortAudio = true),
+        )
+    }
+
+    @Test
     fun ringtoneAlarmAndNotificationAudioAreRejected() {
         listOf(
             candidate(isRingtone = true),

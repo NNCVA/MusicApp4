@@ -13,12 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -28,8 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,10 +36,7 @@ import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.AppLanguage
 import com.musicapp.player.core.domain.model.AppSettings
 import com.musicapp.player.core.domain.model.ColorSource
-import com.musicapp.player.core.domain.model.PathRule
-import com.musicapp.player.core.domain.model.PathRuleKind
 import com.musicapp.player.core.domain.model.PresetTheme
-import com.musicapp.player.core.domain.model.ScanMode
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.data.sync.LibrarySyncState
 import com.musicapp.player.feature.category.CategoryNavigationAction
@@ -73,11 +65,6 @@ fun SettingsScreenRoute(
         onLanguageChange = viewModel::setAppLanguage,
         onAeroModeChange = viewModel::setAeroMode,
         onFadeDurationChange = viewModel::setFadeThroughDurationMs,
-        onScanModeChange = viewModel::setScanMode,
-        onAddPathRule = viewModel::addPathRule,
-        onRemovePathRule = { viewModel.removePathRule(it.id) },
-        onConfirmPathRescan = viewModel::confirmPathRescan,
-        onCancelPathRescan = viewModel::cancelPathRescan,
         onRequestConfirmation = viewModel::requestConfirmation,
         onCancelConfirmation = viewModel::cancelConfirmation,
         onConfirmAction = viewModel::confirmAction,
@@ -98,11 +85,6 @@ private fun SettingsScreen(
     onLanguageChange: (AppLanguage) -> Unit,
     onAeroModeChange: (AeroMode) -> Unit,
     onFadeDurationChange: (Long) -> Unit,
-    onScanModeChange: (ScanMode) -> Unit,
-    onAddPathRule: (String, String, PathRuleKind) -> Unit,
-    onRemovePathRule: (PathRule) -> Unit,
-    onConfirmPathRescan: () -> Unit,
-    onCancelPathRescan: () -> Unit,
     onRequestConfirmation: (SettingsConfirmation) -> Unit,
     onCancelConfirmation: () -> Unit,
     onConfirmAction: () -> Unit,
@@ -140,23 +122,9 @@ private fun SettingsScreen(
                 item { LanguageSettings(state.settings.appLanguage, onLanguageChange) }
                 item { AeroSettings(state.settings.aeroMode, onAeroModeChange) }
                 item { FadeSettings(state.settings.fadeThroughDurationMs, onFadeDurationChange) }
-                item { ScanModeSettings(state.settings.scanMode, state.pendingLibrarySync, onScanModeChange) }
-                item { PathRuleEditor(onAddPathRule) }
-                items(state.pathRules, key = { it.id.value }) { rule ->
-                    PathRuleRow(rule, onRemovePathRule)
-                }
                 item { DataManagementSettings(onRequestConfirmation) }
             }
         }
-    }
-    if (state.rescanPromptVisible) {
-        ConfirmationDialog(
-            title = stringResource(R.string.settings_rescan_title),
-            description = stringResource(R.string.settings_rescan_description),
-            confirmLabel = stringResource(R.string.settings_rescan_now),
-            onConfirm = onConfirmPathRescan,
-            onDismiss = onCancelPathRescan,
-        )
     }
     state.confirmation?.let { confirmation ->
         ConfirmationDialog(
@@ -256,98 +224,6 @@ private fun FadeSettings(value: Long, onValueChange: (Long) -> Unit) {
 }
 
 @Composable
-private fun ScanModeSettings(
-    selected: ScanMode,
-    pendingLibrarySync: Boolean,
-    onSelect: (ScanMode) -> Unit,
-) {
-    SettingsSection(stringResource(R.string.settings_library_scan)) {
-        ChoiceGroup(
-            title = stringResource(R.string.settings_scan_mode),
-            values = ScanMode.entries,
-            selected = selected,
-            label = { stringResource(it.labelRes()) },
-            onSelect = onSelect,
-        )
-        if (pendingLibrarySync) {
-            Text(
-                text = stringResource(R.string.settings_library_pending_sync),
-                style = MusicTheme.typography.bodyMedium,
-                color = MusicTheme.colors.primary,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PathRuleEditor(onAdd: (String, String, PathRuleKind) -> Unit) {
-    var volumeName by rememberSaveable { mutableStateOf("") }
-    var directory by rememberSaveable { mutableStateOf("") }
-    var kindName by rememberSaveable { mutableStateOf(PathRuleKind.INCLUDE.name) }
-    val kind = PathRuleKind.valueOf(kindName)
-    SettingsSection(stringResource(R.string.settings_path_rules)) {
-        OutlinedTextField(
-            value = volumeName,
-            onValueChange = { volumeName = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.settings_volume_name)) },
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = directory,
-            onValueChange = { directory = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.settings_directory)) },
-            singleLine = true,
-        )
-        ChoiceGroup(
-            title = stringResource(R.string.settings_rule_kind),
-            values = PathRuleKind.entries,
-            selected = kind,
-            label = { stringResource(it.labelRes()) },
-            onSelect = { kindName = it.name },
-        )
-        Button(
-            onClick = {
-                onAdd(volumeName, directory, kind)
-                directory = ""
-            },
-            enabled = volumeName.isNotBlank(),
-            modifier = Modifier.heightIn(min = MusicTheme.dimensions.minimumTouchTarget),
-            shape = MusicTheme.shapes.small,
-        ) { Text(stringResource(R.string.settings_add_path_rule)) }
-    }
-}
-
-@Composable
-private fun PathRuleRow(rule: PathRule, onRemove: (PathRule) -> Unit) {
-    val dimensions = MusicTheme.dimensions
-    val directoryLabel =
-        if (rule.directory.isEmpty()) stringResource(R.string.settings_volume_root) else rule.directory
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = dimensions.spaceMedium),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(directoryLabel, color = MusicTheme.colors.onSurface)
-            Text(
-                text = stringResource(
-                    R.string.settings_path_rule_summary,
-                    stringResource(rule.kind.labelRes()),
-                    rule.volumeName,
-                ),
-                style = MusicTheme.typography.bodySmall,
-                color = MusicTheme.colors.onSurfaceVariant,
-            )
-        }
-        TextButton(onClick = { onRemove(rule) }) {
-            Text(stringResource(R.string.settings_remove_path_rule))
-        }
-    }
-}
-
-@Composable
 private fun DataManagementSettings(onRequest: (SettingsConfirmation) -> Unit) {
     SettingsSection(stringResource(R.string.settings_data_management)) {
         SettingsAction(R.string.settings_reset, R.string.settings_reset_summary) {
@@ -358,9 +234,6 @@ private fun DataManagementSettings(onRequest: (SettingsConfirmation) -> Unit) {
         }
         SettingsAction(R.string.settings_delete_playlists, R.string.settings_delete_playlists_summary) {
             onRequest(SettingsConfirmation.DELETE_ALL_PLAYLISTS)
-        }
-        SettingsAction(R.string.settings_rebuild_library, R.string.settings_rebuild_library_summary) {
-            onRequest(SettingsConfirmation.REBUILD_LIBRARY_CACHE)
         }
     }
 }
@@ -496,16 +369,6 @@ private fun AeroMode.labelRes() = when (this) {
     AeroMode.FLUID_MESH -> R.string.settings_aero_fluid_mesh
     AeroMode.GLOW_AURA -> R.string.settings_aero_glow_aura
     AeroMode.SOLID -> R.string.settings_aero_solid
-}
-
-private fun ScanMode.labelRes() = when (this) {
-    ScanMode.ALL -> R.string.settings_scan_all
-    ScanMode.SELECTED_DIRECTORIES -> R.string.settings_scan_selected
-}
-
-private fun PathRuleKind.labelRes() = when (this) {
-    PathRuleKind.INCLUDE -> R.string.settings_path_include
-    PathRuleKind.EXCLUDE -> R.string.settings_path_exclude
 }
 
 private const val FADE_SLIDER_STEPS = 7

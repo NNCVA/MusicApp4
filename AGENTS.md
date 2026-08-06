@@ -6,6 +6,7 @@
 - 项目文档全放在 docs/ 目录下！！！
 - 项目说明与开发入口：[`README.md`](README.md)。
 - 多使用子代理并行执行
+- 构建前看这个文档 [`docs/verification.md`](docs/verification.md)
 - 调用所有工具（Tool）时，必须严格检查并填写当前 schema 规定的全部必填字段，杜绝 SchemaError。
 
 ## 项目概述
@@ -40,7 +41,7 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 21. **浅色 / 深色模式**：每套主题均完整支持 Light / Dark 模式。
 22. **Aero 动态背景**：动态 Canvas 背景视觉特效（流体网格 Fluid Mesh、光晕气场 Glow Aura、纯色静态），支持低电量自动暂停降级保护。
 23. **中英双语切换**：界面全字符串本地化，选项为跟随系统、简体中文、English；使用系统应用语言能力并允许 Activity 重建。
-24. **扫描器雷达动画**：首次无缓存扫描使用全屏雷达；已有缓存后的同步不阻塞内容。首次与手动扫描完成后显示包含全部曲目的结果对话框，自动同步不弹出。
+24. **扫描器雷达动画**：首次无缓存扫描使用全屏雷达；已有缓存后的同步不阻塞内容。首次与手动扫描完成后仅显示扫描过滤后的成功曲目列表，自动同步不弹出。
 25. **设置与偏好存储**：使用 Preferences DataStore 管理主题、语言、Aero、淡出淡入时长、路径规则等；“重置应用配置”只恢复设置默认值，不删除播放列表、历史、缓存或物理音频。
 26. **关于页面**：展示应用版本号、开发者元数据、开源许可协议及致谢清单。
 
@@ -87,3 +88,4 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 - 委派给 `luna_worker` 的任务包必须写明目标、上下文、范围、排除项、约束、验收标准、精确验证命令、预期返回和升级条件。
 - 主线程必须检查实际 diff 与验证结果，不能只依据 Agent 总结接受结果；没有 Agent 活动或工具结果标识时，不得声称某个模型已经实际运行。
 - 路由指南、任务包模板和验证方法分别见 [`docs/routing-guide.md`](docs/routing-guide.md)、[`docs/task-packet.md`](docs/task-packet.md) 和 [`docs/verification.md`](docs/verification.md)。
+- 构建前看这个文档 [`docs/verification.md`](docs/verification.md)

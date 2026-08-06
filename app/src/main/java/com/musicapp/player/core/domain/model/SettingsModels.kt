@@ -43,6 +43,7 @@ data class AppSettings(
     val aeroMode: AeroMode = AeroMode.GLOW_AURA,
     val fadeThroughDurationMs: Long = DEFAULT_FADE_THROUGH_DURATION_MS,
     val scanMode: ScanMode = ScanMode.ALL,
+    val skipShortAudio: Boolean = true,
 ) {
     init {
         require(fadeThroughDurationMs in MIN_FADE_THROUGH_DURATION_MS..MAX_FADE_THROUGH_DURATION_MS) {

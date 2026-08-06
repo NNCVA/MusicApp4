@@ -28,6 +28,7 @@ enum class MediaLibrarySyncFeedback {
 enum class MediaLibraryScanSkipReason {
     UNSUPPORTED_FORMAT,
     NON_POSITIVE_DURATION,
+    SHORT_AUDIO,
     SYSTEM_AUDIO,
     EXCLUDED_PATH,
     OUTSIDE_INCLUDED_PATHS,

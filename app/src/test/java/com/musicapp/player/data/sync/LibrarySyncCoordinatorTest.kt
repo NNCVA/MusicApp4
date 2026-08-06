@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -16,19 +17,72 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class LibrarySyncCoordinatorTest {
     @Test
-    fun coldStartWithoutSuccessfulScanRunsFullSyncAndRetainsResultFeedback() = runTest {
+    fun coldStartWithoutSuccessfulScanIsDropped() = runTest {
         val fixture = fixture(cache = cache(false), snapshot = snapshot("v1"))
 
         fixture.coordinator.onColdStart()
         advanceUntilIdle()
 
-        assertEquals(listOf(MediaLibrarySyncMode.FULL), fixture.synchronizer.modes)
+        assertTrue(fixture.synchronizer.modes.isEmpty())
         val state = fixture.coordinator.state.value as LibrarySyncState.Idle
-        assertTrue(state.hasSuccessfulScan)
-        val feedback = state.pendingFeedback
-        assertEquals(MediaLibrarySyncFeedback.RESULT_DIALOG, feedback?.event?.feedback)
+        assertFalse(state.hasSuccessfulScan)
+        assertNull(state.pendingFeedback)
+    }
 
-        fixture.coordinator.acknowledgeFeedback(requireNotNull(feedback).eventId)
+    @Test
+    fun permissionGrantedWithoutSuccessfulScanIsDropped() = runTest {
+        val fixture = fixture(cache = cache(false), snapshot = snapshot("v1"))
+
+        fixture.coordinator.requestPermissionGrantedSync()
+        advanceUntilIdle()
+
+        assertTrue(fixture.synchronizer.modes.isEmpty())
+        assertFalse(fixture.coordinator.state.value.hasSuccessfulScan)
+    }
+
+    @Test
+    fun foregroundChangesWithoutSuccessfulScanAreDropped() = runTest {
+        val changes = MutableSharedFlow<Unit>(extraBufferCapacity = 8)
+        val fixture = fixture(cache = cache(false), snapshot = snapshot("v1"), changes = changes)
+
+        fixture.coordinator.startForeground()
+        runCurrent()
+        changes.tryEmit(Unit)
+        advanceTimeBy(LibrarySyncCoordinator.CONTENT_CHANGE_DEBOUNCE_MS)
+        advanceUntilIdle()
+
+        assertTrue(fixture.synchronizer.modes.isEmpty())
+        assertFalse(fixture.coordinator.state.value.hasSuccessfulScan)
+        fixture.coordinator.stopForeground()
+    }
+
+    @Test
+    fun successfulManualScanReenablesForegroundChanges() = runTest {
+        val changes = MutableSharedFlow<Unit>(extraBufferCapacity = 8)
+        val fixture = fixture(cache = cache(false), snapshot = snapshot("v1"), changes = changes)
+
+        fixture.coordinator.startForeground()
+        runCurrent()
+        val manual = async { fixture.coordinator.requestManualSyncAndAwait() }
+        advanceUntilIdle()
+        val manualEvent = manual.await()
+
+        assertTrue(manualEvent is LibrarySyncEvent.Completed)
+        assertEquals(MediaLibrarySyncFeedback.RESULT_DIALOG, manualEvent.feedback)
+        assertEquals(listOf(MediaLibrarySyncMode.FULL), fixture.synchronizer.modes)
+
+        changes.tryEmit(Unit)
+        advanceTimeBy(LibrarySyncCoordinator.CONTENT_CHANGE_DEBOUNCE_MS)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(MediaLibrarySyncMode.FULL, MediaLibrarySyncMode.INCREMENTAL),
+            fixture.synchronizer.modes,
+        )
+        fixture.coordinator.stopForeground()
+
+        val feedback = requireNotNull(fixture.coordinator.state.value.pendingFeedback)
+        fixture.coordinator.acknowledgeFeedback(feedback.eventId)
         assertNull(fixture.coordinator.state.value.pendingFeedback)
     }
 
@@ -117,10 +171,11 @@ class LibrarySyncCoordinatorTest {
 
     @Test
     fun manualFeedbackIsRetainedWhileAutomaticFeedbackIsSilent() = runTest {
-        val fixture = fixture(cache(true, "v1"), snapshot("v1"))
+        val fixture = fixture(cache(false), snapshot("v1"))
 
         fixture.coordinator.requestPermissionGrantedSync()
         advanceUntilIdle()
+        assertTrue(fixture.synchronizer.modes.isEmpty())
         assertNull(fixture.coordinator.state.value.pendingFeedback)
 
         fixture.coordinator.requestManualSync()

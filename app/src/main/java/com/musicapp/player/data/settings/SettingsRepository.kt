@@ -40,6 +40,8 @@ interface SettingsRepository {
 
     suspend fun setScanMode(value: ScanMode)
 
+    suspend fun setSkipShortAudio(value: Boolean)
+
     suspend fun markLibrarySyncPending(): Long = pendingLibrarySync.value.revision
 
     suspend fun clearLibrarySyncPending(expectedRevision: Long): Boolean = false

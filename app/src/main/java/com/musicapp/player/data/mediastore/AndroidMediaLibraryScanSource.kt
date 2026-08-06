@@ -54,7 +54,10 @@ class AndroidMediaLibraryScanSource @Inject constructor(
         val seenIdentities = mutableSetOf<TrackId>()
 
         queryResult.candidates.forEach { candidate ->
-            val admission = AudioAdmissionPolicy.evaluate(candidate)
+            val admission = AudioAdmissionPolicy.evaluate(
+                candidate = candidate,
+                rejectShortAudio = settingsSnapshot.skipShortAudio,
+            )
             val skipReason = when {
                 admission != AdmissionResult.ACCEPTED -> admission.toSkipReason()
                 !PathRuleMatcher.matches(
@@ -112,6 +115,7 @@ private fun AdmissionResult.toSkipReason(): MediaLibraryScanSkipReason = when (t
     AdmissionResult.ACCEPTED -> error("accepted items do not have a skip reason")
     AdmissionResult.REJECTED_UNSUPPORTED_FORMAT -> MediaLibraryScanSkipReason.UNSUPPORTED_FORMAT
     AdmissionResult.REJECTED_NON_POSITIVE_DURATION -> MediaLibraryScanSkipReason.NON_POSITIVE_DURATION
+    AdmissionResult.REJECTED_SHORT_AUDIO -> MediaLibraryScanSkipReason.SHORT_AUDIO
     AdmissionResult.REJECTED_SYSTEM_AUDIO -> MediaLibraryScanSkipReason.SYSTEM_AUDIO
 }
 

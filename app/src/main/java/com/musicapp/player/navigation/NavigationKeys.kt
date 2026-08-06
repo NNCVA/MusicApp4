@@ -43,6 +43,10 @@ data object SettingsRoute : TopLevelNavKey
 data object AboutRoute : TopLevelNavKey
 
 @Serializable
+@SerialName("scan_music")
+data object ScanMusicRoute : MusicNavKey
+
+@Serializable
 @SerialName("track_info")
 data class TrackInfoRoute(
     val volumeName: String,
@@ -120,4 +124,5 @@ internal fun MusicNavKey.owner(): TopLevelNavKey =
         is ArtistDetailRoute -> ArtistsRoute
         is PlaylistDetailRoute -> PlaylistsRoute
         is FolderDetailRoute -> FoldersRoute
+        ScanMusicRoute -> TracksRoute
     }

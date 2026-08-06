@@ -45,6 +45,7 @@ import com.musicapp.player.navigation.Navigator
 import com.musicapp.player.navigation.PlaylistDetailRoute
 import com.musicapp.player.navigation.PlaylistsRoute
 import com.musicapp.player.navigation.SettingsRoute
+import com.musicapp.player.navigation.ScanMusicRoute
 import com.musicapp.player.navigation.TopLevelNavKey
 import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
@@ -83,6 +84,8 @@ import com.musicapp.player.feature.playlists.PlaylistsScreenRoute
 import com.musicapp.player.feature.playlists.PlaylistsViewModel
 import com.musicapp.player.feature.settings.SettingsScreenRoute
 import com.musicapp.player.feature.settings.SettingsViewModel
+import com.musicapp.player.feature.scan.ScanMusicScreenRoute
+import com.musicapp.player.feature.scan.ScanViewModel
 import com.musicapp.player.feature.tracks.TracksScreenRoute
 import com.musicapp.player.feature.tracks.TracksViewModel
 import com.musicapp.player.theme.MusicTheme
@@ -114,6 +117,7 @@ fun MainNavigation(
     onConfirmPermission: () -> Unit,
     onRetryPermission: () -> Unit,
     onOpenPermissionSettings: () -> Unit,
+    onOpenApplicationSettings: () -> Unit,
 ) {
     var encodedSnapshot by rememberSaveable {
         mutableStateOf(NavigationState.initial().snapshot().encode())
@@ -177,8 +181,6 @@ fun MainNavigation(
                     policy = policy,
                     selectedRoute = navigationState.currentTopLevelRoute,
                     themeMode = themeMode,
-                    isLibrarySyncing = librarySyncState is LibrarySyncState.Syncing,
-                    canScanMusic = permissionState is MediaPermissionState.Granted,
                     onSelect = { route ->
                         commitNavigation { navigate(route) }
                         closeDrawer()
@@ -202,7 +204,7 @@ fun MainNavigation(
                         messageBubbleQueue.enqueue(R.string.sidebar_equalizer_placeholder)
                     },
                     onScanMusic = {
-                        onScanMusic()
+                        commitNavigation { navigate(ScanMusicRoute) }
                         closeDrawer()
                     },
                 )
@@ -216,14 +218,25 @@ fun MainNavigation(
                     entryProvider =
                         entryProvider {
                             entry<TracksRoute> {
-                                TracksDestination(
-                                    permissionState = permissionState,
+                                TracksScreenRoute(
+                                    viewModel = viewModel<TracksViewModel>(),
                                     contentInsets = contentInsets,
                                     policy = policy,
                                     openDrawer = openDrawer,
+                                )
+                            }
+                            entry<ScanMusicRoute> {
+                                ScanMusicScreenRoute(
+                                    viewModel = viewModel<ScanViewModel>(),
+                                    contentInsets = contentInsets,
+                                    policy = policy,
+                                    onBack = ::handleBack,
+                                    permissionState = permissionState,
                                     onConfirmPermission = onConfirmPermission,
                                     onRetryPermission = onRetryPermission,
                                     onOpenPermissionSettings = onOpenPermissionSettings,
+                                    onOpenApplicationSettings = onOpenApplicationSettings,
+                                    onScanMusic = onScanMusic,
                                 )
                             }
                             entry<AlbumsRoute> {
@@ -407,141 +420,6 @@ fun MainNavigation(
 }
 
 @Composable
-private fun TracksDestination(
-    permissionState: MediaPermissionState,
-    contentInsets: WindowInsets,
-    policy: WindowLayoutPolicy,
-    openDrawer: () -> Unit,
-    onConfirmPermission: () -> Unit,
-    onRetryPermission: () -> Unit,
-    onOpenPermissionSettings: () -> Unit,
-) {
-    when (permissionState) {
-        is MediaPermissionState.Granted ->
-            TracksScreenRoute(
-                viewModel = viewModel<TracksViewModel>(),
-                contentInsets = contentInsets,
-                policy = policy,
-                openDrawer = openDrawer,
-            )
-        is MediaPermissionState.PurposeExplanation ->
-            PermissionPrompt(
-                descriptionResId = R.string.permission_audio_explanation,
-                actionLabelResId = R.string.permission_continue,
-                onAction = onConfirmPermission,
-                contentInsets = contentInsets,
-                policy = policy,
-                openDrawer = openDrawer,
-            )
-        is MediaPermissionState.DeniedCanRetry ->
-            PermissionPrompt(
-                descriptionResId = R.string.permission_denied,
-                actionLabelResId = R.string.permission_retry,
-                onAction = onRetryPermission,
-                contentInsets = contentInsets,
-                policy = policy,
-                openDrawer = openDrawer,
-            )
-        is MediaPermissionState.PermanentlyDenied ->
-            PermissionPrompt(
-                descriptionResId = R.string.permission_permanently_denied,
-                actionLabelResId = R.string.permission_open_settings,
-                onAction = onOpenPermissionSettings,
-                contentInsets = contentInsets,
-                policy = policy,
-                openDrawer = openDrawer,
-            )
-        is MediaPermissionState.Requesting ->
-            PermissionProgress(
-                messageResId = R.string.permission_requesting,
-                contentInsets = contentInsets,
-                policy = policy,
-                openDrawer = openDrawer,
-            )
-        is MediaPermissionState.WaitingForSettingsReturn ->
-            PermissionProgress(
-                messageResId = R.string.permission_waiting_for_settings,
-                contentInsets = contentInsets,
-                policy = policy,
-                openDrawer = openDrawer,
-            )
-    }
-}
-
-@Composable
-private fun PermissionPrompt(
-    @StringRes descriptionResId: Int,
-    @StringRes actionLabelResId: Int,
-    onAction: () -> Unit,
-    contentInsets: WindowInsets,
-    policy: WindowLayoutPolicy,
-    openDrawer: () -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    Column(
-        modifier = Modifier.permissionContent(contentInsets),
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
-    ) {
-        CompactNavigationButton(policy, openDrawer)
-        Text(
-            text = stringResource(R.string.permission_audio_title),
-            color = MusicTheme.colors.onSurface,
-            style = MusicTheme.typography.headlineMedium,
-        )
-        Text(
-            text = stringResource(descriptionResId),
-            color = MusicTheme.colors.onSurfaceVariant,
-            style = MusicTheme.typography.bodyLarge,
-        )
-        Button(
-            onClick = onAction,
-            modifier = Modifier.heightIn(min = dimensions.minimumTouchTarget),
-            shape = MusicTheme.shapes.small,
-        ) {
-            Text(
-                text = stringResource(actionLabelResId),
-                style = MusicTheme.typography.labelLarge,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PermissionProgress(
-    @StringRes messageResId: Int,
-    contentInsets: WindowInsets,
-    policy: WindowLayoutPolicy,
-    openDrawer: () -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    Column(
-        modifier = Modifier.permissionContent(contentInsets),
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
-    ) {
-        CompactNavigationButton(policy, openDrawer)
-        CircularProgressIndicator(color = MusicTheme.colors.primary)
-        Text(
-            text = stringResource(messageResId),
-            color = MusicTheme.colors.onSurfaceVariant,
-            style = MusicTheme.typography.bodyLarge,
-        )
-    }
-}
-
-@Composable
-private fun Modifier.permissionContent(contentInsets: WindowInsets): Modifier {
-    val dimensions = MusicTheme.dimensions
-    return fillMaxSize()
-        .windowInsetsPadding(contentInsets)
-        .padding(
-            horizontal = dimensions.contentHorizontalPadding,
-            vertical = dimensions.spaceMedium,
-        )
-}
-
-@Composable
 private fun DestinationPlaceholder(
     route: MusicNavKey,
     contentInsets: WindowInsets,
@@ -598,4 +476,5 @@ private fun MusicNavKey.titleResId(): Int =
         FoldersRoute, is FolderDetailRoute -> R.string.navigation_folders
         SettingsRoute -> R.string.navigation_settings
         AboutRoute -> R.string.navigation_about
+        ScanMusicRoute -> R.string.navigation_scan_music
     }

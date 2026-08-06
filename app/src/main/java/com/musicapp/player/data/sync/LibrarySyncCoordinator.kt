@@ -129,6 +129,7 @@ class LibrarySyncCoordinator @Inject constructor(
     }
 
     private suspend fun enqueue(request: SyncRequest) {
+        if (request.trigger != MediaLibrarySyncTrigger.MANUAL && !hasSuccessfulScan()) return
         val shouldStart = requestMutex.withLock {
             if (processing) {
                 pendingRequest = pendingRequest?.merge(request) ?: request
@@ -143,6 +144,9 @@ class LibrarySyncCoordinator @Inject constructor(
         }
     }
 
+    private suspend fun hasSuccessfulScan(): Boolean =
+        state.value.hasSuccessfulScan || synchronizer.cacheSnapshot().hasSuccessfulScan
+
     private suspend fun processRequests(first: SyncRequest) {
         var current: SyncRequest? = first
         while (current != null) {
@@ -156,7 +160,7 @@ class LibrarySyncCoordinator @Inject constructor(
     }
 
     private suspend fun execute(request: SyncRequest) {
-        val hadSuccessfulScan = state.value.hasSuccessfulScan || synchronizer.cacheSnapshot().hasSuccessfulScan
+        val hadSuccessfulScan = hasSuccessfulScan()
         val effectiveRequest = if (
             request.trigger == MediaLibrarySyncTrigger.PERMISSION_GRANTED && !hadSuccessfulScan
         ) {

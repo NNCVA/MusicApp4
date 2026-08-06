@@ -46,9 +46,15 @@ object AudioAdmissionPolicy {
         "unknown/unknown",
     )
 
-    fun evaluate(candidate: MediaAudioCandidate): AdmissionResult {
+    fun evaluate(
+        candidate: MediaAudioCandidate,
+        rejectShortAudio: Boolean = false,
+    ): AdmissionResult {
         if (candidate.durationMs <= 0) {
             return AdmissionResult.REJECTED_NON_POSITIVE_DURATION
+        }
+        if (rejectShortAudio && candidate.durationMs < MIN_AUDIO_DURATION_MS) {
+            return AdmissionResult.REJECTED_SHORT_AUDIO
         }
         if (candidate.isRingtone || candidate.isAlarm || candidate.isNotification) {
             return AdmissionResult.REJECTED_SYSTEM_AUDIO
@@ -79,4 +85,6 @@ object AudioAdmissionPolicy {
             .lowercase(Locale.ROOT)
         return extension in supportedExtensions
     }
+
+    private const val MIN_AUDIO_DURATION_MS = 60_000L
 }

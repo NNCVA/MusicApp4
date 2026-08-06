@@ -145,6 +145,7 @@ class AndroidMediaLibraryScanSourceTest {
         override suspend fun setAeroMode(value: com.musicapp.player.core.domain.model.AeroMode) = Unit
         override suspend fun setFadeThroughDurationMs(value: Long) = Unit
         override suspend fun setScanMode(value: ScanMode) = Unit
+        override suspend fun setSkipShortAudio(value: Boolean) = Unit
         override suspend fun reset() = Unit
     }
 
@@ -152,7 +153,7 @@ class AndroidMediaLibraryScanSourceTest {
         id: Long,
         directory: String,
         mimeType: String = "audio/mpeg",
-        durationMs: Long = 1_000,
+        durationMs: Long = 60_000,
         isRingtone: Boolean = false,
     ) = MediaAudioCandidate(
         volumeName = PRIMARY,

@@ -2,8 +2,8 @@ package com.musicapp.player.data.settings
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.AppLanguage
@@ -12,7 +12,6 @@ import com.musicapp.player.core.domain.model.ColorSource
 import com.musicapp.player.core.domain.model.PresetTheme
 import com.musicapp.player.core.domain.model.ScanMode
 import com.musicapp.player.core.domain.model.ThemeMode
-import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -23,23 +22,21 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsRepositoryTest {
-    @get:Rule
-    val temporaryFolder = TemporaryFolder()
-
     @Test
     fun firstReadReturnsAppSettingsDefaults() = runTest {
         val repository = createRepository()
@@ -183,14 +180,25 @@ class SettingsRepositoryTest {
     }
 
     private fun TestScope.createRepository(): SettingsRepository {
-        val dataStore = PreferenceDataStoreFactory.create(
-            scope = backgroundScope,
-            produceFile = { File(temporaryFolder.root, "settings-${System.nanoTime()}.preferences_pb") },
-        )
+        val dataStore = InMemoryDataStore()
         return PreferencesSettingsRepository(
             dataStore = dataStore,
             applicationScope = backgroundScope,
         )
+    }
+
+    private class InMemoryDataStore : DataStore<Preferences> {
+        private val preferences = MutableStateFlow<Preferences>(emptyPreferences())
+        private val updateMutex = Mutex()
+
+        override val data: Flow<Preferences> = preferences
+
+        override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences =
+            updateMutex.withLock {
+                transform(preferences.value).also { updatedPreferences ->
+                    preferences.value = updatedPreferences
+                }
+            }
     }
 
     private class ThrowingDataStore(

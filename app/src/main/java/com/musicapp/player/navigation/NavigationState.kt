@@ -97,6 +97,7 @@ private object NavigationSnapshotCodec {
                 writeUTF(route.volumeName)
                 writeUTF(route.relativePath)
             }
+            ScanMusicRoute -> writeByte(13)
         }
     }
 
@@ -115,6 +116,7 @@ private object NavigationSnapshotCodec {
             10 -> ArtistDetailRoute(mediaStoreId = readLong())
             11 -> PlaylistDetailRoute(playlistId = readLong())
             12 -> FolderDetailRoute(volumeName = readUTF(), relativePath = readUTF())
+            13 -> ScanMusicRoute
             else -> throw IllegalArgumentException("unknown navigation route type: $routeType")
         }
 
