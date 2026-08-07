@@ -165,7 +165,11 @@ fun MainNavigation(
     Box(modifier = Modifier.fillMaxSize()) {
         AeroBackground(
             preferredMode =
-                if (playerExpanded || navigationState.currentBackStack.size > 1) {
+                if (
+                    playerExpanded ||
+                        (navigationState.currentBackStack.size > 1 &&
+                            navigationState.currentBackStack.last() != ScanMusicRoute)
+                ) {
                     AeroMode.SOLID
                 } else {
                     aeroMode
