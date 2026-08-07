@@ -13,10 +13,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import com.musicapp.player.R
+import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicTheme
 
+/** Displays a centered loading indicator and message. */
 @Composable
 fun LoadingState(
   modifier: Modifier = Modifier,
@@ -24,7 +30,10 @@ fun LoadingState(
 ) {
   val dimensions = MusicTheme.dimensions
   Column(
-    modifier = modifier.fillMaxSize().padding(dimensions.spaceLarge),
+    modifier =
+      modifier.fillMaxSize().padding(dimensions.spaceLarge).semantics(mergeDescendants = true) {
+        liveRegion = LiveRegionMode.Polite
+      },
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium, Alignment.CenterVertically),
   ) {
@@ -38,6 +47,7 @@ fun LoadingState(
   }
 }
 
+/** Displays an empty-content message with an optional description. */
 @Composable
 fun EmptyState(
   modifier: Modifier = Modifier,
@@ -51,6 +61,7 @@ fun EmptyState(
   )
 }
 
+/** Displays an error message with an action to retry the failed operation. */
 @Composable
 fun ErrorState(
   onRetry: () -> Unit,
@@ -85,6 +96,9 @@ private fun StateMessage(
   val dimensions = MusicTheme.dimensions
   Box(modifier = modifier.fillMaxSize().padding(dimensions.spaceLarge), contentAlignment = Alignment.Center) {
     Column(
+      modifier = Modifier.semantics(mergeDescendants = action == null) {
+        liveRegion = LiveRegionMode.Polite
+      },
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
@@ -105,4 +119,22 @@ private fun StateMessage(
       action?.invoke()
     }
   }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LoadingStatePreview() {
+  MusicAppTheme { LoadingState() }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun EmptyStatePreview() {
+  MusicAppTheme { EmptyState() }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ErrorStatePreview() {
+  MusicAppTheme { ErrorState(onRetry = {}) }
 }

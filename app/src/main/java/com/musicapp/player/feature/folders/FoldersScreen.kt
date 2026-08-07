@@ -32,16 +32,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.TrackSummaryRow
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
-import com.musicapp.player.feature.category.CategoryTrackRow
 import com.musicapp.player.feature.category.CategoryTrackSortField
 import com.musicapp.player.feature.category.CategoryTrackSortMenu
 import com.musicapp.player.feature.category.labelRes
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
+import java.util.Locale
 
 @Composable
 fun FoldersScreenRoute(
@@ -192,7 +193,21 @@ private fun FolderDetailScreen(
                     items(
                         state.directTracks,
                         key = { "${it.id.volumeName}:${it.id.mediaStoreId}" },
-                    ) { track -> CategoryTrackRow(track, onTrackClick) }
+                    ) { track ->
+                        TrackSummaryRow(
+                            title = track.title,
+                            artist = track.artistName,
+                            duration = formatDuration(track.durationMs),
+                            enabled = track.availability == Availability.AVAILABLE,
+                            statusLabel =
+                                if (track.availability == Availability.TEMPORARILY_UNAVAILABLE) {
+                                    stringResource(R.string.track_temporarily_unavailable)
+                                } else {
+                                    null
+                                },
+                            onClick = { onTrackClick(track) },
+                        )
+                    }
                 }
             }
         }
@@ -263,3 +278,8 @@ private fun FolderSortField.labelRes(): Int =
         FolderSortField.NAME -> R.string.sort_name
         FolderSortField.TRACK_COUNT -> R.string.sort_track_count
     }
+
+private fun formatDuration(durationMs: Long): String {
+    val totalSeconds = durationMs / 1_000
+    return String.format(Locale.ROOT, "%d:%02d", totalSeconds / 60, totalSeconds % 60)
+}

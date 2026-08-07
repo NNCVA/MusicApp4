@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -308,14 +309,10 @@ private fun HistoryBatchResultDialog(
             is BatchTrackActionResult.Failed -> stringResource(R.string.batch_result_failed)
             BatchTrackActionResult.EmptySelection -> return
         }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        text = { Text(message) },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.selection_close))
-            }
-        },
+    MessageDialog(
+        message = message,
+        confirmLabel = stringResource(R.string.selection_close),
+        onDismiss = onDismiss,
     )
 }
 

@@ -1,13 +1,11 @@
 package com.musicapp.player.feature.category
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
+import com.musicapp.player.core.designsystem.component.TrackSummaryRow
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 import java.util.Locale
@@ -112,47 +111,20 @@ fun CategoryTrackList(
         contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
     ) {
         items(tracks, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { track ->
-            CategoryTrackRow(track, onTrackClick)
-        }
-    }
-}
-
-@Composable
-fun CategoryTrackRow(track: Track, onTrackClick: (Track) -> Unit) {
-    val dimensions = MusicTheme.dimensions
-    Row(
-        modifier = Modifier.fillMaxWidth().height(dimensions.trackListItemHeight)
-            .clickable(enabled = track.availability == Availability.AVAILABLE) { onTrackClick(track) }
-            .padding(horizontal = dimensions.spaceSmall),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                track.title,
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-                maxLines = 1,
-            )
-            Text(
-                text = track.artistName,
-                style = MusicTheme.typography.bodySmall,
-                color = MusicTheme.colors.onSurfaceVariant,
-                maxLines = 1,
+            TrackSummaryRow(
+                title = track.title,
+                artist = track.artistName,
+                duration = formatDuration(track.durationMs),
+                enabled = track.availability == Availability.AVAILABLE,
+                statusLabel =
+                    if (track.availability == Availability.TEMPORARILY_UNAVAILABLE) {
+                        stringResource(R.string.track_temporarily_unavailable)
+                    } else {
+                        null
+                    },
+                onClick = { onTrackClick(track) },
             )
         }
-        if (track.availability == Availability.TEMPORARILY_UNAVAILABLE) {
-            Text(
-                text = stringResource(R.string.track_temporarily_unavailable),
-                style = MusicTheme.typography.labelSmall,
-                color = MusicTheme.colors.onSurfaceVariant,
-            )
-        }
-        Text(
-            formatDuration(track.durationMs),
-            style = MusicTheme.typography.labelMedium,
-            color = MusicTheme.colors.onSurfaceVariant,
-        )
     }
 }
 

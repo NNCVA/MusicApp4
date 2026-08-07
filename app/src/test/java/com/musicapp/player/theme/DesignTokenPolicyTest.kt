@@ -8,6 +8,7 @@ import com.musicapp.player.core.domain.model.PresetTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DesignTokenPolicyTest {
@@ -37,6 +38,18 @@ class DesignTokenPolicyTest {
             assertEquals(160.dp, dimensions.adaptiveGridMinimumCellWidth)
             assertEquals(48.dp, dimensions.minimumTouchTarget)
             assertEquals(360.dp, dimensions.dialogListMaxHeight)
+        }
+    }
+
+    @Test
+    fun `track rows meet the minimum touch target`() {
+        MusicWindowWidthTier.entries.forEach { tier ->
+            val dimensions = MusicDimensions.forTier(tier)
+
+            assertTrue(
+                "${tier.name} track rows must remain accessible",
+                dimensions.trackListItemHeight >= dimensions.minimumTouchTarget,
+            )
         }
     }
 

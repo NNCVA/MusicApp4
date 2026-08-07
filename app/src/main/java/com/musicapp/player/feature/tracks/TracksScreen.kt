@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -58,6 +57,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.SectionIndexBar
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -310,56 +310,15 @@ private fun TracksTopBar(
                 ) {
                     Text(stringResource(R.string.selection_more_actions))
                 }
-                DropdownMenu(
+                TrackActionsMenu(
                     expanded = batchMenuExpanded && !state.isBatchActionRunning,
+                    playlists = state.playlists,
                     onDismissRequest = { batchMenuExpanded = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.selection_add_to_queue)) },
-                        onClick = {
-                            batchMenuExpanded = false
-                            onAddToQueue()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.selection_play_next)) },
-                        onClick = {
-                            batchMenuExpanded = false
-                            onPlayNext()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.selection_hide)) },
-                        onClick = {
-                            batchMenuExpanded = false
-                            onHideSelected()
-                        },
-                    )
-                    if (state.playlists.isEmpty()) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.selection_no_playlists)) },
-                            onClick = {},
-                            enabled = false,
-                        )
-                    } else {
-                        state.playlists.forEach { playlist ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        stringResource(
-                                            R.string.selection_add_to_playlist_named,
-                                            playlist.displayName,
-                                        ),
-                                    )
-                                },
-                                onClick = {
-                                    batchMenuExpanded = false
-                                    onAddToPlaylist(playlist.id)
-                                },
-                            )
-                        }
-                    }
-                }
+                    onAddToQueue = onAddToQueue,
+                    onPlayNext = onPlayNext,
+                    onHide = onHideSelected,
+                    onAddToPlaylist = onAddToPlaylist,
+                )
             }
         } else {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -489,14 +448,10 @@ private fun BatchResultDialog(
             is BatchTrackActionResult.Failed -> stringResource(R.string.batch_result_failed)
             BatchTrackActionResult.EmptySelection -> return
         }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        text = { Text(message) },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.selection_close))
-            }
-        },
+    MessageDialog(
+        message = message,
+        confirmLabel = stringResource(R.string.selection_close),
+        onDismiss = onDismiss,
     )
 }
 
@@ -712,56 +667,15 @@ private fun TrackRow(
                         modifier = Modifier.size(dimensions.spaceLarge),
                     )
                 }
-                DropdownMenu(
+                TrackActionsMenu(
                     expanded = menuExpanded,
+                    playlists = playlists,
                     onDismissRequest = { menuExpanded = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.selection_add_to_queue)) },
-                        onClick = {
-                            menuExpanded = false
-                            onAddToQueue()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.selection_play_next)) },
-                        onClick = {
-                            menuExpanded = false
-                            onPlayNext()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.selection_hide)) },
-                        onClick = {
-                            menuExpanded = false
-                            onHide()
-                        },
-                    )
-                    if (playlists.isEmpty()) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.selection_no_playlists)) },
-                            onClick = {},
-                            enabled = false,
-                        )
-                    } else {
-                        playlists.forEach { playlist ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        stringResource(
-                                            R.string.selection_add_to_playlist_named,
-                                            playlist.displayName,
-                                        ),
-                                    )
-                                },
-                                onClick = {
-                                    menuExpanded = false
-                                    onAddToPlaylist(playlist.id)
-                                },
-                            )
-                        }
-                    }
-                }
+                    onAddToQueue = onAddToQueue,
+                    onPlayNext = onPlayNext,
+                    onHide = onHide,
+                    onAddToPlaylist = onAddToPlaylist,
+                )
             }
         }
     }
