@@ -2,6 +2,7 @@ package com.musicapp.player.feature.albums
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -9,9 +10,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
@@ -19,17 +22,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.SectionIndexBar
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.feature.category.CategoryNavigationAction
@@ -42,6 +48,7 @@ import com.musicapp.player.feature.category.CategoryTrackSortField
 import com.musicapp.player.feature.category.labelRes
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
+import kotlinx.coroutines.launch
 
 @Composable
 fun AlbumsScreenRoute(
@@ -91,56 +98,96 @@ private fun AlbumsScreen(
     onAlbumClick: (AlbumId) -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
-    Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-            .padding(horizontal = dimensions.contentHorizontalPadding),
-    ) {
-        CategoryHeader(
-            title = stringResource(R.string.navigation_albums),
-            policy = policy,
-            navigationAction = CategoryNavigationAction.DRAWER,
-            onNavigationClick = openDrawer,
-            trailingContent = { AlbumSortMenu(state.sort, onSortSelected) },
-        )
-        if (state.albums.isEmpty()) {
-            EmptyState(
-                modifier = Modifier.weight(1f),
-                title = stringResource(R.string.albums_empty_title),
-                description = stringResource(R.string.albums_empty_description),
+    val coroutineScope = rememberCoroutineScope()
+    val gridState = rememberLazyGridState()
+    val sections = remember(state.albums, state.sort.field) {
+        groupAlbumsIntoSections(state.albums, state.sort.field)
+    }
+    val indexLabels = remember(sections) { sectionIndexLabels(sections) }
+    val sectionPositions = remember(sections) { sectionStartPositions(sections) }
+    val selectedSection by remember(gridState, sections) {
+        derivedStateOf {
+            sectionLabelAtPosition(sections, gridState.firstVisibleItemIndex)
+        }
+    }
+    val sectionDescriptions = sections.associate { section ->
+        section.label to stringResource(R.string.album_index_label, section.label)
+    }
+    val showSectionIndex = state.albums.isNotEmpty() && indexLabels.isNotEmpty()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets)
+                .padding(horizontal = dimensions.contentHorizontalPadding),
+        ) {
+            CategoryHeader(
+                title = stringResource(R.string.navigation_albums),
+                policy = policy,
+                navigationAction = CategoryNavigationAction.DRAWER,
+                onNavigationClick = openDrawer,
+                trailingContent = { AlbumSortMenu(state.sort, onSortSelected) },
             )
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(dimensions.adaptiveGridMinimumCellWidth),
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
-                horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-                verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-            ) {
-                items(state.albums, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { album ->
-                    Surface(
-                        onClick = { onAlbumClick(album.id) },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.categoryCardMinHeight),
-                        shape = MusicTheme.shapes.large,
-                        color = MusicTheme.colors.surfaceContainerHigh,
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(dimensions.spaceMedium),
-                            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
+            if (state.albums.isEmpty()) {
+                EmptyState(
+                    modifier = Modifier.weight(1f),
+                    title = stringResource(R.string.albums_empty_title),
+                    description = stringResource(R.string.albums_empty_description),
+                )
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(dimensions.adaptiveGridMinimumCellWidth),
+                    state = gridState,
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
+                    horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
+                    verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
+                ) {
+                    items(state.albums, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { album ->
+                        Surface(
+                            onClick = { onAlbumClick(album.id) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.categoryCardMinHeight),
+                            shape = MusicTheme.shapes.large,
+                            color = MusicTheme.colors.surfaceContainerHigh,
                         ) {
-                            Text(album.title, style = MusicTheme.typography.titleLarge, maxLines = 2)
-                            Text(album.artistName, style = MusicTheme.typography.bodyMedium, maxLines = 1)
-                            Text(
-                                pluralStringResource(
-                                    R.plurals.category_track_count,
-                                    album.trackCount,
-                                    album.trackCount,
-                                ),
-                                style = MusicTheme.typography.labelMedium,
-                                color = MusicTheme.colors.onSurfaceVariant,
-                            )
+                            Column(
+                                modifier = Modifier.padding(dimensions.spaceMedium),
+                                verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
+                            ) {
+                                Text(album.title, style = MusicTheme.typography.titleLarge, maxLines = 2)
+                                Text(album.artistName, style = MusicTheme.typography.bodyMedium, maxLines = 1)
+                                Text(
+                                    pluralStringResource(
+                                        R.plurals.category_track_count,
+                                        album.trackCount,
+                                        album.trackCount,
+                                    ),
+                                    style = MusicTheme.typography.labelMedium,
+                                    color = MusicTheme.colors.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
+            }
+        }
+        if (showSectionIndex) {
+            Box(
+                modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+            ) {
+                SectionIndexBar(
+                    sections = indexLabels,
+                    selectedSection = selectedSection,
+                    onSectionClick = { label ->
+                        sectionPositions[label]?.let { position ->
+                            coroutineScope.launch {
+                                gridState.animateScrollToItem(position)
+                            }
+                        }
+                    },
+                    sectionContentDescription = { label -> sectionDescriptions.getValue(label) },
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                        .padding(end = dimensions.spaceSmall),
+                )
             }
         }
     }

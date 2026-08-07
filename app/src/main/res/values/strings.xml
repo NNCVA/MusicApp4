@@ -42,6 +42,7 @@
     <string name="track_quality_high">HQ</string>
     <string name="track_quality_standard">SQ</string>
     <string name="track_index_label">Jump to tracks beginning with %1$s</string>
+    <string name="album_index_label">Jump to albums beginning with %1$s</string>
     <string name="open_navigation">Open navigation</string>
     <string name="sidebar_exit">Exit</string>
     <string name="sidebar_equalizer">Equalizer</string>

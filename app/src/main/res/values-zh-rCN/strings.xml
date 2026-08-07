@@ -39,6 +39,7 @@
     <string name="track_quality_high">HQ</string>
     <string name="track_quality_standard">SQ</string>
     <string name="track_index_label">跳转到以 %1$s 开头的歌曲</string>
+    <string name="album_index_label">跳转到以 %1$s 开头的专辑</string>
     <string name="open_navigation">打开导航</string>
     <string name="sidebar_exit">退出</string>
     <string name="sidebar_equalizer">均衡器</string>
