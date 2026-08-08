@@ -89,8 +89,7 @@ private fun FoldersScreen(
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-            .padding(horizontal = dimensions.contentHorizontalPadding),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
     ) {
         CategoryHeader(
             title = stringResource(R.string.navigation_folders),
@@ -101,13 +100,15 @@ private fun FoldersScreen(
         )
         if (state.roots.isEmpty()) {
             EmptyState(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 title = stringResource(R.string.folders_empty_title),
                 description = stringResource(R.string.folders_empty_description),
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
             ) {
                 items(state.roots, key = { it.id.sourceId }) { root ->
@@ -132,8 +133,7 @@ private fun FolderDetailScreen(
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-            .padding(horizontal = dimensions.contentHorizontalPadding),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
     ) {
         CategoryHeader(
             title = state.displayName ?: stringResource(R.string.folder_unknown_name),
@@ -158,13 +158,15 @@ private fun FolderDetailScreen(
         )
         if (state.childFolders.isEmpty() && state.directTracks.isEmpty()) {
             EmptyState(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 title = stringResource(R.string.folder_empty_title),
                 description = stringResource(R.string.folder_empty_description),
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
             ) {
                 if (state.childFolders.isNotEmpty()) {

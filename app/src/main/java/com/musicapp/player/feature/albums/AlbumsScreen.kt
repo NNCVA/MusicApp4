@@ -117,8 +117,7 @@ private fun AlbumsScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-                .padding(horizontal = dimensions.contentHorizontalPadding),
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
         ) {
             CategoryHeader(
                 title = stringResource(R.string.navigation_albums),
@@ -129,7 +128,8 @@ private fun AlbumsScreen(
             )
             if (state.albums.isEmpty()) {
                 EmptyState(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     title = stringResource(R.string.albums_empty_title),
                     description = stringResource(R.string.albums_empty_description),
                 )
@@ -137,7 +137,8 @@ private fun AlbumsScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(dimensions.adaptiveGridMinimumCellWidth),
                     state = gridState,
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                     horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                     verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
@@ -186,7 +187,7 @@ private fun AlbumsScreen(
                     },
                     sectionContentDescription = { label -> sectionDescriptions.getValue(label) },
                     modifier = Modifier.align(Alignment.CenterEnd)
-                        .padding(end = dimensions.spaceSmall),
+                        .padding(end = dimensions.spaceExtraSmall),
                 )
             }
         }
@@ -204,8 +205,7 @@ private fun AlbumDetailScreen(
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-            .padding(horizontal = dimensions.contentHorizontalPadding),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
     ) {
         CategoryHeader(
             title = state.title ?: stringResource(R.string.album_unknown_title),
@@ -229,12 +229,17 @@ private fun AlbumDetailScreen(
         )
         if (state.tracks.isEmpty()) {
             EmptyState(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 title = stringResource(R.string.album_empty_title),
                 description = stringResource(R.string.album_empty_description),
             )
         } else {
-            CategoryTrackList(state.tracks, onTrackClick, Modifier.weight(1f))
+            CategoryTrackList(
+                state.tracks,
+                onTrackClick,
+                Modifier.weight(1f).padding(horizontal = dimensions.contentHorizontalPadding),
+            )
         }
     }
 }

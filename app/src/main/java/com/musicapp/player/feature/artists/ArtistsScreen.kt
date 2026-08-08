@@ -85,8 +85,7 @@ private fun ArtistsScreen(
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-            .padding(horizontal = dimensions.contentHorizontalPadding),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
     ) {
         CategoryHeader(
             title = stringResource(R.string.navigation_artists),
@@ -97,14 +96,16 @@ private fun ArtistsScreen(
         )
         if (state.artists.isEmpty()) {
             EmptyState(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 title = stringResource(R.string.artists_empty_title),
                 description = stringResource(R.string.artists_empty_description),
             )
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(dimensions.adaptiveGridMinimumCellWidth),
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                 horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
@@ -157,8 +158,7 @@ private fun ArtistDetailScreen(
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-            .padding(horizontal = dimensions.contentHorizontalPadding),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
     ) {
         CategoryHeader(
             title = state.displayName ?: stringResource(R.string.artist_unknown_name),
@@ -182,12 +182,17 @@ private fun ArtistDetailScreen(
         )
         if (state.tracks.isEmpty()) {
             EmptyState(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 title = stringResource(R.string.artist_empty_title),
                 description = stringResource(R.string.artist_empty_description),
             )
         } else {
-            CategoryTrackList(state.tracks, onTrackClick, Modifier.weight(1f))
+            CategoryTrackList(
+                state.tracks,
+                onTrackClick,
+                Modifier.weight(1f).padding(horizontal = dimensions.contentHorizontalPadding),
+            )
         }
     }
 }

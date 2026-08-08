@@ -169,8 +169,7 @@ fun TracksScreen(
         Column(
             modifier =
                 Modifier.fillMaxSize()
-                    .windowInsetsPadding(contentInsets)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                    .windowInsetsPadding(contentInsets),
         ) {
             TracksTopBar(
                 state = state,
@@ -202,13 +201,15 @@ fun TracksScreen(
                 Spacer(modifier = Modifier.weight(1f))
             } else if (state.tracks.isEmpty()) {
                 EmptyState(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     title = stringResource(R.string.tracks_empty_title),
                     description = stringResource(R.string.tracks_empty_description),
                 )
             } else if (filteredTracks.isEmpty()) {
                 EmptyState(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     title = stringResource(R.string.tracks_no_results_title),
                     description = stringResource(R.string.tracks_no_results_description),
                 )
@@ -228,7 +229,8 @@ fun TracksScreen(
                     onAddToPlaylist = onTrackAddToPlaylist,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                 )
             }
         }
@@ -249,7 +251,7 @@ fun TracksScreen(
                     sectionContentDescription = { label -> sectionDescriptions.getValue(label) },
                     modifier =
                         Modifier.align(Alignment.CenterEnd)
-                            .padding(end = dimensions.spaceSmall),
+                            .padding(end = dimensions.spaceExtraSmall),
                 )
             }
         }
@@ -280,11 +282,12 @@ private fun TracksTopBar(
     val dimensions = MusicTheme.dimensions
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var batchMenuExpanded by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.minimumTouchTarget),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.minimumTouchTarget)
+                .padding(horizontal = dimensions.topBarHorizontalPadding),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
+        ) {
         if (state.isSelectionMode) {
             TextButton(onClick = onClearSelection, shape = MusicTheme.shapes.small) {
                 Text(stringResource(R.string.selection_close))

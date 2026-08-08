@@ -165,7 +165,10 @@ private fun ScanMusicScreen(
                 onNavigationClick = onBack,
             )
             if (state.isScanning) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                )
             }
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f),

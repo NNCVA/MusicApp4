@@ -60,8 +60,7 @@ fun AboutScreen(
     Box(
         modifier =
             Modifier.fillMaxSize()
-                .windowInsetsPadding(contentInsets)
-                .padding(horizontal = dimensions.contentHorizontalPadding),
+                .windowInsetsPadding(contentInsets),
         contentAlignment = Alignment.TopCenter,
     ) {
         LazyColumn(
@@ -78,40 +77,65 @@ fun AboutScreen(
             }
             if (state.loadFailed) {
                 item {
-                    Text(
-                        text = stringResource(R.string.about_load_failed),
-                        color = MusicTheme.colors.error,
-                        style = MusicTheme.typography.bodyLarge,
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = dimensions.contentHorizontalPadding),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.about_load_failed),
+                            color = MusicTheme.colors.error,
+                            style = MusicTheme.typography.bodyLarge,
+                        )
+                    }
                 }
             }
             state.metadata?.let { metadata ->
                 item {
-                    AboutSection(
-                        title =
-                            stringResource(
-                                R.string.about_version_format,
-                                metadata.versionName,
-                                metadata.versionCode,
-                            ),
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = dimensions.contentHorizontalPadding),
+                    ) {
+                        AboutSection(
+                            title =
+                                stringResource(
+                                    R.string.about_version_format,
+                                    metadata.versionName,
+                                    metadata.versionCode,
+                                ),
+                        )
+                    }
                 }
                 item {
-                    AboutSection(
-                        title = stringResource(R.string.about_developer),
-                        body = stringResource(R.string.about_developer_name),
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = dimensions.contentHorizontalPadding),
+                    ) {
+                        AboutSection(
+                            title = stringResource(R.string.about_developer),
+                            body = stringResource(R.string.about_developer_name),
+                        )
+                    }
                 }
                 item {
-                    AboutSection(
-                        title = stringResource(R.string.about_acknowledgements),
-                        body = stringResource(R.string.about_acknowledgements_body),
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = dimensions.contentHorizontalPadding),
+                    ) {
+                        AboutSection(
+                            title = stringResource(R.string.about_acknowledgements),
+                            body = stringResource(R.string.about_acknowledgements_body),
+                        )
+                    }
                 }
                 item {
-                    HorizontalDivider()
-                    TextButton(onClick = onShowLicenses) {
-                        Text(stringResource(R.string.about_open_source_licenses))
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = dimensions.contentHorizontalPadding),
+                    ) {
+                        HorizontalDivider()
+                        TextButton(onClick = onShowLicenses) {
+                            Text(stringResource(R.string.about_open_source_licenses))
+                        }
                     }
                 }
             }

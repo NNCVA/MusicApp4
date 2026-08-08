@@ -102,8 +102,7 @@ private fun SettingsScreen(
         contentAlignment = Alignment.TopCenter,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().widthIn(max = dimensions.settingsContentMaxWidth)
-                .padding(horizontal = dimensions.contentHorizontalPadding),
+            modifier = Modifier.fillMaxWidth().widthIn(max = dimensions.settingsContentMaxWidth),
         ) {
             CategoryHeader(
                 title = stringResource(R.string.navigation_settings),
@@ -112,10 +111,14 @@ private fun SettingsScreen(
                 onNavigationClick = onBack,
             )
             if (state.isWorking || state.syncState is LibrarySyncState.Syncing) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                )
             }
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
             ) {
                 item { AppearanceSettings(state.settings, onColorSourceChange, onPresetThemeChange, onThemeModeChange) }

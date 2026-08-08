@@ -314,12 +314,12 @@ private fun FullPlayer(
     }
     LaunchedEffect(pager.currentPage) { onPageChanged(FullPlayerPage.entries[pager.currentPage]) }
     Column(
-        modifier = modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-            .padding(horizontal = dimensions.contentHorizontalPadding),
+        modifier = modifier.fillMaxSize().windowInsetsPadding(contentInsets),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().height(dimensions.playerHeaderHeight)
+                .padding(horizontal = dimensions.topBarHorizontalPadding)
                 .draggable(
                     state = backgroundDragState,
                     orientation = Orientation.Vertical,
@@ -334,6 +334,7 @@ private fun FullPlayer(
         HorizontalPager(
             state = pager,
             modifier = Modifier.fillMaxWidth().weight(1f)
+                .padding(horizontal = dimensions.contentHorizontalPadding)
                 .draggable(
                     state = pagerVerticalDragState,
                     orientation = Orientation.Vertical,
@@ -360,21 +361,32 @@ private fun FullPlayer(
                 )
             }
         }
-        PlayerStatus(state.loadState, state.errorMessageRes)
+        Box(
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
+        ) {
+            PlayerStatus(state.loadState, state.errorMessageRes)
+        }
         val fraction = if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f
         Slider(
             value = fraction.coerceIn(0f, 1f),
             onValueChangeFinished = {},
             onValueChange = onSeek,
             enabled = state.durationMs > 0,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
         )
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
             Text(formatDuration(state.positionMs), style = MusicTheme.typography.labelMedium)
             Text(formatDuration(state.durationMs), style = MusicTheme.typography.labelMedium)
         }
         Column(
-            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight),
+            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
+                .padding(horizontal = dimensions.contentHorizontalPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             TextButton(onClick = onCycleMode) { Text(stringResource(state.playbackMode.labelRes())) }

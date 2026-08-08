@@ -52,17 +52,18 @@ data class MusicDimensions(
     val dialogListMaxHeight: Dp = 360.dp,
     val queueEdgeResistanceDistance: Dp = 24.dp,
     val spaceExtraSmall: Dp = 4.dp,
-    val spaceSmall: Dp = 8.dp,
+    val spaceSmall: Dp = 12.dp,
     val spaceMedium: Dp = 16.dp,
     val spaceLarge: Dp = 24.dp,
     val spaceExtraLarge: Dp = 32.dp,
+    val topBarHorizontalPadding: Dp = 16.dp,
     val contentHorizontalPadding: Dp,
 ) {
     companion object {
         val Compact = MusicDimensions(
             windowWidthTier = MusicWindowWidthTier.COMPACT,
             miniArtworkCornerRadius = 16.dp,
-            contentHorizontalPadding = 16.dp,
+            contentHorizontalPadding = 24.dp,
         )
         val Medium = MusicDimensions(
             windowWidthTier = MusicWindowWidthTier.MEDIUM,
@@ -72,7 +73,7 @@ data class MusicDimensions(
         val Expanded = MusicDimensions(
             windowWidthTier = MusicWindowWidthTier.EXPANDED,
             miniArtworkCornerRadius = 20.dp,
-            contentHorizontalPadding = 32.dp,
+            contentHorizontalPadding = 24.dp,
         )
 
         fun forTier(tier: MusicWindowWidthTier): MusicDimensions =

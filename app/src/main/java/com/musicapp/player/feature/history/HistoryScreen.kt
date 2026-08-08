@@ -122,8 +122,7 @@ private fun HistoryScreen(
     Column(
         modifier =
             Modifier.fillMaxSize()
-                .windowInsetsPadding(contentInsets)
-                .padding(horizontal = dimensions.contentHorizontalPadding),
+                .windowInsetsPadding(contentInsets),
     ) {
         CategoryHeader(
             title =
@@ -165,30 +164,35 @@ private fun HistoryScreen(
             onValueChange = onQueryChange,
             label = { Text(stringResource(R.string.history_search_label)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
         )
         when {
             state.isLoading ->
                 Column(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) { CircularProgressIndicator() }
             state.entries.isEmpty() ->
                 EmptyState(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     title = stringResource(R.string.history_empty_title),
                     description = stringResource(R.string.history_empty_description),
                 )
             state.visibleEntries.isEmpty() ->
                 EmptyState(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     title = stringResource(R.string.history_no_results_title),
                     description = stringResource(R.string.history_no_results_description),
                 )
             else ->
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                 ) {
                     items(

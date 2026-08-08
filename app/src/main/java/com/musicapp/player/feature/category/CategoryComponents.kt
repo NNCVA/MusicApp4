@@ -76,7 +76,8 @@ fun CategoryHeader(
 ) {
     val dimensions = MusicTheme.dimensions
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerHeaderHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerHeaderHeight)
+            .padding(horizontal = dimensions.topBarHorizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
     ) {
