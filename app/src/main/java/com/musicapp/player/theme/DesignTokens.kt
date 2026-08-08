@@ -48,6 +48,7 @@ data class MusicDimensions(
     val settingsContentMaxWidth: Dp = 720.dp,
     val adaptiveGridMinimumCellWidth: Dp = 160.dp,
     val categoryCardMinHeight: Dp = 112.dp,
+    val categoryCardInfoHeight: Dp = 64.dp,
     val minimumTouchTarget: Dp = 48.dp,
     val dialogListMaxHeight: Dp = 360.dp,
     val queueEdgeResistanceDistance: Dp = 24.dp,

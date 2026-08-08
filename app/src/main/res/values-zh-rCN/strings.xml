@@ -40,6 +40,8 @@
     <string name="track_quality_standard">SQ</string>
     <string name="track_index_label">跳转到以 %1$s 开头的歌曲</string>
     <string name="album_index_label">跳转到以 %1$s 开头的专辑</string>
+    <string name="albums_sort_label">排序专辑，当前按%1$s%2$s</string>
+    <string name="album_artwork_description">%1$s 的专辑封面</string>
     <string name="open_navigation">打开导航</string>
     <string name="sidebar_exit">退出</string>
     <string name="sidebar_equalizer">均衡器</string>
@@ -136,6 +138,9 @@
     <string name="category_play_all">播放全部</string>
     <plurals name="category_track_count">
         <item quantity="other">%1$d 首单曲</item>
+    </plurals>
+    <plurals name="album_track_count">
+        <item quantity="other">%1$d 首</item>
     </plurals>
     <plurals name="category_album_count">
         <item quantity="other">%1$d 张专辑</item>

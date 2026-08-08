@@ -1,15 +1,22 @@
 package com.musicapp.player.feature.albums
 
+import android.graphics.Bitmap
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -17,7 +24,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,17 +38,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.SectionIndexBar
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
+import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.feature.category.CategoryNavigationAction
+import com.musicapp.player.feature.category.CategoryNavigationIconButton
 import com.musicapp.player.feature.category.CategoryHeader
-import com.musicapp.player.feature.category.CategorySortDirection
 import com.musicapp.player.feature.category.CategoryTrackList
 import com.musicapp.player.feature.category.CategoryTrackSort
 import com.musicapp.player.feature.category.CategoryTrackSortMenu
@@ -65,6 +81,7 @@ fun AlbumsScreenRoute(
         policy = policy,
         openDrawer = openDrawer,
         onSortSelected = viewModel::selectSort,
+        onArtworkRequested = viewModel::requestArtwork,
         onAlbumClick = onAlbumClick,
     )
 }
@@ -95,6 +112,7 @@ private fun AlbumsScreen(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onSortSelected: (AlbumSortField) -> Unit,
+    onArtworkRequested: (AlbumSummary) -> Unit,
     onAlbumClick: (AlbumId) -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -119,11 +137,9 @@ private fun AlbumsScreen(
         Column(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
         ) {
-            CategoryHeader(
-                title = stringResource(R.string.navigation_albums),
+            AlbumsHeader(
                 policy = policy,
-                navigationAction = CategoryNavigationAction.DRAWER,
-                onNavigationClick = openDrawer,
+                openDrawer = openDrawer,
                 trailingContent = { AlbumSortMenu(state.sort, onSortSelected) },
             )
             if (state.albums.isEmpty()) {
@@ -144,29 +160,18 @@ private fun AlbumsScreen(
                     verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                 ) {
                     items(state.albums, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { album ->
-                        Surface(
+                        AlbumCard(
+                            album = album,
+                            artwork = state.artworkByAlbumId[album.id]
+                                ?.takeIf {
+                                    it.trackId == album.representativeTrack.id &&
+                                        it.dateModifiedMs == album.representativeTrack.dateModifiedMs
+                                }
+                                ?.artwork
+                                ?: ArtworkResult.Placeholder,
+                            onArtworkRequested = { onArtworkRequested(album) },
                             onClick = { onAlbumClick(album.id) },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.categoryCardMinHeight),
-                            shape = MusicTheme.shapes.large,
-                            color = MusicTheme.colors.surfaceContainerHigh,
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(dimensions.spaceMedium),
-                                verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-                            ) {
-                                Text(album.title, style = MusicTheme.typography.titleLarge, maxLines = 2)
-                                Text(album.artistName, style = MusicTheme.typography.bodyMedium, maxLines = 1)
-                                Text(
-                                    pluralStringResource(
-                                        R.plurals.category_track_count,
-                                        album.trackCount,
-                                        album.trackCount,
-                                    ),
-                                    style = MusicTheme.typography.labelMedium,
-                                    color = MusicTheme.colors.onSurfaceVariant,
-                                )
-                            }
-                        }
+                        )
                     }
                 }
             }
@@ -190,6 +195,127 @@ private fun AlbumsScreen(
                         .padding(end = dimensions.spaceExtraSmall),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun AlbumsHeader(
+    policy: WindowLayoutPolicy,
+    openDrawer: () -> Unit,
+    trailingContent: @Composable () -> Unit,
+) {
+    val dimensions = MusicTheme.dimensions
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .heightIn(min = dimensions.playerHeaderHeight)
+            .padding(horizontal = dimensions.topBarHorizontalPadding),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
+    ) {
+        if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
+            CategoryNavigationIconButton(
+                action = CategoryNavigationAction.DRAWER,
+                onClick = openDrawer,
+            )
+        }
+        Text(
+            text = stringResource(R.string.navigation_albums),
+            style = MusicTheme.typography.titleLarge,
+            color = MusicTheme.colors.onSurface,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+        )
+        trailingContent()
+    }
+}
+
+@Composable
+private fun AlbumCard(
+    album: AlbumSummary,
+    artwork: ArtworkResult,
+    onArtworkRequested: () -> Unit,
+    onClick: () -> Unit,
+) {
+    val dimensions = MusicTheme.dimensions
+    LaunchedEffect(album.id, album.representativeTrack.id, album.representativeTrack.dateModifiedMs) {
+        onArtworkRequested()
+    }
+    Column(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+    ) {
+        AlbumArtwork(
+            artwork = artwork,
+            albumTitle = album.title,
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+        )
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .heightIn(min = dimensions.categoryCardInfoHeight)
+                .padding(top = dimensions.spaceExtraSmall),
+            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
+        ) {
+            Text(
+                text = album.title,
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = pluralStringResource(
+                    R.plurals.album_track_count,
+                    album.trackCount,
+                    album.trackCount,
+                ),
+                style = MusicTheme.typography.bodySmall,
+                color = MusicTheme.colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AlbumArtwork(
+    artwork: ArtworkResult,
+    albumTitle: String,
+    modifier: Modifier,
+) {
+    val shape = MusicTheme.shapes.large
+    val artworkDescription = stringResource(R.string.album_artwork_description, albumTitle)
+    when (artwork) {
+        ArtworkResult.Placeholder ->
+            Box(
+                modifier = modifier
+                    .clip(shape)
+                    .background(MusicTheme.colors.secondaryContainer)
+                    .semantics { contentDescription = artworkDescription },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.player_artwork_placeholder),
+                    style = MusicTheme.typography.labelSmall,
+                    color = MusicTheme.colors.onSecondaryContainer,
+                )
+            }
+        is ArtworkResult.Embedded -> {
+            val image = artwork.image
+            val bitmap = remember(image) {
+                Bitmap.createBitmap(
+                    image.argbPixels,
+                    image.width,
+                    image.height,
+                    Bitmap.Config.ARGB_8888,
+                ).asImageBitmap()
+            }
+            Image(
+                bitmap = bitmap,
+                contentDescription = artworkDescription,
+                modifier = modifier.clip(shape),
+                contentScale = ContentScale.Crop,
+            )
         }
     }
 }
@@ -247,9 +373,23 @@ private fun AlbumDetailScreen(
 @Composable
 private fun AlbumSortMenu(sort: AlbumSort, onSelected: (AlbumSortField) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    Column {
-        TextButton(onClick = { expanded = true }) {
-            Text(stringResource(sort.field.labelRes()) + stringResource(sort.direction.labelRes()))
+    val dimensions = MusicTheme.dimensions
+    val sortDescription = stringResource(
+        R.string.albums_sort_label,
+        stringResource(sort.field.labelRes()),
+        stringResource(sort.direction.labelRes()),
+    )
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(dimensions.minimumTouchTarget),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_common_sort_alpha),
+                contentDescription = sortDescription,
+                tint = MusicTheme.colors.onSurface,
+                modifier = Modifier.size(dimensions.spaceLarge),
+            )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             AlbumSortField.entries.forEach { field ->

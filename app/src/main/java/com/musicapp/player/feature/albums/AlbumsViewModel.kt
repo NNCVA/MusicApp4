@@ -7,6 +7,8 @@ import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.PlaybackContextSource
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.metadata.ArtworkRepository
+import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.feature.category.CategoryPlaybackContextFactory
@@ -16,15 +18,19 @@ import com.musicapp.player.feature.category.next
 import com.musicapp.player.feature.category.sortCategoryTracks
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class AlbumsUiState(
     val albums: List<AlbumSummary> = emptyList(),
     val sort: AlbumSort = AlbumSort(),
+    val artworkByAlbumId: Map<AlbumId, AlbumArtworkState> = emptyMap(),
 )
 
 data class AlbumDetailUiState(
@@ -34,25 +40,84 @@ data class AlbumDetailUiState(
     val sort: CategoryTrackSort = CategoryTrackSort(),
 )
 
+data class AlbumArtworkState(
+    val trackId: TrackId,
+    val dateModifiedMs: Long,
+    val artwork: ArtworkResult,
+)
+
 @HiltViewModel
 class AlbumsViewModel @Inject constructor(
     mediaLibraryRepository: MediaLibraryRepository,
     private val savedStateHandle: SavedStateHandle,
+    private val artworkRepository: ArtworkRepository,
 ) : ViewModel() {
     private val sort = MutableStateFlow(restoreAlbumSort(savedStateHandle))
-
-    val uiState: StateFlow<AlbumsUiState> =
+    private val artworkByAlbumId = MutableStateFlow<Map<AlbumId, AlbumArtworkState>>(emptyMap())
+    private val albumsAndSort =
         combine(mediaLibraryRepository.observeTracks(), sort) { tracks, currentSort ->
             AlbumsUiState(
                 albums = AlbumGrouping.sorted(AlbumGrouping.group(tracks), currentSort),
                 sort = currentSort,
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), AlbumsUiState(sort = sort.value))
+        }
+
+    val uiState: StateFlow<AlbumsUiState> =
+        combine(albumsAndSort, artworkByAlbumId) { albumState, artwork ->
+            val visibleAlbumIds = albumState.albums.mapTo(hashSetOf(), AlbumSummary::id)
+            albumState.copy(artworkByAlbumId = artwork.filterKeys { it in visibleAlbumIds })
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            AlbumsUiState(sort = sort.value),
+        )
 
     fun selectSort(field: AlbumSortField) {
         sort.value = sort.value.next(field)
         savedStateHandle[ALBUM_SORT_FIELD_KEY] = sort.value.field.name
         savedStateHandle[ALBUM_SORT_DIRECTION_KEY] = sort.value.direction.name
+    }
+
+    fun requestArtwork(album: AlbumSummary) {
+        val track = album.representativeTrack
+        var shouldLoad = false
+        artworkByAlbumId.update { cached ->
+            val current = cached[album.id]
+            if (current?.trackId == track.id && current.dateModifiedMs == track.dateModifiedMs) {
+                cached
+            } else {
+                shouldLoad = true
+                cached +
+                    (
+                        album.id to
+                            AlbumArtworkState(
+                                trackId = track.id,
+                                dateModifiedMs = track.dateModifiedMs,
+                                artwork = ArtworkResult.Placeholder,
+                            )
+                        )
+            }
+        }
+        if (!shouldLoad) return
+
+        viewModelScope.launch {
+            val result =
+                try {
+                    artworkRepository.artwork(track, ALBUM_ARTWORK_TARGET_PX)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Throwable) {
+                    ArtworkResult.Placeholder
+                }
+            artworkByAlbumId.update { cached ->
+                val current = cached[album.id]
+                if (current?.trackId == track.id && current.dateModifiedMs == track.dateModifiedMs) {
+                    cached + (album.id to current.copy(artwork = result))
+                } else {
+                    cached
+                }
+            }
+        }
     }
 }
 
@@ -100,6 +165,7 @@ class AlbumDetailViewModel @Inject constructor(
 }
 
 private const val STOP_TIMEOUT_MS = 5_000L
+private const val ALBUM_ARTWORK_TARGET_PX = 512
 private const val ALBUM_SORT_FIELD_KEY = "albums.sort.field"
 private const val ALBUM_SORT_DIRECTION_KEY = "albums.sort.direction"
 

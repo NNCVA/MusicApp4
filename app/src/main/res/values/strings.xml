@@ -43,6 +43,8 @@
     <string name="track_quality_standard">SQ</string>
     <string name="track_index_label">Jump to tracks beginning with %1$s</string>
     <string name="album_index_label">Jump to albums beginning with %1$s</string>
+    <string name="albums_sort_label">Sort albums, currently %1$s %2$s</string>
+    <string name="album_artwork_description">Artwork for album %1$s</string>
     <string name="open_navigation">Open navigation</string>
     <string name="sidebar_exit">Exit</string>
     <string name="sidebar_equalizer">Equalizer</string>
@@ -137,6 +139,10 @@
     <string name="category_back">Back</string>
     <string name="category_play_all">Play all</string>
     <plurals name="category_track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
+    <plurals name="album_track_count">
         <item quantity="one">%1$d track</item>
         <item quantity="other">%1$d tracks</item>
     </plurals>

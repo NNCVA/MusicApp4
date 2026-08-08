@@ -21,6 +21,10 @@ class AlbumGroupingTest {
 
         assertEquals(3, grouped.size)
         assertEquals(tracks.mapNotNull(Track::albumId).toSet(), grouped.map(AlbumSummary::id).toSet())
+        assertEquals(listOf(1L, 2L, 3L), grouped.map { it.representativeTrack.id.mediaStoreId })
+
+        val reordered = AlbumGrouping.group(tracks.reversed()).associateBy(AlbumSummary::id)
+        assertEquals(1L, reordered.getValue(AlbumId("external", 10)).representativeTrack.id.mediaStoreId)
     }
 
     @Test

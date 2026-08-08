@@ -1,6 +1,8 @@
 package com.musicapp.player.feature.albums
 
 import com.musicapp.player.core.domain.model.AlbumId
+import com.musicapp.player.core.domain.model.Track
+import com.musicapp.player.core.domain.model.TrackId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,5 +40,18 @@ class AlbumSectionIndexTest {
             artistName = artistName,
             trackCount = 1,
             latestDateAddedMs = id,
+            representativeTrack =
+                Track(
+                    id = TrackId("external", id),
+                    title = title,
+                    artistName = artistName,
+                    albumTitle = title,
+                    albumId = AlbumId("external", id),
+                    durationMs = 1_000,
+                    dateAddedMs = id,
+                    dateModifiedMs = id,
+                    relativePath = "Music/",
+                    displayName = "$title.mp3",
+                ),
         )
 }
