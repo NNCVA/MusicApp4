@@ -40,6 +40,7 @@
     <string name="track_quality_standard">SQ</string>
     <string name="track_index_label">跳转到以 %1$s 开头的歌曲</string>
     <string name="album_index_label">跳转到以 %1$s 开头的专辑</string>
+    <string name="artist_index_label">跳转到以 %1$s 开头的艺术家</string>
     <string name="albums_sort_label">排序专辑，当前按%1$s%2$s</string>
     <string name="album_artwork_description">%1$s 的专辑封面</string>
     <string name="open_navigation">打开导航</string>
@@ -139,6 +140,9 @@
     <plurals name="category_track_count">
         <item quantity="other">%1$d 首单曲</item>
     </plurals>
+    <plurals name="artist_track_count">
+        <item quantity="other">%1$d 首</item>
+    </plurals>
     <plurals name="album_track_count">
         <item quantity="other">%1$d 首</item>
     </plurals>
@@ -155,6 +159,7 @@
     <string name="artist_unknown_name">未知艺术家</string>
     <string name="artist_empty_title">此艺术家暂无单曲</string>
     <string name="artist_empty_description">音乐库中没有属于此艺术家的可用单曲。</string>
+    <string name="artist_artwork_description">%1$s 的艺术家封面</string>
     <string name="folders_empty_title">暂无文件夹</string>
     <string name="folders_empty_description">包含音乐库单曲的文件夹将显示在此处。</string>
     <string name="folder_unknown_name">未知文件夹</string>

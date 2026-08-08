@@ -43,6 +43,7 @@
     <string name="track_quality_standard">SQ</string>
     <string name="track_index_label">Jump to tracks beginning with %1$s</string>
     <string name="album_index_label">Jump to albums beginning with %1$s</string>
+    <string name="artist_index_label">Jump to artists beginning with %1$s</string>
     <string name="albums_sort_label">Sort albums, currently %1$s %2$s</string>
     <string name="album_artwork_description">Artwork for album %1$s</string>
     <string name="open_navigation">Open navigation</string>
@@ -142,6 +143,10 @@
         <item quantity="one">%1$d track</item>
         <item quantity="other">%1$d tracks</item>
     </plurals>
+    <plurals name="artist_track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
     <plurals name="album_track_count">
         <item quantity="one">%1$d track</item>
         <item quantity="other">%1$d tracks</item>
@@ -160,6 +165,7 @@
     <string name="artist_unknown_name">Unknown artist</string>
     <string name="artist_empty_title">This artist has no tracks</string>
     <string name="artist_empty_description">No available library tracks belong to this artist.</string>
+    <string name="artist_artwork_description">Artwork for artist %1$s</string>
     <string name="folders_empty_title">No folders</string>
     <string name="folders_empty_description">Folders containing library tracks will appear here.</string>
     <string name="folder_unknown_name">Unknown folder</string>

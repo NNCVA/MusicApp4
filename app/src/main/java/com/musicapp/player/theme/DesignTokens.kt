@@ -53,6 +53,7 @@ data class MusicDimensions(
     val dialogListMaxHeight: Dp = 360.dp,
     val queueEdgeResistanceDistance: Dp = 24.dp,
     val spaceExtraSmall: Dp = 4.dp,
+    val spaceSmallMedium: Dp = 8.dp,
     val spaceSmall: Dp = 12.dp,
     val spaceMedium: Dp = 16.dp,
     val spaceLarge: Dp = 24.dp,

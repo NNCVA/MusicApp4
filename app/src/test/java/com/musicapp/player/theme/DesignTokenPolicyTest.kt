@@ -39,6 +39,7 @@ class DesignTokenPolicyTest {
             assertEquals(64.dp, dimensions.categoryCardInfoHeight)
             assertEquals(48.dp, dimensions.minimumTouchTarget)
             assertEquals(360.dp, dimensions.dialogListMaxHeight)
+            assertEquals(8.dp, dimensions.spaceSmallMedium)
         }
     }
 

@@ -2,23 +2,19 @@ package com.musicapp.player.feature.artists
 
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.Track
-import com.musicapp.player.feature.category.CategorySortDirection
-import java.util.Locale
-
-enum class ArtistSortField { NAME, TRACK_COUNT, ALBUM_COUNT }
-
-data class ArtistSort(
-    val field: ArtistSortField = ArtistSortField.NAME,
-    val direction: CategorySortDirection = CategorySortDirection.ASCENDING,
-)
+import com.musicapp.player.core.domain.model.TrackId
 
 data class ArtistSummary(
     val id: ArtistId,
     val displayName: String,
     val trackCount: Int,
-    val albumCount: Int,
+    val artworkCandidates: List<Track>,
 )
 
+/**
+ * Groups tracks by the MediaStore artist id while preserving the complete
+ * MediaStore artist label (including collaboration labels).
+ */
 object ArtistGrouping {
     fun group(tracks: List<Track>): List<ArtistSummary> =
         tracks.asSequence()
@@ -30,46 +26,48 @@ object ArtistGrouping {
                     id = id,
                     displayName = stableTracks.first().artistName,
                     trackCount = stableTracks.size,
-                    albumCount = stableTracks.mapNotNull(Track::albumId).distinct().size,
+                    artworkCandidates = stableTracks,
                 )
             }
-
-    fun sorted(artists: List<ArtistSummary>, sort: ArtistSort): List<ArtistSummary> {
-        val primary =
-            when (sort.field) {
-                ArtistSortField.NAME -> compareBy<ArtistSummary> { it.displayName.lowercase(Locale.ROOT) }
-                ArtistSortField.TRACK_COUNT -> compareBy(ArtistSummary::trackCount)
-                ArtistSortField.ALBUM_COUNT -> compareBy(ArtistSummary::albumCount)
-            }
-        val directed = if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed()
-        return artists.sortedWith(
-            directed.thenBy { it.displayName.lowercase(Locale.ROOT) }
-                .thenBy { it.id.mediaStoreId },
-        )
-    }
+            .let(::sortArtistsByIndexedName)
 
     private val trackIdentityComparator =
         compareBy<Track>({ it.id.volumeName }, { it.id.mediaStoreId })
+
 }
 
-internal fun ArtistSort.next(field: ArtistSortField): ArtistSort =
-    if (this.field == field) {
-        copy(
-            direction =
-                if (direction == CategorySortDirection.ASCENDING) {
-                    CategorySortDirection.DESCENDING
-                } else {
-                    CategorySortDirection.ASCENDING
-                },
-        )
-    } else {
-        ArtistSort(
-            field = field,
-            direction =
-                if (field == ArtistSortField.NAME) {
-                    CategorySortDirection.ASCENDING
-                } else {
-                    CategorySortDirection.DESCENDING
-                },
-        )
+typealias ArtistArtworkSignature = List<ArtistArtworkCandidateSignature>
+
+data class ArtistArtworkCandidateSignature(
+    val trackId: TrackId,
+    val dateModifiedMs: Long,
+) {
+    init {
+        require(dateModifiedMs >= 0) { "dateModifiedMs must not be negative" }
     }
+}
+
+internal fun ArtistSummary.artworkSignature(): ArtistArtworkSignature =
+    artworkCandidates
+        .sortedWith(trackIdentityComparator)
+        .map { track ->
+            ArtistArtworkCandidateSignature(
+                trackId = track.id,
+                dateModifiedMs = track.dateModifiedMs,
+            )
+        }
+
+internal fun List<Track>.artworkSignature(): ArtistArtworkSignature =
+    sortedWith(trackIdentityComparator)
+        .map { track ->
+            ArtistArtworkCandidateSignature(
+                trackId = track.id,
+                dateModifiedMs = track.dateModifiedMs,
+            )
+        }
+
+internal fun ArtistSummary.sortedArtworkCandidates(): List<Track> =
+    artworkCandidates.sortedWith(trackIdentityComparator)
+
+private val trackIdentityComparator =
+    compareBy<Track>({ it.id.volumeName }, { it.id.mediaStoreId })
