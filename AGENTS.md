@@ -65,7 +65,9 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 - 严禁在页面中硬编码圆角、间距和字号；统一通过 `MusicDimensions`、`MusicShapes`、`MusicTypography` 设计令牌读取。
 - 遵循 Android Edge-to-Edge 边到边沉浸式设计规范与 Material 3 设计指南。
 - 除启动 Activity 与受可信控制器校验的 MediaLibraryService 外，其他组件默认 `exported=false`；PendingIntent 默认不可变。
-- CI 固定使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，不增加其他门禁。
+- 测试采用“纯逻辑少量 JVM 单测 + Android Runtime 集成测试优先”：`app/src/test` 仅承载纯业务逻辑和少量 Robolectric 平台适配测试；Room、Hilt、MediaLibraryService、真实资源与应用启动集成测试归 `app/src/androidTest`，使用 `AndroidJUnit4` 与 `com.musicapp.player.HiltTestRunner`。
+- Android Runtime 集成测试包括 `MusicDatabaseMigrationTest`、`HistoryRepositoryTest`、`MediaLibraryRepositoryTest`、`PlaylistRepositoryTest`、`PlaybackSnapshotRepositoryTest`、`MediaLibrarySyncTest`、`ApplicationGraphTest`、`PlaybackServiceHiltTest`、`AboutMetadataTest`，并以 `ApplicationStartupIntegrationTest` 作为资源启动冒烟；`ProjectSmokeTest` 不再作为 JVM 冒烟。
+- CI 固定使用 JDK 17 依次执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 和有设备时的 `:app:connectedDebugAndroidTest`。无设备时可执行 `:app:assembleDebugAndroidTest` 做编译检查，但不能将其描述为已运行集成测试；完整测试规则见 [`docs/testing.md`](docs/testing.md) 与 [`docs/verification.md`](docs/verification.md)。
 - 已接受的 CI 策略见 `docs/design/design-review-09-functional-testing-and-ci.md`。
 
 ## 架构与设计参考文档 (设计规范提示词)

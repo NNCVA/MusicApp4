@@ -4,7 +4,7 @@ MusicApp 是一款使用 Kotlin 与 Jetpack Compose 构建的现代化 Android �
 
 ## 当前状态
 
-首版 26 项核心需求已基本完成代码实现，并已完成单元测试、Lint 与 Debug 构建收口；当前主要剩余工作是真机上的扫描、播放、系统媒体控制、视觉和交互验收。
+首版 26 项核心需求已基本完成代码实现，测试基础设施已接入；当前主要工作是按分层策略完成 JVM/Robolectric 与 Android Runtime 集成测试门禁，以及真机上的扫描、播放、系统媒体控制、视觉和交互验收。
 
 ## 界面预览
 
@@ -82,13 +82,20 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## 质量验证
 
-项目 CI 固定使用 JDK 17 执行以下门禁：
+项目 CI 固定使用 JDK 17，先执行纯逻辑 JVM 单测、Lint 和 Debug 构建，再在已连接设备或启动模拟器上执行 Android Runtime 集成测试：
 
 ```bash
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
+./gradlew :app:connectedDebugAndroidTest --console=plain
 ```
 
-设备、视觉与完整交互验收由人工执行，不作为 CI 门禁。
+无设备时可执行以下 Android 测试 APK 编译检查，但它不等价于集成测试运行：
+
+```bash
+./gradlew :app:assembleDebugAndroidTest --console=plain
+```
+
+视觉与完整交互验收仍由人工执行；测试分层、Runner 规则和回退方式见 [`docs/testing.md`](docs/testing.md)。
 
 ## 项目结构
 
@@ -108,5 +115,6 @@ app/src/main/java/com/musicapp/player/
 - [首版实现规格](docs/design/implementation-spec.md)
 - [逐过程执行计划](docs/plan/implementation-execution-plan.md)
 - [开发 Wave Plan](docs/plan/implementation-wave-plan.md)
+- [测试策略与验证命令](docs/testing.md)
 - [领域词汇](docs/CONTEXT.md)
 - [架构决策记录](docs/adr/)

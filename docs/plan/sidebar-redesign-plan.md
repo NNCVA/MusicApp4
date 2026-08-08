@@ -85,7 +85,7 @@
 - 新增纯逻辑测试覆盖入口分组顺序、主题三态循环、完全退出/回到桌面/取消的动作分发，以及扫描操作不改变当前路由。
 - 服务测试验证完全退出先保存快照、再清空运行时队列并停止服务；回到桌面不发送停止命令。
 - 人工验收紧凑、中等、展开三档窗口、系统字体 `1.5×`、中英文、侧栏滚动、遮罩点击、Mini 操作和退出三选项。
-- 固定门禁：`:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 与 `git diff --check`。
+- 固定门禁：`:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 与 `git diff --check`；有设备时追加 `:app:connectedDebugAndroidTest`，无设备时仅执行 `:app:assembleDebugAndroidTest` 编译检查。
 
 实施结果：三组卡片、退出流程及三档窗口侧栏已经实施；紧凑窗口改为 Material 3 推移式侧栏，固定门禁与推移进度回归测试已通过，最终视觉效果由用户验收。
 

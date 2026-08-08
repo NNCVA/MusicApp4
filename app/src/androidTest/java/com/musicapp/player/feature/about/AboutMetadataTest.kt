@@ -3,20 +3,18 @@ package com.musicapp.player.feature.about
 import android.content.Context
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.musicapp.player.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@RunWith(AndroidJUnit4::class)
 class AboutMetadataTest {
     @Test
-    fun `installed package version and bundled license are readable without network`() {
+    fun installedPackageVersionAndBundledLicenseAreReadableWithoutNetwork() {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
         val metadata = AndroidAboutMetadataSource(context).load()
@@ -48,7 +46,7 @@ class AboutMetadataTest {
     }
 
     @Test
-    fun `license visibility is driven by about state`() {
+    fun licenseVisibilityIsDrivenByAboutState() {
         val metadata =
             AboutMetadata(
                 packageName = "com.musicapp.player",

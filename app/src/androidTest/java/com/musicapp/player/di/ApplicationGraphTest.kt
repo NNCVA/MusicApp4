@@ -5,10 +5,10 @@ import com.musicapp.player.core.common.random.RandomSource
 import com.musicapp.player.core.common.time.Clock
 import com.musicapp.player.fakes.FakeClock
 import com.musicapp.player.fakes.FakeRandomSource
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
-import dagger.hilt.android.testing.HiltTestApplication
 import dagger.hilt.android.testing.UninstallModules
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -22,13 +22,10 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 @HiltAndroidTest
 @UninstallModules(ApplicationModule::class)
-@RunWith(RobolectricTestRunner::class)
-@Config(application = HiltTestApplication::class, sdk = [35])
+@RunWith(AndroidJUnit4::class)
 class ApplicationGraphTest {
     @get:Rule
     val hiltRule = HiltAndroidRule(this)

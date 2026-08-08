@@ -19,7 +19,7 @@
 - 媒体库、播放列表、历史、隐藏状态、路径规则和播放快照均有稳定事实来源。
 - 本地曲目可完成发现、分类浏览、建队、后台播放、系统控制、歌词展示和状态恢复。
 - 手机、平板、折叠屏与 ChromeOS 可缩放窗口具备一致的自适应行为。
-- English 与简体中文资源完整，最小 CI 通过单元测试、Lint 和 Debug 构建。
+- English 与简体中文资源完整，最小 CI 包含分层测试、Lint、Debug 构建和 Android Runtime 集成测试。
 
 ## 3. 当前基线
 
@@ -312,9 +312,9 @@ DataStore 只保存用户设置：
 
 ## 13. 功能测试与 CI
 
-- JVM 单元测试使用 JUnit4；协程使用 `kotlinx-coroutines-test`，Flow 使用 Turbine。
-- 需要 Android Runtime 的 Hilt 组件与 Room DAO 使用 Robolectric、Room Testing 在 `testDebugUnitTest` 中验证。
-- 平台对象使用 Fake 隔离，使纯业务逻辑可由 `testDebugUnitTest` 执行。
-- 单元测试覆盖扫描过滤、路径优先级、排序、队列模式、播放历史阈值、淡出淡入状态机、LRC 解析、本地化格式化和 ViewModel。
-- CI 使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`。
-- 上述三个 Gradle 任务是唯一 CI 门禁。
+- 测试采用纯逻辑少量 JVM 单测与 Android Runtime 集成测试优先的分层策略。JVM 单测使用 JUnit4；协程使用 `kotlinx-coroutines-test`，Flow 使用 Turbine。
+- `app/src/test` 只承载平台无关的领域规则、状态机、解析器、格式化和 ViewModel 逻辑，并保留少量使用 Robolectric 的平台适配测试；Robolectric 不替代真实 Room、Hilt、Service、资源或应用启动行为验证。
+- 以下测试归 `app/src/androidTest`，使用 `AndroidJUnit4` 与 Hilt Runner：`data/local/MusicDatabaseMigrationTest.kt`、`data/HistoryRepositoryTest.kt`、`data/MediaLibraryRepositoryTest.kt`、`data/PlaylistRepositoryTest.kt`、`data/PlaybackSnapshotRepositoryTest.kt`、`data/sync/MediaLibrarySyncTest.kt`、`di/ApplicationGraphTest.kt`、`media/service/PlaybackServiceHiltTest.kt`、`feature/about/AboutMetadataTest.kt`；`ApplicationStartupIntegrationTest` 负责 Android 资源启动冒烟。Room 测试使用真实 Android SQLite/Room 环境，Hilt 测试使用真实测试 Application 图。
+- Hilt 集成测试使用 `@HiltAndroidTest`、`HiltAndroidRule` 和 `hiltRule.inject()`；所有 instrumentation 测试使用 `@RunWith(AndroidJUnit4::class)`，Runner 为 `com.musicapp.player.HiltTestRunner`。纯逻辑测试不引入 Hilt/Room/Android Runtime 依赖。
+- CI 使用 JDK 17 依次执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 和有设备时的 `:app:connectedDebugAndroidTest`。
+- 无设备时可执行 `:app:assembleDebugAndroidTest` 进行 Android 测试编译检查；它不能被描述为已运行 Android Runtime 集成测试。详细分层、目录归属和命令见 [`docs/testing.md`](../testing.md)。

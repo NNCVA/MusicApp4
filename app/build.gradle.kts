@@ -16,6 +16,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "com.musicapp.player.HiltTestRunner"
     }
 
     buildTypes {
@@ -101,7 +102,15 @@ dependencies {
   testImplementation(libs.turbine)
   testImplementation(libs.robolectric)
   testImplementation(libs.androidx.test.core)
-  testImplementation(libs.androidx.room.testing)
-  testImplementation(libs.hilt.android.testing)
-  kspTest(libs.hilt.compiler)
+
+  // Instrumented integration tests
+  androidTestImplementation(libs.junit4)
+  androidTestImplementation(libs.kotlinx.coroutines.test)
+  androidTestImplementation(libs.androidx.test.core)
+  androidTestImplementation(libs.androidx.test.runner)
+  androidTestImplementation(libs.androidx.test.rules)
+  androidTestImplementation(libs.androidx.test.ext.junit)
+  androidTestImplementation(libs.androidx.room.testing)
+  androidTestImplementation(libs.hilt.android.testing)
+  kspAndroidTest(libs.hilt.compiler)
 }

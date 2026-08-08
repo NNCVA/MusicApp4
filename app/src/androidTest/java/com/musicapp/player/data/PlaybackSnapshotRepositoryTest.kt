@@ -8,6 +8,7 @@ import com.musicapp.player.core.domain.model.QueueItem
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.data.local.entity.PlaybackSnapshotEntity
 import com.musicapp.player.data.repository.RoomPlaybackSnapshotRepository
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -15,11 +16,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@RunWith(AndroidJUnit4::class)
 class PlaybackSnapshotRepositoryTest {
     private lateinit var database: com.musicapp.player.data.local.MusicDatabase
     private lateinit var repository: RoomPlaybackSnapshotRepository

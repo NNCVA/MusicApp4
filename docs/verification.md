@@ -1,4 +1,6 @@
-# Verification and fallbacks
+# 验证与回退
+
+测试分层、目录归属、Hilt/Room/Runner 规则和完整命令见 [`testing.md`](testing.md)。本文件补充门禁执行顺序、环境检查和失败回退；文档中的命令是验证方法，不代表当前运行已经通过。
 
 ## Static check
 
@@ -37,6 +39,22 @@ Static TOML validation cannot prove model access or runtime loading. Report actu
 - If Luna Max is unavailable, use the highest supported Luna effort and disclose the substitution.
 - If Sol is unavailable, stop for decisions where its review is required or explicitly document the alternate advisor model.
 - If parallelism adds more coordination than value, use `LUNA_LOCAL`.
+
+## Android 测试门禁
+
+项目 CI 使用 JDK 17，先执行现有 JVM、Lint 和 Debug 构建门禁，再执行设备或模拟器上的 Android Runtime 集成测试：
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:connectedDebugAndroidTest --no-daemon --console=plain
+```
+
+`connectedDebugAndroidTest` 必须在可用设备或模拟器上运行。无设备时可执行下面的编译检查：
+
+```powershell
+.\gradlew.bat :app:assembleDebugAndroidTest --no-daemon --console=plain
+```
+
+该命令只能作为 Android 测试 APK 编译检查，不能作为 Android Runtime 集成测试运行证据，也不能把未执行的设备门禁标记为通过。`app/src/androidTest` 的测试使用 `AndroidJUnit4`，Hilt 测试使用 `com.musicapp.player.HiltTestRunner`；`app/src/test` 仍执行纯逻辑单测和少量 Robolectric 平台适配测试。
 
 ## Local Android build troubleshooting
 
@@ -97,6 +115,13 @@ Run the narrowest relevant check first, then expand to the project gates:
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest --tests "<fully-qualified-test-class>" --no-daemon --console=plain
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon --console=plain
+.\gradlew.bat :app:connectedDebugAndroidTest --no-daemon --console=plain
 ```
 
-Report each task independently. A combined invocation may complete `assembleDebug` while failing later because of unit tests, and an SDK XML compatibility warning is not itself a task failure. When the full suite fails, rerun the affected test class alone and separate implementation regressions from reproducible environment failures such as Windows DataStore temporary-file rename errors; never claim the complete gate passed when only targeted checks are green.
+When no device is available, use the following only to check instrumentation compilation:
+
+```powershell
+.\gradlew.bat :app:assembleDebugAndroidTest --no-daemon --console=plain
+```
+
+Report each task independently. A combined invocation may complete `assembleDebug` while failing later because of unit tests or the Android Runtime gate, and an SDK XML compatibility warning is not itself a task failure. When the full suite fails, rerun the affected test class alone and separate implementation regressions from reproducible environment failures such as Windows DataStore temporary-file rename errors; never claim the complete gate passed when only targeted checks or Android test compilation are green.

@@ -7,6 +7,7 @@ import com.musicapp.player.data.repository.FakePlaylistRepository
 import com.musicapp.player.data.repository.PlaylistRepository
 import com.musicapp.player.data.repository.RoomMediaLibraryRepository
 import com.musicapp.player.data.repository.RoomPlaylistRepository
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -15,11 +16,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@RunWith(AndroidJUnit4::class)
 class PlaylistRepositoryTest {
     private lateinit var database: com.musicapp.player.data.local.MusicDatabase
     private lateinit var mediaRepository: RoomMediaLibraryRepository
