@@ -169,6 +169,12 @@ fun MainNavigation(
         }
     }
 
+    fun navigateToScanMusic() {
+        commitNavigation {
+            navigate(ScanMusicRoute(returnRoute = navigationState.currentTopLevelRoute))
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         AeroBackground(
             preferredMode =
@@ -215,9 +221,7 @@ fun MainNavigation(
                         messageBubbleQueue.enqueue(R.string.sidebar_equalizer_placeholder)
                     },
                     onScanMusic = {
-                        commitNavigation {
-                            navigate(ScanMusicRoute(returnRoute = navigationState.currentTopLevelRoute))
-                        }
+                        navigateToScanMusic()
                         closeDrawer()
                     },
                 )
@@ -231,6 +235,7 @@ fun MainNavigation(
                                 contentInsets = contentInsets,
                                 policy = policy,
                                 openDrawer = openDrawer,
+                                onScanMusic = ::navigateToScanMusic,
                             )
                         }
                         entry<ScanMusicRoute> {
@@ -253,6 +258,7 @@ fun MainNavigation(
                                 contentInsets = contentInsets,
                                 policy = policy,
                                 openDrawer = openDrawer,
+                                onScanMusic = ::navigateToScanMusic,
                                 onAlbumClick = { albumId ->
                                     commitNavigation {
                                         navigate(AlbumDetailRoute(albumId.volumeName, albumId.mediaStoreId))
@@ -266,6 +272,7 @@ fun MainNavigation(
                                 contentInsets = contentInsets,
                                 policy = policy,
                                 openDrawer = openDrawer,
+                                onScanMusic = ::navigateToScanMusic,
                                 onArtistClick = { artistId ->
                                     commitNavigation { navigate(ArtistDetailRoute(artistId.mediaStoreId)) }
                                 },
@@ -296,6 +303,7 @@ fun MainNavigation(
                                 contentInsets = contentInsets,
                                 policy = policy,
                                 openDrawer = openDrawer,
+                                onScanMusic = ::navigateToScanMusic,
                                 onFolderClick = { folderId ->
                                     commitNavigation {
                                         navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))

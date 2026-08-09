@@ -72,6 +72,7 @@ fun AlbumsScreenRoute(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
+    onScanMusic: () -> Unit,
     onAlbumClick: (AlbumId) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -80,6 +81,7 @@ fun AlbumsScreenRoute(
         contentInsets = contentInsets,
         policy = policy,
         openDrawer = openDrawer,
+        onScanMusic = onScanMusic,
         onSortSelected = viewModel::selectSort,
         onArtworkRequested = viewModel::requestArtwork,
         onAlbumClick = onAlbumClick,
@@ -111,6 +113,7 @@ private fun AlbumsScreen(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
+    onScanMusic: () -> Unit,
     onSortSelected: (AlbumSortField) -> Unit,
     onArtworkRequested: (AlbumSummary) -> Unit,
     onAlbumClick: (AlbumId) -> Unit,
@@ -148,6 +151,9 @@ private fun AlbumsScreen(
                         .padding(horizontal = dimensions.contentHorizontalPadding),
                     title = stringResource(R.string.albums_empty_title),
                     description = stringResource(R.string.albums_empty_description),
+                    actionLabel = stringResource(R.string.navigation_scan_music),
+                    actionIconRes = R.drawable.ic_sidebar_scan,
+                    onAction = onScanMusic,
                 )
             } else {
                 LazyVerticalGrid(

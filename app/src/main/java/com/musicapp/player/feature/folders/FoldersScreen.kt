@@ -50,10 +50,19 @@ fun FoldersScreenRoute(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
+    onScanMusic: () -> Unit,
     onFolderClick: (FolderId) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    FoldersScreen(state, contentInsets, policy, openDrawer, viewModel::selectSort, onFolderClick)
+    FoldersScreen(
+        state = state,
+        contentInsets = contentInsets,
+        policy = policy,
+        openDrawer = openDrawer,
+        onScanMusic = onScanMusic,
+        onSortSelected = viewModel::selectSort,
+        onFolderClick = onFolderClick,
+    )
 }
 
 @Composable
@@ -84,6 +93,7 @@ private fun FoldersScreen(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
+    onScanMusic: () -> Unit,
     onSortSelected: (FolderSortField) -> Unit,
     onFolderClick: (FolderId) -> Unit,
 ) {
@@ -104,6 +114,9 @@ private fun FoldersScreen(
                     .padding(horizontal = dimensions.contentHorizontalPadding),
                 title = stringResource(R.string.folders_empty_title),
                 description = stringResource(R.string.folders_empty_description),
+                actionLabel = stringResource(R.string.navigation_scan_music),
+                actionIconRes = R.drawable.ic_sidebar_scan,
+                onAction = onScanMusic,
             )
         } else {
             LazyColumn(

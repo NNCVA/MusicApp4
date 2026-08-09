@@ -79,6 +79,7 @@ fun TracksScreenRoute(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
+    onScanMusic: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
@@ -88,6 +89,7 @@ fun TracksScreenRoute(
         contentInsets = contentInsets,
         policy = policy,
         openDrawer = openDrawer,
+        onScanMusic = onScanMusic,
         onSortSelected = viewModel::selectSort,
         onTrackArtworkRequested = viewModel::requestArtwork,
         onTrackAddToQueue = viewModel::addTrackToQueue,
@@ -124,6 +126,7 @@ fun TracksScreen(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
+    onScanMusic: () -> Unit,
     onSortSelected: (TrackSortField) -> Unit,
     onTrackArtworkRequested: (Track) -> Unit,
     onTrackAddToQueue: (TrackId) -> Unit,
@@ -205,6 +208,9 @@ fun TracksScreen(
                         .padding(horizontal = dimensions.contentHorizontalPadding),
                     title = stringResource(R.string.tracks_empty_title),
                     description = stringResource(R.string.tracks_empty_description),
+                    actionLabel = stringResource(R.string.navigation_scan_music),
+                    actionIconRes = R.drawable.ic_sidebar_scan,
+                    onAction = onScanMusic,
                 )
             } else if (filteredTracks.isEmpty()) {
                 EmptyState(
@@ -388,43 +394,45 @@ private fun TracksTopBar(
                         }
                     }
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(dimensions.minimumTouchTarget),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    Box {
-                        IconButton(
-                            onClick = { sortMenuExpanded = true },
-                            modifier = Modifier.size(dimensions.minimumTouchTarget),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_common_sort_alpha),
-                                contentDescription = stringResource(R.string.tracks_sort_label),
-                                tint = MusicTheme.colors.onSurface,
-                                modifier = Modifier.size(dimensions.spaceLarge),
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = sortMenuExpanded,
-                            onDismissRequest = { sortMenuExpanded = false },
-                        ) {
-                            TrackSortField.entries.forEach { field ->
-                                DropdownMenuItem(
-                                    text = {
-                                        val suffix =
-                                            if (field == state.sort.field) {
-                                                stringResource(state.sort.direction.labelResId())
-                                            } else {
-                                                ""
-                                            }
-                                        Text(stringResource(field.labelResId()) + suffix)
-                                    },
-                                    onClick = {
-                                        onSortSelected(field)
-                                        sortMenuExpanded = false
-                                    },
+                if (state.tracks.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(dimensions.minimumTouchTarget),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        Box {
+                            IconButton(
+                                onClick = { sortMenuExpanded = true },
+                                modifier = Modifier.size(dimensions.minimumTouchTarget),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_common_sort_alpha),
+                                    contentDescription = stringResource(R.string.tracks_sort_label),
+                                    tint = MusicTheme.colors.onSurface,
+                                    modifier = Modifier.size(dimensions.spaceLarge),
                                 )
+                            }
+                            DropdownMenu(
+                                expanded = sortMenuExpanded,
+                                onDismissRequest = { sortMenuExpanded = false },
+                            ) {
+                                TrackSortField.entries.forEach { field ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            val suffix =
+                                                if (field == state.sort.field) {
+                                                    stringResource(state.sort.direction.labelResId())
+                                                } else {
+                                                    ""
+                                                }
+                                            Text(stringResource(field.labelResId()) + suffix)
+                                        },
+                                        onClick = {
+                                            onSortSelected(field)
+                                            sortMenuExpanded = false
+                                        },
+                                    )
+                                }
                             }
                         }
                     }

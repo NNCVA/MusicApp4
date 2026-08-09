@@ -64,6 +64,7 @@ fun ArtistsScreenRoute(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
+    onScanMusic: () -> Unit,
     onArtistClick: (ArtistId) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -72,6 +73,7 @@ fun ArtistsScreenRoute(
         contentInsets = contentInsets,
         policy = policy,
         openDrawer = openDrawer,
+        onScanMusic = onScanMusic,
         onArtworkRequested = viewModel::requestArtwork,
         onArtistClick = onArtistClick,
     )
@@ -102,6 +104,7 @@ private fun ArtistsScreen(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
+    onScanMusic: () -> Unit,
     onArtworkRequested: (ArtistSummary) -> Unit,
     onArtistClick: (ArtistId) -> Unit,
 ) {
@@ -133,6 +136,9 @@ private fun ArtistsScreen(
                         .padding(horizontal = dimensions.contentHorizontalPadding),
                     title = stringResource(R.string.artists_empty_title),
                     description = stringResource(R.string.artists_empty_description),
+                    actionLabel = stringResource(R.string.navigation_scan_music),
+                    actionIconRes = R.drawable.ic_sidebar_scan,
+                    onAction = onScanMusic,
                 )
             } else {
                 LazyColumn(
