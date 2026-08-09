@@ -84,7 +84,11 @@ fun CategoryHeader(
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
     ) {
         when {
-            onBack != null -> TextButton(onClick = onBack) { Text(stringResource(R.string.category_back)) }
+            onBack != null ->
+                CategoryNavigationIconButton(
+                    action = CategoryNavigationAction.BACK,
+                    onClick = onBack,
+                )
             policy == WindowLayoutPolicy.COMPACT_DRAWER && navigationAction != null ->
                 CategoryNavigationIconButton(
                     action = navigationAction,
