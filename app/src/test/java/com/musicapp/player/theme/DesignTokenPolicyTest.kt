@@ -40,6 +40,7 @@ class DesignTokenPolicyTest {
             assertEquals(48.dp, dimensions.minimumTouchTarget)
             assertEquals(360.dp, dimensions.dialogListMaxHeight)
             assertEquals(8.dp, dimensions.spaceSmallMedium)
+            assertEquals(31.dp, dimensions.topBarNavigationVisualStartPadding)
         }
     }
 

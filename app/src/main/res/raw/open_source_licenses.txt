@@ -85,6 +85,13 @@ Bundled visual asset notices:
   MusicApp use: unified fallback placeholder for album, track, artist, and player artwork.
   Modifications: path data unchanged during migration.
 
+- `ic_status_empty_playlist.xml` empty-playlist status artwork.
+  Source: original MusicApp project artwork; no third-party upstream or copyright
+  material.
+  License: distributed as part of the MusicApp project.
+  Modifications: three neutral geometric faces form an open-box illustration and
+  are tinted by MusicTheme at runtime.
+
 The complete common license text follows. Component-specific NOTICE attribution is retained above.
 
 Apache License
