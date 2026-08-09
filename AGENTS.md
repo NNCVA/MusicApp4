@@ -63,6 +63,8 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 - 只有 MediaLibraryService 可以持有 ExoPlayer/MediaSession；Activity 和 ViewModel 只能通过 MediaController 控制播放。
 - 严禁硬编码文本，所有界面字符串必须定义在资源文件中 (`values/strings.xml`, `values-zh-rCN/strings.xml`)。
 - 严禁在页面中硬编码圆角、间距和字号；统一通过 `MusicDimensions`、`MusicShapes`、`MusicTypography` 设计令牌读取。
+- 业务图标统一保存为 `res/drawable` 下的 Android `VectorDrawable`，按 `ic_common_*`、`ic_status_*`、`ic_navigation_*`、`ic_sidebar_*`、`ic_playback_*` 语义前缀命名；矢量路径保持中性颜色并由 `MusicTheme` 着色，资源映射集中定义，不在 Composable 中散落 `Icons.*` 或来源不明的 path 数据。
+- 可交互图标必须复用中英双语字符串提供 `contentDescription`，纯装饰图标使用 `contentDescription = null`；新增或迁移图标时同步更新 `docs/design/resource-governance.md` 和 `app/src/main/res/raw/open_source_licenses.txt`，记录上游、固定 revision、许可证与本项目修改。
 - 遵循 Android Edge-to-Edge 边到边沉浸式设计规范与 Material 3 设计指南。
 - 除启动 Activity 与受可信控制器校验的 MediaLibraryService 外，其他组件默认 `exported=false`；PendingIntent 默认不可变。
 - 测试采用“纯逻辑少量 JVM 单测 + Android Runtime 集成测试优先”：`app/src/test` 仅承载纯业务逻辑和少量 Robolectric 平台适配测试；Room、Hilt、MediaLibraryService、真实资源与应用启动集成测试归 `app/src/androidTest`，使用 `AndroidJUnit4` 与 `com.musicapp.player.HiltTestRunner`。

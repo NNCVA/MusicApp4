@@ -59,6 +59,14 @@ Release runtime direct dependency notices:
 
 Bundled visual asset notices:
 
+- Google Material Design Icons playback resources, source revision
+  50f0603134ce7b70b2d71b686cc13e8b57ccb74c.
+  Source: https://github.com/google/material-design-icons
+  License: Apache License 2.0.
+  Intermediate source: https://github.com/NNCVA/MusicApp2 at revision
+  f18fbf683d6e2854d14b1e415cc18732a0b09694.
+  Modifications: seven filled 24 px playback SVG paths were recovered as Android
+  VectorDrawable XML, renamed for MusicApp, and normalized to a neutral fill color.
 - Salt UI icon resources, source revision c2888ce11de992b277a355fa47a30013b360aede
   Copyright Moriafly; converted ImageVector source files are Copyright (C) 2025 Moriafly.
   Source: https://github.com/Moriafly/SaltUI

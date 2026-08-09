@@ -40,6 +40,7 @@ class AboutMetadataTest {
             "media3-exoplayer:1.10.1",
             "Compose BOM 2026.03.01",
             "navigation3-runtime:1.0.1",
+            "Google Material Design Icons playback resources",
         ).forEach { notice ->
             assertTrue("missing offline notice for $notice", metadata.openSourceLicenseText.contains(notice))
         }
