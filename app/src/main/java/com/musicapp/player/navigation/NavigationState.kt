@@ -17,6 +17,7 @@ data class NavigationStackSnapshot(
 data class NavigationSnapshot(
     val currentTopLevelRoute: TopLevelNavKey,
     val stacks: List<NavigationStackSnapshot>,
+    val homeTopLevelRoute: TopLevelNavKey = TracksRoute,
 ) {
     fun encode(): String = NavigationSnapshotCodec.encode(this)
 
@@ -26,7 +27,8 @@ data class NavigationSnapshot(
 }
 
 private object NavigationSnapshotCodec {
-    private const val VERSION = 2
+    private const val VERSION = 3
+    private const val LEGACY_VERSION = 2
     private const val MAX_STACK_SIZE = 1_024
 
     fun encode(snapshot: NavigationSnapshot): String {
@@ -34,6 +36,7 @@ private object NavigationSnapshotCodec {
         DataOutputStream(bytes).use { output ->
             output.writeInt(VERSION)
             output.writeRoute(snapshot.currentTopLevelRoute)
+            output.writeRoute(snapshot.homeTopLevelRoute)
             output.writeInt(snapshot.stacks.size)
             snapshot.stacks.forEach { stack ->
                 output.writeRoute(stack.root)
@@ -48,20 +51,38 @@ private object NavigationSnapshotCodec {
         require(encoded.isNotBlank()) { "encoded snapshot must not be blank" }
         val input = DataInputStream(ByteArrayInputStream(Base64.getUrlDecoder().decode(encoded)))
         return input.use { stream ->
-            require(stream.readInt() == VERSION) { "unsupported navigation snapshot version" }
-            val currentTopLevelRoute = stream.readRoute().asTopLevel()
-            val stacks =
-                List(stream.readCollectionSize(maximum = topLevelNavKeys.size)) {
-                    val root = stream.readRoute().asTopLevel()
-                    val routes =
-                        List(stream.readCollectionSize(maximum = MAX_STACK_SIZE)) {
-                            stream.readRoute()
-                        }
-                    NavigationStackSnapshot(root = root, routes = routes)
-                }
-            require(stream.available() == 0) { "navigation snapshot has trailing data" }
-            NavigationSnapshot(currentTopLevelRoute = currentTopLevelRoute, stacks = stacks)
+            when (val version = stream.readInt()) {
+                LEGACY_VERSION -> stream.readSnapshot(legacy = true)
+                VERSION -> stream.readSnapshot(legacy = false)
+                else -> throw IllegalArgumentException("unsupported navigation snapshot version: $version")
+            }.also {
+                require(stream.available() == 0) { "navigation snapshot has trailing data" }
+            }
         }
+    }
+
+    private fun DataInputStream.readSnapshot(legacy: Boolean): NavigationSnapshot {
+        val currentTopLevelRoute = readRoute(legacy = legacy).asTopLevel()
+        val homeTopLevelRoute =
+            if (legacy) {
+                currentTopLevelRoute.takeIf { it in homeTopLevelNavKeys } ?: TracksRoute
+            } else {
+                readRoute(legacy = false).asTopLevel()
+            }
+        val stacks =
+            List(readCollectionSize(maximum = topLevelNavKeys.size)) {
+                val root = readRoute(legacy = legacy).asTopLevel()
+                val routes =
+                    List(readCollectionSize(maximum = MAX_STACK_SIZE)) {
+                        readRoute(legacy = legacy)
+                    }
+                NavigationStackSnapshot(root = root, routes = routes)
+            }
+        return NavigationSnapshot(
+            currentTopLevelRoute = currentTopLevelRoute,
+            stacks = stacks,
+            homeTopLevelRoute = homeTopLevelRoute,
+        )
     }
 
     private fun DataOutputStream.writeRoute(route: MusicNavKey) {
@@ -97,11 +118,14 @@ private object NavigationSnapshotCodec {
                 writeUTF(route.volumeName)
                 writeUTF(route.relativePath)
             }
-            ScanMusicRoute -> writeByte(13)
+            is ScanMusicRoute -> {
+                writeByte(13)
+                writeRoute(route.returnRoute)
+            }
         }
     }
 
-    private fun DataInputStream.readRoute(): MusicNavKey =
+    private fun DataInputStream.readRoute(legacy: Boolean = false): MusicNavKey =
         when (val routeType = readUnsignedByte()) {
             0 -> TracksRoute
             1 -> AlbumsRoute
@@ -116,7 +140,15 @@ private object NavigationSnapshotCodec {
             10 -> ArtistDetailRoute(mediaStoreId = readLong())
             11 -> PlaylistDetailRoute(playlistId = readLong())
             12 -> FolderDetailRoute(volumeName = readUTF(), relativePath = readUTF())
-            13 -> ScanMusicRoute
+            13 ->
+                ScanMusicRoute(
+                    returnRoute =
+                        if (legacy) {
+                            TracksRoute
+                        } else {
+                            readRoute(legacy = false).asTopLevel()
+                        },
+                )
             else -> throw IllegalArgumentException("unknown navigation route type: $routeType")
         }
 
@@ -132,9 +164,13 @@ private object NavigationSnapshotCodec {
 
 class NavigationState private constructor(
     currentTopLevelRoute: TopLevelNavKey,
+    homeTopLevelRoute: TopLevelNavKey,
     private val mutableBackStacks: Map<TopLevelNavKey, MutableList<MusicNavKey>>,
 ) {
     var currentTopLevelRoute: TopLevelNavKey = currentTopLevelRoute
+        private set
+
+    var homeTopLevelRoute: TopLevelNavKey = homeTopLevelRoute
         private set
 
     val currentBackStack: List<MusicNavKey>
@@ -150,10 +186,14 @@ class NavigationState private constructor(
                 topLevelNavKeys.map { root ->
                     NavigationStackSnapshot(root = root, routes = backStack(root))
                 },
+            homeTopLevelRoute = homeTopLevelRoute,
         )
 
     internal fun select(route: TopLevelNavKey) {
         currentTopLevelRoute = route
+        if (route in homeTopLevelNavKeys) {
+            homeTopLevelRoute = route
+        }
     }
 
     internal fun reset(route: TopLevelNavKey) {
@@ -161,6 +201,7 @@ class NavigationState private constructor(
             clear()
             add(route)
         }
+        select(route)
     }
 
     internal fun push(route: MusicNavKey) {
@@ -181,6 +222,7 @@ class NavigationState private constructor(
         fun initial(): NavigationState =
             NavigationState(
                 currentTopLevelRoute = TracksRoute,
+                homeTopLevelRoute = TracksRoute,
                 mutableBackStacks = topLevelNavKeys.associateWith { mutableListOf<MusicNavKey>(it) },
             )
 
@@ -198,6 +240,12 @@ class NavigationState private constructor(
                 "snapshot must contain exactly one stack for every top-level route"
             }
             require(snapshot.currentTopLevelRoute in expectedRoots) { "unknown current top-level route" }
+            require(snapshot.homeTopLevelRoute in homeTopLevelNavKeys) { "unknown home top-level route" }
+            if (snapshot.currentTopLevelRoute in homeTopLevelNavKeys) {
+                require(snapshot.currentTopLevelRoute == snapshot.homeTopLevelRoute) {
+                    "current home route must be the home anchor"
+                }
+            }
 
             stackByRoot.forEach { (root, stack) ->
                 require(stack.routes.isNotEmpty() && stack.routes.first() == root) {
@@ -212,6 +260,7 @@ class NavigationState private constructor(
 
             return NavigationState(
                 currentTopLevelRoute = snapshot.currentTopLevelRoute,
+                homeTopLevelRoute = snapshot.homeTopLevelRoute,
                 mutableBackStacks =
                     topLevelNavKeys.associateWith { root ->
                         checkNotNull(stackByRoot[root]).routes.toMutableList()
@@ -223,7 +272,7 @@ class NavigationState private constructor(
 
 enum class BackNavigationResult {
     CONSUMED,
-    REQUEST_EXIT,
+    REQUEST_RETURN_TO_DESKTOP,
 }
 
 class Navigator(private val state: NavigationState) {
@@ -243,10 +292,10 @@ class Navigator(private val state: NavigationState) {
             state.popCurrent()
             return BackNavigationResult.CONSUMED
         }
-        if (state.currentTopLevelRoute != TracksRoute) {
-            state.select(TracksRoute)
+        if (state.currentTopLevelRoute != state.homeTopLevelRoute) {
+            state.select(state.homeTopLevelRoute)
             return BackNavigationResult.CONSUMED
         }
-        return BackNavigationResult.REQUEST_EXIT
+        return BackNavigationResult.REQUEST_RETURN_TO_DESKTOP
     }
 }

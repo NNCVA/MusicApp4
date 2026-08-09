@@ -44,7 +44,9 @@ data object AboutRoute : TopLevelNavKey
 
 @Serializable
 @SerialName("scan_music")
-data object ScanMusicRoute : MusicNavKey
+data class ScanMusicRoute(
+    val returnRoute: TopLevelNavKey,
+) : MusicNavKey
 
 @Serializable
 @SerialName("track_info")
@@ -116,6 +118,15 @@ val topLevelNavKeys: List<TopLevelNavKey> =
         AboutRoute,
     )
 
+val homeTopLevelNavKeys: List<TopLevelNavKey> =
+    listOf(
+        TracksRoute,
+        AlbumsRoute,
+        ArtistsRoute,
+        FoldersRoute,
+        PlaylistsRoute,
+    )
+
 internal fun MusicNavKey.owner(): TopLevelNavKey =
     when (this) {
         is TopLevelNavKey -> this
@@ -124,5 +135,5 @@ internal fun MusicNavKey.owner(): TopLevelNavKey =
         is ArtistDetailRoute -> ArtistsRoute
         is PlaylistDetailRoute -> PlaylistsRoute
         is FolderDetailRoute -> FoldersRoute
-        ScanMusicRoute -> TracksRoute
+        is ScanMusicRoute -> returnRoute
     }

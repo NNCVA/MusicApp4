@@ -113,7 +113,6 @@ fun MainNavigation(
     aeroSignals: AeroRuntimeSignals,
     themeMode: ThemeMode,
     librarySyncState: LibrarySyncState,
-    onExit: () -> Unit,
     onFullExit: () -> Unit,
     onReturnToDesktop: () -> Unit,
     onThemeModeChange: suspend (ThemeMode) -> Boolean,
@@ -162,8 +161,8 @@ fun MainNavigation(
     }
 
     fun handleBack() {
-        if (navigator.goBack() == BackNavigationResult.REQUEST_EXIT) {
-            onExit()
+        if (navigator.goBack() == BackNavigationResult.REQUEST_RETURN_TO_DESKTOP) {
+            onReturnToDesktop()
         } else {
             pageTransitionDirection = PageTransitionDirection.BACKWARD
             encodedSnapshot = navigationState.snapshot().encode()
@@ -176,7 +175,7 @@ fun MainNavigation(
                 if (
                     playerExpanded ||
                         (navigationState.currentBackStack.size > 1 &&
-                            navigationState.currentBackStack.last() != ScanMusicRoute)
+                            navigationState.currentBackStack.last() !is ScanMusicRoute)
                 ) {
                     AeroMode.SOLID
                 } else {
@@ -216,7 +215,9 @@ fun MainNavigation(
                         messageBubbleQueue.enqueue(R.string.sidebar_equalizer_placeholder)
                     },
                     onScanMusic = {
-                        commitNavigation { navigate(ScanMusicRoute) }
+                        commitNavigation {
+                            navigate(ScanMusicRoute(returnRoute = navigationState.currentTopLevelRoute))
+                        }
                         closeDrawer()
                     },
                 )
@@ -378,9 +379,9 @@ fun MainNavigation(
                     }
                 val displayedEntries =
                     buildList {
-                        // Tracks stays underneath the selected stack so root back supports prediction.
-                        addAll(decoratedBackStacks.getValue(TracksRoute))
-                        if (navigationState.currentTopLevelRoute != TracksRoute) {
+                        // The current home stack stays underneath utility/detail destinations.
+                        addAll(decoratedBackStacks.getValue(navigationState.homeTopLevelRoute))
+                        if (navigationState.currentTopLevelRoute != navigationState.homeTopLevelRoute) {
                             addAll(decoratedBackStacks.getValue(navigationState.currentTopLevelRoute))
                         }
                     }
@@ -397,7 +398,7 @@ fun MainNavigation(
                 )
                 BackHandler(
                     enabled =
-                        navigationState.currentTopLevelRoute == TracksRoute &&
+                        navigationState.currentTopLevelRoute == navigationState.homeTopLevelRoute &&
                             navigationState.currentBackStack.size == 1,
                     onBack = ::handleBack,
                 )
@@ -527,5 +528,5 @@ private fun MusicNavKey.titleResId(): Int =
         FoldersRoute, is FolderDetailRoute -> R.string.navigation_folders
         SettingsRoute -> R.string.navigation_settings
         AboutRoute -> R.string.navigation_about
-        ScanMusicRoute -> R.string.navigation_scan_music
+        is ScanMusicRoute -> R.string.navigation_scan_music
     }

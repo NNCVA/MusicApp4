@@ -86,7 +86,6 @@ class MainActivity : AppCompatActivity() {
             aeroSignals = aeroSignals,
             themeMode = appSettings.themeMode,
             librarySyncState = librarySyncState,
-            onExit = ::finish,
             onFullExit = ::fullyExitApplication,
             onReturnToDesktop = { moveTaskToBack(true) },
             onThemeModeChange = { mode ->
