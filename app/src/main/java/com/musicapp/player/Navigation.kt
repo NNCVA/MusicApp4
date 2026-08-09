@@ -2,6 +2,10 @@ package com.musicapp.player
 
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,14 +25,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberDecoratedNavEntries
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.musicapp.player.navigation.AboutRoute
 import com.musicapp.player.navigation.AlbumDetailRoute
@@ -128,12 +134,12 @@ fun MainNavigation(
         if (encodedSnapshot != canonicalSnapshot) encodedSnapshot = canonicalSnapshot
     }
     val navigator = remember(navigationState) { Navigator(navigationState) }
-    val saveableStateHolder = rememberSaveableStateHolder()
     val playerViewModel = viewModel<PlayerViewModel>()
     val lyricsViewModel = viewModel<LyricsViewModel>()
     val playerState by playerViewModel.uiState.collectAsStateWithLifecycle()
     var playerExpanded by rememberSaveable { mutableStateOf(false) }
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
+    var pageTransitionDirection by remember { mutableStateOf(PageTransitionDirection.FORWARD) }
     val messageBubbleQueue = remember { MessageBubbleQueue() }
     val messageBubbleRequest by messageBubbleQueue.current.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
@@ -150,6 +156,7 @@ fun MainNavigation(
         }
 
     fun commitNavigation(action: Navigator.() -> Unit) {
+        pageTransitionDirection = PageTransitionDirection.FORWARD
         navigator.action()
         encodedSnapshot = navigationState.snapshot().encode()
     }
@@ -158,6 +165,7 @@ fun MainNavigation(
         if (navigator.goBack() == BackNavigationResult.REQUEST_EXIT) {
             onExit()
         } else {
+            pageTransitionDirection = PageTransitionDirection.BACKWARD
             encodedSnapshot = navigationState.snapshot().encode()
         }
     }
@@ -214,161 +222,185 @@ fun MainNavigation(
                 )
             },
             content = { contentInsets, policy, openDrawer ->
-            val saveableStackKey = topLevelNavKeys.indexOf(navigationState.currentTopLevelRoute)
-            saveableStateHolder.SaveableStateProvider(saveableStackKey) {
+                val destinationEntryProvider =
+                    entryProvider<MusicNavKey> {
+                        entry<TracksRoute> {
+                            TracksScreenRoute(
+                                viewModel = viewModel<TracksViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                openDrawer = openDrawer,
+                            )
+                        }
+                        entry<ScanMusicRoute> {
+                            ScanMusicScreenRoute(
+                                viewModel = viewModel<ScanViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                onBack = ::handleBack,
+                                permissionState = permissionState,
+                                onConfirmPermission = onConfirmPermission,
+                                onRetryPermission = onRetryPermission,
+                                onOpenPermissionSettings = onOpenPermissionSettings,
+                                onOpenApplicationSettings = onOpenApplicationSettings,
+                                onScanMusic = onScanMusic,
+                            )
+                        }
+                        entry<AlbumsRoute> {
+                            AlbumsScreenRoute(
+                                viewModel = viewModel<AlbumsViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                openDrawer = openDrawer,
+                                onAlbumClick = { albumId ->
+                                    commitNavigation {
+                                        navigate(AlbumDetailRoute(albumId.volumeName, albumId.mediaStoreId))
+                                    }
+                                },
+                            )
+                        }
+                        entry<ArtistsRoute> {
+                            ArtistsScreenRoute(
+                                viewModel = viewModel<ArtistsViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                openDrawer = openDrawer,
+                                onArtistClick = { artistId ->
+                                    commitNavigation { navigate(ArtistDetailRoute(artistId.mediaStoreId)) }
+                                },
+                            )
+                        }
+                        entry<PlaylistsRoute> {
+                            PlaylistsScreenRoute(
+                                viewModel = viewModel<PlaylistsViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                openDrawer = openDrawer,
+                                onPlaylistClick = { playlistId ->
+                                    commitNavigation { navigate(PlaylistDetailRoute(playlistId.value)) }
+                                },
+                            )
+                        }
+                        entry<HistoryRoute> {
+                            HistoryScreenRoute(
+                                viewModel = viewModel<HistoryViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                onBack = ::handleBack,
+                            )
+                        }
+                        entry<FoldersRoute> {
+                            FoldersScreenRoute(
+                                viewModel = viewModel<FoldersViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                openDrawer = openDrawer,
+                                onFolderClick = { folderId ->
+                                    commitNavigation {
+                                        navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))
+                                    }
+                                },
+                            )
+                        }
+                        entry<SettingsRoute> {
+                            SettingsScreenRoute(
+                                viewModel = viewModel<SettingsViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                onBack = ::handleBack,
+                                onShowMessage = { messageResId ->
+                                    messageBubbleQueue.enqueue(messageResId)
+                                },
+                            )
+                        }
+                        entry<AboutRoute> {
+                            AboutScreenRoute(
+                                viewModel = viewModel<AboutViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                onBack = ::handleBack,
+                            )
+                        }
+                        entry<TrackInfoRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
+                        entry<AlbumDetailRoute> { key ->
+                            AlbumDetailScreenRoute(
+                                albumId = AlbumId(key.volumeName, key.mediaStoreId),
+                                viewModel = viewModel<AlbumDetailViewModel>(
+                                    key = "album:${key.volumeName}:${key.mediaStoreId}",
+                                ),
+                                contentInsets = contentInsets,
+                                onBack = ::handleBack,
+                            )
+                        }
+                        entry<ArtistDetailRoute> { key ->
+                            ArtistDetailScreenRoute(
+                                artistId = ArtistId(key.mediaStoreId),
+                                viewModel = viewModel<ArtistDetailViewModel>(
+                                    key = "artist:${key.mediaStoreId}",
+                                ),
+                                contentInsets = contentInsets,
+                                onBack = ::handleBack,
+                            )
+                        }
+                        entry<PlaylistDetailRoute> { key ->
+                            PlaylistDetailScreenRoute(
+                                playlistId = com.musicapp.player.core.domain.model.PlaylistId(key.playlistId),
+                                viewModel = viewModel<PlaylistDetailViewModel>(key = "playlist:${key.playlistId}"),
+                                contentInsets = contentInsets,
+                                onBack = ::handleBack,
+                            )
+                        }
+                        entry<FolderDetailRoute> { key ->
+                            FolderDetailScreenRoute(
+                                folderId = FolderId(key.volumeName, key.relativePath),
+                                viewModel = viewModel<FolderDetailViewModel>(
+                                    key = "folder:${key.volumeName}:${key.relativePath}",
+                                ),
+                                contentInsets = contentInsets,
+                                onBack = ::handleBack,
+                                onFolderClick = { folderId ->
+                                    commitNavigation {
+                                        navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))
+                                    }
+                                },
+                            )
+                        }
+                    }
+                val decoratedBackStacks =
+                    topLevelNavKeys.associateWith { route ->
+                        // Each top-level stack owns its destination state while it is not visible.
+                        rememberDecoratedNavEntries(
+                            backStack = navigationState.backStack(route),
+                            entryDecorators =
+                                listOf(rememberSaveableStateHolderNavEntryDecorator<MusicNavKey>()),
+                            entryProvider = destinationEntryProvider,
+                        )
+                    }
+                val displayedEntries =
+                    buildList {
+                        // Tracks stays underneath the selected stack so root back supports prediction.
+                        addAll(decoratedBackStacks.getValue(TracksRoute))
+                        if (navigationState.currentTopLevelRoute != TracksRoute) {
+                            addAll(decoratedBackStacks.getValue(navigationState.currentTopLevelRoute))
+                        }
+                    }
                 NavDisplay(
-                    backStack = navigationState.currentBackStack,
+                    entries = displayedEntries,
+                    modifier = Modifier.fillMaxSize().clipToBounds(),
                     onBack = ::handleBack,
-                    entryProvider =
-                        entryProvider {
-                            entry<TracksRoute> {
-                                TracksScreenRoute(
-                                    viewModel = viewModel<TracksViewModel>(),
-                                    contentInsets = contentInsets,
-                                    policy = policy,
-                                    openDrawer = openDrawer,
-                                )
-                            }
-                            entry<ScanMusicRoute> {
-                                ScanMusicScreenRoute(
-                                    viewModel = viewModel<ScanViewModel>(),
-                                    contentInsets = contentInsets,
-                                    policy = policy,
-                                    onBack = ::handleBack,
-                                    permissionState = permissionState,
-                                    onConfirmPermission = onConfirmPermission,
-                                    onRetryPermission = onRetryPermission,
-                                    onOpenPermissionSettings = onOpenPermissionSettings,
-                                    onOpenApplicationSettings = onOpenApplicationSettings,
-                                    onScanMusic = onScanMusic,
-                                )
-                            }
-                            entry<AlbumsRoute> {
-                                AlbumsScreenRoute(
-                                    viewModel = viewModel<AlbumsViewModel>(),
-                                    contentInsets = contentInsets,
-                                    policy = policy,
-                                    openDrawer = openDrawer,
-                                    onAlbumClick = { albumId ->
-                                        commitNavigation {
-                                            navigate(AlbumDetailRoute(albumId.volumeName, albumId.mediaStoreId))
-                                        }
-                                    },
-                                )
-                            }
-                            entry<ArtistsRoute> {
-                                ArtistsScreenRoute(
-                                    viewModel = viewModel<ArtistsViewModel>(),
-                                    contentInsets = contentInsets,
-                                    policy = policy,
-                                    openDrawer = openDrawer,
-                                    onArtistClick = { artistId ->
-                                        commitNavigation { navigate(ArtistDetailRoute(artistId.mediaStoreId)) }
-                                    },
-                                )
-                            }
-                            entry<PlaylistsRoute> {
-                                PlaylistsScreenRoute(
-                                    viewModel = viewModel<PlaylistsViewModel>(),
-                                    contentInsets = contentInsets,
-                                    policy = policy,
-                                    openDrawer = openDrawer,
-                                    onPlaylistClick = { playlistId ->
-                                        commitNavigation { navigate(PlaylistDetailRoute(playlistId.value)) }
-                                    },
-                                )
-                            }
-                            entry<HistoryRoute> {
-                                HistoryScreenRoute(
-                                    viewModel = viewModel<HistoryViewModel>(),
-                                    contentInsets = contentInsets,
-                                    policy = policy,
-                                    onBack = ::handleBack,
-                                )
-                            }
-                            entry<FoldersRoute> {
-                                FoldersScreenRoute(
-                                    viewModel = viewModel<FoldersViewModel>(),
-                                    contentInsets = contentInsets,
-                                    policy = policy,
-                                    openDrawer = openDrawer,
-                                    onFolderClick = { folderId ->
-                                        commitNavigation {
-                                            navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))
-                                        }
-                                    },
-                                )
-                            }
-                            entry<SettingsRoute> {
-                                SettingsScreenRoute(
-                                    viewModel = viewModel<SettingsViewModel>(),
-                                    contentInsets = contentInsets,
-                                    policy = policy,
-                                    onBack = ::handleBack,
-                                    onShowMessage = { messageResId ->
-                                        messageBubbleQueue.enqueue(messageResId)
-                                    },
-                                )
-                            }
-                            entry<AboutRoute> {
-                                AboutScreenRoute(
-                                    viewModel = viewModel<AboutViewModel>(),
-                                    contentInsets = contentInsets,
-                                    policy = policy,
-                                    onBack = ::handleBack,
-                                )
-                            }
-                            entry<TrackInfoRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
-                            entry<AlbumDetailRoute> { key ->
-                                AlbumDetailScreenRoute(
-                                    albumId = AlbumId(key.volumeName, key.mediaStoreId),
-                                    viewModel = viewModel<AlbumDetailViewModel>(
-                                        key = "album:${key.volumeName}:${key.mediaStoreId}",
-                                    ),
-                                    contentInsets = contentInsets,
-                                    onBack = ::handleBack,
-                                )
-                            }
-                            entry<ArtistDetailRoute> { key ->
-                                ArtistDetailScreenRoute(
-                                    artistId = ArtistId(key.mediaStoreId),
-                                    viewModel = viewModel<ArtistDetailViewModel>(
-                                        key = "artist:${key.mediaStoreId}",
-                                    ),
-                                    contentInsets = contentInsets,
-                                    onBack = ::handleBack,
-                                )
-                            }
-                            entry<PlaylistDetailRoute> { key ->
-                                PlaylistDetailScreenRoute(
-                                    playlistId = com.musicapp.player.core.domain.model.PlaylistId(key.playlistId),
-                                    viewModel = viewModel<PlaylistDetailViewModel>(key = "playlist:${key.playlistId}"),
-                                    contentInsets = contentInsets,
-                                    onBack = ::handleBack,
-                                )
-                            }
-                            entry<FolderDetailRoute> { key ->
-                                FolderDetailScreenRoute(
-                                    folderId = FolderId(key.volumeName, key.relativePath),
-                                    viewModel = viewModel<FolderDetailViewModel>(
-                                        key = "folder:${key.volumeName}:${key.relativePath}",
-                                    ),
-                                    contentInsets = contentInsets,
-                                    onBack = ::handleBack,
-                                    onFolderClick = { folderId ->
-                                        commitNavigation {
-                                            navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))
-                                        }
-                                    },
-                                )
-                            }
-                        },
+                    // A sidebar selection can shrink entries while still being a forward action.
+                    transitionSpec = { pageTransition(pageTransitionDirection) },
+                    popTransitionSpec = { pageTransition(pageTransitionDirection) },
+                    predictivePopTransitionSpec = { _ ->
+                        pageTransition(PageTransitionDirection.BACKWARD)
+                    },
                 )
-            }
-            BackHandler(
-                enabled = navigationState.currentBackStack.size == 1,
-                onBack = ::handleBack,
-            )
+                BackHandler(
+                    enabled =
+                        navigationState.currentTopLevelRoute == TracksRoute &&
+                            navigationState.currentBackStack.size == 1,
+                    onBack = ::handleBack,
+                )
             },
             playerSheetContent = { contentInsets ->
                 PlayerSheetRoute(
@@ -422,6 +454,21 @@ fun MainNavigation(
         }
     }
 }
+
+private enum class PageTransitionDirection {
+    FORWARD,
+    BACKWARD,
+}
+
+private fun pageTransition(direction: PageTransitionDirection): ContentTransform =
+    when (direction) {
+        PageTransitionDirection.FORWARD ->
+            slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth }) togetherWith
+                slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth })
+        PageTransitionDirection.BACKWARD ->
+            slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth }) togetherWith
+                slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth })
+    }
 
 @Composable
 private fun DestinationPlaceholder(
