@@ -66,11 +66,12 @@ Static TOML validation cannot prove model access or runtime loading. Report actu
 | --- | --- | --- |
 | Gradle 守护进程 JDK | `D:\Android\Android Studio\jbr` | JetBrains JDK `21.0.10`，满足 `toolchainVendor=JETBRAINS`、`toolchainVersion=21` |
 | 应用编译 JDK | `C:\Program Files\Java\jdk-17` | JDK `17.0.12`，对应 `app/build.gradle.kts` 的 JVM 17 工具链 |
-| Gradle Wrapper | [`gradlew.bat`](../gradlew.bat) | 项目要求 Gradle `9.1.0` |
+| Gradle Wrapper | [`gradlew.bat`](../gradlew.bat) | 项目要求 Gradle `9.3.1`；已下载并校验 |
+| Android Gradle Plugin | [`gradle/libs.versions.toml`](../gradle/libs.versions.toml) | `9.1.1`，要求项目 Wrapper Gradle `9.3.1` |
 | Standalone Gradle | `D:\gradle\gradle-8.14.3\bin\gradle.bat` | Gradle `8.14.3`，不能替代项目 Wrapper 版本 |
 | Android SDK | `D:\AndroidSDK` | 与 [`local.properties`](../local.properties) 一致 |
-| SDK Platform | `D:\AndroidSDK\platforms\android-36` | `compileSdk=36` 已满足 |
-| Build Tools | `D:\AndroidSDK\build-tools\36.1.0` | 已安装 |
+| SDK Platform | `D:\AndroidSDK\platforms\android-37.0` | `compileSdk=37` 已满足，API 37.0 revision 2 已安装 |
+| Build Tools | `D:\AndroidSDK\build-tools\37.0.0` | 已安装 |
 | Platform Tools | `D:\AndroidSDK\platform-tools\adb.exe` | `37.0.0` |
 | Emulator | `D:\AndroidSDK\emulator\emulator.exe` | `36.5.10.0` |
 | SDK 命令行工具 | `D:\AndroidSDK\cmdline-tools\latest\bin` | `sdkmanager`/`avdmanager` `20.0`，显示 SDK XML version 4 兼容性警告 |
@@ -92,10 +93,10 @@ $env:Path = "$env:JAVA_HOME\bin;$env:ANDROID_SDK_ROOT\platform-tools;$env:ANDROI
 & "$env:ANDROID_SDK_ROOT\platform-tools\adb.exe" devices -l
 ```
 
-### 当前阻塞项
+### 当前环境注意项
 
-- Gradle Wrapper 的 `gradle-9.1.0-bin.zip` 尚未完整下载，缓存目录只有 `.zip.part`/`.lck`，因此 `.\gradlew.bat --version` 可能在等待 ZIP 锁时超时；该结果不能归因于 JDK 21 不兼容。
-- `D:\gradle\gradle-8.14.3` 可以单独运行，但项目 Wrapper 固定为 9.1.0；不要为了绕过下载问题修改或暂时移动项目的 Wrapper 版本文件。
+- Gradle Wrapper 的 `gradle-9.3.1-bin.zip` 已从 `C:\Users\devil\.gradle\wrapper\dists\gradle-9.3.1-bin\23ovyewtku6u96viwx3xl3oks\gradle-9.3.1-bin.zip` 下载并校验，ZIP SHA-256 为 `B266D5FF6B90EADA6DC3B20CB090E3731302E553A27C5D3E4DF1F0D76BEAFF06`，与 [`gradle-wrapper.properties`](../gradle/wrapper/gradle-wrapper.properties) 的校验值一致；`gradlew.bat --version` 已成功，Gradle `9.3.1` 的 Launcher/Daemon 均使用 JetBrains JDK `21.0.10`。
+- `D:\gradle\gradle-8.14.3` 可以单独运行，但不能替代项目要求的 Wrapper `9.3.1`；不要为了绕过下载问题修改或暂时移动项目的 Wrapper 版本文件。
 - `sdkmanager` 的 SDK XML version 4 警告目前是命令行工具与 SDK 元数据版本差异提示，单独出现时不等同于 Gradle 任务失败；仍应分别记录实际任务退出结果。
 
 ### Select the JVM before running Gradle

@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -223,6 +225,7 @@ fun TracksScreen(
                 TrackList(
                     tracks = filteredTracks,
                     sections = sections,
+                    showSectionIndex = showSectionIndex,
                     listState = listState,
                     selectedIds = state.selectedTrackIds,
                     selectionMode = state.isSelectionMode,
@@ -235,8 +238,7 @@ fun TracksScreen(
                     onAddToPlaylist = onTrackAddToPlaylist,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
-                    modifier = Modifier.weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -471,6 +473,7 @@ private fun BatchResultDialog(
 private fun TrackList(
     tracks: List<Track>,
     sections: List<TrackSection>,
+    showSectionIndex: Boolean,
     listState: LazyListState,
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
@@ -486,10 +489,20 @@ private fun TrackList(
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
+    val scrollbarModifier =
+        if (!showSectionIndex) {
+            listState.scrollIndicatorState?.let { scrollIndicatorState ->
+                Modifier.nonInteractiveScrollbar(scrollIndicatorState, Orientation.Vertical)
+            } ?: Modifier
+        } else {
+            Modifier
+        }
     Box(modifier = modifier.fillMaxWidth()) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize()
+                .then(scrollbarModifier)
+                .padding(horizontal = dimensions.contentHorizontalPadding),
             contentPadding =
                 PaddingValues(
                     //start = dimensions.spaceSmall,
