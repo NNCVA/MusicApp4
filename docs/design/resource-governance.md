@@ -97,6 +97,17 @@ MusicApp2 仅作为本次资源的中间存放仓库及固定 revision 证据，
 |---|---|---|
 | `ic_status_empty_playlist.xml` | 歌单页面无歌单时的居中空态插画 | 使用三个中性几何面构成打开的空盒图形，并由 `MusicTheme` 着色 |
 
+## MusicApp 自有界面资源
+
+来源：MusicApp 项目内原创；无第三方上游、无中间仓库与固定 revision。
+
+许可证：随 MusicApp 项目代码发布；不包含第三方版权材料。
+
+| MusicApp 资源 | 用途 | 修改 |
+|---|---|---|
+| `ic_common_storage.xml` | 文件夹一级页存储卷卡片的存储卷图标 | 以中性描边和路径绘制存储卷轮廓，保存为 Android `VectorDrawable` 并由 `MusicTheme` 着色 |
+| `ic_common_folder.xml` | 文件夹一级快捷项与纯中间目录卡片的文件夹图标 | 以中性描边绘制文件夹轮廓，保存为 Android `VectorDrawable` 并由 `MusicTheme` 着色 |
+
 ## 明确排除
 
 - SaltUI 的二维码、认证、密码可见性图标当前没有 MusicApp 业务用途。

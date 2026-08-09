@@ -142,6 +142,10 @@
         <item quantity="one">%1$d track</item>
         <item quantity="other">%1$d tracks</item>
     </plurals>
+    <plurals name="folder_track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
     <plurals name="artist_track_count">
         <item quantity="one">%1$d track</item>
         <item quantity="other">%1$d tracks</item>
@@ -167,12 +171,30 @@
     <string name="artist_artwork_description">Artwork for artist %1$s</string>
     <string name="folders_empty_title">No folders</string>
     <string name="folders_empty_description">Folders containing library tracks will appear here.</string>
+    <string name="folders_page_title">Folders</string>
+    <string name="folders_search_label">Search folders</string>
+    <string name="folders_search_close">Close folder search</string>
+    <string name="folders_search_placeholder">Search folder names</string>
+    <string name="folders_no_results_title">No matching folders</string>
+    <string name="folders_no_results_description">Try another folder name.</string>
+    <string name="folder_index_label">Jump to folders beginning with %1$s</string>
+    <string name="folder_index_digits_label">Jump to folders beginning with a number</string>
+    <string name="folder_index_other_label">Jump to folders beginning with another character</string>
     <string name="folder_unknown_name">Unknown folder</string>
+    <string name="folder_internal_storage">Internal storage</string>
+    <string name="folder_unknown_volume">Unknown storage</string>
+    <string name="folder_more_actions">More actions for %1$s</string>
     <string name="folder_empty_title">This folder is empty</string>
     <string name="folder_empty_description">This folder has no direct tracks or subfolders.</string>
     <string name="folder_subfolders_section">Folders</string>
     <string name="folder_tracks_section">Tracks in this folder</string>
     <string name="folder_volume_root">Storage volume</string>
+    <string name="folder_storage_capacity">%1$s %3$s / %2$s %3$s</string>
+    <string name="folder_storage_unit_bytes">B</string>
+    <string name="folder_storage_unit_kilobytes">KB</string>
+    <string name="folder_storage_unit_megabytes">MB</string>
+    <string name="folder_storage_unit_gigabytes">GB</string>
+    <string name="folder_storage_unit_terabytes">TB</string>
     <string name="playlist_create">Create</string>
     <string name="playlist_create_title">Create playlist</string>
     <string name="playlist_rename">Rename</string>

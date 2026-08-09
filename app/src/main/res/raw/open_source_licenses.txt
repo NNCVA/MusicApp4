@@ -111,6 +111,20 @@ Bundled visual asset notices:
   Modifications: three neutral geometric faces form an open-box illustration and
   are tinted by MusicTheme at runtime.
 
+- `ic_common_storage.xml` storage-volume outline icon.
+  Source: original MusicApp project artwork; no third-party upstream, intermediate
+  repository, fixed revision, or copyright material is used.
+  License: distributed as part of the MusicApp project.
+  Modifications: authored as a neutral Android VectorDrawable outline/path and
+  tinted by MusicTheme at runtime.
+
+- `ic_common_folder.xml` folder outline icon.
+  Source: original MusicApp project artwork; no third-party upstream, intermediate
+  repository, fixed revision, or copyright material is used.
+  License: distributed as part of the MusicApp project.
+  Modifications: authored as a neutral Android VectorDrawable outline/path and
+  tinted by MusicTheme at runtime.
+
 The complete common license text follows. Component-specific NOTICE attribution is retained above.
 
 Apache License

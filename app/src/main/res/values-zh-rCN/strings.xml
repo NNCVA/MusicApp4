@@ -139,6 +139,9 @@
     <plurals name="category_track_count">
         <item quantity="other">%1$d 首单曲</item>
     </plurals>
+    <plurals name="folder_track_count">
+        <item quantity="other">%1$d 首</item>
+    </plurals>
     <plurals name="artist_track_count">
         <item quantity="other">%1$d 首</item>
     </plurals>
@@ -161,12 +164,30 @@
     <string name="artist_artwork_description">%1$s 的艺术家封面</string>
     <string name="folders_empty_title">暂无文件夹</string>
     <string name="folders_empty_description">包含音乐库单曲的文件夹将显示在此处。</string>
+    <string name="folders_page_title">文件夹</string>
+    <string name="folders_search_label">搜索文件夹</string>
+    <string name="folders_search_close">关闭文件夹搜索</string>
+    <string name="folders_search_placeholder">搜索文件夹名称</string>
+    <string name="folders_no_results_title">没有匹配的文件夹</string>
+    <string name="folders_no_results_description">请尝试其他文件夹名称。</string>
+    <string name="folder_index_label">跳转到以 %1$s 开头的文件夹</string>
+    <string name="folder_index_digits_label">跳转到以数字开头的文件夹</string>
+    <string name="folder_index_other_label">跳转到以其他字符开头的文件夹</string>
     <string name="folder_unknown_name">未知文件夹</string>
+    <string name="folder_internal_storage">内部存储</string>
+    <string name="folder_unknown_volume">未知存储</string>
+    <string name="folder_more_actions">%1$s 的更多操作</string>
     <string name="folder_empty_title">此文件夹为空</string>
     <string name="folder_empty_description">此文件夹没有直接单曲或子文件夹。</string>
     <string name="folder_subfolders_section">文件夹</string>
     <string name="folder_tracks_section">此文件夹中的单曲</string>
     <string name="folder_volume_root">存储卷</string>
+    <string name="folder_storage_capacity">%1$s %3$s / %2$s %3$s</string>
+    <string name="folder_storage_unit_bytes">B</string>
+    <string name="folder_storage_unit_kilobytes">KB</string>
+    <string name="folder_storage_unit_megabytes">MB</string>
+    <string name="folder_storage_unit_gigabytes">GB</string>
+    <string name="folder_storage_unit_terabytes">TB</string>
     <string name="playlist_create">创建</string>
     <string name="playlist_create_title">创建歌单</string>
     <string name="playlist_rename">重命名</string>
