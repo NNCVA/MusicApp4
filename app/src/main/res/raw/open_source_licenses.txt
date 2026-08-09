@@ -74,6 +74,17 @@ Bundled visual asset notices:
   Modifications: resources were renamed for MusicApp; ChevronRight, Check, and Success
   were converted from Compose ImageVector definitions to Android VectorDrawable XML.
 
+- `ic_playlist_album.xml` cover fallback placeholder.
+  Intermediate source repository: https://github.com/NNCVA/MusicApp2.git
+  Fixed revision: f18fbf683d6e2854d14b1e415cc18732a0b09694.
+  Intermediate source file: app/src/main/res/drawable/ic_playlist_album.xml.
+  File-level source, author, and license declaration: none.
+  License status: 来源/许可证待确认 (source/license pending confirmation).
+  MusicApp2's META-INF/LICENSE is not attributed to this file and is not treated
+  as evidence of this file's license.
+  MusicApp use: unified fallback placeholder for album, track, artist, and player artwork.
+  Modifications: path data unchanged during migration.
+
 The complete common license text follows. Component-specific NOTICE attribution is retained above.
 
 Apache License

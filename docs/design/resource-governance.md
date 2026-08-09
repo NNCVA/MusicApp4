@@ -56,6 +56,20 @@
 
 这组资源只用于 Mini、Full Player 与队列中的实际播放操作；播放模式通过图形和 TalkBack 语义共同表达，所有图标按钮保持至少 `48 dp` 点击目标。
 
+## MusicApp2 封面占位资源（来源/许可证待确认）
+
+中间来源仓库：`https://github.com/NNCVA/MusicApp2.git`
+
+固定 revision：`f18fbf683d6e2854d14b1e415cc18732a0b09694`
+
+中间来源文件：`app/src/main/res/drawable/ic_playlist_album.xml`
+
+该文件没有文件级来源、作者或许可证声明。许可证状态：来源/许可证待确认。MusicApp2 仓库内的 `META-INF/LICENSE` 不归因于该文件，也不作为该文件的许可证证据。
+
+本项目用途：统一专辑/歌曲/艺术家/播放器封面降级占位。
+
+修改：迁移到 `app/src/main/res/drawable/ic_playlist_album.xml`；path 数据未改。
+
 ## 明确排除
 
 - SaltUI 的二维码、认证、密码可见性图标当前没有 MusicApp 业务用途。

@@ -113,7 +113,6 @@
     <string name="player_error_audio_output_failed">The audio output is unavailable</string>
     <string name="player_error_io">This audio source could not be read</string>
     <string name="player_error_unknown">This track could not be played</string>
-    <string name="player_artwork_placeholder">Artwork</string>
     <string name="player_artwork_description">Album artwork</string>
     <string name="lyrics_not_found">Lyrics not found</string>
     <string name="lyrics_loading">Loading lyrics</string>

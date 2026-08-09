@@ -296,10 +296,10 @@ private fun ArtistArtwork(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_sidebar_artists),
+                    painter = painterResource(R.drawable.ic_playlist_album),
                     contentDescription = null,
                     tint = MusicTheme.colors.onSecondaryContainer,
-                    modifier = Modifier.size(MusicTheme.dimensions.spaceLarge),
+                    modifier = Modifier.fillMaxSize(0.5f),
                 )
             }
         is ArtworkResult.Embedded -> {

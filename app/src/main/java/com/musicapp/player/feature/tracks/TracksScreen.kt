@@ -711,10 +711,11 @@ private fun TrackArtwork(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = stringResource(R.string.player_artwork_placeholder),
-                    style = MusicTheme.typography.labelSmall,
-                    color = MusicTheme.colors.onSecondaryContainer,
+                Icon(
+                    painter = painterResource(R.drawable.ic_playlist_album),
+                    contentDescription = null,
+                    tint = MusicTheme.colors.onSecondaryContainer,
+                    modifier = Modifier.fillMaxSize(0.5f),
                 )
             }
         is ArtworkResult.Embedded -> {

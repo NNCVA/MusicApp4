@@ -109,7 +109,6 @@
     <string name="player_error_audio_output_failed">音频输出不可用</string>
     <string name="player_error_io">无法读取此音频源</string>
     <string name="player_error_unknown">无法播放此曲目</string>
-    <string name="player_artwork_placeholder">封面</string>
     <string name="player_artwork_description">专辑封面</string>
     <string name="lyrics_not_found">未找到歌词</string>
     <string name="lyrics_loading">正在加载歌词</string>

@@ -639,7 +639,14 @@ private fun PlayerArtwork(artwork: ArtworkResult, shape: Shape, modifier: Modifi
         ArtworkResult.Placeholder -> Box(
             modifier.clip(shape).background(MusicTheme.colors.secondaryContainer),
             contentAlignment = Alignment.Center,
-        ) { Text(stringResource(R.string.player_artwork_placeholder), style = MusicTheme.typography.labelMedium) }
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_playlist_album),
+                contentDescription = stringResource(R.string.player_artwork_description),
+                tint = MusicTheme.colors.onSecondaryContainer,
+                modifier = Modifier.fillMaxSize(0.5f),
+            )
+        }
         is ArtworkResult.Embedded -> {
             val image = artwork.image
             val bitmap = remember(image) {
