@@ -17,6 +17,18 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 - 首版 26 项核心需求已基本完成代码实现，Room、DataStore、Hilt、Media3、媒体库、业务页面和测试基础设施均已接入。
 - 当前处于首版收口与人工验收阶段；实现状态以当前代码、自动门禁结果和 [`docs/design/implementation-spec.md`](docs/design/implementation-spec.md) 的“当前基线”为准。
 
+## 本机 Android 开发环境基线与已知问题（2026-08-10）
+- 本节记录当前 Windows 工作站的实测位置；项目可移植配置仍以 `local.properties`、Gradle Wrapper 和 `gradle/gradle-daemon-jvm.properties` 为准。
+- Gradle 守护进程要求 JetBrains JDK 21：`D:\Android\Android Studio\jbr`，实测版本 `21.0.10`。
+- 应用 Java/Kotlin 编译工具链和 CI 使用 JDK 17：`C:\Program Files\Java\jdk-17`，实测版本 `17.0.12`。`D:\Java` 为 Oracle JDK `21.0.7`，不满足当前 Gradle 守护进程的 JetBrains 厂商约束，不能单独作为 Gradle 的 `JAVA_HOME`。
+- 项目使用 [`gradlew.bat`](gradlew.bat)，Wrapper 版本由 [`gradle/wrapper/gradle-wrapper.properties`](gradle/wrapper/gradle-wrapper.properties) 固定为 `9.1.0`。本机另有 `D:\gradle\gradle-8.14.3`，但不能替代项目要求的 9.1.0；全局 `gradle` 命令当前不在 PATH。
+- Gradle 9.1.0 Wrapper 缓存在 `C:\Users\devil\.gradle\wrapper\dists\gradle-9.1.0-bin\` 下只有未完成的 `.zip.part`，尚未形成完整的 `gradle-9.1.0` 安装目录；启动 Wrapper 可能超时等待 ZIP 或锁文件。不要并行启动多个 Wrapper 下载，也不要在确认没有当前下载进程前删除 `.part`/`.lck`。
+- 项目 Android SDK 根目录为 `D:\AndroidSDK`，由 [`local.properties`](local.properties) 的 `sdk.dir` 指定。已安装 `platforms;android-36`、`build-tools;36.1.0`、`platform-tools;37.0.0`、`emulator;36.5.10` 和 `cmdline-tools;latest` `20.0`；命令行工具会提示 SDK XML version 4 警告，当前属于工具版本兼容性提示。
+- `sdkmanager.bat` 和 `avdmanager.bat` 位于 `D:\AndroidSDK\cmdline-tools\latest\bin`，`emulator.exe` 位于 `D:\AndroidSDK\emulator`，`adb.exe` 位于 `D:\AndroidSDK\platform-tools`。当前 PATH 只包含 JDK 17 和 `platform-tools`，`JAVA_HOME`、`ANDROID_HOME`、`ANDROID_SDK_ROOT`、`ANDROID_AVD_HOME` 均为空。
+- AVD = Android Virtual Device（Android 虚拟设备）。可用 AVD 为 `Pixel_8`：配置入口 `C:\Users\devil\.android\avd\Pixel_8.ini`，实际数据目录 `D:\android\avd\Pixel_8.avd`，API 34、Google Play、x86_64；实测设备序列号为 `emulator-5554`。AVD 和设备状态具有时效性，每次 Runtime 测试前重新执行 `adb devices -l`。
+- Android CLI 位于 `C:\ProgramData\AndroidCLI\android.exe`，默认 SDK 路径错误地指向不存在的 `C:\Users\devil\AppData\Local\Android\Sdk`；使用时必须显式传入 `--sdk D:\AndroidSDK`。
+- 构建前先阅读 [`docs/verification.md`](docs/verification.md)，按其中的会话环境设置和分层门禁执行；环境诊断结果不能代替实际 Gradle 任务结果。
+
 ## 核心功能与需求汇总（26 核心需求）
 1. **音频文件扫描器**：通过 MediaStore 同步 7 种音频格式（.mp3, .flac, .wav, .aac, .m4a, .ogg, .opus），支持“扫描全部”和“仅扫描指定目录”两种路径模式，排除规则优先。
 2. **曲目列表**：展示所有符合规则的曲目，支持多选、加入播放列表/队列、下一首播放、隐藏曲目，以及按标题/艺术家/专辑/添加时间/时长排序；不物理删除音频文件。
