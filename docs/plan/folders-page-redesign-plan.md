@@ -64,13 +64,7 @@
 
 ## 7. 顺序门禁与记录规则
 
-按 [`docs/verification.md`](../verification.md) 的顺序执行，并逐项记录真实结果：
-
-1. `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
-2. `.\gradlew.bat :app:lintDebug --no-daemon --console=plain`
-3. `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
-4. 有设备时执行 `.\gradlew.bat :app:connectedDebugAndroidTest --no-daemon --console=plain`；无设备只能执行 `.\gradlew.bat :app:assembleDebugAndroidTest --no-daemon --console=plain` 作为测试 APK 编译检查，不能记为 Runtime 集成测试。
-5. 文档/许可证改动完成后执行 `git diff --check -- docs/plan/folders-page-redesign-plan.md docs/design/implementation-spec.md docs/design/resource-governance.md app/src/main/res/raw/open_source_licenses.txt`，并运行本任务约定的限定 `rg` 与相对链接存在性检查。
+按 [`docs/verification.md`](../verification.md) 的分层规则执行并逐项记录真实结果；文档/许可证改动完成后执行本任务约定的 `git diff --check`、限定 `rg` 和相对链接存在性检查。
 
 当前源码没有可报告的 `connectedDebugAndroidTest` 通过结果；历史 `31/31` XML 不作为本次最终源码的设备门禁证据。
 

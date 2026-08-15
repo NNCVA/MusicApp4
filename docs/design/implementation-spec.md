@@ -327,5 +327,4 @@ DataStore 只保存用户设置：
 - `app/src/test` 只承载平台无关的领域规则、状态机、解析器、格式化和 ViewModel 逻辑，并保留少量使用 Robolectric 的平台适配测试；Robolectric 不替代真实 Room、Hilt、Service、资源或应用启动行为验证。
 - 以下测试归 `app/src/androidTest`，使用 `AndroidJUnit4` 与 Hilt Runner：`data/local/MusicDatabaseMigrationTest.kt`、`data/HistoryRepositoryTest.kt`、`data/MediaLibraryRepositoryTest.kt`、`data/PlaylistRepositoryTest.kt`、`data/PlaybackSnapshotRepositoryTest.kt`、`data/sync/MediaLibrarySyncTest.kt`、`di/ApplicationGraphTest.kt`、`media/service/PlaybackServiceHiltTest.kt`、`feature/about/AboutMetadataTest.kt`；`ApplicationStartupIntegrationTest` 负责 Android 资源启动冒烟。Room 测试使用真实 Android SQLite/Room 环境，Hilt 测试使用真实测试 Application 图。
 - Hilt 集成测试使用 `@HiltAndroidTest`、`HiltAndroidRule` 和 `hiltRule.inject()`；所有 instrumentation 测试使用 `@RunWith(AndroidJUnit4::class)`，Runner 为 `com.musicapp.player.HiltTestRunner`。纯逻辑测试不引入 Hilt/Room/Android Runtime 依赖。
-- CI 使用 JDK 17 依次执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 和有设备时的 `:app:connectedDebugAndroidTest`。
-- 无设备时可执行 `:app:assembleDebugAndroidTest` 进行 Android 测试编译检查；它不能被描述为已运行 Android Runtime 集成测试。详细分层、目录归属和命令见 [`docs/testing.md`](../testing.md)。
+- CI、环境选择、设备要求和门禁命令统一见 [`docs/verification.md`](../verification.md)；测试分层、目录归属和 Runner 规则见 [`docs/testing.md`](../testing.md)。本规格只保留测试契约，不复制执行命令。

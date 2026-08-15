@@ -1,6 +1,8 @@
 package com.musicapp.player.feature.tracks
 
 import android.graphics.Bitmap
+import android.os.SystemClock
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -50,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -78,6 +81,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Composable
 fun TracksScreenRoute(
@@ -87,6 +91,8 @@ fun TracksScreenRoute(
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
 ) {
+    val loadStartedNs = remember { SystemClock.elapsedRealtimeNanos() }
+    val firstTrackLayoutLogged = remember { AtomicBoolean(false) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
     BackHandler(enabled = state.isSelectionMode) { viewModel.onBack() }
@@ -123,6 +129,16 @@ fun TracksScreenRoute(
         onPlayNext = viewModel::playSelectedNext,
         onHideSelected = viewModel::hideSelected,
         onAcknowledgeBatchResult = viewModel::acknowledgeBatchResult,
+        onFirstTrackLaidOut = {
+            if (firstTrackLayoutLogged.compareAndSet(false, true)) {
+                val completedNs = SystemClock.elapsedRealtimeNanos()
+                Log.i(
+                    TRACKS_LOAD_LOG_TAG,
+                    "event=first_track_laid_out duration_us=${(completedNs - loadStartedNs) / 1_000} " +
+                        "track_count=${state.tracks.size} start_ns=$loadStartedNs end_ns=$completedNs",
+                )
+            }
+        },
     )
 }
 
@@ -149,6 +165,7 @@ fun TracksScreen(
     onPlayNext: () -> Unit,
     onHideSelected: () -> Unit,
     onAcknowledgeBatchResult: () -> Unit,
+    onFirstTrackLaidOut: () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
@@ -242,6 +259,7 @@ fun TracksScreen(
                     onAddToPlaylist = onTrackAddToPlaylist,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
+                    onFirstTrackLaidOut = onFirstTrackLaidOut,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -490,6 +508,7 @@ private fun TrackList(
     onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
+    onFirstTrackLaidOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -529,6 +548,8 @@ private fun TrackList(
                     onAddToPlaylist = onAddToPlaylist,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
+                    firstTrackId = tracks.first().id,
+                    onFirstTrackLaidOut = onFirstTrackLaidOut,
                 )
             } else {
                 sections.forEach { section ->
@@ -545,6 +566,8 @@ private fun TrackList(
                         onAddToPlaylist = onAddToPlaylist,
                         onTrackClick = onTrackClick,
                         onTrackLongClick = onTrackLongClick,
+                        firstTrackId = tracks.first().id,
+                        onFirstTrackLaidOut = onFirstTrackLaidOut,
                     )
                 }
             }
@@ -565,6 +588,8 @@ private fun LazyListScope.trackItems(
     onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
+    firstTrackId: TrackId,
+    onFirstTrackLaidOut: () -> Unit,
 ) {
     items(tracks, key = { track -> "${track.id.volumeName}:${track.id.mediaStoreId}" }) { track ->
         TrackRow(
@@ -583,6 +608,7 @@ private fun LazyListScope.trackItems(
             onAddToPlaylist = { playlistId -> onAddToPlaylist(track.id, playlistId) },
             onClick = { onTrackClick(track) },
             onLongClick = { onTrackLongClick(track) },
+            onLaidOut = if (track.id == firstTrackId) onFirstTrackLaidOut else null,
         )
     }
 }
@@ -602,6 +628,7 @@ private fun TrackRow(
     onAddToPlaylist: (PlaylistId) -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onLaidOut: (() -> Unit)?,
 ) {
     val dimensions = MusicTheme.dimensions
     val compact = dimensions.windowWidthTier == MusicWindowWidthTier.COMPACT
@@ -619,6 +646,13 @@ private fun TrackRow(
         modifier =
             Modifier.fillMaxWidth()
                 .height(dimensions.trackListItemHeight)
+                .then(
+                    if (onLaidOut != null) {
+                        Modifier.onGloballyPositioned { onLaidOut() }
+                    } else {
+                        Modifier
+                    },
+                )
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
                 //.padding(horizontal = dimensions.spaceSmall),
         verticalAlignment = Alignment.CenterVertically,
@@ -755,6 +789,8 @@ private fun TrackArtwork(
         }
     }
 }
+
+private const val TRACKS_LOAD_LOG_TAG = "TracksLoadPerf"
 
 @Composable
 private fun TrackArtworkPlaceholder(

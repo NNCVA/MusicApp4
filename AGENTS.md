@@ -1,108 +1,38 @@
 # AGENTS.md
 
-## 重要
-- 必须使用中文输出！！！
-- 注意，必要时使用 .agents/skills/ 目录下的skills ！！！
-- 项目文档全放在 docs/ 目录下！！！
-- 项目说明与开发入口：[`README.md`](README.md)。
-- 多使用子代理并行执行
-- 构建前看这个文档 [`docs/verification.md`](docs/verification.md)
-- 调用所有工具（Tool）时，必须严格检查并填写当前 schema 规定的全部必填字段，杜绝 SchemaError。
+## 入口规则
 
-## 项目概述
-MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 Android 本地音乐播放器。
-首版目标包括 7 种主流音频格式、基于 MediaStore 的媒体库同步、Media3/ExoPlayer 与 MediaSession、同步歌词、多主题与 Material You、Aero 动态背景、中英双语、播放列表、播放历史，以及单播放器淡出淡入切歌。
+- 必须使用中文输出；项目文档统一放在 `docs/`。
+- 项目说明入口是 [`README.md`](README.md)；当前实现状态、行为和架构以 [`docs/design/implementation-spec.md`](docs/design/implementation-spec.md) 为准。
+- 仓库存在 `.codegraph/` 时，理解或定位代码先使用 CodeGraph，再读取必要的原文件；不要把 `.codegraph` 数据库当作普通文本加载。
+- 渐进式披露 = 先读取本文件和任务路由，再按任务读取单个权威文档、skill 或 reference；不要默认读取整个 `docs/`、`.agents/skills/`、日志或图片目录。
+- 只有在任务命中时才读取 `.agents/skills/*/SKILL.md`，reference 继续按具体问题加载；调用工具前严格填写当前 schema 的必填字段。
+- 只有存在真正独立、文件互斥且可单独验证的任务包时才并行委派；主线程必须核对实际 diff 和验证结果。
+- 保留用户已有的 staged、unstaged 和 untracked 修改；不要使用 broad rollback、reset 或覆盖无关文件。
+- 构建、测试或设备验证前先读取 [`docs/verification.md`](docs/verification.md)；环境快照不能替代实际任务结果。
 
-## 当前实施状态
-- 首版 26 项核心需求已基本完成代码实现，Room、DataStore、Hilt、Media3、媒体库、业务页面和测试基础设施均已接入。
-- 当前处于首版收口与人工验收阶段；实现状态以当前代码、自动门禁结果和 [`docs/design/implementation-spec.md`](docs/design/implementation-spec.md) 的“当前基线”为准。
+## 权威文档路由
 
-## 本机 Android 开发环境基线与已知问题（2026-08-10）
-- 本节记录当前 Windows 工作站的实测位置；项目可移植配置仍以 `local.properties`、Gradle Wrapper 和 `gradle/gradle-daemon-jvm.properties` 为准。
-- Gradle 守护进程要求 JetBrains JDK 21：`D:\Android\Android Studio\jbr`，实测版本 `21.0.10`。
-- 应用 Java/Kotlin 编译工具链和 CI 使用 JDK 17：`C:\Program Files\Java\jdk-17`，实测版本 `17.0.12`。`D:\Java` 为 Oracle JDK `21.0.7`，不满足当前 Gradle 守护进程的 JetBrains 厂商约束，不能单独作为 Gradle 的 `JAVA_HOME`。
-- 项目使用 [`gradlew.bat`](gradlew.bat)，Wrapper 版本由 [`gradle/wrapper/gradle-wrapper.properties`](gradle/wrapper/gradle-wrapper.properties) 固定为 `9.3.1`。本机另有 `D:\gradle\gradle-8.14.3`，但不能替代项目要求的 9.3.1；全局 `gradle` 命令当前不在 PATH。
-- Android Gradle Plugin 版本由 [`gradle/libs.versions.toml`](gradle/libs.versions.toml) 固定为 `9.1.1`；该基线要求项目 Wrapper 使用 Gradle `9.3.1`，并支持 API 37.0。
-- Gradle 9.3.1 Wrapper 已从 `C:\Users\devil\.gradle\wrapper\dists\gradle-9.3.1-bin\23ovyewtku6u96viwx3xl3oks\gradle-9.3.1-bin.zip` 下载并校验，ZIP SHA-256 为 `B266D5FF6B90EADA6DC3B20CB090E3731302E553A27C5D3E4DF1F0D76BEAFF06`，与 `gradle-wrapper.properties` 的校验值一致；`gradlew.bat --version` 已成功，Gradle `9.3.1` 的 Launcher/Daemon 均使用 JetBrains JDK `21.0.10`。
-- 项目 Android SDK 根目录为 `D:\AndroidSDK`，由 [`local.properties`](local.properties) 的 `sdk.dir` 指定。已安装 `platforms;android-37.0`、`build-tools;37.0.0`、`platform-tools;37.0.0`、`emulator;36.5.10` 和 `cmdline-tools;latest` `20.0`；命令行工具会提示 SDK XML version 4 警告，当前属于工具版本兼容性提示。
-- `sdkmanager.bat` 和 `avdmanager.bat` 位于 `D:\AndroidSDK\cmdline-tools\latest\bin`，`emulator.exe` 位于 `D:\AndroidSDK\emulator`，`adb.exe` 位于 `D:\AndroidSDK\platform-tools`。当前 PATH 只包含 JDK 17 和 `platform-tools`，`JAVA_HOME`、`ANDROID_HOME`、`ANDROID_SDK_ROOT`、`ANDROID_AVD_HOME` 均为空。
-- AVD = Android Virtual Device（Android 虚拟设备）。可用 AVD 为 `Pixel_8`：配置入口 `C:\Users\devil\.android\avd\Pixel_8.ini`，实际数据目录 `D:\android\avd\Pixel_8.avd`，API 34、Google Play、x86_64；实测设备序列号为 `emulator-5554`。AVD 和设备状态具有时效性，每次 Runtime 测试前重新执行 `adb devices -l`。
-- Android CLI 位于 `C:\ProgramData\AndroidCLI\android.exe`，默认 SDK 路径错误地指向不存在的 `C:\Users\devil\AppData\Local\Android\Sdk`；使用时必须显式传入 `--sdk D:\AndroidSDK`。
-- 构建前先阅读 [`docs/verification.md`](docs/verification.md)，按其中的会话环境设置和分层门禁执行；环境诊断结果不能代替实际 Gradle 任务结果。
+- 行为、架构、数据和产品约束：[`docs/design/implementation-spec.md`](docs/design/implementation-spec.md)。
+- 领域术语：[`docs/CONTEXT.md`](docs/CONTEXT.md)；不可逆且有真实取舍的决定记录在 [`docs/adr/`](docs/adr/)。
+- 测试分层与 Runner 归属：[`docs/testing.md`](docs/testing.md)；环境、门禁命令、设备检查和回退：[`docs/verification.md`](docs/verification.md)。
+- 设计约束索引：[`docs/design/design-review-index.md`](docs/design/design-review-index.md)；只读取与当前 UI、导航或交互问题相关的 review。
+- 代理路由和任务包格式：[`docs/routing-guide.md`](docs/routing-guide.md) 与 [`docs/task-packet.md`](docs/task-packet.md)。
+- 实施计划索引：[`docs/plan/implementation-plan.md`](docs/plan/implementation-plan.md)；Wave 与逐过程计划只在需要范围映射或执行依赖时读取。
+- 图标、许可证和资源来源：[`docs/design/resource-governance.md`](docs/design/resource-governance.md) 及对应的许可证清单。
 
-## 核心功能与需求汇总（26 核心需求）
-1. **音频文件扫描器**：通过 MediaStore 同步 7 种音频格式（.mp3, .flac, .wav, .aac, .m4a, .ogg, .opus），支持“扫描全部”和“仅扫描指定目录”两种路径模式，排除规则优先。
-2. **曲目列表**：展示所有符合规则的曲目，支持多选、加入播放列表/队列、下一首播放、隐藏曲目，以及按标题/艺术家/专辑/添加时间/时长排序；不物理删除音频文件。
-3. **侧边栏路由导航**：快速进入单曲、专辑、艺术家、播放列表、播放历史、文件夹浏览、设置、关于，并提供扫描音乐快捷操作；`<600 dp` 使用窗口宽度 `50%` 的推移式三组卡片侧栏，展开时主内容等距右移并裁切，`600–839 dp` 使用宽度 `240 dp` 的常驻三组卡片，`≥840 dp` 使用宽度 `256 dp` 的常驻三组卡片。
-4. **播放控制**：基础播放动作（播放、暂停、上一首、下一首、快进/快退、进度条拖拽控制）。
-5. **播放模式**：列表循环、单曲循环、随机播放三种模式互斥，首次启动默认列表循环。单曲循环只影响自然结束，手动上一首/下一首仍切换队列；列表循环在队尾回到队首；随机播放同时持久化原始队列与稳定随机序列，一轮结束后重新生成下一轮并继续播放，且两轮边界不连续重复同一曲目；切换到其他模式时恢复原始顺序并保留当前曲目。
-6. **淡入淡出切歌**：使用单个 ExoPlayer 将前曲淡出至静音后切歌，再将后曲淡入；不重叠播放两首曲目。总时长允许用户在 `0–2000 ms` 范围内以 `250 ms` 步进调节，默认 `500 ms`。
-7. **播放列表管理**：创建、重命名、删除播放列表，批量添加/移除曲目。
-8. **播放列表详情**：查看特定播放列表内的歌曲，并支持一键播放全列表。
-9. **播放历史记录**：曲目实际播放达到 `min(30 秒, 曲目时长的 50%)` 后记录；同一曲目更新最后播放时间与累计次数。
-10. **同步歌词**：先在同名外部 `.lrc`、内嵌 SYLT、内嵌 USLT 中选择带时间戳来源，再按该顺序确定优先级。所有来源均无时间戳时优先展示外部 `.lrc` 原始文本，否则展示原始内嵌文本或 `lyrics_not_found`，并清空三行同步歌词值。
-11. **专辑封面提取**：自动提取内嵌封面并提供占位图；全屏播放详情使用圆形封面，其他位置统一使用圆角矩形。
-12. **迷你播放器 (Mini Player)**：使用一个应用级 Player Sheet 容器承载 Mini 与 Full 两个重叠内容层；折叠态在屏幕底部常驻 Mini，展示当前播放曲目信息及快捷控制按钮，高度与曲目列表项统一为 `80 dp`。
-13. **全屏播放器 (Full Screen Player)**：点击或上滑 Mini 将同一 Player Sheet 展开至全屏，返回或下滑折叠；拖动时 Sheet 跟手移动，Mini 与 Full 交叉淡入淡出，不做封面连续缩放或元素形变；Full 包含封面、同步歌词、当前播放队列三个横向页面。
-14. **播放队列**：实时查看当前播放队列，支持移除及点击跳转，不提供拖拽排序；普通加入队列时新增曲目追加到原始队列末尾并随机插入当前随机序列的未播放区间，“下一首播放”则插入当前随机项之后并追加到原始队列末尾；移除当前曲目后切到下一首。
-15. **曲目/专辑/艺术家/文件夹分类浏览**：按不同维度的分类浏览本地音乐库。
-16. **通知栏控制**：系统媒体面板显示上一首、播放/暂停、下一首及曲目信息；通知始终允许划除，划除时停止播放服务并保留持久化恢复点。
-17. **MediaSession 系统集成**：与 Android 系统底层 MediaSession 深度绑定，支持锁屏控制、蓝牙耳机按键控制及 Audio Focus 音频焦点控制（来电自动暂停等）。
-18. **歌曲信息查看器**：紧凑窗口使用 Bottom Sheet，中等及展开窗口使用最大宽度 `640 dp` 的对话框，展示编码、比特率、采样率、文件大小、路径等，只允许复制路径。
-19. **运行时权限管理**：Android 13+ 请求 `READ_MEDIA_AUDIO`，低版本请求 `READ_EXTERNAL_STORAGE`；MediaSession 通知使用系统豁免，当前版本不声明或请求 `POST_NOTIFICATIONS`。
-20. **多主题切换**：支持 Android 12+ Material You 动态取色，以及默认蓝、翡翠绿、日落橙、紫罗兰四套浅色/深色预设。
-21. **浅色 / 深色模式**：每套主题均完整支持 Light / Dark 模式。
-22. **Aero 动态背景**：动态 Canvas 背景视觉特效（流体网格 Fluid Mesh、光晕气场 Glow Aura、纯色静态），支持低电量自动暂停降级保护。
-23. **中英双语切换**：界面全字符串本地化，选项为跟随系统、简体中文、English；使用系统应用语言能力并允许 Activity 重建。
-24. **扫描器雷达动画**：首次无缓存扫描使用全屏雷达；已有缓存后的同步不阻塞内容。首次与手动扫描完成后仅显示扫描过滤后的成功曲目列表，自动同步不弹出。
-25. **设置与偏好存储**：使用 Preferences DataStore 管理主题、语言、Aero、淡出淡入时长、路径规则等；“重置应用配置”只恢复设置默认值，不删除播放列表、历史、缓存或物理音频。
-26. **关于页面**：展示应用版本号、开发者元数据、开源许可协议及致谢清单。
+## 硬性架构约束
 
-## 技术栈与架构设计
-- **平台基线**：`minSdk 26`，`targetSdk 36`
-- **开发语言**：Kotlin 2.x
-- **UI 框架**：Jetpack Compose, Material 3
-- **导航框架**：Jetpack Navigation 3 (`androidx.navigation3`)
-- **媒体播放引擎**：AndroidX Media3 (ExoPlayer + MediaSession + MediaLibraryService)
-- **依赖注入**：Hilt
-- **状态与架构模式**：单向数据流 (UDF), ViewModel, Kotlin Coroutines, StateFlow
-- **数据持久化**：Room 保存媒体库、播放列表、历史、隐藏状态、路径规则与播放快照；DataStore 仅保存用户设置
-- **模块结构**：首版保持单一 `:app` Gradle 模块，内部按 `core/*` 与 `feature/*` 包分层
-
-## 编码规范与约定
-- 保持严格的响应式数据流，使用 StateFlow/SharedFlow 暴露 ViewModel 状态。
-- Composable 只向 ViewModel 提交动作并观察状态；数据访问经 Repository，播放控制经 MediaController。
-- Room 是媒体库、播放列表、历史与隐藏状态的应用内事实来源；界面不得直接查询 MediaStore 或 DataStore。
+- 保持单向数据流；Composable 只提交动作并观察状态，数据访问经 Repository，播放控制经 MediaController。
+- Room 是媒体库、播放列表、历史、隐藏状态、路径规则和播放快照的应用内事实来源；界面不得直接查询 MediaStore 或 DataStore。
 - 只有 MediaLibraryService 可以持有 ExoPlayer/MediaSession；Activity 和 ViewModel 只能通过 MediaController 控制播放。
-- 严禁硬编码文本，所有界面字符串必须定义在资源文件中 (`values/strings.xml`, `values-zh-rCN/strings.xml`)。
-- 严禁在页面中硬编码圆角、间距和字号；统一通过 `MusicDimensions`、`MusicShapes`、`MusicTypography` 设计令牌读取。
-- 业务图标统一保存为 `res/drawable` 下的 Android `VectorDrawable`，按 `ic_common_*`、`ic_status_*`、`ic_navigation_*`、`ic_sidebar_*`、`ic_playback_*` 语义前缀命名；矢量路径保持中性颜色并由 `MusicTheme` 着色，资源映射集中定义，不在 Composable 中散落 `Icons.*` 或来源不明的 path 数据。
-- 可交互图标必须复用中英双语字符串提供 `contentDescription`，纯装饰图标使用 `contentDescription = null`；新增或迁移图标时同步更新 `docs/design/resource-governance.md` 和 `app/src/main/res/raw/open_source_licenses.txt`，记录上游、固定 revision、许可证与本项目修改。
-- 遵循 Android Edge-to-Edge 边到边沉浸式设计规范与 Material 3 设计指南。
-- 除启动 Activity 与受可信控制器校验的 MediaLibraryService 外，其他组件默认 `exported=false`；PendingIntent 默认不可变。
-- 测试采用“纯逻辑少量 JVM 单测 + Android Runtime 集成测试优先”：`app/src/test` 仅承载纯业务逻辑和少量 Robolectric 平台适配测试；Room、Hilt、MediaLibraryService、真实资源与应用启动集成测试归 `app/src/androidTest`，使用 `AndroidJUnit4` 与 `com.musicapp.player.HiltTestRunner`。
-- Android Runtime 集成测试包括 `MusicDatabaseMigrationTest`、`HistoryRepositoryTest`、`MediaLibraryRepositoryTest`、`PlaylistRepositoryTest`、`PlaybackSnapshotRepositoryTest`、`MediaLibrarySyncTest`、`ApplicationGraphTest`、`PlaybackServiceHiltTest`、`AboutMetadataTest`，并以 `ApplicationStartupIntegrationTest` 作为资源启动冒烟；`ProjectSmokeTest` 不再作为 JVM 冒烟。
-- CI 固定使用 JDK 17 依次执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 和有设备时的 `:app:connectedDebugAndroidTest`。无设备时可执行 `:app:assembleDebugAndroidTest` 做编译检查，但不能将其描述为已运行集成测试；完整测试规则见 [`docs/testing.md`](docs/testing.md) 与 [`docs/verification.md`](docs/verification.md)。
-- 已接受的 CI 策略见 `docs/design/design-review-09-functional-testing-and-ci.md`。
+- 界面文本必须进入双语资源；圆角、间距和字号使用设计令牌；交互图标必须提供本地化 content description。
+- 组件默认 `exported=false`，PendingIntent 默认不可变；新增资源按资源治理文档记录来源、许可证和修改。
+- 纯业务规则和少量平台适配放在 `app/src/test`；Room、Hilt、MediaLibraryService、真实资源和启动行为放在 `app/src/androidTest`。
 
-## 架构与设计参考文档 (设计规范提示词)
-- 总索引：`docs/design/design-review-index.md`
-- 首版实现规格：`docs/design/implementation-spec.md`
-- 首版短计划：`docs/plan/implementation-plan.md`
-- 首版逐过程执行计划：`docs/plan/implementation-execution-plan.md`
-- 首版开发计划：`docs/plan/implementation-wave-plan.md`
-- 侧边栏改造方案：`docs/plan/sidebar-redesign-plan.md`
-- 领域词汇：`docs/CONTEXT.md`
-- 架构决策：`docs/adr/`
-- `docs/design/design-review-01` 至 `09`、`11` 和 `12` 为已接受的首版实现约束。
+## 任务路由与验收
 
-## Codex Luna/Sol 工作流
-- 日常编码、分析、测试、审查和任务编排默认使用 `gpt-5.6-luna`；`sol_advisor` 只作为按需决策顾问，不负责常规实现。
-- `LUNA_LOCAL`：需求明确、风险可控且单线程完成更高效。
-- `LUNA_PARALLEL`：至少存在两个真正独立、文件互斥、可单独验证的任务包；每个可写文件只能分配一个负责人，由主线程整合并验收。
-- `SOL_ADVISED`：仅在架构、安全、隐私、认证授权、加密、支付、破坏性迁移、数据完整性、分布式一致性、破坏性兼容变更、强歧义、多个根因无法区分，或两次基于证据的尝试失败时使用。
-- 发送给 `sol_advisor` 的内容必须是一个明确决策问题、已有证据、约束和期望返回格式；不得让它接管整个功能或常规实现。
-- 委派给 `luna_worker` 的任务包必须写明目标、上下文、范围、排除项、约束、验收标准、精确验证命令、预期返回和升级条件。
-- 主线程必须检查实际 diff 与验证结果，不能只依据 Agent 总结接受结果；没有 Agent 活动或工具结果标识时，不得声称某个模型已经实际运行。
-- 路由指南、任务包模板和验证方法分别见 [`docs/routing-guide.md`](docs/routing-guide.md)、[`docs/task-packet.md`](docs/task-packet.md) 和 [`docs/verification.md`](docs/verification.md)。
-- 构建前看这个文档 [`docs/verification.md`](docs/verification.md)
+- 代码检索先用 CodeGraph；行为问题补读实现规格对应章节；领域命名补读 `CONTEXT.md`。
+- Android 构建、Lint、单测、Runtime 或性能任务补读验证/测试文档；性能结论必须区分静态风险、门禁结果和设备实测证据。
+- UI、自适应、Navigation 3、样式或安全任务只加载命中的项目 skill 与对应 design review，不并行加载所有 Android skill。
+- 修改前检查状态和文件所有权；修改后检查 diff、相对链接和格式，并只报告实际执行过的验证。

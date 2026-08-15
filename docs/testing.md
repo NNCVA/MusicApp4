@@ -44,32 +44,6 @@ Android Runtime 集成测试 = 在真实 Android 运行时的设备或模拟器�
 - Room Repository 测试通过 `ApplicationProvider` 获取 Context，优先使用隔离的内存数据库；每个测试类在清理阶段关闭数据库。Migration 测试使用独立数据库名称、明确添加 Migration，结束后清理数据库文件。
 - Repository 集成测试验证真实 Room/SQLite 行为和事务边界；纯业务规则仍使用 Fake 或 JVM 单测。测试数据必须在测试内创建，不能依赖设备已有媒体库或上一次测试留下的状态。
 
-## 完整验证命令
+## 验证命令
 
-以下命令使用 JDK 17。PowerShell 中将 `./gradlew` 替换为 `.\gradlew.bat` 即可；设备命令要求已有可用的 Android 模拟器或连接设备。
-
-先运行 JVM、Lint 和 Debug 构建门禁：
-
-```bash
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
-```
-
-再运行 Android Runtime 集成测试：
-
-```bash
-./gradlew :app:connectedDebugAndroidTest --console=plain
-```
-
-CI 在有设备时按同一顺序执行完整门禁：
-
-```bash
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:connectedDebugAndroidTest --console=plain
-```
-
-没有设备或模拟器时，只能执行 Android 测试编译检查：
-
-```bash
-./gradlew :app:assembleDebugAndroidTest --console=plain
-```
-
-`assembleDebugAndroidTest` 只证明 instrumentation 测试 APK 可以编译，不能记录为已运行 Android Runtime 集成测试，也不能替代 `connectedDebugAndroidTest` 的 CI 结果。报告验证时分别记录 JVM、Lint、Debug 构建、Android Runtime 运行和无设备编译检查的结果。
+环境选择、Gradle 命令、设备要求、无设备回退和结果报告统一见 [`verification.md`](verification.md)。本文件只维护测试分层、目录归属、Runner、Room/Hilt 边界，不复制门禁命令。
