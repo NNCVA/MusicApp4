@@ -60,7 +60,7 @@ MusicApp 是一款使用 Kotlin 与 Jetpack Compose 构建的现代化 Android �
 
 ## 构建与运行
 
-准备 JDK 17、Android SDK 36 与 Android Studio 后，在仓库根目录执行：
+准备符合项目 Gradle 与 Android SDK 配置的 JDK、Android Studio 后，在仓库根目录执行；本机环境与版本以 [`docs/verification.md`](docs/verification.md) 和项目配置为准：
 
 ```bash
 ./gradlew :app:assembleDebug
@@ -82,20 +82,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## 质量验证
 
-项目 CI 固定使用 JDK 17，先执行纯逻辑 JVM 单测、Lint 和 Debug 构建，再在已连接设备或启动模拟器上执行 Android Runtime 集成测试：
-
-```bash
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
-./gradlew :app:connectedDebugAndroidTest --console=plain
-```
-
-无设备时可执行以下 Android 测试 APK 编译检查，但它不等价于集成测试运行：
-
-```bash
-./gradlew :app:assembleDebugAndroidTest --console=plain
-```
-
-视觉与完整交互验收仍由人工执行；测试分层、Runner 规则和回退方式见 [`docs/testing.md`](docs/testing.md)。
+完整的 JVM、Lint、Debug 构建、Android Runtime、无设备编译检查、Runner 规则和回退方式统一见 [`docs/verification.md`](docs/verification.md) 与 [`docs/testing.md`](docs/testing.md)。README 不重复维护门禁命令，避免环境快照和验证口径漂移。
 
 ## 项目结构
 

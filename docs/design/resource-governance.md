@@ -70,6 +70,44 @@
 
 修改：迁移到 `app/src/main/res/drawable/ic_playlist_album.xml`；path 数据未改。
 
+## 项目作者自制/用户提供资源（MusicApp2 中间存放证据）
+
+中间存放仓库：`https://github.com/NNCVA/MusicApp2.git`
+
+固定 revision：`f18fbf683d6e2854d14b1e415cc18732a0b09694`
+
+MusicApp2 仅作为本次资源的中间存放仓库及固定 revision 证据，不作为第三方作者、上游来源或许可证授予方。
+
+作者/提供方：本次迁移的两个资源基本由项目作者本人制作并由用户提供。中间来源文件未附独立的文件级来源、作者或许可证声明；根据用户确认，资源归类为项目作者自制/用户提供资源。
+
+许可证状态：未发现独立第三方许可证；本项目获得用户提供的使用授权。`MusicApp2/META-INF/LICENSE` 不归因于这两个资源，也不作为它们的许可证证据。
+
+| MusicApp 资源 | MusicApp2 中间来源文件 | 资源核验 | 本项目修改 |
+|---|---|---|---|
+| `app/src/main/res/drawable/ic_sidebar_scan.xml` | `app/src/main/res/drawable/ic_scan.xml` | 项目作者自制/用户提供；未发现独立第三方许可证 | scan path 迁移到 `ic_sidebar_scan.xml` |
+| `app/src/main/res/mipmap/music2.png` | `app/src/main/res/mipmap/music2.png` | 项目作者自制/用户提供；512×512 RGBA；SHA-256 `BC894A878D68E0CEE2DE0CD3FF770B0E346671502227DFB7F798401FD953220E`；未发现独立第三方许可证 | PNG 原始二进制复制；Manifest 改用 `@mipmap/music2` |
+
+## MusicApp 自有状态资源
+
+来源：MusicApp 项目内原创；无第三方上游或中间来源。
+
+许可证：随 MusicApp 项目代码发布；不包含第三方版权材料。
+
+| MusicApp 资源 | 用途 | 修改 |
+|---|---|---|
+| `ic_status_empty_playlist.xml` | 歌单页面无歌单时的居中空态插画 | 使用三个中性几何面构成打开的空盒图形，并由 `MusicTheme` 着色 |
+
+## MusicApp 自有界面资源
+
+来源：MusicApp 项目内原创；无第三方上游、无中间仓库与固定 revision。
+
+许可证：随 MusicApp 项目代码发布；不包含第三方版权材料。
+
+| MusicApp 资源 | 用途 | 修改 |
+|---|---|---|
+| `ic_common_storage.xml` | 文件夹一级页存储卷卡片的存储卷图标 | 以中性描边和路径绘制存储卷轮廓，保存为 Android `VectorDrawable` 并由 `MusicTheme` 着色 |
+| `ic_common_folder.xml` | 文件夹一级快捷项与纯中间目录卡片的文件夹图标 | 以中性描边绘制文件夹轮廓，保存为 Android `VectorDrawable` 并由 `MusicTheme` 着色 |
+
 ## 明确排除
 
 - SaltUI 的二维码、认证、密码可见性图标当前没有 MusicApp 业务用途。

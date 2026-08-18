@@ -6,6 +6,7 @@ import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.media.MediaAudioCandidate
+import com.musicapp.player.core.metadata.ArtworkImage
 import com.musicapp.player.core.metadata.ArtworkRepository
 import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.playback.PlaybackControllerFacade
@@ -23,10 +24,14 @@ import com.musicapp.player.fakes.FakeClock
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
@@ -35,9 +40,11 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -105,6 +112,96 @@ class TracksViewModelTest {
     }
 
     @Test
+    fun `cached tracks stay visible while the library flow restarts`() = runTest(dispatcher) {
+        val tracks = listOf(track(1, title = "Cached"))
+        val repository = RestartingMediaLibraryRepository(tracks)
+        val viewModel = subject(repository = repository)
+        val firstCollector =
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.uiState.collect {}
+            }
+        viewModel.uiState.first { it.isLibraryLoaded }
+
+        firstCollector.cancelAndJoin()
+        testScheduler.advanceTimeBy(5_001)
+        testScheduler.runCurrent()
+        repository.firstCollectionStopped.await()
+
+        val resumedStates = mutableListOf<TracksUiState>()
+        val resumedCollector =
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.uiState.collect(resumedStates::add)
+            }
+        repository.secondCollectionStarted.await()
+        testScheduler.runCurrent()
+
+        assertTrue(resumedStates.isNotEmpty())
+        assertTrue(resumedStates.all { it.isLibraryLoaded && it.tracks == tracks })
+        resumedCollector.cancelAndJoin()
+        testScheduler.advanceTimeBy(5_001)
+        testScheduler.runCurrent()
+        repository.secondCollectionStopped.await()
+    }
+
+    @Test
+    fun `artwork completion keeps the sorted track list reference`() = runTest(dispatcher) {
+        val track = track(1, title = "Artwork")
+        val artwork =
+            ArtworkResult.Embedded(
+                ArtworkImage(width = 1, height = 1, argbPixels = intArrayOf(0xFF112233.toInt())),
+            )
+        val viewModel =
+            subject(
+                tracks = listOf(track),
+                artworkRepository = ImmediateArtworkRepository(artwork),
+            )
+        collectState(viewModel)
+        val sortedTracks = viewModel.uiState.value.tracks
+
+        viewModel.requestArtwork(track)
+        val updated = viewModel.uiState.first { it.artworkByTrackId[track.id]?.artwork === artwork }
+
+        assertSame(sortedTracks, updated.tracks)
+    }
+
+    @Test
+    fun `concurrent artwork requests load the same track once`() = runTest(dispatcher) {
+        val track = track(1, title = "Artwork")
+        val artworkRepository = SuspendingArtworkRepository()
+        val viewModel = subject(tracks = listOf(track), artworkRepository = artworkRepository)
+        collectState(viewModel)
+
+        val first = launch { viewModel.requestArtwork(track) }
+        val duplicate = launch { viewModel.requestArtwork(track) }
+        testScheduler.runCurrent()
+
+        assertEquals(1, artworkRepository.requestCount)
+        artworkRepository.result.complete(ArtworkResult.Placeholder)
+        testScheduler.advanceUntilIdle()
+        first.join()
+        duplicate.join()
+        assertEquals(1, artworkRepository.requestCount)
+    }
+
+    @Test
+    fun `cancelled artwork request can retry when the row returns`() = runTest(dispatcher) {
+        val track = track(1, title = "Artwork")
+        val artworkRepository = CancellableArtworkRepository()
+        val viewModel = subject(tracks = listOf(track), artworkRepository = artworkRepository)
+        collectState(viewModel)
+
+        val first = launch { viewModel.requestArtwork(track) }
+        testScheduler.runCurrent()
+        assertEquals(1, artworkRepository.requestCount)
+        first.cancelAndJoin()
+
+        val retry = launch { viewModel.requestArtwork(track) }
+        testScheduler.runCurrent()
+        assertEquals(2, artworkRepository.requestCount)
+        retry.cancelAndJoin()
+    }
+
+    @Test
     fun `all sort fields use defaults toggle and restore through saved state`() = runTest(dispatcher) {
         val savedState = SavedStateHandle()
         val tracks =
@@ -117,24 +214,38 @@ class TracksViewModelTest {
         collectState(first)
         assertEquals(listOf(2L, 3L, 1L), first.uiState.value.tracks.map { it.id.mediaStoreId })
         first.selectSort(TrackSortField.ARTIST)
-        testScheduler.runCurrent()
-        assertEquals(listOf(1L, 3L, 2L), first.uiState.value.tracks.map { it.id.mediaStoreId })
+        assertEquals(
+            listOf(1L, 3L, 2L),
+            first.awaitSort(TrackSort(TrackSortField.ARTIST, TrackSortDirection.ASCENDING))
+                .tracks.map { it.id.mediaStoreId },
+        )
         first.selectSort(TrackSortField.ALBUM)
-        testScheduler.runCurrent()
-        assertEquals(listOf(2L, 1L, 3L), first.uiState.value.tracks.map { it.id.mediaStoreId })
+        assertEquals(
+            listOf(2L, 1L, 3L),
+            first.awaitSort(TrackSort(TrackSortField.ALBUM, TrackSortDirection.ASCENDING))
+                .tracks.map { it.id.mediaStoreId },
+        )
         first.selectSort(TrackSortField.DATE_ADDED)
-        testScheduler.runCurrent()
-        assertEquals(listOf(2L, 3L, 1L), first.uiState.value.tracks.map { it.id.mediaStoreId })
+        assertEquals(
+            listOf(2L, 3L, 1L),
+            first.awaitSort(TrackSort(TrackSortField.DATE_ADDED, TrackSortDirection.DESCENDING))
+                .tracks.map { it.id.mediaStoreId },
+        )
         first.selectSort(TrackSortField.DURATION)
-        testScheduler.runCurrent()
-        assertEquals(listOf(2L, 3L, 1L), first.uiState.value.tracks.map { it.id.mediaStoreId })
+        assertEquals(
+            listOf(2L, 3L, 1L),
+            first.awaitSort(TrackSort(TrackSortField.DURATION, TrackSortDirection.ASCENDING))
+                .tracks.map { it.id.mediaStoreId },
+        )
         first.selectSort(TrackSortField.DURATION)
-        testScheduler.runCurrent()
-        assertEquals(listOf(1L, 3L, 2L), first.uiState.value.tracks.map { it.id.mediaStoreId })
+        assertEquals(
+            listOf(1L, 3L, 2L),
+            first.awaitSort(TrackSort(TrackSortField.DURATION, TrackSortDirection.DESCENDING))
+                .tracks.map { it.id.mediaStoreId },
+        )
 
         val restored = subject(tracks, savedState = savedState)
         collectState(restored)
-        testScheduler.runCurrent()
         assertEquals(TrackSort(TrackSortField.DURATION, TrackSortDirection.DESCENDING), restored.uiState.value.sort)
         assertEquals(listOf(1L, 3L, 2L), restored.uiState.value.tracks.map { it.id.mediaStoreId })
     }
@@ -186,7 +297,7 @@ class TracksViewModelTest {
         viewModel.toggleSelection(track.id)
         testScheduler.runCurrent()
         delegate.setHidden(track.id, hidden = true, changedAtMs = 1)
-        testScheduler.runCurrent()
+        viewModel.uiState.first { it.isLibraryLoaded && it.tracks.isEmpty() }
 
         assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
         assertFalse(viewModel.onBack())
@@ -326,10 +437,13 @@ class TracksViewModelTest {
         assertEquals(second.id, playbackController.context?.selectedTrackId)
     }
 
-    private fun kotlinx.coroutines.test.TestScope.collectState(viewModel: TracksViewModel) {
+    private suspend fun kotlinx.coroutines.test.TestScope.collectState(viewModel: TracksViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
-        testScheduler.runCurrent()
+        viewModel.uiState.first { it.isLibraryLoaded }
     }
+
+    private suspend fun TracksViewModel.awaitSort(expected: TrackSort): TracksUiState =
+        uiState.first { it.isLibraryLoaded && it.sort == expected }
 
     private fun subject(
         tracks: List<Track> = emptyList(),
@@ -355,6 +469,7 @@ class TracksViewModelTest {
                         clock = clock,
                     ),
             artworkRepository = artworkRepository,
+            computationDispatcher = dispatcher,
         )
     }
 
@@ -401,6 +516,65 @@ class TracksViewModelTest {
             displayName = "$title.mp3",
         )
 
+}
+
+private class ImmediateArtworkRepository(
+    private val result: ArtworkResult,
+) : ArtworkRepository {
+    override suspend fun artwork(track: Track, targetPx: Int): ArtworkResult = result
+}
+
+private class SuspendingArtworkRepository : ArtworkRepository {
+    var requestCount: Int = 0
+        private set
+    val result = CompletableDeferred<ArtworkResult>()
+
+    override suspend fun artwork(track: Track, targetPx: Int): ArtworkResult {
+        requestCount += 1
+        return result.await()
+    }
+}
+
+private class CancellableArtworkRepository : ArtworkRepository {
+    var requestCount: Int = 0
+        private set
+
+    override suspend fun artwork(track: Track, targetPx: Int): ArtworkResult {
+        requestCount += 1
+        awaitCancellation()
+    }
+}
+
+private class RestartingMediaLibraryRepository(
+    private val tracks: List<Track>,
+    delegate: MediaLibraryRepository = FakeMediaLibraryRepository(tracks),
+) : MediaLibraryRepository by delegate {
+    private val collectionCount = AtomicInteger()
+    val firstCollectionStopped = CompletableDeferred<Unit>()
+    val secondCollectionStarted = CompletableDeferred<Unit>()
+    val secondCollectionStopped = CompletableDeferred<Unit>()
+
+    override fun observeTracks(includeHidden: Boolean): Flow<List<Track>> =
+        flow {
+            when (collectionCount.incrementAndGet()) {
+                1 -> {
+                    try {
+                        emit(tracks)
+                        awaitCancellation()
+                    } finally {
+                        firstCollectionStopped.complete(Unit)
+                    }
+                }
+                else -> {
+                    try {
+                        secondCollectionStarted.complete(Unit)
+                        awaitCancellation()
+                    } finally {
+                        secondCollectionStopped.complete(Unit)
+                    }
+                }
+            }
+        }
 }
 
 private class RecordingBatchTrackActionExecutor(

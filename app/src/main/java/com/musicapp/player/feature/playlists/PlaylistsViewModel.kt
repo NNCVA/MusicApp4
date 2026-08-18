@@ -2,10 +2,13 @@ package com.musicapp.player.feature.playlists
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.metadata.ArtworkRepository
+import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class PlaylistOperationMessage {
@@ -31,6 +35,7 @@ enum class PlaylistOperationMessage {
 data class PlaylistsUiState(
     val playlists: List<Playlist> = emptyList(),
     val operationMessage: PlaylistOperationMessage? = null,
+    val artworkByPlaylistId: Map<Long, ArtworkResult> = emptyMap(),
 )
 
 data class PlaylistDetailUiState(
@@ -52,12 +57,71 @@ val PlaylistDetailUiState.selectedTrackIdsInOrder: List<TrackId>
 class PlaylistsViewModel @Inject constructor(
     repository: PlaylistRepository,
     private val useCase: PlaylistUseCase,
+    private val mediaLibraryRepository: MediaLibraryRepository,
+    private val artworkRepository: ArtworkRepository,
 ) : ViewModel() {
     private val operationMessage = MutableStateFlow<PlaylistOperationMessage?>(null)
+    private val artworkCache = MutableStateFlow<Map<Long, PlaylistArtworkState>>(emptyMap())
+    private val playlists = repository.observePlaylists()
 
     val uiState: StateFlow<PlaylistsUiState> =
-        combine(repository.observePlaylists(), operationMessage, ::PlaylistsUiState)
+        combine(playlists, operationMessage, artworkCache) { currentPlaylists, message, cachedArtwork ->
+            val visiblePlaylistIds = currentPlaylists.mapTo(hashSetOf()) { it.id.value }
+            PlaylistsUiState(
+                playlists = currentPlaylists,
+                operationMessage = message,
+                artworkByPlaylistId = cachedArtwork
+                    .filterKeys(visiblePlaylistIds::contains)
+                    .mapValues { (_, state) -> state.artwork },
+            )
+        }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlaylistsUiState())
+
+    fun requestArtwork(playlist: Playlist) {
+        viewModelScope.launch {
+            val track = findLastAvailableTrack(playlist.trackIds)
+            val key = PlaylistArtworkKey(track?.id, track?.dateModifiedMs)
+            var shouldLoad = false
+            artworkCache.update { cached ->
+                val current = cached[playlist.id.value]
+                if (current?.key == key) {
+                    cached
+                } else {
+                    shouldLoad = true
+                    cached +
+                        (
+                            playlist.id.value to
+                                PlaylistArtworkState(
+                                    key = key,
+                                    artwork = ArtworkResult.Placeholder,
+                                )
+                            )
+                }
+            }
+            if (!shouldLoad) return@launch
+
+            val result =
+                if (track == null) {
+                    ArtworkResult.Placeholder
+                } else {
+                    try {
+                        artworkRepository.artwork(track, PLAYLIST_ARTWORK_TARGET_PX)
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
+                    } catch (_: Exception) {
+                        ArtworkResult.Placeholder
+                    }
+                }
+            artworkCache.update { cached ->
+                val current = cached[playlist.id.value]
+                if (current?.key == key) {
+                    cached + (playlist.id.value to current.copy(artwork = result))
+                } else {
+                    cached
+                }
+            }
+        }
+    }
 
     fun create(rawName: String) = mutate(PlaylistOperationMessage.CREATED) { useCase.create(rawName) }
 
@@ -84,6 +148,31 @@ class PlaylistsViewModel @Inject constructor(
                 }
         }
     }
+
+    private suspend fun findLastAvailableTrack(trackIds: List<TrackId>): Track? {
+        for (trackId in trackIds.asReversed()) {
+            val track =
+                try {
+                    mediaLibraryRepository.getTrack(trackId)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    null
+                }
+            if (track?.availability == Availability.AVAILABLE) return track
+        }
+        return null
+    }
+
+    private data class PlaylistArtworkKey(
+        val trackId: TrackId?,
+        val dateModifiedMs: Long?,
+    )
+
+    private data class PlaylistArtworkState(
+        val key: PlaylistArtworkKey,
+        val artwork: ArtworkResult,
+    )
 }
 
 @HiltViewModel
@@ -197,6 +286,7 @@ class PlaylistDetailViewModel @Inject constructor(
 }
 
 private const val STOP_TIMEOUT_MS = 5_000L
+private const val PLAYLIST_ARTWORK_TARGET_PX = 512
 
 private data class PlaylistDetailControls(
     val selectedTrackIds: Set<TrackId>,

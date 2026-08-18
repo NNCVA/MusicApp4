@@ -85,6 +85,46 @@ Bundled visual asset notices:
   MusicApp use: unified fallback placeholder for album, track, artist, and player artwork.
   Modifications: path data unchanged during migration.
 
+- `ic_sidebar_scan.xml` and `music2.png`, project-authored/user-provided resources.
+  Intermediate storage repository: https://github.com/NNCVA/MusicApp2.git
+  Fixed revision: f18fbf683d6e2854d14b1e415cc18732a0b09694.
+  Intermediate source files: `app/src/main/res/drawable/ic_scan.xml` and
+  `app/src/main/res/mipmap/music2.png`, respectively.
+  Authorship/provider: project author self-made and user-provided (user-confirmed).
+  The intermediate files have no independent file-level source, author, or
+  license declaration. License status: no independent third-party license was
+  found; MusicApp has usage authorization provided by the user. MusicApp2 is
+  recorded only as the intermediate storage repository and fixed-revision
+  evidence, not as a third-party source or licensor.
+  MusicApp2/META-INF/LICENSE is not attributed to either resource and is not
+  treated as evidence of either resource's license.
+  Modifications: `ic_scan.xml` scan path was migrated to
+  `app/src/main/res/drawable/ic_sidebar_scan.xml`; `music2.png` was copied as
+  the original PNG binary, with the manifest changed to `@mipmap/music2`.
+  `music2.png` is 512x512 RGBA; SHA-256:
+  BC894A878D68E0CEE2DE0CD3FF770B0E346671502227DFB7F798401FD953220E.
+
+- `ic_status_empty_playlist.xml` empty-playlist status artwork.
+  Source: original MusicApp project artwork; no third-party upstream or copyright
+  material.
+  License: distributed as part of the MusicApp project.
+  Modifications: three neutral geometric faces form an open-box illustration and
+  are tinted by MusicTheme at runtime.
+
+- `ic_common_storage.xml` storage-volume outline icon.
+  Source: original MusicApp project artwork; no third-party upstream, intermediate
+  repository, fixed revision, or copyright material is used.
+  License: distributed as part of the MusicApp project.
+  Modifications: authored as a neutral Android VectorDrawable outline/path and
+  tinted by MusicTheme at runtime.
+
+- `ic_common_folder.xml` folder outline icon.
+  Source: original MusicApp project artwork; no third-party upstream, intermediate
+  repository, fixed revision, or copyright material is used.
+  License: distributed as part of the MusicApp project.
+  Modifications: authored as a neutral Android VectorDrawable outline/path and
+  tinted by MusicTheme at runtime.
+
 The complete common license text follows. Component-specific NOTICE attribution is retained above.
 
 Apache License
