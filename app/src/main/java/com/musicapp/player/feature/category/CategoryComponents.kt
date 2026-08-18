@@ -26,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
@@ -73,7 +72,6 @@ fun CategoryHeader(
     onBack: (() -> Unit)? = null,
     navigationAction: CategoryNavigationAction? = null,
     onNavigationClick: () -> Unit = {},
-    titleStyle: TextStyle = MusicTheme.typography.headlineMedium,
     trailingContent: @Composable () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
@@ -84,11 +82,7 @@ fun CategoryHeader(
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
     ) {
         when {
-            onBack != null ->
-                CategoryNavigationIconButton(
-                    action = CategoryNavigationAction.BACK,
-                    onClick = onBack,
-                )
+            onBack != null -> TextButton(onClick = onBack) { Text(stringResource(R.string.category_back)) }
             policy == WindowLayoutPolicy.COMPACT_DRAWER && navigationAction != null ->
                 CategoryNavigationIconButton(
                     action = navigationAction,
@@ -97,7 +91,7 @@ fun CategoryHeader(
         }
         Text(
             text = title,
-            style = titleStyle,
+            style = MusicTheme.typography.headlineMedium,
             color = MusicTheme.colors.onSurface,
             modifier = Modifier.weight(1f),
             maxLines = 1,

@@ -22,23 +22,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 
 enum class TrackSortField {
     TITLE,
@@ -85,86 +77,57 @@ data class TracksUiState(
 }
 
 @HiltViewModel
-class TracksViewModel internal constructor(
+class TracksViewModel @Inject constructor(
     private val mediaLibraryRepository: MediaLibraryRepository,
     playlistRepository: PlaylistRepository,
     private val savedStateHandle: SavedStateHandle,
     private val playbackController: PlaybackControllerFacade,
     private val batchActionExecutor: BatchTrackActionExecutor,
     private val artworkRepository: ArtworkRepository,
-    private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
-    @Inject
-    constructor(
-        mediaLibraryRepository: MediaLibraryRepository,
-        playlistRepository: PlaylistRepository,
-        savedStateHandle: SavedStateHandle,
-        playbackController: PlaybackControllerFacade,
-        batchActionExecutor: BatchTrackActionExecutor,
-        artworkRepository: ArtworkRepository,
-    ) : this(
-        mediaLibraryRepository = mediaLibraryRepository,
-        playlistRepository = playlistRepository,
-        savedStateHandle = savedStateHandle,
-        playbackController = playbackController,
-        batchActionExecutor = batchActionExecutor,
-        artworkRepository = artworkRepository,
-        computationDispatcher = Dispatchers.Default,
-    )
-
     private val sort = MutableStateFlow(restoreSort(savedStateHandle))
     private val selectedTrackIds = MutableStateFlow<Set<TrackId>>(emptySet())
     private val batchResult = MutableStateFlow<BatchTrackActionResult?>(null)
     private val isBatchActionRunning = MutableStateFlow(false)
     private val artworkByTrackId = MutableStateFlow<Map<TrackId, TrackArtworkState>>(emptyMap())
-    private val artworkRequestMutex = Mutex()
-    private val activeArtworkRequests = mutableMapOf<TrackId, ActiveArtworkRequest>()
 
     private val libraryState =
         mediaLibraryRepository.observeTracks()
             .map { tracks -> TracksLibraryState(tracks = tracks, isLoaded = true) }
+            .onStart { emit(TracksLibraryState()) }
 
     private val playlists =
         playlistRepository.observePlaylists()
             .onStart { emit(emptyList()) }
 
-    private val sortedTracksState =
-        combine(libraryState, sort) { library, currentSort ->
-            val sortedTracks = library.tracks.sortedWith(currentSort.comparator())
-            SortedTracksState(
-                tracks = sortedTracks,
-                visibleTrackIds = sortedTracks.mapTo(hashSetOf(), Track::id),
-                isLibraryLoaded = library.isLoaded,
-                sort = currentSort,
-            )
-        }.flowOn(computationDispatcher)
-
     private val presentationState =
         combine(
+            sort,
             selectedTrackIds,
             batchResult,
             isBatchActionRunning,
-        ) { selected, result, isRunning ->
-            TracksPresentationState(selected, result, isRunning)
+        ) { currentSort, selected, result, isRunning ->
+            TracksPresentationState(currentSort, selected, result, isRunning)
         }
 
     val uiState: StateFlow<TracksUiState> =
         combine(
-            sortedTracksState,
+            libraryState,
             playlists,
             presentationState,
             artworkByTrackId,
-        ) { sortedTracks, playlists, presentation, artwork ->
+        ) { library, playlists, presentation, artwork ->
+            val tracks = library.tracks
+            val sortedTracks = tracks.sortedWith(presentation.sort.comparator())
+            val visibleTrackIds = tracks.mapTo(hashSetOf(), Track::id)
             TracksUiState(
-                tracks = sortedTracks.tracks,
-                isLibraryLoaded = sortedTracks.isLibraryLoaded,
-                artworkByTrackId = artwork.filterKeys { it in sortedTracks.visibleTrackIds },
+                tracks = sortedTracks,
+                isLibraryLoaded = library.isLoaded,
+                artworkByTrackId = artwork.filterKeys { it in visibleTrackIds },
                 playlists = playlists,
-                sort = sortedTracks.sort,
+                sort = presentation.sort,
                 selectedTrackIds =
-                    presentation.selectedTrackIds.filterTo(linkedSetOf()) {
-                        it in sortedTracks.visibleTrackIds
-                    },
+                    presentation.selectedTrackIds.filterTo(linkedSetOf()) { it in visibleTrackIds },
                 batchResult = presentation.batchResult,
                 isBatchActionRunning = presentation.isBatchActionRunning,
             )
@@ -235,97 +198,42 @@ class TracksViewModel internal constructor(
         )
     }
 
-    suspend fun requestArtwork(track: Track) {
-        while (true) {
-            when (val claim = claimArtworkRequest(track)) {
-                ArtworkRequestClaim.Cached -> return
-                is ArtworkRequestClaim.Await -> {
-                    if (claim.completion.await() == ArtworkRequestOutcome.FINISHED) return
-                }
-                is ArtworkRequestClaim.Load -> {
-                    try {
-                        val result =
-                            try {
-                                artworkRepository.artwork(track, ARTWORK_TARGET_PX)
-                            } catch (cancellation: CancellationException) {
-                                throw cancellation
-                            } catch (_: Throwable) {
-                                ArtworkResult.Placeholder
-                            }
-                        finishArtworkRequest(claim.request, result)
-                        return
-                    } catch (cancellation: CancellationException) {
-                        cancelArtworkRequest(claim.request)
-                        throw cancellation
-                    }
-                }
+    fun requestArtwork(track: Track) {
+        var shouldLoad = false
+        artworkByTrackId.update { cached ->
+            val current = cached[track.id]
+            if (current?.dateModifiedMs == track.dateModifiedMs) {
+                cached
+            } else {
+                shouldLoad = true
+                cached +
+                    (
+                        track.id to
+                            TrackArtworkState(
+                                dateModifiedMs = track.dateModifiedMs,
+                                artwork = ArtworkResult.Placeholder,
+                            )
+                        )
             }
         }
-    }
+        if (!shouldLoad) return
 
-    private suspend fun claimArtworkRequest(track: Track): ArtworkRequestClaim =
-        artworkRequestMutex.withLock {
-            activeArtworkRequests[track.id]
-                ?.takeIf { it.dateModifiedMs == track.dateModifiedMs }
-                ?.let { return@withLock ArtworkRequestClaim.Await(it.completion) }
-            if (artworkByTrackId.value[track.id]?.dateModifiedMs == track.dateModifiedMs) {
-                return@withLock ArtworkRequestClaim.Cached
-            }
-
-            val loadingState =
-                TrackArtworkState(
-                    dateModifiedMs = track.dateModifiedMs,
-                    artwork = ArtworkResult.Placeholder,
-                )
-            val request =
-                ActiveArtworkRequest(
-                    trackId = track.id,
-                    dateModifiedMs = track.dateModifiedMs,
-                    loadingState = loadingState,
-                )
-            activeArtworkRequests[track.id] = request
-            artworkByTrackId.value = artworkByTrackId.value + (track.id to loadingState)
-            ArtworkRequestClaim.Load(request)
-        }
-
-    private suspend fun finishArtworkRequest(
-        request: ActiveArtworkRequest,
-        result: ArtworkResult,
-    ) {
-        withContext(NonCancellable) {
-            artworkRequestMutex.withLock {
-                if (activeArtworkRequests[request.trackId] === request) {
-                    activeArtworkRequests.remove(request.trackId)
-                    artworkByTrackId.update { cached ->
-                        if (cached[request.trackId] === request.loadingState) {
-                            cached + (request.trackId to request.loadingState.copy(artwork = result))
-                        } else {
-                            cached
-                        }
-                    }
+        viewModelScope.launch {
+            val result =
+                try {
+                    artworkRepository.artwork(track, ARTWORK_TARGET_PX)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Throwable) {
+                    ArtworkResult.Placeholder
                 }
-                request.completion.complete(ArtworkRequestOutcome.FINISHED)
-            }
-        }
-    }
-
-    private suspend fun cancelArtworkRequest(request: ActiveArtworkRequest) {
-        withContext(NonCancellable) {
-            artworkRequestMutex.withLock {
-                val ownsRequestSlot = activeArtworkRequests[request.trackId] === request
-                if (ownsRequestSlot) {
-                    activeArtworkRequests.remove(request.trackId)
-                    artworkByTrackId.update { cached ->
-                        if (cached[request.trackId] === request.loadingState) {
-                            cached - request.trackId
-                        } else {
-                            cached
-                        }
-                    }
+            artworkByTrackId.update { cached ->
+                val current = cached[track.id]
+                if (current?.dateModifiedMs == track.dateModifiedMs) {
+                    cached + (track.id to current.copy(artwork = result))
+                } else {
+                    cached
                 }
-                request.completion.complete(
-                    if (ownsRequestSlot) ArtworkRequestOutcome.RETRY else ArtworkRequestOutcome.FINISHED,
-                )
             }
         }
     }
@@ -416,6 +324,7 @@ class TracksViewModel internal constructor(
 }
 
 private data class TracksPresentationState(
+    val sort: TrackSort,
     val selectedTrackIds: Set<TrackId>,
     val batchResult: BatchTrackActionResult?,
     val isBatchActionRunning: Boolean,
@@ -425,33 +334,6 @@ private data class TracksLibraryState(
     val tracks: List<Track> = emptyList(),
     val isLoaded: Boolean = false,
 )
-
-private data class SortedTracksState(
-    val tracks: List<Track>,
-    val visibleTrackIds: Set<TrackId>,
-    val isLibraryLoaded: Boolean,
-    val sort: TrackSort,
-)
-
-private data class ActiveArtworkRequest(
-    val trackId: TrackId,
-    val dateModifiedMs: Long,
-    val loadingState: TrackArtworkState,
-    val completion: CompletableDeferred<ArtworkRequestOutcome> = CompletableDeferred(),
-)
-
-private sealed interface ArtworkRequestClaim {
-    data object Cached : ArtworkRequestClaim
-
-    data class Await(val completion: CompletableDeferred<ArtworkRequestOutcome>) : ArtworkRequestClaim
-
-    data class Load(val request: ActiveArtworkRequest) : ArtworkRequestClaim
-}
-
-private enum class ArtworkRequestOutcome {
-    FINISHED,
-    RETRY,
-}
 
 data class TrackArtworkState(
     val dateModifiedMs: Long,

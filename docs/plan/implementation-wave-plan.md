@@ -1,8 +1,8 @@
 # MusicApp 首版开发 Wave Plan
 
-状态：历史范围与依赖基线（2026-07-29）；当前实现状态以代码和实现规格为准。
+状态：可执行（2026-07-29）
 
-本文保留 Wave 范围、依赖图与需求映射；实际执行顺序和验证规则以 [`implementation-execution-plan.md`](implementation-execution-plan.md) 与 [`../verification.md`](../verification.md) 为准。
+本文保留 Wave 范围、依赖图与需求映射；实际执行顺序和逐过程验证以 [`implementation-execution-plan.md`](implementation-execution-plan.md) 为准。
 
 ## 1. 执行原则
 
@@ -11,7 +11,8 @@
 - 每个页面在所属 Wave 同步交付语义标签、`48 dp` 点击目标和设计令牌。
 - Room Schema、Repository 接口、MediaController 命令、Route Key 和设计令牌一旦被下游使用，只能兼容扩展；破坏性变更必须在同一 Wave 内完成迁移。
 - 单个 Wave 可在冻结接口后并行实现互不重叠的包；共享 Gradle、Manifest、数据库 Schema、字符串资源和导航协议由一个所有者串行维护。
-- 每个 Wave 结束按 [`../verification.md`](../verification.md) 的分层规则记录 JVM、Lint、Debug 构建和设备侧结果。
+- 每个 Wave 结束固定使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，并在有设备时执行 `:app:connectedDebugAndroidTest`。
+- 无设备时可执行 `:app:assembleDebugAndroidTest` 做 Android 测试编译检查；它不等价于 Runtime 集成测试，也不构成其运行结果。
 
 ## 2. 依赖图
 
@@ -43,13 +44,14 @@ flowchart LR
 - 接入 Hilt、Room、DataStore、Media3、Lifecycle/ViewModel、协程与所需图片/元数据能力。
 - 建立 English、简体中文资源目录和字符串一致性检查。
 - 配置 JUnit4、coroutines-test、Turbine、Room Schema 导出与 Fake 目录。
-- 配置 CI；具体 JVM、Lint、Debug 构建和设备侧门禁以 [`../verification.md`](../verification.md) 为准。
+- 配置 JDK 17 CI，固定 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，并在设备可用时追加 `:app:connectedDebugAndroidTest`。
 - 配置备份规则骨架与 Lint。
 - 建立 `MusicApplication`、Hilt 测试 Application、可替换时钟与随机源。
 
 ### 门禁
 
-- 测试分层和 Android Runtime 冒烟归属以 [`../testing.md`](../testing.md) 为准，不以 JVM 空任务作为完成证据。
+- `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 可执行；设备可用时 `:app:connectedDebugAndroidTest` 可执行。
+- `testDebugUnitTest` 包含纯逻辑/Robolectric 测试；`ApplicationStartupIntegrationTest` 在 Android Runtime 中承担资源启动冒烟，不以 JVM 空任务作为完成证据。
 - Room Schema 导出配置有效；v1 Schema 在 Wave 1 创建实体后生成。
 
 ## 4. Wave 1：领域、Room 与设置事实来源
@@ -260,7 +262,10 @@ Wave 0–7 全部完成。
 
 ### 最终门禁
 
-按 [`../verification.md`](../verification.md) 的分层规则分别记录 JVM、Lint、Debug 构建、Android Runtime 和无设备测试编译检查结果。
+- JDK 17 下执行 `:app:testDebugUnitTest`。
+- JDK 17 下执行 `:app:lintDebug`。
+- JDK 17 下执行 `:app:assembleDebug`。
+- 有设备时执行 `:app:connectedDebugAndroidTest`；无设备时只能执行 `:app:assembleDebugAndroidTest` 编译检查，并单独记录未运行设备集成测试。
 
 ## 12. 需求到 Wave 的映射
 

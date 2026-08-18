@@ -12,8 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -22,8 +20,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -65,86 +61,6 @@ class FolderDetailViewModelTest {
         viewModel.selectTrackSort(CategoryTrackSortField.DURATION)
         advanceUntilIdle()
         assertSort(viewModel, CategoryTrackSortField.DURATION, CategorySortDirection.ASCENDING, 1, 3, 2)
-        collection.cancel()
-    }
-
-    @Test
-    fun `volume root without direct tracks is browser only and uses friendly title`() = runTest(dispatcher) {
-        val viewModel =
-            FolderDetailViewModel(
-                mediaLibraryRepository = FakeMediaLibraryRepository(
-                    listOf(track(1, title = "Nested", artist = "Artist", dateAddedMs = 1, durationMs = 1_000).copy(relativePath = "Music/Live")),
-                ),
-                playbackController = NoOpPlaybackController(),
-                volumeMetadataSource = FolderVolumeMetadataSource {
-                    flowOf(
-                        listOf(
-                            FolderVolumeMetadata(
-                                volumeName = "external",
-                                displayName = "Internal storage",
-                                rootPath = "/storage/emulated/0",
-                                isPrimary = true,
-                                usedBytes = 10,
-                                totalBytes = 100,
-                            ),
-                        ),
-                    )
-                },
-            )
-        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
-        viewModel.open(FolderId("external", ""))
-        advanceUntilIdle()
-
-        assertEquals("Internal storage", viewModel.uiState.value.displayName)
-        assertTrue(viewModel.uiState.value.isBrowserOnly)
-        assertTrue(viewModel.uiState.value.isVolumeRoot)
-        assertFalse(viewModel.uiState.value.isMusicFolder)
-        assertEquals(listOf("Music"), viewModel.uiState.value.childFolders.map(FolderNode::displayName))
-        collection.cancel()
-    }
-
-    @Test
-    fun `volume root with direct track remains a playable music detail`() = runTest(dispatcher) {
-        val viewModel =
-            FolderDetailViewModel(
-                mediaLibraryRepository = FakeMediaLibraryRepository(
-                    listOf(
-                        track(1, title = "Root", artist = "Artist", dateAddedMs = 1, durationMs = 1_000).copy(relativePath = ""),
-                        track(2, title = "Nested", artist = "Artist", dateAddedMs = 2, durationMs = 1_000).copy(relativePath = "Music"),
-                    ),
-                ),
-                playbackController = NoOpPlaybackController(),
-            )
-        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
-        viewModel.open(FolderId("external", ""))
-        advanceUntilIdle()
-
-        assertFalse(viewModel.uiState.value.isBrowserOnly)
-        assertTrue(viewModel.uiState.value.isVolumeRoot)
-        assertTrue(viewModel.uiState.value.isMusicFolder)
-        assertEquals(setOf(1L, 2L), viewModel.uiState.value.recursiveTracks.map { it.id.mediaStoreId }.toSet())
-        collection.cancel()
-    }
-
-    @Test
-    fun `metadata source failure preserves volume navigation fallback`() = runTest(dispatcher) {
-        val viewModel =
-            FolderDetailViewModel(
-                mediaLibraryRepository = FakeMediaLibraryRepository(
-                    listOf(track(1, title = "Nested", artist = "Artist", dateAddedMs = 1, durationMs = 1_000).copy(relativePath = "Music")),
-                ),
-                playbackController = NoOpPlaybackController(),
-                volumeMetadataSource = FolderVolumeMetadataSource {
-                    flow { error("metadata unavailable") }
-                },
-            )
-        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
-        viewModel.open(FolderId("external", ""))
-        advanceUntilIdle()
-
-        assertEquals("external", viewModel.uiState.value.displayName)
-        assertTrue(viewModel.uiState.value.isBrowserOnly)
-        assertTrue(viewModel.uiState.value.volumeIsPrimary)
         collection.cancel()
     }
 

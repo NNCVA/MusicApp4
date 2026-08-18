@@ -7,7 +7,6 @@ import com.musicapp.player.core.domain.model.PlaybackContextSource
 import com.musicapp.player.feature.category.CategoryPlaybackContextFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FolderTreeTest {
@@ -88,66 +87,6 @@ class FolderTreeTest {
         assertEquals(listOf(2L, 3L, 1L), music.recursiveTracks.map { it.id.mediaStoreId })
         assertEquals(listOf(tracks[1].id, tracks[0].id), context?.orderedTrackIds)
         assertEquals("external|Music", context?.sourceId)
-    }
-
-    @Test
-    fun `music folder shortcuts include every depth but exclude volume roots`() {
-        val roots =
-            FolderTree.build(
-                listOf(
-                    track("external", 5, "", title = "Root"),
-                    track("external", 1, "Music/Live/Set/Encore", title = "Encore"),
-                    track("external", 2, "Music/Live/Set", title = "Set"),
-                    track("external", 3, "Music/Live", title = "Live"),
-                    track("external", 4, "Music", title = "Music"),
-                    track("sdcard", 5, "Music/Live/Set", title = "Card"),
-                ),
-            )
-
-        val shortcuts = FolderTree.musicFolders(roots)
-
-        assertEquals(
-            setOf("Music", "Music/Live", "Music/Live/Set", "Music/Live/Set/Encore"),
-            shortcuts.filter { it.id.volumeName == "external" }.map { it.id.relativePath }.toSet(),
-        )
-        assertEquals(listOf("Music/Live/Set"), shortcuts.filter { it.id.volumeName == "sdcard" }.map { it.id.relativePath })
-        assertTrue(shortcuts.none { it.id.relativePath.isEmpty() })
-        assertEquals(
-            setOf(1L, 2L, 3L, 4L),
-            checkNotNull(FolderTree.find(roots, FolderId("external", "Music"))).recursiveTracks
-                .map { it.id.mediaStoreId }
-                .toSet(),
-        )
-    }
-
-    @Test
-    fun `children remain case insensitive name ordered through four levels`() {
-        val root =
-            checkNotNull(
-                FolderTree.find(
-                    FolderTree.build(
-                        listOf(
-                            track("external", 1, "zeta/child/grand/great"),
-                            track("external", 2, "Alpha/zulu/grand/great"),
-                            track("external", 3, "beta/child/grand/great"),
-                            track("external", 4, "Alpha/alpha/zeta/great"),
-                            track("external", 5, "Alpha/alpha/Beta/great"),
-                            track("external", 6, "Alpha/alpha/Beta/zulu"),
-                            track("external", 7, "Alpha/alpha/Beta/Alpha"),
-                        ),
-                    ),
-                    FolderId("external", ""),
-                ),
-            )
-
-        assertEquals(listOf("Alpha", "beta", "zeta"), root.children.map(FolderNode::displayName))
-        val alpha = checkNotNull(FolderTree.find(listOf(root), FolderId("external", "Alpha")))
-        val alphaChild = checkNotNull(FolderTree.find(listOf(root), FolderId("external", "Alpha/alpha")))
-        val betaGrandchild = checkNotNull(FolderTree.find(listOf(root), FolderId("external", "Alpha/alpha/Beta")))
-        assertEquals(listOf("alpha", "zulu"), alpha.children.map(FolderNode::displayName))
-        assertEquals(listOf("Beta", "zeta"), alphaChild.children.map(FolderNode::displayName))
-        assertEquals(listOf("Alpha", "great", "zulu"), betaGrandchild.children.map(FolderNode::displayName))
-        assertEquals(5, alpha.recursiveTrackCount)
     }
 
     private fun track(

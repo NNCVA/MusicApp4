@@ -1,19 +1,17 @@
 package com.musicapp.player.feature.tracks
 
 import android.graphics.Bitmap
-import android.os.SystemClock
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,9 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,10 +45,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -63,7 +57,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
-import com.musicapp.player.core.designsystem.component.LoadingState
 import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.SectionIndexBar
 import com.musicapp.player.core.domain.model.Availability
@@ -77,11 +70,8 @@ import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicBoolean
 
 @Composable
 fun TracksScreenRoute(
@@ -91,8 +81,6 @@ fun TracksScreenRoute(
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
 ) {
-    val loadStartedNs = remember { SystemClock.elapsedRealtimeNanos() }
-    val firstTrackLayoutLogged = remember { AtomicBoolean(false) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
     BackHandler(enabled = state.isSelectionMode) { viewModel.onBack() }
@@ -129,16 +117,6 @@ fun TracksScreenRoute(
         onPlayNext = viewModel::playSelectedNext,
         onHideSelected = viewModel::hideSelected,
         onAcknowledgeBatchResult = viewModel::acknowledgeBatchResult,
-        onFirstTrackLaidOut = {
-            if (firstTrackLayoutLogged.compareAndSet(false, true)) {
-                val completedNs = SystemClock.elapsedRealtimeNanos()
-                Log.i(
-                    TRACKS_LOAD_LOG_TAG,
-                    "event=first_track_laid_out duration_us=${(completedNs - loadStartedNs) / 1_000} " +
-                        "track_count=${state.tracks.size} start_ns=$loadStartedNs end_ns=$completedNs",
-                )
-            }
-        },
     )
 }
 
@@ -150,7 +128,7 @@ fun TracksScreen(
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
     onSortSelected: (TrackSortField) -> Unit,
-    onTrackArtworkRequested: suspend (Track) -> Unit,
+    onTrackArtworkRequested: (Track) -> Unit,
     onTrackAddToQueue: (TrackId) -> Unit,
     onTrackPlayNext: (TrackId) -> Unit,
     onTrackHide: (TrackId) -> Unit,
@@ -165,7 +143,6 @@ fun TracksScreen(
     onPlayNext: () -> Unit,
     onHideSelected: () -> Unit,
     onAcknowledgeBatchResult: () -> Unit,
-    onFirstTrackLaidOut: () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
@@ -224,7 +201,7 @@ fun TracksScreen(
                 onHideSelected = onHideSelected,
             )
             if (!state.isLibraryLoaded) {
-                LoadingState(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f))
             } else if (state.tracks.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
@@ -246,7 +223,6 @@ fun TracksScreen(
                 TrackList(
                     tracks = filteredTracks,
                     sections = sections,
-                    showSectionIndex = showSectionIndex,
                     listState = listState,
                     selectedIds = state.selectedTrackIds,
                     selectionMode = state.isSelectionMode,
@@ -259,8 +235,8 @@ fun TracksScreen(
                     onAddToPlaylist = onTrackAddToPlaylist,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
-                    onFirstTrackLaidOut = onFirstTrackLaidOut,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                 )
             }
         }
@@ -495,37 +471,25 @@ private fun BatchResultDialog(
 private fun TrackList(
     tracks: List<Track>,
     sections: List<TrackSection>,
-    showSectionIndex: Boolean,
     listState: LazyListState,
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
     artworkByTrackId: Map<TrackId, TrackArtworkState>,
     playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onArtworkRequested: suspend (Track) -> Unit,
+    onArtworkRequested: (Track) -> Unit,
     onAddToQueue: (TrackId) -> Unit,
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
     onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
-    onFirstTrackLaidOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
-    val scrollbarModifier =
-        if (!showSectionIndex) {
-            listState.scrollIndicatorState?.let { scrollIndicatorState ->
-                Modifier.nonInteractiveScrollbar(scrollIndicatorState, Orientation.Vertical)
-            } ?: Modifier
-        } else {
-            Modifier
-        }
     Box(modifier = modifier.fillMaxWidth()) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize()
-                .then(scrollbarModifier)
-                .padding(horizontal = dimensions.contentHorizontalPadding),
+            modifier = Modifier.fillMaxSize(),
             contentPadding =
                 PaddingValues(
                     //start = dimensions.spaceSmall,
@@ -548,8 +512,6 @@ private fun TrackList(
                     onAddToPlaylist = onAddToPlaylist,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
-                    firstTrackId = tracks.first().id,
-                    onFirstTrackLaidOut = onFirstTrackLaidOut,
                 )
             } else {
                 sections.forEach { section ->
@@ -566,8 +528,6 @@ private fun TrackList(
                         onAddToPlaylist = onAddToPlaylist,
                         onTrackClick = onTrackClick,
                         onTrackLongClick = onTrackLongClick,
-                        firstTrackId = tracks.first().id,
-                        onFirstTrackLaidOut = onFirstTrackLaidOut,
                     )
                 }
             }
@@ -581,15 +541,13 @@ private fun LazyListScope.trackItems(
     selectionMode: Boolean,
     artworkByTrackId: Map<TrackId, TrackArtworkState>,
     playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onArtworkRequested: suspend (Track) -> Unit,
+    onArtworkRequested: (Track) -> Unit,
     onAddToQueue: (TrackId) -> Unit,
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
     onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
-    firstTrackId: TrackId,
-    onFirstTrackLaidOut: () -> Unit,
 ) {
     items(tracks, key = { track -> "${track.id.volumeName}:${track.id.mediaStoreId}" }) { track ->
         TrackRow(
@@ -608,7 +566,6 @@ private fun LazyListScope.trackItems(
             onAddToPlaylist = { playlistId -> onAddToPlaylist(track.id, playlistId) },
             onClick = { onTrackClick(track) },
             onLongClick = { onTrackLongClick(track) },
-            onLaidOut = if (track.id == firstTrackId) onFirstTrackLaidOut else null,
         )
     }
 }
@@ -621,14 +578,13 @@ private fun TrackRow(
     selectionMode: Boolean,
     artwork: ArtworkResult,
     playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onArtworkRequested: suspend () -> Unit,
+    onArtworkRequested: () -> Unit,
     onAddToQueue: () -> Unit,
     onPlayNext: () -> Unit,
     onHide: () -> Unit,
     onAddToPlaylist: (PlaylistId) -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onLaidOut: (() -> Unit)?,
 ) {
     val dimensions = MusicTheme.dimensions
     val compact = dimensions.windowWidthTier == MusicWindowWidthTier.COMPACT
@@ -639,20 +595,13 @@ private fun TrackRow(
             ?.let { stringResource(R.string.track_artist_album, artistName, it) }
             ?: artistName
     var menuExpanded by remember(track.id) { mutableStateOf(false) }
-    LaunchedEffect(track.id, track.dateModifiedMs) {
+    androidx.compose.runtime.LaunchedEffect(track.id, track.dateModifiedMs) {
         onArtworkRequested()
     }
     Row(
         modifier =
             Modifier.fillMaxWidth()
                 .height(dimensions.trackListItemHeight)
-                .then(
-                    if (onLaidOut != null) {
-                        Modifier.onGloballyPositioned { onLaidOut() }
-                    } else {
-                        Modifier
-                    },
-                )
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
                 //.padding(horizontal = dimensions.spaceSmall),
         verticalAlignment = Alignment.CenterVertically,
@@ -753,66 +702,39 @@ private fun TrackArtwork(
     val artworkDescription = stringResource(R.string.track_artwork_description, trackTitle)
     when (artwork) {
         ArtworkResult.Placeholder ->
-            TrackArtworkPlaceholder(
-                modifier = modifier,
-                artworkDescription = artworkDescription,
-            )
+            Box(
+                modifier = modifier
+                    .clip(shape)
+                    .background(MusicTheme.colors.secondaryContainer)
+                    .semantics {
+                        contentDescription = artworkDescription
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_playlist_album),
+                    contentDescription = null,
+                    tint = MusicTheme.colors.onSecondaryContainer,
+                    modifier = Modifier.fillMaxSize(0.5f),
+                )
+            }
         is ArtworkResult.Embedded -> {
             val image = artwork.image
-            var bitmap by remember(image) { mutableStateOf<ImageBitmap?>(null) }
-            LaunchedEffect(image) {
-                bitmap =
-                    withContext(Dispatchers.Default) {
-                        Bitmap.createBitmap(
-                            image.argbPixels,
-                            image.width,
-                            image.height,
-                            Bitmap.Config.ARGB_8888,
-                        ).apply { prepareToDraw() }
-                            .asImageBitmap()
-                    }
+            val bitmap = remember(image) {
+                Bitmap.createBitmap(
+                    image.argbPixels,
+                    image.width,
+                    image.height,
+                    Bitmap.Config.ARGB_8888,
+                ).asImageBitmap()
             }
-            val preparedBitmap = bitmap
-            if (preparedBitmap == null) {
-                TrackArtworkPlaceholder(
-                    modifier = modifier,
-                    artworkDescription = artworkDescription,
-                )
-            } else {
-                Image(
-                    bitmap = preparedBitmap,
-                    contentDescription = artworkDescription,
-                    modifier = modifier.clip(shape),
-                    contentScale = ContentScale.Crop,
-                )
-            }
+            Image(
+                bitmap = bitmap,
+                contentDescription = artworkDescription,
+                modifier = modifier.clip(shape),
+                contentScale = ContentScale.Crop,
+            )
         }
-    }
-}
-
-private const val TRACKS_LOAD_LOG_TAG = "TracksLoadPerf"
-
-@Composable
-private fun TrackArtworkPlaceholder(
-    modifier: Modifier,
-    artworkDescription: String,
-) {
-    Box(
-        modifier =
-            modifier
-                .clip(MusicTheme.shapes.small)
-                .background(MusicTheme.colors.secondaryContainer)
-                .semantics {
-                    contentDescription = artworkDescription
-                },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_playlist_album),
-            contentDescription = null,
-            tint = MusicTheme.colors.onSecondaryContainer,
-            modifier = Modifier.fillMaxSize(0.5f),
-        )
     }
 }
 

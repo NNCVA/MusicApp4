@@ -1,6 +1,6 @@
 # MusicApp 首版短计划
 
-状态：历史计划索引（2026-07-29）；当前实现状态以代码和实现规格为准。
+状态：可执行（2026-07-29）
 
 详细行为以 [`../design/implementation-spec.md`](../design/implementation-spec.md) 为准，实际执行与验证以 [`implementation-execution-plan.md`](implementation-execution-plan.md) 为准，Wave 范围映射见 [`implementation-wave-plan.md`](implementation-wave-plan.md)。
 
@@ -14,6 +14,9 @@
 2. **媒体库与播放闭环**：按权限、MediaStore 查询、原子同步、曲目页、最薄 Media3 服务、完整队列与系统恢复递进。
 3. **产品页面与收口**：完成播放器、歌词、分类、播放列表、设置、Aero、关于，再用最小 CI 收口。
 
-## 验证
+## 固定门禁
 
-每个阶段的验证分层、环境选择、门禁命令、设备要求和回退规则统一以 [`../verification.md`](../verification.md) 与 [`../testing.md`](../testing.md) 为准；本索引不重复维护命令。
+- 每个 Wave 同步交付功能实现、English/简体中文资源、必要的分层测试和文档。
+- CI 固定使用 JDK 17 先执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，再在有设备时执行 `:app:connectedDebugAndroidTest`。
+- 无设备时可执行 `:app:assembleDebugAndroidTest` 做编译检查，但不能替代 Android Runtime 集成测试门禁。
+- 视觉与完整交互验收由用户执行；执行计划不新增截图、覆盖率或 Release 构建门禁。

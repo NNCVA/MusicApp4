@@ -59,7 +59,6 @@ data class MusicDimensions(
     val spaceLarge: Dp = 24.dp,
     val spaceExtraLarge: Dp = 32.dp,
     val topBarHorizontalPadding: Dp = 16.dp,
-    val topBarNavigationVisualStartPadding: Dp = 31.dp,
     val contentHorizontalPadding: Dp,
 ) {
     companion object {

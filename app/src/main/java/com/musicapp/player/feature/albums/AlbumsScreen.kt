@@ -5,7 +5,6 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -137,14 +135,6 @@ private fun AlbumsScreen(
         section.label to stringResource(R.string.album_index_label, section.label)
     }
     val showSectionIndex = state.albums.isNotEmpty() && indexLabels.isNotEmpty()
-    val scrollbarModifier =
-        if (!showSectionIndex) {
-            gridState.scrollIndicatorState?.let { scrollIndicatorState ->
-                Modifier.nonInteractiveScrollbar(scrollIndicatorState, Orientation.Vertical)
-            } ?: Modifier
-        } else {
-            Modifier
-        }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -170,7 +160,6 @@ private fun AlbumsScreen(
                     columns = GridCells.Adaptive(dimensions.adaptiveGridMinimumCellWidth),
                     state = gridState,
                     modifier = Modifier.fillMaxWidth().weight(1f)
-                        .then(scrollbarModifier)
                         .padding(horizontal = dimensions.contentHorizontalPadding),
                     contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                     horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
