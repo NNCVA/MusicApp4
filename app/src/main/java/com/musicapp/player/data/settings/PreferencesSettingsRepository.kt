@@ -98,6 +98,12 @@ class PreferencesSettingsRepository @Inject constructor(
         setEnum(Keys.SCAN_MODE, value)
     }
 
+    override suspend fun setSkipShortAudio(value: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SKIP_SHORT_AUDIO] = value
+        }
+    }
+
     override suspend fun markLibrarySyncPending(): Long {
         var markedRevision = 0L
         dataStore.edit { preferences ->
@@ -132,6 +138,7 @@ class PreferencesSettingsRepository @Inject constructor(
             preferences.remove(Keys.AERO_MODE)
             preferences.remove(Keys.FADE_THROUGH_DURATION_MS)
             preferences.remove(Keys.SCAN_MODE)
+            preferences.remove(Keys.SKIP_SHORT_AUDIO)
         }
     }
 
@@ -157,6 +164,7 @@ class PreferencesSettingsRepository @Inject constructor(
                 }
                 ?: defaults.fadeThroughDurationMs,
             scanMode = preferences.enumValue(Keys.SCAN_MODE, defaults.scanMode),
+            skipShortAudio = preferences[Keys.SKIP_SHORT_AUDIO] ?: defaults.skipShortAudio,
         )
     }
 
@@ -173,6 +181,7 @@ class PreferencesSettingsRepository @Inject constructor(
         val AERO_MODE = stringPreferencesKey("aero_mode")
         val FADE_THROUGH_DURATION_MS = longPreferencesKey("fade_through_duration_ms")
         val SCAN_MODE = stringPreferencesKey("scan_mode")
+        val SKIP_SHORT_AUDIO = booleanPreferencesKey("skip_short_audio")
         val LIBRARY_SYNC_PENDING = booleanPreferencesKey("library_sync_pending")
         val LIBRARY_SYNC_REVISION = longPreferencesKey("library_sync_revision")
     }

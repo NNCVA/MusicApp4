@@ -17,8 +17,8 @@
 6. **播放列表顺序**
    - 推荐：播放列表集合默认按创建时间倒序；列表内曲目固定按加入位置排序，批量添加保持用户选择顺序；播放列表和播放队列均不提供拖拽排序。
 7. **扫描结果对话框**
-   - 推荐：首次与手动扫描结果中的全部成功曲目按标题升序使用惰性列表展示；顶部固定显示总数、成功数与跳过数，跳过项单独分组并显示资源化原因；关闭对话框不影响已提交媒体库。
+   - 推荐：首次与手动扫描结果中的全部成功曲目按标题升序使用惰性列表展示；不显示总数、成功数、跳过数或跳过项明细；关闭对话框不影响已提交媒体库。
 8. **CI 边界**
-   - 推荐：CI 仅使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，不增加其他门禁。
+   - 推荐：CI 使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，并在设备或模拟器上执行 `:app:connectedDebugAndroidTest`；无设备时 `:app:assembleDebugAndroidTest` 仅作为 instrumentation 编译检查，不能替代 Runtime 集成测试。
 9. **Aero 降级信号**
     - 推荐：使用应用前后台、屏幕开关、系统省电模式和系统 `ACTION_BATTERY_LOW/OKAY` 事件控制降级，不自定义电量百分比阈值；任一降级条件成立即停止 Canvas 帧调度并显示纯色静态背景，全部解除且应用回到前台后恢复用户模式。

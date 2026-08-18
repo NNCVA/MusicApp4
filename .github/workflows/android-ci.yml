@@ -14,5 +14,14 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Test, lint, and assemble debug
+      - name: Run JVM tests, lint, and assemble debug
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
+      - name: Run instrumented integration tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: Pixel_2
+          disable-animations: true
+          script: ./gradlew :app:connectedDebugAndroidTest --console=plain

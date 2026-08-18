@@ -6,6 +6,7 @@
 - 项目文档全放在 docs/ 目录下！！！
 - 项目说明与开发入口：[`README.md`](README.md)。
 - 多使用子代理并行执行
+- 构建前看这个文档 [`docs/verification.md`](docs/verification.md)
 - 调用所有工具（Tool）时，必须严格检查并填写当前 schema 规定的全部必填字段，杜绝 SchemaError。
 
 ## 项目概述
@@ -40,7 +41,7 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 21. **浅色 / 深色模式**：每套主题均完整支持 Light / Dark 模式。
 22. **Aero 动态背景**：动态 Canvas 背景视觉特效（流体网格 Fluid Mesh、光晕气场 Glow Aura、纯色静态），支持低电量自动暂停降级保护。
 23. **中英双语切换**：界面全字符串本地化，选项为跟随系统、简体中文、English；使用系统应用语言能力并允许 Activity 重建。
-24. **扫描器雷达动画**：首次无缓存扫描使用全屏雷达；已有缓存后的同步不阻塞内容。首次与手动扫描完成后显示包含全部曲目的结果对话框，自动同步不弹出。
+24. **扫描器雷达动画**：首次无缓存扫描使用全屏雷达；已有缓存后的同步不阻塞内容。首次与手动扫描完成后仅显示扫描过滤后的成功曲目列表，自动同步不弹出。
 25. **设置与偏好存储**：使用 Preferences DataStore 管理主题、语言、Aero、淡出淡入时长、路径规则等；“重置应用配置”只恢复设置默认值，不删除播放列表、历史、缓存或物理音频。
 26. **关于页面**：展示应用版本号、开发者元数据、开源许可协议及致谢清单。
 
@@ -62,9 +63,13 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 - 只有 MediaLibraryService 可以持有 ExoPlayer/MediaSession；Activity 和 ViewModel 只能通过 MediaController 控制播放。
 - 严禁硬编码文本，所有界面字符串必须定义在资源文件中 (`values/strings.xml`, `values-zh-rCN/strings.xml`)。
 - 严禁在页面中硬编码圆角、间距和字号；统一通过 `MusicDimensions`、`MusicShapes`、`MusicTypography` 设计令牌读取。
+- 业务图标统一保存为 `res/drawable` 下的 Android `VectorDrawable`，按 `ic_common_*`、`ic_status_*`、`ic_navigation_*`、`ic_sidebar_*`、`ic_playback_*` 语义前缀命名；矢量路径保持中性颜色并由 `MusicTheme` 着色，资源映射集中定义，不在 Composable 中散落 `Icons.*` 或来源不明的 path 数据。
+- 可交互图标必须复用中英双语字符串提供 `contentDescription`，纯装饰图标使用 `contentDescription = null`；新增或迁移图标时同步更新 `docs/design/resource-governance.md` 和 `app/src/main/res/raw/open_source_licenses.txt`，记录上游、固定 revision、许可证与本项目修改。
 - 遵循 Android Edge-to-Edge 边到边沉浸式设计规范与 Material 3 设计指南。
 - 除启动 Activity 与受可信控制器校验的 MediaLibraryService 外，其他组件默认 `exported=false`；PendingIntent 默认不可变。
-- CI 固定使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，不增加其他门禁。
+- 测试采用“纯逻辑少量 JVM 单测 + Android Runtime 集成测试优先”：`app/src/test` 仅承载纯业务逻辑和少量 Robolectric 平台适配测试；Room、Hilt、MediaLibraryService、真实资源与应用启动集成测试归 `app/src/androidTest`，使用 `AndroidJUnit4` 与 `com.musicapp.player.HiltTestRunner`。
+- Android Runtime 集成测试包括 `MusicDatabaseMigrationTest`、`HistoryRepositoryTest`、`MediaLibraryRepositoryTest`、`PlaylistRepositoryTest`、`PlaybackSnapshotRepositoryTest`、`MediaLibrarySyncTest`、`ApplicationGraphTest`、`PlaybackServiceHiltTest`、`AboutMetadataTest`，并以 `ApplicationStartupIntegrationTest` 作为资源启动冒烟；`ProjectSmokeTest` 不再作为 JVM 冒烟。
+- CI 固定使用 JDK 17 依次执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 和有设备时的 `:app:connectedDebugAndroidTest`。无设备时可执行 `:app:assembleDebugAndroidTest` 做编译检查，但不能将其描述为已运行集成测试；完整测试规则见 [`docs/testing.md`](docs/testing.md) 与 [`docs/verification.md`](docs/verification.md)。
 - 已接受的 CI 策略见 `docs/design/design-review-09-functional-testing-and-ci.md`。
 
 ## 架构与设计参考文档 (设计规范提示词)
@@ -87,3 +92,4 @@ MusicApp 的首版目标是一款基于 Kotlin 与 Jetpack Compose 的现代化 
 - 委派给 `luna_worker` 的任务包必须写明目标、上下文、范围、排除项、约束、验收标准、精确验证命令、预期返回和升级条件。
 - 主线程必须检查实际 diff 与验证结果，不能只依据 Agent 总结接受结果；没有 Agent 活动或工具结果标识时，不得声称某个模型已经实际运行。
 - 路由指南、任务包模板和验证方法分别见 [`docs/routing-guide.md`](docs/routing-guide.md)、[`docs/task-packet.md`](docs/task-packet.md) 和 [`docs/verification.md`](docs/verification.md)。
+- 构建前看这个文档 [`docs/verification.md`](docs/verification.md)

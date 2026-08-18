@@ -25,6 +25,24 @@
     <string name="navigation_folders">文件夹</string>
     <string name="navigation_settings">设置</string>
     <string name="navigation_about">关于</string>
+    <string name="tracks_page_title">歌曲</string>
+    <string name="tracks_search_label">搜索歌曲</string>
+    <string name="tracks_search_close">关闭歌曲搜索</string>
+    <string name="tracks_search_placeholder">搜索标题、艺术家或专辑</string>
+    <string name="tracks_no_results_title">没有匹配的歌曲</string>
+    <string name="tracks_no_results_description">请尝试其他标题、艺术家、专辑或文件名。</string>
+    <string name="tracks_sort_label">排序歌曲</string>
+    <string name="track_add_to_queue">加入队列</string>
+    <string name="track_more_actions">此歌曲的更多操作</string>
+    <string name="track_artwork_description">%1$s 的封面</string>
+    <string name="track_artist_album">%1$s - %2$s</string>
+    <string name="track_quality_high">HQ</string>
+    <string name="track_quality_standard">SQ</string>
+    <string name="track_index_label">跳转到以 %1$s 开头的歌曲</string>
+    <string name="album_index_label">跳转到以 %1$s 开头的专辑</string>
+    <string name="artist_index_label">跳转到以 %1$s 开头的艺术家</string>
+    <string name="albums_sort_label">排序专辑，当前按%1$s%2$s</string>
+    <string name="album_artwork_description">%1$s 的专辑封面</string>
     <string name="open_navigation">打开导航</string>
     <string name="sidebar_exit">退出</string>
     <string name="sidebar_equalizer">均衡器</string>
@@ -50,20 +68,11 @@
     <string name="permission_open_settings">打开设置</string>
     <string name="permission_requesting">正在请求音频访问权限…</string>
     <string name="permission_waiting_for_settings">从系统设置返回后正在检查音频访问权限…</string>
-    <string name="scan_skip_unsupported_format">不支持的音频格式</string>
-    <string name="scan_skip_zero_duration">无法获取音频时长</string>
-    <string name="scan_skip_system_audio">系统铃声、闹钟或通知音</string>
-    <string name="scan_skip_excluded_path">已被文件夹规则排除</string>
-    <string name="scan_skip_outside_included_paths">不在所选文件夹中</string>
-    <string name="scan_skip_duplicate">媒体标识重复</string>
-    <string name="scan_skip_unreadable">无法读取的媒体项</string>
-    <string name="scan_unknown_item">未知项目</string>
     <string name="unknown_artist">未知艺术家</string>
-    <string name="scan_now">扫描</string>
+    <string name="scan_now">开始扫描</string>
     <string name="scan_refreshing">正在更新音乐库</string>
     <string name="scan_first_library">正在扫描音乐</string>
     <string name="scan_first_library_description">首次建立音乐库时，请保持 MusicApp 处于打开状态。</string>
-    <string name="scan_radar_accessibility">正在扫描音乐库</string>
     <string name="scan_error_description">无法读取音乐库，请检查音频访问权限后重试。</string>
     <string name="scan_cached_error">上次更新失败，已保存的音乐库仍可使用。</string>
     <string name="tracks_empty_title">未找到单曲</string>
@@ -87,9 +96,7 @@
     <string name="selection_hide">隐藏</string>
     <string name="scan_result_title">扫描完成</string>
     <string name="scan_result_failed_title">扫描失败</string>
-    <string name="scan_result_stats">已检查 %1$d 首 · 成功 %2$d 首 · 已跳过 %3$d 首</string>
     <string name="scan_result_added">单曲</string>
-    <string name="scan_result_skip_group">%1$s：%2$d 首</string>
     <string name="playback_play">播放</string>
     <string name="playback_pause">暂停</string>
     <string name="player_collapse">收起</string>
@@ -102,7 +109,6 @@
     <string name="player_error_audio_output_failed">音频输出不可用</string>
     <string name="player_error_io">无法读取此音频源</string>
     <string name="player_error_unknown">无法播放此曲目</string>
-    <string name="player_artwork_placeholder">封面</string>
     <string name="player_artwork_description">专辑封面</string>
     <string name="lyrics_not_found">未找到歌词</string>
     <string name="lyrics_loading">正在加载歌词</string>
@@ -133,6 +139,12 @@
     <plurals name="category_track_count">
         <item quantity="other">%1$d 首单曲</item>
     </plurals>
+    <plurals name="artist_track_count">
+        <item quantity="other">%1$d 首</item>
+    </plurals>
+    <plurals name="album_track_count">
+        <item quantity="other">%1$d 首</item>
+    </plurals>
     <plurals name="category_album_count">
         <item quantity="other">%1$d 张专辑</item>
     </plurals>
@@ -146,6 +158,7 @@
     <string name="artist_unknown_name">未知艺术家</string>
     <string name="artist_empty_title">此艺术家暂无单曲</string>
     <string name="artist_empty_description">音乐库中没有属于此艺术家的可用单曲。</string>
+    <string name="artist_artwork_description">%1$s 的艺术家封面</string>
     <string name="folders_empty_title">暂无文件夹</string>
     <string name="folders_empty_description">包含音乐库单曲的文件夹将显示在此处。</string>
     <string name="folder_unknown_name">未知文件夹</string>
@@ -278,4 +291,21 @@
     <string name="about_open_source_licenses">开源许可</string>
     <string name="about_license_close">关闭</string>
     <string name="about_load_failed">关于信息暂不可用。</string>
+    <string name="navigation_scan_music">扫描音乐</string>
+    <string name="scan_media_source">媒体来源</string>
+    <string name="scan_use_android_media_library">使用 Android 媒体库</string>
+    <string name="scan_custom_folders">自定义文件夹</string>
+    <string name="scan_add_custom_folder">添加自定义文件夹</string>
+    <string name="scan_settings">设置</string>
+    <string name="scan_manage_storage_permission">管理外部存储权限</string>
+    <string name="scan_skip_short_audio">不扫描 60 秒以下音频</string>
+    <string name="scan_blocked_folders">被屏蔽的文件夹</string>
+    <string name="scan_add_blocked_folder">添加被屏蔽的文件夹</string>
+    <string name="scan_technical_support">若同时开启自定义文件夹和 Android 媒体库，最终扫描到的歌曲为二者并集。关闭 Android 媒体库后，仅扫描自定义文件夹。</string>
+    <string name="scan_storage_root">存储根目录</string>
+    <string name="scan_remove_folder">移除文件夹</string>
+    <string name="scan_permission_dialog_title">权限授权说明</string>
+    <string name="scan_permission_dialog_description">MusicApp 需要读取此设备中存储的音频文件，以查找并播放音乐。</string>
+    <string name="scan_permission_decline">拒绝</string>
+    <string name="scan_permission_agree">同意</string>
 </resources>

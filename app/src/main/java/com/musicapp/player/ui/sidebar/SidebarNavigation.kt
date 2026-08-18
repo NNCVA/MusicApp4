@@ -54,8 +54,6 @@ internal fun SidebarNavigation(
     policy: WindowLayoutPolicy,
     selectedRoute: TopLevelNavKey,
     themeMode: ThemeMode,
-    isLibrarySyncing: Boolean,
-    canScanMusic: Boolean,
     onSelect: (TopLevelNavKey) -> Unit,
     onRequestExit: () -> Unit,
     onCycleTheme: () -> Unit,
@@ -127,14 +125,9 @@ internal fun SidebarNavigation(
         }
         SidebarCard {
             SidebarGroups.appOperations.forEachIndexed { index, entry ->
-                val enabled =
-                    entry !is SidebarEntry.Action ||
-                        entry.action != SidebarAction.SCAN_LIBRARY ||
-                        (canScanMusic && !isLibrarySyncing)
                 SidebarEntryRow(
                     entry = entry,
                     selected = (entry as? SidebarEntry.Destination)?.route == selectedRoute,
-                    enabled = enabled,
                     tint = SidebarIconPalette.operations[index],
                     onClick = {
                         when (entry) {

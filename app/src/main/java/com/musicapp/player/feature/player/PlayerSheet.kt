@@ -32,9 +32,11 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -62,6 +64,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -264,10 +267,28 @@ private fun MiniPlayer(
             Text(track.artistName, style = MusicTheme.typography.bodySmall, color = MusicTheme.colors.onSurfaceVariant, maxLines = 1)
             if (state.loadState == PlayerLoadState.BUFFERING) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
-        TextButton(onClick = onTogglePlayback) {
-            Text(stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play))
+        val playbackDescription = stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
+        IconButton(
+            onClick = onTogglePlayback,
+            modifier = Modifier.size(dimensions.minimumTouchTarget),
+        ) {
+            Icon(
+                painter = painterResource(if (state.isPlaying) R.drawable.ic_playback_pause else R.drawable.ic_playback_play),
+                contentDescription = playbackDescription,
+                modifier = Modifier.size(dimensions.spaceLarge),
+            )
         }
-        TextButton(onClick = onNext, enabled = state.canSkipNext) { Text(stringResource(R.string.playback_next)) }
+        IconButton(
+            onClick = onNext,
+            enabled = state.canSkipNext,
+            modifier = Modifier.size(dimensions.minimumTouchTarget),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_playback_skip_next),
+                contentDescription = stringResource(R.string.playback_next),
+                modifier = Modifier.size(dimensions.spaceLarge),
+            )
+        }
     }
 }
 
@@ -314,12 +335,12 @@ private fun FullPlayer(
     }
     LaunchedEffect(pager.currentPage) { onPageChanged(FullPlayerPage.entries[pager.currentPage]) }
     Column(
-        modifier = modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-            .padding(horizontal = dimensions.contentHorizontalPadding),
+        modifier = modifier.fillMaxSize().windowInsetsPadding(contentInsets),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().height(dimensions.playerHeaderHeight)
+                .padding(horizontal = dimensions.topBarHorizontalPadding)
                 .draggable(
                     state = backgroundDragState,
                     orientation = Orientation.Vertical,
@@ -334,6 +355,7 @@ private fun FullPlayer(
         HorizontalPager(
             state = pager,
             modifier = Modifier.fillMaxWidth().weight(1f)
+                .padding(horizontal = dimensions.contentHorizontalPadding)
                 .draggable(
                     state = pagerVerticalDragState,
                     orientation = Orientation.Vertical,
@@ -360,36 +382,60 @@ private fun FullPlayer(
                 )
             }
         }
-        PlayerStatus(state.loadState, state.errorMessageRes)
+        Box(
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
+        ) {
+            PlayerStatus(state.loadState, state.errorMessageRes)
+        }
         val fraction = if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f
         Slider(
             value = fraction.coerceIn(0f, 1f),
             onValueChangeFinished = {},
             onValueChange = onSeek,
             enabled = state.durationMs > 0,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
         )
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
             Text(formatDuration(state.positionMs), style = MusicTheme.typography.labelMedium)
             Text(formatDuration(state.durationMs), style = MusicTheme.typography.labelMedium)
         }
         Column(
-            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight),
+            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
+                .padding(horizontal = dimensions.contentHorizontalPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            TextButton(onClick = onCycleMode) { Text(stringResource(state.playbackMode.labelRes())) }
+            IconButton(
+                onClick = onCycleMode,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(state.playbackMode.iconRes()),
+                    contentDescription = stringResource(state.playbackMode.labelRes()),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 val previousDescription = stringResource(R.string.playback_previous)
-                TextButton(
+                IconButton(
                     onClick = onPrevious,
                     enabled = state.canSkipPrevious,
-                    modifier = Modifier.semantics { contentDescription = previousDescription },
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
                 ) {
-                    Text(stringResource(R.string.playback_previous_short))
+                    Icon(
+                        painter = painterResource(R.drawable.ic_playback_skip_previous),
+                        contentDescription = previousDescription,
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
                 }
                 val rewindDescription = stringResource(R.string.playback_rewind_10_seconds)
                 TextButton(
@@ -401,14 +447,14 @@ private fun FullPlayer(
                 }
                 val playbackDescription =
                     stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
-                Button(
+                FilledIconButton(
                     onClick = onTogglePlayback,
-                    modifier = Modifier.semantics { contentDescription = playbackDescription },
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
                 ) {
-                    Text(
-                        stringResource(
-                            if (state.isPlaying) R.string.playback_pause_short else R.string.playback_play_short,
-                        ),
+                    Icon(
+                        painter = painterResource(if (state.isPlaying) R.drawable.ic_playback_pause else R.drawable.ic_playback_play),
+                        contentDescription = playbackDescription,
+                        modifier = Modifier.size(dimensions.spaceLarge),
                     )
                 }
                 val forwardDescription = stringResource(R.string.playback_forward_10_seconds)
@@ -420,12 +466,16 @@ private fun FullPlayer(
                     Text(stringResource(R.string.playback_forward_10_seconds_short))
                 }
                 val nextDescription = stringResource(R.string.playback_next)
-                TextButton(
+                IconButton(
                     onClick = onNext,
                     enabled = state.canSkipNext,
-                    modifier = Modifier.semantics { contentDescription = nextDescription },
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
                 ) {
-                    Text(stringResource(R.string.playback_next_short))
+                    Icon(
+                        painter = painterResource(R.drawable.ic_playback_skip_next),
+                        contentDescription = nextDescription,
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
                 }
             }
         }
@@ -519,9 +569,19 @@ private fun QueuePage(
             Text(
                 text = stringResource(R.string.player_queue_title),
                 style = MusicTheme.typography.titleLarge,
+                color = MusicTheme.colors.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onCycleMode) { Text(stringResource(playbackMode.labelRes())) }
+            IconButton(
+                onClick = onCycleMode,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(playbackMode.iconRes()),
+                    contentDescription = stringResource(playbackMode.labelRes()),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
         }
         LazyColumn(
             state = listState,
@@ -534,7 +594,12 @@ private fun QueuePage(
                     Box(
                         modifier = Modifier.fillParentMaxSize(),
                         contentAlignment = Alignment.Center,
-                    ) { Text(stringResource(R.string.player_queue_empty)) }
+                    ) {
+                        Text(
+                            stringResource(R.string.player_queue_empty),
+                            color = MusicTheme.colors.onSurfaceVariant,
+                        )
+                    }
                 }
             } else {
                 items(rows, key = { it.queueItemId.value }) { row ->
@@ -545,8 +610,19 @@ private fun QueuePage(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(row.track?.title ?: stringResource(R.string.player_unknown_track), style = MusicTheme.typography.titleMedium, maxLines = 1)
-                            if (row.isCurrent) Text(stringResource(R.string.player_queue_current), style = MusicTheme.typography.labelSmall)
+                            Text(
+                                row.track?.title ?: stringResource(R.string.player_unknown_track),
+                                style = MusicTheme.typography.titleMedium,
+                                color = MusicTheme.colors.onSurface,
+                                maxLines = 1,
+                            )
+                            if (row.isCurrent) {
+                                Text(
+                                    stringResource(R.string.player_queue_current),
+                                    style = MusicTheme.typography.labelSmall,
+                                    color = MusicTheme.colors.onSurfaceVariant,
+                                )
+                            }
                         }
                         TextButton(onClick = { onRemove(row.queueItemId) }) { Text(stringResource(R.string.player_queue_remove)) }
                     }
@@ -563,7 +639,14 @@ private fun PlayerArtwork(artwork: ArtworkResult, shape: Shape, modifier: Modifi
         ArtworkResult.Placeholder -> Box(
             modifier.clip(shape).background(MusicTheme.colors.secondaryContainer),
             contentAlignment = Alignment.Center,
-        ) { Text(stringResource(R.string.player_artwork_placeholder), style = MusicTheme.typography.labelMedium) }
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_playlist_album),
+                contentDescription = stringResource(R.string.player_artwork_description),
+                tint = MusicTheme.colors.onSecondaryContainer,
+                modifier = Modifier.fillMaxSize(0.5f),
+            )
+        }
         is ArtworkResult.Embedded -> {
             val image = artwork.image
             val bitmap = remember(image) {
@@ -650,6 +733,12 @@ private fun PlaybackMode.labelRes() = when (this) {
     PlaybackMode.LIST_REPEAT -> R.string.playback_mode_list_repeat
     PlaybackMode.SINGLE_REPEAT -> R.string.playback_mode_single_repeat
     PlaybackMode.SHUFFLE -> R.string.playback_mode_shuffle
+}
+
+private fun PlaybackMode.iconRes() = when (this) {
+    PlaybackMode.LIST_REPEAT -> R.drawable.ic_playback_repeat
+    PlaybackMode.SINGLE_REPEAT -> R.drawable.ic_playback_repeat_one
+    PlaybackMode.SHUFFLE -> R.drawable.ic_playback_shuffle
 }
 
 private fun formatDuration(milliseconds: Long): String {

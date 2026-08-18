@@ -1,5 +1,5 @@
 [versions]
-androidGradlePlugin = "9.0.1"
+androidGradlePlugin = "9.3.0"
 androidxCore = "1.18.0"
 androidxActivity = "1.13.0"
 androidxAppCompat = "1.7.1"
@@ -17,9 +17,13 @@ junit = "4.13.2"
 turbine = "1.2.1"
 robolectric = "4.16.1"
 androidxTestCore = "1.7.0"
+androidxTestRunner = "1.6.2"
+androidxTestRules = "1.6.1"
+androidxTestExtJunit = "1.2.1"
 ui = "1.11.4"
 material3 = "1.4.0"
 uiText = "1.11.4"
+icu4j = "77.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -50,9 +54,13 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
+androidx-test-rules = { module = "androidx.test:rules", version.ref = "androidxTestRules" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
+icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

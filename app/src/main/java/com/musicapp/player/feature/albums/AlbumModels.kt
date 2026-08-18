@@ -18,6 +18,7 @@ data class AlbumSummary(
     val artistName: String,
     val trackCount: Int,
     val latestDateAddedMs: Long,
+    val representativeTrack: Track,
 )
 
 object AlbumGrouping {
@@ -33,6 +34,7 @@ object AlbumGrouping {
                     artistName = stableTracks.first().artistName,
                     trackCount = stableTracks.size,
                     latestDateAddedMs = stableTracks.maxOf(Track::dateAddedMs),
+                    representativeTrack = stableTracks.first(),
                 )
             }
 

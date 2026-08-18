@@ -28,6 +28,24 @@
     <string name="navigation_folders">Folders</string>
     <string name="navigation_settings">Settings</string>
     <string name="navigation_about">About</string>
+    <string name="tracks_page_title">Tracks</string>
+    <string name="tracks_search_label">Search tracks</string>
+    <string name="tracks_search_close">Close track search</string>
+    <string name="tracks_search_placeholder">Search title, artist, or album</string>
+    <string name="tracks_no_results_title">No matching tracks</string>
+    <string name="tracks_no_results_description">Try another title, artist, album, or file name.</string>
+    <string name="tracks_sort_label">Sort tracks</string>
+    <string name="track_add_to_queue">Add to queue</string>
+    <string name="track_more_actions">More actions for this track</string>
+    <string name="track_artwork_description">Artwork for %1$s</string>
+    <string name="track_artist_album">%1$s - %2$s</string>
+    <string name="track_quality_high">HQ</string>
+    <string name="track_quality_standard">SQ</string>
+    <string name="track_index_label">Jump to tracks beginning with %1$s</string>
+    <string name="album_index_label">Jump to albums beginning with %1$s</string>
+    <string name="artist_index_label">Jump to artists beginning with %1$s</string>
+    <string name="albums_sort_label">Sort albums, currently %1$s %2$s</string>
+    <string name="album_artwork_description">Artwork for album %1$s</string>
     <string name="open_navigation">Open navigation</string>
     <string name="sidebar_exit">Exit</string>
     <string name="sidebar_equalizer">Equalizer</string>
@@ -53,20 +71,11 @@
     <string name="permission_open_settings">Open settings</string>
     <string name="permission_requesting">Requesting audio access…</string>
     <string name="permission_waiting_for_settings">Checking audio access after returning from settings…</string>
-    <string name="scan_skip_unsupported_format">Unsupported audio format</string>
-    <string name="scan_skip_zero_duration">Audio duration is unavailable</string>
-    <string name="scan_skip_system_audio">System ringtone, alarm, or notification audio</string>
-    <string name="scan_skip_excluded_path">Excluded by a folder rule</string>
-    <string name="scan_skip_outside_included_paths">Outside the selected folders</string>
-    <string name="scan_skip_duplicate">Duplicate media identity</string>
-    <string name="scan_skip_unreadable">Unreadable media item</string>
-    <string name="scan_unknown_item">Unknown item</string>
     <string name="unknown_artist">Unknown artist</string>
-    <string name="scan_now">Scan</string>
+    <string name="scan_now">Start scan</string>
     <string name="scan_refreshing">Updating the music library</string>
     <string name="scan_first_library">Scanning your music</string>
     <string name="scan_first_library_description">Keep MusicApp open while it builds your library for the first time.</string>
-    <string name="scan_radar_accessibility">Music library scan in progress</string>
     <string name="scan_error_description">MusicApp could not read the music library. Check audio access and try again.</string>
     <string name="scan_cached_error">The last update failed. Your saved library remains available.</string>
     <string name="tracks_empty_title">No tracks found</string>
@@ -91,9 +100,7 @@
     <string name="selection_hide">Hide</string>
     <string name="scan_result_title">Scan complete</string>
     <string name="scan_result_failed_title">Scan failed</string>
-    <string name="scan_result_stats">Checked %1$d · Succeeded %2$d · Skipped %3$d</string>
     <string name="scan_result_added">Tracks</string>
-    <string name="scan_result_skip_group">%1$s: %2$d</string>
     <string name="playback_play">Play</string>
     <string name="playback_pause">Pause</string>
     <string name="player_collapse">Collapse</string>
@@ -106,7 +113,6 @@
     <string name="player_error_audio_output_failed">The audio output is unavailable</string>
     <string name="player_error_io">This audio source could not be read</string>
     <string name="player_error_unknown">This track could not be played</string>
-    <string name="player_artwork_placeholder">Artwork</string>
     <string name="player_artwork_description">Album artwork</string>
     <string name="lyrics_not_found">Lyrics not found</string>
     <string name="lyrics_loading">Loading lyrics</string>
@@ -136,6 +142,14 @@
         <item quantity="one">%1$d track</item>
         <item quantity="other">%1$d tracks</item>
     </plurals>
+    <plurals name="artist_track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
+    <plurals name="album_track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
     <plurals name="category_album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="other">%1$d albums</item>
@@ -150,6 +164,7 @@
     <string name="artist_unknown_name">Unknown artist</string>
     <string name="artist_empty_title">This artist has no tracks</string>
     <string name="artist_empty_description">No available library tracks belong to this artist.</string>
+    <string name="artist_artwork_description">Artwork for artist %1$s</string>
     <string name="folders_empty_title">No folders</string>
     <string name="folders_empty_description">Folders containing library tracks will appear here.</string>
     <string name="folder_unknown_name">Unknown folder</string>
@@ -284,4 +299,21 @@
     <string name="about_open_source_licenses">Open-source licenses</string>
     <string name="about_license_close">Close</string>
     <string name="about_load_failed">About information is unavailable.</string>
+    <string name="navigation_scan_music">Scan music</string>
+    <string name="scan_media_source">Media source</string>
+    <string name="scan_use_android_media_library">Use Android media library</string>
+    <string name="scan_custom_folders">Custom folders</string>
+    <string name="scan_add_custom_folder">Add custom folder</string>
+    <string name="scan_settings">Settings</string>
+    <string name="scan_manage_storage_permission">Manage external storage permission</string>
+    <string name="scan_skip_short_audio">Do not scan audio shorter than 60 seconds</string>
+    <string name="scan_blocked_folders">Blocked folders</string>
+    <string name="scan_add_blocked_folder">Add blocked folder</string>
+    <string name="scan_technical_support">When custom folders and the Android media library are both enabled, the scanned tracks are combined. Turn off the Android media library to scan only custom folders.</string>
+    <string name="scan_storage_root">Storage root</string>
+    <string name="scan_remove_folder">Remove folder</string>
+    <string name="scan_permission_dialog_title">Permission explanation</string>
+    <string name="scan_permission_dialog_description">MusicApp needs access to audio files so it can find and play music on this device.</string>
+    <string name="scan_permission_decline">Decline</string>
+    <string name="scan_permission_agree">Agree</string>
 </resources>

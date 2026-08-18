@@ -18,7 +18,6 @@ import androidx.compose.ui.res.stringResource
 import com.musicapp.player.R
 import com.musicapp.player.core.media.MediaAudioCandidate
 import com.musicapp.player.data.sync.LibrarySyncEvent
-import com.musicapp.player.data.sync.MediaLibraryScanSkipReason
 import com.musicapp.player.data.sync.MediaLibraryScanSummary
 import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
 import com.musicapp.player.data.sync.scanResultTitle
@@ -59,22 +58,11 @@ private fun ScanResultDialog(
             summary.acceptedCandidates.map(MediaAudioCandidate::scanResultTitle)
                 .sortedWith(String.CASE_INSENSITIVE_ORDER)
         }
-    val skippedGroups = remember(summary) { summary.skippedItems.groupBy { it.reason } }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.scan_result_title)) },
         text = {
             Column {
-                Text(
-                    text =
-                        stringResource(
-                            R.string.scan_result_stats,
-                            summary.queriedCandidateCount,
-                            summary.acceptedCandidates.size,
-                            summary.skippedItems.size,
-                        ),
-                    style = MusicTheme.typography.bodyMedium,
-                )
                 Spacer(modifier = Modifier.height(dimensions.spaceSmall))
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = dimensions.dialogListMaxHeight),
@@ -91,27 +79,6 @@ private fun ScanResultDialog(
                             Text(title, style = MusicTheme.typography.bodyMedium)
                         }
                     }
-                    skippedGroups.entries.sortedBy { it.key.ordinal }.forEach { (reason, skipped) ->
-                        item {
-                            Text(
-                                text =
-                                    stringResource(
-                                        R.string.scan_result_skip_group,
-                                        stringResource(reason.labelResId()),
-                                        skipped.size,
-                                    ),
-                                style = MusicTheme.typography.titleSmall,
-                            )
-                        }
-                        items(skipped) { item ->
-                            Text(
-                                text =
-                                    item.displayName?.trim()?.takeIf(String::isNotEmpty)
-                                        ?: stringResource(R.string.scan_unknown_item),
-                                style = MusicTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
                 }
             }
         },
@@ -120,14 +87,3 @@ private fun ScanResultDialog(
         },
     )
 }
-
-private fun MediaLibraryScanSkipReason.labelResId(): Int =
-    when (this) {
-        MediaLibraryScanSkipReason.UNSUPPORTED_FORMAT -> R.string.scan_skip_unsupported_format
-        MediaLibraryScanSkipReason.NON_POSITIVE_DURATION -> R.string.scan_skip_zero_duration
-        MediaLibraryScanSkipReason.SYSTEM_AUDIO -> R.string.scan_skip_system_audio
-        MediaLibraryScanSkipReason.EXCLUDED_PATH -> R.string.scan_skip_excluded_path
-        MediaLibraryScanSkipReason.OUTSIDE_INCLUDED_PATHS -> R.string.scan_skip_outside_included_paths
-        MediaLibraryScanSkipReason.DUPLICATE_IDENTITY -> R.string.scan_skip_duplicate
-        MediaLibraryScanSkipReason.UNREADABLE_ITEM -> R.string.scan_skip_unreadable
-    }

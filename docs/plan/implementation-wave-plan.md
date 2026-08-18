@@ -7,12 +7,12 @@
 ## 1. 执行原则
 
 - Wave 按依赖顺序推进；上游门禁通过后，下游才可依赖其契约。
-- 每个 Wave 同时交付实现、必要单元测试、双语资源和必要文档。
+- 每个 Wave 同时交付实现、必要的纯逻辑 JVM 单测、少量 Robolectric 平台适配测试或 Android Runtime 集成测试、双语资源和必要文档。
 - 每个页面在所属 Wave 同步交付语义标签、`48 dp` 点击目标和设计令牌。
 - Room Schema、Repository 接口、MediaController 命令、Route Key 和设计令牌一旦被下游使用，只能兼容扩展；破坏性变更必须在同一 Wave 内完成迁移。
 - 单个 Wave 可在冻结接口后并行实现互不重叠的包；共享 Gradle、Manifest、数据库 Schema、字符串资源和导航协议由一个所有者串行维护。
-- 每个 Wave 结束固定使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`。
-- 上述三个 Gradle 任务是唯一 CI 门禁。
+- 每个 Wave 结束固定使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，并在有设备时执行 `:app:connectedDebugAndroidTest`。
+- 无设备时可执行 `:app:assembleDebugAndroidTest` 做 Android 测试编译检查；它不等价于 Runtime 集成测试，也不构成其运行结果。
 
 ## 2. 依赖图
 
@@ -44,14 +44,14 @@ flowchart LR
 - 接入 Hilt、Room、DataStore、Media3、Lifecycle/ViewModel、协程与所需图片/元数据能力。
 - 建立 English、简体中文资源目录和字符串一致性检查。
 - 配置 JUnit4、coroutines-test、Turbine、Room Schema 导出与 Fake 目录。
-- 配置 JDK 17 CI，固定 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 三个任务。
+- 配置 JDK 17 CI，固定 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，并在设备可用时追加 `:app:connectedDebugAndroidTest`。
 - 配置备份规则骨架与 Lint。
 - 建立 `MusicApplication`、Hilt 测试 Application、可替换时钟与随机源。
 
 ### 门禁
 
-- `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 可执行。
-- `testDebugUnitTest` 至少包含一个真实单元测试，不以空任务作为完成证据。
+- `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 可执行；设备可用时 `:app:connectedDebugAndroidTest` 可执行。
+- `testDebugUnitTest` 包含纯逻辑/Robolectric 测试；`ApplicationStartupIntegrationTest` 在 Android Runtime 中承担资源启动冒烟，不以 JVM 空任务作为完成证据。
 - Room Schema 导出配置有效；v1 Schema 在 Wave 1 创建实体后生成。
 
 ## 4. Wave 1：领域、Room 与设置事实来源
@@ -71,8 +71,8 @@ Wave 0。
 
 ### 测试
 
-- 名称规范化、路径规则优先级、播放历史阈值、三种播放模式纯逻辑单元测试。
-- DAO 唯一约束、批量事务、缺失曲目关联清理与快照往返逻辑测试。
+- 名称规范化、路径规则优先级、播放历史阈值、三种播放模式纯逻辑 JVM 单元测试。
+- DAO 唯一约束、批量事务、缺失曲目关联清理、快照往返与数据库迁移使用 Android Runtime Room 集成测试；对应 `MusicDatabaseMigrationTest`、`HistoryRepositoryTest`、`PlaylistRepositoryTest` 和 `PlaybackSnapshotRepositoryTest`。
 - DataStore 默认值、更新和“只重置设置”测试。
 
 ### 门禁
@@ -99,7 +99,7 @@ Wave 1 的设置流、Repository Fake 与领域模型。
 
 ### 测试
 
-- 八栈切换、重复点击回根、返回到单曲再退出与状态恢复的纯状态单元测试。
+- 八栈切换、重复点击回根、五个媒体浏览根页动态锚定、扫描返回来源页、根页返回桌面与状态恢复的纯状态单元测试。
 
 ### 门禁
 
@@ -118,15 +118,15 @@ Wave 1 数据事实来源，Wave 2 壳层与共享状态。
 - 实现多存储卷 MediaStore 查询、MIME/扩展名准入、系统音频排除和路径规则。
 - 实现同步代次、原子 Upsert、整体失败回滚、暂时不可用标记与重新发现恢复；完整同步成功后级联清理缺失曲目关联。
 - 实现 MediaStore 版本/卷集合比较、前台 ContentObserver 和 `1 秒` 防抖。
-- 实现首次雷达、缓存顶部进度、结果对话框、跳过原因和重试。
+- 实现首次雷达、缓存顶部进度、结果对话框成功曲目列表和重试。
 - 实现单曲列表、独立排序记忆、隐藏状态和基本批量选择。
 - 实现按需标签读取适配器、高级元数据、封面提取、缓存键与并发上限；歌词来源合并、同步控制和 UI 归 Wave 5。
 - 实现可复用的扫描规则设置组件与扫描协调器；完整设置页由 Wave 7 组装。
 
 ### 测试
 
-- 七格式、时长、MIME 冲突、路径排除优先、卷卸载、缺失曲目级联清理、原子同步和查询失败单元/Room 测试。
-- 权限状态、首次扫描、缓存同步和自动同步的协调逻辑使用 Fake 进行单元测试。
+- 七格式、时长、MIME 冲突、路径排除优先和权限/协调策略使用 JVM 或少量 Robolectric 测试；Room 查询、缺失曲目级联清理、原子同步和同步失败边界使用 Android Runtime 集成测试，对应 `MediaLibraryRepositoryTest` 与 `MediaLibrarySyncTest`。
+- 需要真实 Context 或 MediaStore API 的窄平台适配继续使用少量 Robolectric；不把真实 Room/Hilt 行为归入该层。
 
 ### 门禁
 
@@ -153,9 +153,8 @@ Wave 3 可用曲目与 URI，Wave 1 快照和设置。
 
 ### 测试
 
-- 模式、随机轮次、双队列变更、移除当前项、坏文件遍历与历史计时单元测试。
-- 使用 Fake Player 和可控时钟覆盖淡出淡入全部竞态。
-- 使用 Fake AudioFocus/Noisy 事件覆盖短暂与永久焦点丢失、duck、私密输出断开及禁止自动恢复。
+- 模式、随机轮次、双队列变更、移除当前项、坏文件遍历与历史计时使用纯逻辑 JVM 单元测试。
+- 使用 Fake Player、可控时钟和 Fake AudioFocus/Noisy 事件覆盖淡出淡入、焦点与输出断开的业务竞态；`PlaybackServiceHiltTest` 在 Android Runtime 验证真实 Hilt Service 图可用。
 
 ### 门禁
 
@@ -210,9 +209,9 @@ Wave 2 共享曲目组件，Wave 3 媒体查询，Wave 4 播放建队；可与 W
 
 ### 测试
 
-- Album ID、Artist ID、目录树、递归播放与排序查询测试。
-- 播放列表唯一名称、重复项、新增/跳过计数、不可用曲目和空列表测试。
-- 多选、批量事务、播放全部建队和历史状态单元测试。
+- Album ID、Artist ID、目录树、递归播放与排序查询的纯逻辑测试。
+- 播放列表唯一名称、重复项、新增/跳过计数、不可用曲目和空列表使用 JVM 业务测试；真实播放列表/历史 Repository 事务使用 Android Runtime，对应 `PlaylistRepositoryTest` 与 `HistoryRepositoryTest`。
+- 多选、批量业务、播放全部建队和历史状态使用 JVM 单测；Room 级联与持久化边界不在 JVM 单测中替代验证。
 
 ### 门禁
 
@@ -241,6 +240,7 @@ Wave 2 主题壳层，Wave 3 扫描协调器，Wave 4 播放设置，Wave 5 全�
 - 设置默认值、生效时机、重置保留项与独立数据清理测试。
 - Aero 四类降级信号和恢复测试。
 - 语言重建后导航、播放与滚动状态恢复的纯状态单元测试。
+- `AboutMetadataTest` 在 Android Runtime 验证安装包版本与许可资源可离线读取。
 
 ### 门禁
 
@@ -256,15 +256,16 @@ Wave 0–7 全部完成。
 
 ### 实施
 
-- 确认 26 项功能都已完成所属 Wave 的实现与单元测试。
-- 修复最小 CI 暴露的测试、Lint 或 Debug 构建问题。
+- 确认 26 项功能都已完成所属 Wave 的实现与对应分层测试。
+- 修复固定 CI 暴露的 JVM/Robolectric 测试、Android Runtime 集成测试、Lint 或 Debug 构建问题。
 - 同步最终 English/简体中文资源与必要文档。
 
 ### 最终门禁
 
-- JDK 17 下 `:app:testDebugUnitTest` 通过。
-- JDK 17 下 `:app:lintDebug` 通过。
-- JDK 17 下 `:app:assembleDebug` 通过。
+- JDK 17 下执行 `:app:testDebugUnitTest`。
+- JDK 17 下执行 `:app:lintDebug`。
+- JDK 17 下执行 `:app:assembleDebug`。
+- 有设备时执行 `:app:connectedDebugAndroidTest`；无设备时只能执行 `:app:assembleDebugAndroidTest` 编译检查，并单独记录未运行设备集成测试。
 
 ## 12. 需求到 Wave 的映射
 

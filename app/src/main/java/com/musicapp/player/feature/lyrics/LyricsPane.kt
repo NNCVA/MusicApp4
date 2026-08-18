@@ -67,7 +67,11 @@ fun LyricsPane(
         LyricsDisplayMode.LOADING -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator()
-                Text(loadingText, style = MusicTheme.typography.bodyMedium)
+                Text(
+                    loadingText,
+                    style = MusicTheme.typography.bodyMedium,
+                    color = MusicTheme.colors.onSurfaceVariant,
+                )
             }
         }
 

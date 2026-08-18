@@ -10,22 +10,26 @@ import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.metadata.ArtworkRepository
+import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
-import com.musicapp.player.data.sync.LibrarySyncState
-import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
 import com.musicapp.player.feature.tracks.batch.BatchTrackAction
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class TrackSortField {
@@ -60,45 +64,41 @@ data class TrackSort(
 
 data class TracksUiState(
     val tracks: List<Track> = emptyList(),
+    val isLibraryLoaded: Boolean = false,
+    val artworkByTrackId: Map<TrackId, TrackArtworkState> = emptyMap(),
     val playlists: List<Playlist> = emptyList(),
-    val syncState: LibrarySyncState = LibrarySyncState.Idle(hasSuccessfulScan = false),
     val sort: TrackSort = TrackSort.defaultFor(TrackSortField.TITLE),
     val selectedTrackIds: Set<TrackId> = emptySet(),
     val batchResult: BatchTrackActionResult? = null,
     val isBatchActionRunning: Boolean = false,
 ) {
-    val isInitialLoading: Boolean
-        get() = !syncState.hasSuccessfulScan && syncState !is LibrarySyncState.Failed
-
-    val isRefreshing: Boolean
-        get() = syncState is LibrarySyncState.Syncing && syncState.hasSuccessfulScan
-
-    val fullScreenFailure: Boolean
-        get() = syncState is LibrarySyncState.Failed && !syncState.hasSuccessfulScan
-
-    val cachedFailure: Boolean
-        get() = syncState is LibrarySyncState.Failed && syncState.hasSuccessfulScan
-
     val isSelectionMode: Boolean
         get() = selectedTrackIds.isNotEmpty()
-
-    val pendingFeedback: PendingLibrarySyncFeedback?
-        get() = syncState.pendingFeedback
 }
 
 @HiltViewModel
 class TracksViewModel @Inject constructor(
     private val mediaLibraryRepository: MediaLibraryRepository,
     playlistRepository: PlaylistRepository,
-    private val syncCoordinator: TracksSyncController,
     private val savedStateHandle: SavedStateHandle,
     private val playbackController: PlaybackControllerFacade,
     private val batchActionExecutor: BatchTrackActionExecutor,
+    private val artworkRepository: ArtworkRepository,
 ) : ViewModel() {
     private val sort = MutableStateFlow(restoreSort(savedStateHandle))
     private val selectedTrackIds = MutableStateFlow<Set<TrackId>>(emptySet())
     private val batchResult = MutableStateFlow<BatchTrackActionResult?>(null)
     private val isBatchActionRunning = MutableStateFlow(false)
+    private val artworkByTrackId = MutableStateFlow<Map<TrackId, TrackArtworkState>>(emptyMap())
+
+    private val libraryState =
+        mediaLibraryRepository.observeTracks()
+            .map { tracks -> TracksLibraryState(tracks = tracks, isLoaded = true) }
+            .onStart { emit(TracksLibraryState()) }
+
+    private val playlists =
+        playlistRepository.observePlaylists()
+            .onStart { emit(emptyList()) }
 
     private val presentationState =
         combine(
@@ -112,17 +112,19 @@ class TracksViewModel @Inject constructor(
 
     val uiState: StateFlow<TracksUiState> =
         combine(
-            mediaLibraryRepository.observeTracks(),
-            playlistRepository.observePlaylists(),
-            syncCoordinator.state,
+            libraryState,
+            playlists,
             presentationState,
-        ) { tracks, playlists, syncState, presentation ->
+            artworkByTrackId,
+        ) { library, playlists, presentation, artwork ->
+            val tracks = library.tracks
             val sortedTracks = tracks.sortedWith(presentation.sort.comparator())
             val visibleTrackIds = tracks.mapTo(hashSetOf(), Track::id)
             TracksUiState(
                 tracks = sortedTracks,
+                isLibraryLoaded = library.isLoaded,
+                artworkByTrackId = artwork.filterKeys { it in visibleTrackIds },
                 playlists = playlists,
-                syncState = syncState,
                 sort = presentation.sort,
                 selectedTrackIds =
                     presentation.selectedTrackIds.filterTo(linkedSetOf()) { it in visibleTrackIds },
@@ -132,7 +134,7 @@ class TracksViewModel @Inject constructor(
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = TracksUiState(syncState = syncCoordinator.state.value, sort = sort.value),
+            initialValue = TracksUiState(sort = sort.value),
         )
 
     fun selectSort(field: TrackSortField) {
@@ -163,7 +165,12 @@ class TracksViewModel @Inject constructor(
     }
 
     fun selectAllCurrentResults() {
-        selectedTrackIds.value = uiState.value.tracks.mapTo(linkedSetOf(), Track::id)
+        selectTracks(uiState.value.tracks.map(Track::id))
+    }
+
+    fun selectTracks(trackIds: Collection<TrackId>) {
+        val visibleTrackIds = uiState.value.tracks.mapTo(hashSetOf(), Track::id)
+        selectedTrackIds.value = trackIds.filterTo(linkedSetOf()) { it in visibleTrackIds }
     }
 
     fun clearSelection() {
@@ -191,6 +198,46 @@ class TracksViewModel @Inject constructor(
         )
     }
 
+    fun requestArtwork(track: Track) {
+        var shouldLoad = false
+        artworkByTrackId.update { cached ->
+            val current = cached[track.id]
+            if (current?.dateModifiedMs == track.dateModifiedMs) {
+                cached
+            } else {
+                shouldLoad = true
+                cached +
+                    (
+                        track.id to
+                            TrackArtworkState(
+                                dateModifiedMs = track.dateModifiedMs,
+                                artwork = ArtworkResult.Placeholder,
+                            )
+                        )
+            }
+        }
+        if (!shouldLoad) return
+
+        viewModelScope.launch {
+            val result =
+                try {
+                    artworkRepository.artwork(track, ARTWORK_TARGET_PX)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Throwable) {
+                    ArtworkResult.Placeholder
+                }
+            artworkByTrackId.update { cached ->
+                val current = cached[track.id]
+                if (current?.dateModifiedMs == track.dateModifiedMs) {
+                    cached + (track.id to current.copy(artwork = result))
+                } else {
+                    cached
+                }
+            }
+        }
+    }
+
     fun hideSelected() {
         executeBatch(BatchTrackAction.Hide)
     }
@@ -203,6 +250,22 @@ class TracksViewModel @Inject constructor(
         executeBatch(BatchTrackAction.AddToQueue)
     }
 
+    fun addTrackToQueue(trackId: TrackId) {
+        executeBatch(BatchTrackAction.AddToQueue, listOf(trackId))
+    }
+
+    fun playTrackNext(trackId: TrackId) {
+        executeBatch(BatchTrackAction.PlayNext, listOf(trackId))
+    }
+
+    fun hideTrack(trackId: TrackId) {
+        executeBatch(BatchTrackAction.Hide, listOf(trackId))
+    }
+
+    fun addTrackToPlaylist(trackId: TrackId, playlistId: PlaylistId) {
+        executeBatch(BatchTrackAction.AddToPlaylist(playlistId), listOf(trackId))
+    }
+
     fun playSelectedNext() {
         executeBatch(BatchTrackAction.PlayNext)
     }
@@ -211,21 +274,13 @@ class TracksViewModel @Inject constructor(
         batchResult.value = null
     }
 
-    fun requestManualSync() {
-        syncCoordinator.requestManualSync()
-    }
-
-    fun retrySync() {
-        syncCoordinator.requestManualSync()
-    }
-
-    fun acknowledgeFeedback(eventId: Long) {
-        syncCoordinator.acknowledgeFeedback(eventId)
-    }
-
-    private fun executeBatch(action: BatchTrackAction) {
+    private fun executeBatch(
+        action: BatchTrackAction,
+        requestedTrackIds: List<TrackId> = currentVisibleSelection().toList(),
+    ) {
         if (isBatchActionRunning.value) return
-        val orderedTrackIds = currentVisibleSelection().toList()
+        val visibleTrackIds = uiState.value.tracks.mapTo(hashSetOf(), Track::id)
+        val orderedTrackIds = requestedTrackIds.filter { it in visibleTrackIds }.distinct()
         if (orderedTrackIds.isEmpty()) return
         isBatchActionRunning.value = true
         viewModelScope.launch {
@@ -251,6 +306,7 @@ class TracksViewModel @Inject constructor(
     }
 
     private companion object {
+        const val ARTWORK_TARGET_PX = 128
         const val SORT_FIELD_KEY = "tracks.sort.field"
         const val SORT_DIRECTION_KEY = "tracks.sort.direction"
         const val STOP_TIMEOUT_MS = 5_000L
@@ -272,6 +328,16 @@ private data class TracksPresentationState(
     val selectedTrackIds: Set<TrackId>,
     val batchResult: BatchTrackActionResult?,
     val isBatchActionRunning: Boolean,
+)
+
+private data class TracksLibraryState(
+    val tracks: List<Track> = emptyList(),
+    val isLoaded: Boolean = false,
+)
+
+data class TrackArtworkState(
+    val dateModifiedMs: Long,
+    val artwork: ArtworkResult,
 )
 
 private fun TrackSort.comparator(): Comparator<Track> {

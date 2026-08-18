@@ -26,6 +26,11 @@ data class MusicDimensions(
     val sidebarCardSpacing: Dp = 16.dp,
     val sidebarCardContentPadding: Dp = 8.dp,
     val trackListItemHeight: Dp = 80.dp,
+    val trackArtworkSize: Dp = 48.dp,
+    val trackArtworkCornerRadius: Dp = 6.dp,
+    val sectionIndexItemSize: Dp = 14.dp,
+    val sectionIndexItemGap: Dp = 3.dp,
+    val sectionHeaderHeight: Dp = 40.dp,
     val miniPlayerHeight: Dp = 80.dp,
     val miniArtworkSize: Dp = 56.dp,
     val miniArtworkCornerRadius: Dp,
@@ -43,23 +48,24 @@ data class MusicDimensions(
     val settingsContentMaxWidth: Dp = 720.dp,
     val adaptiveGridMinimumCellWidth: Dp = 160.dp,
     val categoryCardMinHeight: Dp = 112.dp,
+    val categoryCardInfoHeight: Dp = 64.dp,
     val minimumTouchTarget: Dp = 48.dp,
-    val radarSize: Dp = 176.dp,
-    val radarStrokeWidth: Dp = 2.dp,
     val dialogListMaxHeight: Dp = 360.dp,
     val queueEdgeResistanceDistance: Dp = 24.dp,
     val spaceExtraSmall: Dp = 4.dp,
-    val spaceSmall: Dp = 8.dp,
+    val spaceSmallMedium: Dp = 8.dp,
+    val spaceSmall: Dp = 12.dp,
     val spaceMedium: Dp = 16.dp,
     val spaceLarge: Dp = 24.dp,
     val spaceExtraLarge: Dp = 32.dp,
+    val topBarHorizontalPadding: Dp = 16.dp,
     val contentHorizontalPadding: Dp,
 ) {
     companion object {
         val Compact = MusicDimensions(
             windowWidthTier = MusicWindowWidthTier.COMPACT,
             miniArtworkCornerRadius = 16.dp,
-            contentHorizontalPadding = 16.dp,
+            contentHorizontalPadding = 24.dp,
         )
         val Medium = MusicDimensions(
             windowWidthTier = MusicWindowWidthTier.MEDIUM,
@@ -69,7 +75,7 @@ data class MusicDimensions(
         val Expanded = MusicDimensions(
             windowWidthTier = MusicWindowWidthTier.EXPANDED,
             miniArtworkCornerRadius = 20.dp,
-            contentHorizontalPadding = 32.dp,
+            contentHorizontalPadding = 24.dp,
         )
 
         fun forTier(tier: MusicWindowWidthTier): MusicDimensions =

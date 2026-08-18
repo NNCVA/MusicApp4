@@ -6,15 +6,15 @@
 
 本文把 [`../design/implementation-spec.md`](../design/implementation-spec.md) 拆成可独立实现、可自动验证、可单独回退的执行过程。Wave Plan 继续承担范围与需求映射，实际开发按本文的过程依赖推进，不要求在一个 Wave 内一次完成全部内容。
 
-- **自动门禁**：代理进入下一过程前必须通过的聚焦单元测试及固定 CI 任务。
-- **用户验收清单**：交付给用户自行执行的设备、视觉与交互检查，不加入 CI，也不作为代理自动阻断门禁。
-- 每个过程同步交付实现、必要 JVM 单元测试、English/简体中文资源和受影响文档。
-- 不增加设备测试、截图测试、覆盖率、Release 构建或其他 CI 门禁。
+- **自动门禁**：代理进入下一过程前必须执行的聚焦测试（纯逻辑 JVM、少量 Robolectric 或 Android Runtime 集成测试）及固定 CI 任务。
+- **用户验收清单**：交付给用户自行执行的设备、视觉与完整交互检查；已由 `connectedDebugAndroidTest` 覆盖的 Android Runtime 行为不再作为人工测试替代，也不新增截图测试门禁。
+- 每个过程同步交付实现、必要的分层测试、English/简体中文资源和受影响文档。
+- 不增加覆盖率、Release 构建或未在测试策略中定义的其他 CI 门禁。
 - 共享 Gradle、Manifest、Room Schema、字符串资源、Route Key、MediaController 协议和设计令牌由单一所有者串行修改；接口冻结后，互不重叠的业务包才可并行。
 
 ## 2. 当前基线与固定验证
 
-当前工程是单一 `:app` 模块，只包含 Compose、Material 3、Navigation 3、启动 Activity、单一 `Main` Route Key 和空页面；尚无 Hilt、Room、DataStore、Media3、Repository、ViewModel 或测试源码。
+本计划的起点是单一 `:app` 模块的 Compose/Material 3/Navigation 3 空白骨架，只有启动 Activity、单一 `Main` Route Key 和空页面；该历史起点不代表当前代码状态。当前收口基线已接入 Hilt、Room、DataStore、Media3、Repository、ViewModel 及分层测试目录，测试归属以 [`../testing.md`](../testing.md) 为准。
 
 本机默认 shell 没有可用 Java Runtime；执行时先定位 JDK 17，并用任务专用变量设置环境。当前可用路径为：
 
@@ -25,17 +25,18 @@ env JAVA_HOME="$MUSICAPP_JDK" PATH="$MUSICAPP_JDK/bin:$PATH" java -version
 
 每个过程按以下顺序验证：
 
-1. 运行该过程新增或受影响的聚焦 `testDebugUnitTest` 测试类。
+1. 运行该过程新增或受影响的聚焦 `testDebugUnitTest` 测试类；Android Runtime 行为运行对应的 `connectedDebugAndroidTest` 测试。
 2. 使用 JDK 17 顺序执行固定 CI：
 
    ```bash
    env JAVA_HOME="$MUSICAPP_JDK" PATH="$MUSICAPP_JDK/bin:$PATH" \
-     ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
+     ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:connectedDebugAndroidTest --console=plain
    ```
 
-3. 执行 `git diff --check`，检查意外生成物与未预期文件；任何一步失败都在当前过程内修复，不把失败带入下游。
+3. 无设备时只能以 `./gradlew :app:assembleDebugAndroidTest --console=plain` 做 Android 测试编译检查，不把它记录为 Runtime 集成测试执行结果。
+4. 执行 `git diff --check`，检查意外生成物与未预期文件；任何一步失败都在当前过程内修复，不把失败带入下游。
 
-当前基线实测三项任务通过，但 `testDebugUnitTest` 为 `NO-SOURCE`；过程 01 必须把它变成至少执行一个真实测试的任务。
+历史起点记录曾写明三项任务可执行但 `testDebugUnitTest` 为 `NO-SOURCE`；该记录只保留为计划背景，不代表当前验证结论。当前收口要求 `testDebugUnitTest` 执行纯逻辑/Robolectric 测试，并由 `ApplicationStartupIntegrationTest` 与 Android Runtime 集成测试承担设备侧冒烟和真实边界验证。
 
 ## 3. 过程依赖
 
@@ -81,17 +82,17 @@ flowchart TD
 
 - **前置**：当前干净工作树。
 - **实现**：只核对 JDK 17、Android SDK、Gradle Wrapper、`minSdk 26`、`targetSdk 36`、单模块和现有 APK；不修改业务代码。
-- **聚焦验证**：`java -version`、`android describe --project_dir=.`、固定三项 Gradle 任务、`git status --short --branch`。
-- **完成条件**：记录可复用 JDK 17 路径；Debug APK 可生成；明确 `testDebugUnitTest` 当前为 `NO-SOURCE`。
+- **聚焦验证**：`java -version`、`android describe --project_dir=.`、固定 JVM/Lint/Debug 构建任务；设备可用时追加 `:app:connectedDebugAndroidTest`，否则执行 `:app:assembleDebugAndroidTest` 编译检查；以及 `git status --short --branch`。
+- **完成条件**：记录可复用 JDK 17 路径；Debug APK 可生成；Android 测试 APK 可在有设备时执行或在无设备时完成编译检查，且两种结果明确区分。
 - **用户验收清单**：无。
 - **回退边界**：无文件变更。
 
 ### 01. 测试、依赖与 CI 底座
 
 - **前置**：过程 00。
-- **实现**：版本目录加入 Hilt、Room、Preferences DataStore、Media3、Lifecycle/ViewModel、Coroutines、JUnit4、`kotlinx-coroutines-test`、Turbine；配置 Room Schema 导出、Fake 目录、备份规则骨架和 JDK 17 CI；补齐被 Release 配置引用的 `proguard-rules.pro` 空规则文件。
-- **聚焦验证**：新增 `ProjectSmokeTest`，确认 `testDebugUnitTest` 实际执行且不再为 `NO-SOURCE`；运行固定自动门禁。
-- **完成条件**：依赖解析稳定，CI 只包含 `testDebugUnitTest`、`lintDebug`、`assembleDebug`，未引入 `INTERNET` 或 `POST_NOTIFICATIONS`。
+- **实现**：版本目录加入 Hilt、Room、Preferences DataStore、Media3、Lifecycle/ViewModel、Coroutines、JUnit4、`kotlinx-coroutines-test`、Turbine；配置 Room Schema 导出、Fake 目录、备份规则骨架、AndroidJUnit4/Hilt Runner 和 JDK 17 CI；补齐被 Release 配置引用的 `proguard-rules.pro` 空规则文件。
+- **聚焦验证**：移除 `ProjectSmokeTest`，新增 `ApplicationStartupIntegrationTest` 作为 instrumentation 资源冒烟；将 Room、Repository、同步、Hilt 图、Service 和关于资源测试归 `app/src/androidTest`，运行纯逻辑/Robolectric 聚焦测试及固定自动门禁。
+- **完成条件**：依赖解析稳定，CI 包含 `testDebugUnitTest`、`lintDebug`、`assembleDebug` 和有设备时的 `connectedDebugAndroidTest`；无设备时只记录 `assembleDebugAndroidTest` 编译检查，未引入 `INTERNET` 或 `POST_NOTIFICATIONS`。
 - **用户验收清单**：安装 Debug APK，确认仍可冷启动到空壳页面。
 - **回退边界**：Gradle、CI、备份规则和测试骨架可整体回退，不触及业务模型。
 
@@ -99,7 +100,7 @@ flowchart TD
 
 - **前置**：过程 01。
 - **实现**：建立 `MusicApplication`、Hilt Application/Activity 入口、应用级 Coroutine Scope、可替换 `Clock` 和随机源；只建立依赖边界，不创建业务表或 Player。
-- **聚焦验证**：`ApplicationGraphTest` 验证时钟、随机源与应用作用域可替换；Hilt/KSP 编译及固定自动门禁通过。
+- **聚焦验证**：在 Android Runtime 中运行 `ApplicationGraphTest`，验证时钟、随机源与应用作用域可替换；Hilt/KSP 编译及固定自动门禁按设备可用性分别执行。
 - **完成条件**：Application、Activity 和未来 Service 的依赖作用域清晰，没有 UI 单例持有业务状态。
 - **用户验收清单**：冷启动、旋转和从最近任务恢复均无崩溃。
 - **回退边界**：Application、DI Module 和入口注解为单一回退单元。
@@ -144,7 +145,7 @@ flowchart TD
 
 - **前置**：过程 06。
 - **实现**：建立八个可保存一级返回栈、详情 Route Key、紧凑推移式侧栏与中等/展开常驻三组卡片、共享 Scaffold、导航内容之上的应用级 Player Sheet 占位与 Edge-to-Edge Insets；紧凑侧栏宽度为窗口 `50%`，展开时主内容等距右移并裁切，中等和展开侧栏分别固定 `240 dp` 与 `256 dp`。
-- **聚焦验证**：`NavigationStateTest` 覆盖切栈、重复点击回根、非单曲根页返回单曲、退出路径、配置与进程状态序列化；`WindowLayoutPolicyTest` 覆盖 `<600`、`600–839`、`≥840 dp` 及 `240/256 dp`。
+- **聚焦验证**：`NavigationStateTest` 覆盖切栈、重复点击回根、五个媒体浏览根页动态锚定、扫描返回来源页、根页返回桌面、配置与进程状态序列化；`WindowLayoutPolicyTest` 覆盖 `<600`、`600–839`、`≥840 dp` 及 `240/256 dp`。
 - **完成条件**：业务页面只通过 Route Key 导航；Insets 在具体屏幕/列表消费，避免双重 padding。
 - **用户验收清单**：自行检查三档窗口、旋转、语言重建、1.5 字体、系统栏与键盘避让。
 - **回退边界**：壳层、Route Key 和共享导航状态为同一回退单元。
@@ -182,7 +183,7 @@ flowchart TD
 - **实现**：实现 MediaStore 版本/卷集合比较、前台 ContentObserver、`1 秒` 防抖与一次后继同步；实现首次雷达、缓存顶部进度、首次/手动结果对话框、自动同步静默、单曲排序/隐藏/基础多选。
 - **聚焦验证**：`LibrarySyncCoordinatorTest` 覆盖冷启动、内容变化合并、同步期间新变化、手动/自动反馈差异；`TracksViewModelTest` 覆盖加载、缓存、错误、排序、隐藏和状态恢复。
 - **完成条件**：用户已能完成授权、扫描、查看、排序和隐藏曲目；重启后 Room 与页面一致。
-- **用户验收清单**：自行检查首次无缓存、已有缓存、手动扫描、自动同步、失败重试及结果对话框全曲目惰性列表。
+- **用户验收清单**：自行检查首次无缓存、已有缓存、手动扫描、自动同步、失败重试及结果对话框成功曲目惰性列表。
 - **回退边界**：自动同步协调器、扫描反馈和单曲页可以分三个检查点回退，Room 同步契约不回退。
 
 ### 12. 高级元数据与专辑封面
@@ -286,10 +287,10 @@ flowchart TD
 
 ### 23. 全量一致性与首版收口
 
-- **前置**：过程 00–22 全部自动门禁通过。
-- **实现**：只修复全量单测、Lint、Debug 构建、双语资源和文档一致性暴露的问题；不在收口过程新增需求或破坏已冻结的 Room、Route Key、MediaController 和设计令牌契约。
+- **前置**：过程 00–22 的分层自动门禁均已执行并有独立结果记录。
+- **实现**：只修复全量 JVM/Robolectric 测试、Android Runtime 集成测试、Lint、Debug 构建、双语资源和文档一致性暴露的问题；不在收口过程新增需求或破坏已冻结的 Room、Route Key、MediaController 和设计令牌契约。
 - **聚焦验证**：运行全量固定自动门禁；检查 `values`/`values-zh-rCN` 键一致、26 项需求到过程映射、Manifest 权限/组件、无硬编码可见文本及 `git diff --check`。
-- **完成条件**：JDK 17 下 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 全部通过，必要文档与实际代码状态一致。
+- **完成条件**：JDK 17 下 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 和有设备时的 `:app:connectedDebugAndroidTest` 均有独立结果；无设备时明确记录 `:app:assembleDebugAndroidTest` 仅为编译检查，必要文档与实际代码状态一致。
 - **用户验收清单**：由用户自行执行扫描、播放、队列、播放列表、歌词、语言主题、通知恢复、三档窗口和数据管理的最终验收。
 - **回退边界**：每个收口修复保持小提交；不得用跨过程重写掩盖单点失败。
 

@@ -117,8 +117,7 @@ private fun PlaylistsScreen(
     var editorInitialName by rememberSaveable { mutableStateOf("") }
     var deletePlaylistId by rememberSaveable { mutableLongStateOf(NO_PLAYLIST_ID) }
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-            .padding(horizontal = dimensions.contentHorizontalPadding),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
     ) {
         CategoryHeader(
             title = stringResource(R.string.navigation_playlists),
@@ -139,18 +138,21 @@ private fun PlaylistsScreen(
                 text = stringResource(message.labelRes()),
                 style = MusicTheme.typography.bodyMedium,
                 color = MusicTheme.colors.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
             )
         }
         if (state.playlists.isEmpty()) {
             EmptyState(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 title = stringResource(R.string.playlists_empty_title),
                 description = stringResource(R.string.playlists_empty_description),
             )
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(dimensions.adaptiveGridMinimumCellWidth),
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                 horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
@@ -286,8 +288,7 @@ private fun PlaylistDetailScreen(
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets)
-            .padding(horizontal = dimensions.contentHorizontalPadding),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
     ) {
         CategoryHeader(
             title =
@@ -325,23 +326,27 @@ private fun PlaylistDetailScreen(
                 text = stringResource(R.string.playlist_remove_result, result.changedCount, result.skippedCount),
                 style = MusicTheme.typography.bodyMedium,
                 color = MusicTheme.colors.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
             )
         } ?: state.operationMessage?.let { message ->
             Text(
                 text = stringResource(message.labelRes()),
                 style = MusicTheme.typography.bodyMedium,
                 color = MusicTheme.colors.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
             )
         }
         if (state.tracks.isEmpty()) {
             EmptyState(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 title = stringResource(R.string.playlist_empty_title),
                 description = stringResource(R.string.playlist_empty_description),
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
                 contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
             ) {
                 items(state.tracks, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { track ->
@@ -406,7 +411,12 @@ private fun PlaylistTrackRow(
             Checkbox(checked = selected, onCheckedChange = { onClick(track) })
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(track.title, style = MusicTheme.typography.titleMedium, maxLines = 1)
+            Text(
+                track.title,
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+            )
             Text(
                 track.artistName,
                 style = MusicTheme.typography.bodySmall,

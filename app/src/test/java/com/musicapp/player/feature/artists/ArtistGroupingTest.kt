@@ -20,7 +20,7 @@ class ArtistGroupingTest {
 
         assertEquals(1, grouped.size)
         assertEquals("Alpha & Beta", grouped.single().displayName)
-        assertEquals(2, grouped.single().albumCount)
+        assertEquals(listOf(1L, 2L), grouped.single().artworkCandidates.map { it.id.mediaStoreId })
     }
 
     @Test
@@ -34,6 +34,25 @@ class ArtistGroupingTest {
             )
 
         assertEquals(setOf(ArtistId(20), ArtistId(21)), grouped.map(ArtistSummary::id).toSet())
+    }
+
+    @Test
+    fun `artist summaries use fixed ascending name order`() {
+        val grouped =
+            ArtistGrouping.group(
+                listOf(
+                    track(1, ArtistId(22), "Zulu", AlbumId("external", 1)),
+                    track(2, ArtistId(20), "alpha", AlbumId("external", 2)),
+                    track(3, ArtistId(21), "Beta", AlbumId("external", 3)),
+                    track(4, ArtistId(23), "方大同", AlbumId("external", 4)),
+                    track(5, ArtistId(24), "!Special", AlbumId("external", 5)),
+                ),
+            )
+
+        assertEquals(
+            listOf("alpha", "Beta", "方大同", "Zulu", "!Special"),
+            grouped.map(ArtistSummary::displayName),
+        )
     }
 
     private fun track(value: Long, artistId: ArtistId, artistName: String, albumId: AlbumId) =

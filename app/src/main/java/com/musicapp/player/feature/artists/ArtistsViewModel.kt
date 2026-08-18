@@ -1,32 +1,46 @@
 package com.musicapp.player.feature.artists
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.PlaybackContextSource
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.metadata.ArtworkRepository
+import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.feature.category.CategoryPlaybackContextFactory
-import com.musicapp.player.feature.category.CategorySortDirection
 import com.musicapp.player.feature.category.CategoryTrackSort
 import com.musicapp.player.feature.category.CategoryTrackSortField
 import com.musicapp.player.feature.category.next
 import com.musicapp.player.feature.category.sortCategoryTracks
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class ArtistsUiState(
     val artists: List<ArtistSummary> = emptyList(),
-    val sort: ArtistSort = ArtistSort(),
+    val artworkByArtistId: Map<ArtistId, ArtistArtworkState> = emptyMap(),
 )
+
+data class ArtistArtworkState(
+    val signature: ArtistArtworkSignature,
+    val artwork: ArtworkResult,
+) {
+    fun matches(artist: ArtistSummary): Boolean = signature == artist.artworkSignature()
+}
 
 data class ArtistDetailUiState(
     val artistId: ArtistId? = null,
@@ -38,23 +52,86 @@ data class ArtistDetailUiState(
 @HiltViewModel
 class ArtistsViewModel @Inject constructor(
     mediaLibraryRepository: MediaLibraryRepository,
-    private val savedStateHandle: SavedStateHandle,
+    private val artworkRepository: ArtworkRepository,
 ) : ViewModel() {
-    private val sort = MutableStateFlow(restoreArtistSort(savedStateHandle))
+    private val artworkByArtistId = MutableStateFlow<Map<ArtistId, ArtistArtworkState>>(emptyMap())
+    private val artworkRequests = mutableMapOf<ArtistId, ArtworkRequest>()
+    private val artists = mediaLibraryRepository.observeTracks().map(ArtistGrouping::group)
 
     val uiState: StateFlow<ArtistsUiState> =
-        combine(mediaLibraryRepository.observeTracks(), sort) { tracks, currentSort ->
+        combine(artists, artworkByArtistId) { currentArtists, artwork ->
+            val visibleArtistIds = currentArtists.mapTo(hashSetOf(), ArtistSummary::id)
             ArtistsUiState(
-                artists = ArtistGrouping.sorted(ArtistGrouping.group(tracks), currentSort),
-                sort = currentSort,
+                artists = currentArtists,
+                artworkByArtistId = artwork.filterKeys { it in visibleArtistIds },
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ArtistsUiState(sort = sort.value))
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            ArtistsUiState(),
+        )
 
-    fun selectSort(field: ArtistSortField) {
-        sort.value = sort.value.next(field)
-        savedStateHandle[ARTIST_SORT_FIELD_KEY] = sort.value.field.name
-        savedStateHandle[ARTIST_SORT_DIRECTION_KEY] = sort.value.direction.name
+    fun requestArtwork(artist: ArtistSummary) {
+        val candidates = artist.sortedArtworkCandidates()
+        val signature = candidates.artworkSignature()
+        val current = artworkByArtistId.value[artist.id]
+        if (current?.signature == signature) return
+
+        artworkRequests.remove(artist.id)?.job?.cancel()
+        val request = ArtworkRequest()
+        artworkRequests[artist.id] = request
+        artworkByArtistId.update { cached ->
+            cached +
+                (
+                    artist.id to
+                        ArtistArtworkState(
+                            signature = signature,
+                            artwork = ArtworkResult.Placeholder,
+                        )
+                    )
+        }
+
+        if (candidates.isEmpty()) {
+            artworkRequests.remove(artist.id)
+            return
+        }
+
+        request.job = viewModelScope.launch {
+            try {
+                val artwork = loadFirstEmbedded(candidates)
+                artworkByArtistId.update { cached ->
+                    val state = cached[artist.id]
+                    if (state?.signature == signature) {
+                        cached + (artist.id to state.copy(artwork = artwork))
+                    } else {
+                        cached
+                    }
+                }
+            } finally {
+                if (artworkRequests[artist.id] === request) {
+                    artworkRequests.remove(artist.id)
+                }
+            }
+        }
     }
+
+    private suspend fun loadFirstEmbedded(candidates: List<Track>): ArtworkResult {
+        candidates.forEach { candidate ->
+            currentCoroutineContext().ensureActive()
+            val result =
+                try {
+                    artworkRepository.artwork(candidate, ARTIST_ARTWORK_TARGET_PX)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Throwable) {
+                    ArtworkResult.Placeholder
+                }
+            if (result is ArtworkResult.Embedded) return result
+        }
+        return ArtworkResult.Placeholder
+    }
+
+    private class ArtworkRequest(var job: Job? = null)
 }
 
 @HiltViewModel
@@ -101,15 +178,4 @@ class ArtistDetailViewModel @Inject constructor(
 }
 
 private const val STOP_TIMEOUT_MS = 5_000L
-private const val ARTIST_SORT_FIELD_KEY = "artists.sort.field"
-private const val ARTIST_SORT_DIRECTION_KEY = "artists.sort.direction"
-
-private fun restoreArtistSort(handle: SavedStateHandle): ArtistSort {
-    val field = handle.get<String>(ARTIST_SORT_FIELD_KEY)?.let { stored ->
-        ArtistSortField.entries.firstOrNull { it.name == stored }
-    } ?: ArtistSortField.NAME
-    val direction = handle.get<String>(ARTIST_SORT_DIRECTION_KEY)?.let { stored ->
-        CategorySortDirection.entries.firstOrNull { it.name == stored }
-    } ?: if (field == ArtistSortField.NAME) CategorySortDirection.ASCENDING else CategorySortDirection.DESCENDING
-    return ArtistSort(field, direction)
-}
+private const val ARTIST_ARTWORK_TARGET_PX = 128

@@ -9,13 +9,14 @@ plugins {
 
 android {
     namespace = "com.musicapp.player"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "com.musicapp.player"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "com.musicapp.player.HiltTestRunner"
     }
 
     buildTypes {
@@ -82,6 +83,7 @@ dependencies {
   // Playback
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.session)
+  implementation(libs.icu4j)
 
   // Compose
   implementation(libs.androidx.compose.ui)
@@ -100,7 +102,15 @@ dependencies {
   testImplementation(libs.turbine)
   testImplementation(libs.robolectric)
   testImplementation(libs.androidx.test.core)
-  testImplementation(libs.androidx.room.testing)
-  testImplementation(libs.hilt.android.testing)
-  kspTest(libs.hilt.compiler)
+
+  // Instrumented integration tests
+  androidTestImplementation(libs.junit4)
+  androidTestImplementation(libs.kotlinx.coroutines.test)
+  androidTestImplementation(libs.androidx.test.core)
+  androidTestImplementation(libs.androidx.test.runner)
+  androidTestImplementation(libs.androidx.test.rules)
+  androidTestImplementation(libs.androidx.test.ext.junit)
+  androidTestImplementation(libs.androidx.room.testing)
+  androidTestImplementation(libs.hilt.android.testing)
+  kspAndroidTest(libs.hilt.compiler)
 }

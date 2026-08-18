@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -121,8 +122,7 @@ private fun HistoryScreen(
     Column(
         modifier =
             Modifier.fillMaxSize()
-                .windowInsetsPadding(contentInsets)
-                .padding(horizontal = dimensions.contentHorizontalPadding),
+                .windowInsetsPadding(contentInsets),
     ) {
         CategoryHeader(
             title =
@@ -164,30 +164,35 @@ private fun HistoryScreen(
             onValueChange = onQueryChange,
             label = { Text(stringResource(R.string.history_search_label)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
         )
         when {
             state.isLoading ->
                 Column(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) { CircularProgressIndicator() }
             state.entries.isEmpty() ->
                 EmptyState(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     title = stringResource(R.string.history_empty_title),
                     description = stringResource(R.string.history_empty_description),
                 )
             state.visibleEntries.isEmpty() ->
                 EmptyState(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     title = stringResource(R.string.history_no_results_title),
                     description = stringResource(R.string.history_no_results_description),
                 )
             else ->
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
                     contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                 ) {
                     items(
@@ -308,14 +313,10 @@ private fun HistoryBatchResultDialog(
             is BatchTrackActionResult.Failed -> stringResource(R.string.batch_result_failed)
             BatchTrackActionResult.EmptySelection -> return
         }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        text = { Text(message) },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.selection_close))
-            }
-        },
+    MessageDialog(
+        message = message,
+        confirmLabel = stringResource(R.string.selection_close),
+        onDismiss = onDismiss,
     )
 }
 
