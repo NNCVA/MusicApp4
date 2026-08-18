@@ -9,11 +9,11 @@ plugins {
 
 android {
     namespace = "com.musicapp.player"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "com.musicapp.player"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "com.musicapp.player.HiltTestRunner"
