@@ -44,9 +44,8 @@
 
 ## 6. 验证顺序
 
-1. 先运行 `./gradlew :app:testDebugUnitTest`，确认集合排序、索引定位、拖动边界、空标签语义和头像回退的纯逻辑测试。
-2. 依次运行 `./gradlew :app:lintDebug` 与 `./gradlew :app:assembleDebug`。有设备时再运行 `./gradlew :app:connectedDebugAndroidTest`；只有真实报告为 `31/31` 才记录 Android Runtime 集成门禁通过。无设备时可运行 `./gradlew :app:assembleDebugAndroidTest` 做编译检查，但不得记为 Runtime 通过。
-3. 门禁完成后在 Pixel 8 进行截图和 UI 树采集，再按清单目视比对；截图比对用于视觉验收，不替代自动门禁。
+1. 按 [`../verification.md`](../verification.md) 的分层规则执行受影响的纯逻辑测试、Lint、Debug 构建和设备侧测试，并分别记录真实结果。
+2. 门禁完成后在 Pixel 8 进行截图和 UI 树采集，再按清单目视比对；截图比对用于视觉验收，不替代自动门禁。
 
 ## 7. Pixel 8 验收清单
 

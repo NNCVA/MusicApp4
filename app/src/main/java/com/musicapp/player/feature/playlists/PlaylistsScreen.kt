@@ -1,8 +1,13 @@
 package com.musicapp.player.feature.playlists
 
+import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,19 +16,19 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,12 +36,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
@@ -44,6 +55,7 @@ import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
+import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.theme.MusicTheme
@@ -64,6 +76,7 @@ fun PlaylistsScreenRoute(
         policy = policy,
         openDrawer = openDrawer,
         onPlaylistClick = onPlaylistClick,
+        onArtworkRequested = viewModel::requestArtwork,
         onCreate = viewModel::create,
         onRename = viewModel::rename,
         onDelete = viewModel::delete,
@@ -108,14 +121,22 @@ private fun PlaylistsScreen(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onPlaylistClick: (PlaylistId) -> Unit,
+    onArtworkRequested: (Playlist) -> Unit,
     onCreate: (String) -> Unit,
     onRename: (PlaylistId, String) -> Unit,
     onDelete: (PlaylistId) -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
+    val playlistListStartPadding =
+        if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
+            dimensions.topBarNavigationVisualStartPadding
+        } else {
+            dimensions.contentHorizontalPadding
+        }
     var editorPlaylistId by rememberSaveable { mutableLongStateOf(NO_PLAYLIST_ID) }
     var editorInitialName by rememberSaveable { mutableStateOf("") }
     var deletePlaylistId by rememberSaveable { mutableLongStateOf(NO_PLAYLIST_ID) }
+    var pageMenuExpanded by rememberSaveable { mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
     ) {
@@ -124,42 +145,57 @@ private fun PlaylistsScreen(
             policy = policy,
             navigationAction = CategoryNavigationAction.DRAWER,
             onNavigationClick = openDrawer,
+            titleStyle = MusicTheme.typography.titleLarge,
             trailingContent = {
-                TextButton(
-                    onClick = {
-                        editorPlaylistId = NEW_PLAYLIST_ID
-                        editorInitialName = ""
-                    },
-                ) { Text(stringResource(R.string.playlist_create)) }
+                Box {
+                    IconButton(
+                        onClick = { pageMenuExpanded = true },
+                        modifier = Modifier.size(dimensions.minimumTouchTarget),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_common_more_vertical),
+                            contentDescription = stringResource(R.string.selection_more_actions),
+                            tint = MusicTheme.colors.onSurface,
+                            modifier = Modifier.size(dimensions.spaceLarge),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = pageMenuExpanded,
+                        onDismissRequest = { pageMenuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.playlist_create)) },
+                            onClick = {
+                                pageMenuExpanded = false
+                                editorPlaylistId = NEW_PLAYLIST_ID
+                                editorInitialName = ""
+                            },
+                        )
+                    }
+                }
             },
         )
-        state.operationMessage?.let { message ->
-            Text(
-                text = stringResource(message.labelRes()),
-                style = MusicTheme.typography.bodyMedium,
-                color = MusicTheme.colors.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
-            )
-        }
         if (state.playlists.isEmpty()) {
-            EmptyState(
+            PlaylistEmptyState(
                 modifier = Modifier.weight(1f)
                     .padding(horizontal = dimensions.contentHorizontalPadding),
-                title = stringResource(R.string.playlists_empty_title),
-                description = stringResource(R.string.playlists_empty_description),
             )
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(dimensions.adaptiveGridMinimumCellWidth),
-                modifier = Modifier.fillMaxWidth().weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
-                contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
-                horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-                verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentPadding = PaddingValues(
+                    start = playlistListStartPadding,
+                    top = dimensions.spaceSmall,
+                    end = dimensions.topBarHorizontalPadding,
+                    bottom = dimensions.spaceSmall,
+                ),
             ) {
                 items(state.playlists, key = { it.id.value }) { playlist ->
-                    PlaylistCard(
+                    PlaylistRow(
                         playlist = playlist,
+                        artwork = state.artworkByPlaylistId[playlist.id.value]
+                            ?: ArtworkResult.Placeholder,
+                        onArtworkRequested = { onArtworkRequested(playlist) },
                         onClick = { onPlaylistClick(playlist.id) },
                         onRename = {
                             editorPlaylistId = playlist.id.value
@@ -208,37 +244,138 @@ private fun PlaylistsScreen(
 }
 
 @Composable
-private fun PlaylistCard(
+private fun PlaylistEmptyState(modifier: Modifier) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_status_empty_playlist),
+            contentDescription = null,
+            tint = MusicTheme.colors.onSurfaceVariant,
+            modifier = Modifier.size(MusicTheme.dimensions.playerHeaderHeight),
+        )
+    }
+}
+
+@Composable
+private fun PlaylistRow(
     playlist: Playlist,
+    artwork: ArtworkResult,
+    onArtworkRequested: () -> Unit,
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.categoryCardMinHeight),
-        shape = MusicTheme.shapes.large,
-        color = MusicTheme.colors.surfaceContainerHigh,
+    LaunchedEffect(playlist.id, playlist.trackIds) {
+        onArtworkRequested()
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .height(dimensions.trackListItemHeight)
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
+        PlaylistArtwork(
+            artwork = artwork,
+            modifier = Modifier.size(dimensions.trackArtworkSize),
+        )
         Column(
-            modifier = Modifier.padding(dimensions.spaceMedium),
+            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
         ) {
-            Text(playlist.displayName, style = MusicTheme.typography.titleLarge, maxLines = 2)
             Text(
-                pluralStringResource(
+                text = playlist.displayName,
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = pluralStringResource(
                     R.plurals.category_track_count,
                     playlist.trackIds.size,
                     playlist.trackIds.size,
                 ),
-                style = MusicTheme.typography.labelMedium,
+                style = MusicTheme.typography.bodySmall,
                 color = MusicTheme.colors.onSurfaceVariant,
+                maxLines = 1,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall)) {
-                TextButton(onClick = onRename) { Text(stringResource(R.string.playlist_rename)) }
-                TextButton(onClick = onDelete) { Text(stringResource(R.string.playlist_delete)) }
+        }
+        Box {
+            var menuExpanded by rememberSaveable(playlist.id.value) { mutableStateOf(false) }
+            IconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_more_vertical),
+                    contentDescription = stringResource(R.string.selection_more_actions),
+                    tint = MusicTheme.colors.onSurface,
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
             }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.playlist_rename)) },
+                    onClick = {
+                        menuExpanded = false
+                        onRename()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.playlist_delete)) },
+                    onClick = {
+                        menuExpanded = false
+                        onDelete()
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistArtwork(
+    artwork: ArtworkResult,
+    modifier: Modifier,
+) {
+    when (artwork) {
+        ArtworkResult.Placeholder ->
+            Box(
+                modifier = modifier
+                    .clip(MusicTheme.shapes.small)
+                    .background(MusicTheme.colors.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_playlist_album),
+                    contentDescription = null,
+                    tint = MusicTheme.colors.onSecondaryContainer,
+                    modifier = Modifier.fillMaxSize(0.55f),
+                )
+            }
+        is ArtworkResult.Embedded -> {
+            val image = artwork.image
+            val bitmap = remember(image) {
+                Bitmap.createBitmap(
+                    image.argbPixels,
+                    image.width,
+                    image.height,
+                    Bitmap.Config.ARGB_8888,
+                ).asImageBitmap()
+            }
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                modifier = modifier.clip(MusicTheme.shapes.small),
+                contentScale = ContentScale.Crop,
+            )
         }
     }
 }

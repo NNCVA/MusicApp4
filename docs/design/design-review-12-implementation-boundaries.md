@@ -19,6 +19,6 @@
 7. **扫描结果对话框**
    - 推荐：首次与手动扫描结果中的全部成功曲目按标题升序使用惰性列表展示；不显示总数、成功数、跳过数或跳过项明细；关闭对话框不影响已提交媒体库。
 8. **CI 边界**
-   - 推荐：CI 使用 JDK 17 执行 `:app:testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug`，并在设备或模拟器上执行 `:app:connectedDebugAndroidTest`；无设备时 `:app:assembleDebugAndroidTest` 仅作为 instrumentation 编译检查，不能替代 Runtime 集成测试。
+   - 推荐：CI 按 [`../verification.md`](../verification.md) 的分层规则执行；无设备时明确区分测试编译检查与 Android Runtime 集成测试。
 9. **Aero 降级信号**
     - 推荐：使用应用前后台、屏幕开关、系统省电模式和系统 `ACTION_BATTERY_LOW/OKAY` 事件控制降级，不自定义电量百分比阈值；任一降级条件成立即停止 Canvas 帧调度并显示纯色静态背景，全部解除且应用回到前台后恢复用户模式。

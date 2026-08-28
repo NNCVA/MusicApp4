@@ -3,7 +3,17 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- 方括号：四角形式 -->
     <path
-        android:fillColor="#FF000000"
-        android:pathData="M17.65,6.35A7.95,7.95 0,0 0,12 4V1L8,5l4,4V6a6,6 0,1 1,-5.65 4H4.26a8,8 0,1 0,13.39 -3.65z" />
+        android:strokeColor="#333333"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7,4H4V7 M4,17V20H7 M17,20H20V17 M20,7V4H17" />
+    <!-- 中间扫描线 -->
+    <path
+        android:strokeColor="#333333"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M6,12H18" />
 </vector>
