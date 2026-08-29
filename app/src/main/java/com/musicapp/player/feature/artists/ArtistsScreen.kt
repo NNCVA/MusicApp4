@@ -151,7 +151,7 @@ private fun ArtistsScreen(
                         end = dimensions.sectionIndexItemSize + dimensions.spaceLarge,
                     ),
                 ) {
-                    items(displayArtists, key = { it.id.mediaStoreId }) { artist ->
+                    items(displayArtists, key = { it.id.name }) { artist ->
                         val artworkState = state.artworkByArtistId[artist.id]
                         val artwork = artworkState
                             ?.takeIf { it.matches(artist) }

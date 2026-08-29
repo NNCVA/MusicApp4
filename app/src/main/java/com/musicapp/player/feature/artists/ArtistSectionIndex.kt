@@ -101,7 +101,7 @@ private val artistNameComparator =
         { it.displayName.lowercase(Locale.ROOT) },
         { it.displayName },
     )
-        .thenBy { it.id.mediaStoreId }
+        .thenBy { it.id.name }
 
 private fun artistSortKey(value: String): String =
     HAN_TO_LATIN.transliterate(value.trim()).lowercase(Locale.ROOT)

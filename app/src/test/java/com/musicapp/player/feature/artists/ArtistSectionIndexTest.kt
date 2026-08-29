@@ -62,7 +62,7 @@ class ArtistSectionIndexTest {
 
     private fun artist(id: Long, name: String): ArtistSummary =
         ArtistSummary(
-            id = ArtistId(id),
+            id = ArtistId(name.lowercase()),
             displayName = name,
             trackCount = 1,
             artworkCandidates = emptyList(),

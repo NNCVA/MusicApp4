@@ -21,9 +21,9 @@ data class AlbumId(
 }
 
 @JvmInline
-value class ArtistId(val mediaStoreId: Long) {
+value class ArtistId(val name: String) {
     init {
-        require(mediaStoreId > 0) { "mediaStoreId must be positive" }
+        require(name.isNotBlank()) { "name must not be blank" }
     }
 }
 
@@ -36,7 +36,7 @@ data class Track(
     val id: TrackId,
     val title: String,
     val artistName: String,
-    val artistId: ArtistId? = null,
+    val artistMediaStoreId: Long? = null,
     val albumTitle: String? = null,
     val albumId: AlbumId? = null,
     val durationMs: Long,

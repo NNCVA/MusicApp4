@@ -41,7 +41,7 @@ class MediaLibraryRepositoryTest {
 
         assertEquals(3, repository.observeTracks(includeHidden = true).first().size)
         assertEquals(listOf(primary), repository.observeAlbumTracks(AlbumId("external_primary", 8)).first().filter { it.id == primary.id })
-        assertEquals(3, repository.observeArtistTracks(ArtistId(7)).first().size)
+        assertEquals(3, repository.observeArtistTracks(ArtistId("Artist")).first().size)
         assertEquals(listOf(card), repository.observeFolderTracks("card", "Podcasts").first())
 
         repository.replaceTracksForVolume("external_primary", listOf(primary.copy(title = "Updated")))
@@ -122,7 +122,7 @@ class MediaLibraryRepositoryTest {
             )
             assertEquals(
                 setOf(root.id, direct.id, prefixedSibling.id, card.id),
-                subject.observeArtistTracks(ArtistId(7)).first().map { it.id }.toSet(),
+                subject.observeArtistTracks(ArtistId("Artist")).first().map { it.id }.toSet(),
             )
         }
     }

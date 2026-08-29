@@ -58,7 +58,7 @@ class ArtistsViewModelTest {
 
             val artist =
                 ArtistSummary(
-                    id = ArtistId(10),
+                    id = ArtistId("artist"),
                     displayName = "Artist",
                     trackCount = 3,
                     artworkCandidates = listOf(third, first, second),
@@ -118,6 +118,32 @@ class ArtistsViewModelTest {
             assertSame(ArtworkResult.Placeholder, viewModel.uiState.value.artworkByArtistId.getValue(artist.id).artwork)
         }
 
+    @Test
+    fun `artist detail filters tracks including collaboration songs and matches display name`() =
+        runTest(dispatcher) {
+            val t1 = track(1, dateModifiedMs = 10, artistName = "周杰伦")
+            val t2 = track(2, dateModifiedMs = 20, artistName = "周杰伦/王力宏")
+            val t3 = track(3, dateModifiedMs = 30, artistName = "王力宏")
+            val fakeRepo = FakeMediaLibraryRepository(listOf(t1, t2, t3))
+            val detailVm = ArtistDetailViewModel(
+                mediaLibraryRepository = fakeRepo,
+                playbackController = NoOpPlaybackController(),
+            )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detailVm.uiState.collect {} }
+            detailVm.open(ArtistId("周杰伦"))
+            advanceUntilIdle()
+
+            val state = detailVm.uiState.value
+            assertEquals("周杰伦", state.displayName)
+            assertEquals(listOf(t1.id, t2.id), state.tracks.map { it.id })
+
+            detailVm.open(ArtistId("王力宏"))
+            advanceUntilIdle()
+            val leehomState = detailVm.uiState.value
+            assertEquals("王力宏", leehomState.displayName)
+            assertEquals(listOf(t2.id, t3.id), leehomState.tracks.map { it.id })
+        }
+
     private fun kotlinx.coroutines.test.TestScope.collectState(viewModel: ArtistsViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         testScheduler.runCurrent()
@@ -133,18 +159,18 @@ class ArtistsViewModelTest {
 
     private fun artist(track: Track) =
         ArtistSummary(
-            id = checkNotNull(track.artistId),
+            id = ArtistId(track.artistName.lowercase()),
             displayName = track.artistName,
             trackCount = 1,
             artworkCandidates = listOf(track),
         )
 
-    private fun track(id: Long, dateModifiedMs: Long) =
+    private fun track(id: Long, dateModifiedMs: Long, artistName: String = "Artist") =
         Track(
             id = TrackId("external", id),
             title = "Track $id",
-            artistName = "Artist",
-            artistId = ArtistId(10),
+            artistName = artistName,
+            artistMediaStoreId = id,
             durationMs = 1_000,
             dateAddedMs = id,
             dateModifiedMs = dateModifiedMs,
@@ -154,6 +180,20 @@ class ArtistsViewModelTest {
 
     private fun image(color: Int = 0xFF0000FF.toInt()) =
         ArtworkImage(width = 1, height = 1, argbPixels = intArrayOf(color))
+}
+
+private class NoOpPlaybackController : com.musicapp.player.core.playback.PlaybackControllerFacade {
+    override val state: kotlinx.coroutines.flow.StateFlow<com.musicapp.player.core.playback.PlaybackControllerState> =
+        kotlinx.coroutines.flow.MutableStateFlow(com.musicapp.player.core.playback.PlaybackControllerState())
+
+    override fun connect() = Unit
+    override fun disconnect() = Unit
+    override fun play(context: com.musicapp.player.core.domain.model.PlaybackContext) = Unit
+    override fun play() = Unit
+    override fun pause() = Unit
+    override fun skipToPrevious() = Unit
+    override fun skipToNext() = Unit
+    override fun seekTo(positionMs: Long) = Unit
 }
 
 private data class ArtworkRequest(val trackId: TrackId, val targetPx: Int)

@@ -23,6 +23,7 @@ import com.musicapp.player.data.local.entity.PlaylistTrackEntity
 import com.musicapp.player.data.local.toDomain
 import com.musicapp.player.data.local.toEntity
 import com.musicapp.player.data.local.withoutTracks
+import com.musicapp.player.feature.artists.ArtistGrouping
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -48,8 +49,12 @@ class RoomMediaLibraryRepository @Inject constructor(
             .map { entities -> entities.map { it.toDomain() } }
 
     override fun observeArtistTracks(artistId: ArtistId): Flow<List<Track>> =
-        trackDao.observeArtistTracks(artistId.mediaStoreId)
-            .map { entities -> entities.map { it.toDomain() } }
+        observeTracks(includeHidden = false).map { tracks ->
+            tracks.filter { track ->
+                ArtistGrouping.splitArtistNames(track.artistName)
+                    .any { it.equals(artistId.name, ignoreCase = true) }
+            }
+        }
 
     override fun observeFolderTracks(volumeName: String, directoryPath: String): Flow<List<Track>> {
         val checkedVolumeName = volumeName.requireNonBlank("volumeName")

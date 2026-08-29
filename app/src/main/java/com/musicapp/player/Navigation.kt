@@ -274,7 +274,7 @@ fun MainNavigation(
                                 openDrawer = openDrawer,
                                 onScanMusic = ::navigateToScanMusic,
                                 onArtistClick = { artistId ->
-                                    commitNavigation { navigate(ArtistDetailRoute(artistId.mediaStoreId)) }
+                                    commitNavigation { navigate(ArtistDetailRoute(artistId.name)) }
                                 },
                             )
                         }
@@ -343,9 +343,9 @@ fun MainNavigation(
                         }
                         entry<ArtistDetailRoute> { key ->
                             ArtistDetailScreenRoute(
-                                artistId = ArtistId(key.mediaStoreId),
+                                artistId = ArtistId(key.artistName),
                                 viewModel = viewModel<ArtistDetailViewModel>(
-                                    key = "artist:${key.mediaStoreId}",
+                                    key = "artist:${key.artistName}",
                                 ),
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,

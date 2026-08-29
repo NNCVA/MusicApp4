@@ -144,10 +144,23 @@ class ArtistDetailViewModel @Inject constructor(
 
     val uiState: StateFlow<ArtistDetailUiState> =
         combine(mediaLibraryRepository.observeTracks(), selectedArtistId, sort) { tracks, artistId, currentSort ->
-            val matching = artistId?.let { selected -> tracks.filter { it.artistId == selected } }.orEmpty()
+            val matching =
+                artistId?.let { selected ->
+                    tracks.filter { track ->
+                        ArtistGrouping.splitArtistNames(track.artistName)
+                            .any { it.equals(selected.name, ignoreCase = true) }
+                    }
+                }.orEmpty()
+            val matchedDisplayName =
+                artistId?.let { selected ->
+                    tracks.asSequence()
+                        .flatMap { ArtistGrouping.splitArtistNames(it.artistName).asSequence() }
+                        .firstOrNull { it.equals(selected.name, ignoreCase = true) }
+                        ?: selected.name
+                }
             ArtistDetailUiState(
                 artistId = artistId,
-                displayName = matching.firstOrNull()?.artistName,
+                displayName = matchedDisplayName,
                 tracks = sortCategoryTracks(matching, currentSort),
                 sort = currentSort,
             )
@@ -170,7 +183,7 @@ class ArtistDetailViewModel @Inject constructor(
         val artistId = state.artistId ?: return
         CategoryPlaybackContextFactory.create(
             source = PlaybackContextSource.ARTIST,
-            sourceId = artistId.mediaStoreId.toString(),
+            sourceId = artistId.name,
             tracks = state.tracks,
             selectedTrackId = selectedTrackId,
         )?.let(playbackController::play)

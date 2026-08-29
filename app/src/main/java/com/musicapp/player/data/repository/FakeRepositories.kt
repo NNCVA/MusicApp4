@@ -45,7 +45,11 @@ class FakeMediaLibraryRepository(
 
     override fun observeArtistTracks(artistId: ArtistId): Flow<List<Track>> =
         combine(tracks, hiddenIds) { values, hidden ->
-            values.values.filter { it.artistId == artistId && it.id !in hidden }.sortedWith(trackComparator)
+            values.values.filter { track ->
+                track.id !in hidden &&
+                    com.musicapp.player.feature.artists.ArtistGrouping.splitArtistNames(track.artistName)
+                        .any { it.equals(artistId.name, ignoreCase = true) }
+            }.sortedWith(trackComparator)
         }
 
     override fun observeFolderTracks(volumeName: String, directoryPath: String): Flow<List<Track>> {

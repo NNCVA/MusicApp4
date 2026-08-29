@@ -74,9 +74,9 @@ data class AlbumDetailRoute(
 
 @Serializable
 @SerialName("artist_detail")
-data class ArtistDetailRoute(val mediaStoreId: Long) : MusicNavKey {
+data class ArtistDetailRoute(val artistName: String) : MusicNavKey {
     init {
-        require(mediaStoreId > 0) { "mediaStoreId must be positive" }
+        require(artistName.isNotBlank()) { "artistName must not be blank" }
     }
 }
 

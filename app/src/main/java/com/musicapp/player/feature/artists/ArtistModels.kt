@@ -4,6 +4,8 @@ import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 
+import java.util.Locale
+
 data class ArtistSummary(
     val id: ArtistId,
     val displayName: String,
@@ -12,28 +14,47 @@ data class ArtistSummary(
 )
 
 /**
- * Groups tracks by the MediaStore artist id while preserving the complete
- * MediaStore artist label (including collaboration labels).
+ * Splits tracks with multiple artists across common delimiters and groups them
+ * into distinct artist summaries normalized by case-insensitive name.
  */
 object ArtistGrouping {
-    fun group(tracks: List<Track>): List<ArtistSummary> =
-        tracks.asSequence()
-            .filter { it.artistId != null }
-            .groupBy { checkNotNull(it.artistId) }
-            .map { (id, artistTracks) ->
-                val stableTracks = artistTracks.sortedWith(trackIdentityComparator)
-                ArtistSummary(
-                    id = id,
-                    displayName = stableTracks.first().artistName,
-                    trackCount = stableTracks.size,
-                    artworkCandidates = stableTracks,
-                )
+    private val DELIMITER_REGEX = Regex("[/、,;&]+")
+
+    fun splitArtistNames(artistName: String?): List<String> {
+        if (artistName.isNullOrBlank()) return emptyList()
+        return artistName.split(DELIMITER_REGEX)
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .ifEmpty { listOf(artistName.trim()) }
+    }
+
+    fun group(tracks: List<Track>): List<ArtistSummary> {
+        val tracksByNormalizedArtist = linkedMapOf<String, MutableList<Track>>()
+        val displayNamesByNormalized = mutableMapOf<String, String>()
+
+        for (track in tracks) {
+            val names = splitArtistNames(track.artistName)
+            for (name in names) {
+                val normalized = name.lowercase(Locale.ROOT)
+                tracksByNormalizedArtist.getOrPut(normalized) { mutableListOf() }.add(track)
+                displayNamesByNormalized.putIfAbsent(normalized, name)
             }
-            .let(::sortArtistsByIndexedName)
+        }
+
+        return tracksByNormalizedArtist.map { (normalizedKey, artistTracks) ->
+            val displayName = displayNamesByNormalized.getValue(normalizedKey)
+            val stableTracks = artistTracks.distinctBy { it.id }.sortedWith(trackIdentityComparator)
+            ArtistSummary(
+                id = ArtistId(normalizedKey),
+                displayName = displayName,
+                trackCount = stableTracks.size,
+                artworkCandidates = stableTracks,
+            )
+        }.let(::sortArtistsByIndexedName)
+    }
 
     private val trackIdentityComparator =
         compareBy<Track>({ it.id.volumeName }, { it.id.mediaStoreId })
-
 }
 
 typealias ArtistArtworkSignature = List<ArtistArtworkCandidateSignature>

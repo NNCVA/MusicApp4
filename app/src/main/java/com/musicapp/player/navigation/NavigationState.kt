@@ -107,7 +107,7 @@ private object NavigationSnapshotCodec {
             }
             is ArtistDetailRoute -> {
                 writeByte(10)
-                writeLong(route.mediaStoreId)
+                writeUTF(route.artistName)
             }
             is PlaylistDetailRoute -> {
                 writeByte(11)
@@ -137,7 +137,7 @@ private object NavigationSnapshotCodec {
             7 -> AboutRoute
             8 -> TrackInfoRoute(volumeName = readUTF(), mediaStoreId = readLong())
             9 -> AlbumDetailRoute(volumeName = readUTF(), mediaStoreId = readLong())
-            10 -> ArtistDetailRoute(mediaStoreId = readLong())
+            10 -> ArtistDetailRoute(artistName = readUTF())
             11 -> PlaylistDetailRoute(playlistId = readLong())
             12 -> FolderDetailRoute(volumeName = readUTF(), relativePath = readUTF())
             13 ->

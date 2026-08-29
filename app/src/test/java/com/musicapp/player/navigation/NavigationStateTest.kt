@@ -50,7 +50,7 @@ class NavigationStateTest {
         val state = NavigationState.initial()
         val navigator = Navigator(state)
 
-        navigator.navigate(ArtistDetailRoute(mediaStoreId = 9))
+        navigator.navigate(ArtistDetailRoute(artistName = "Artist 9"))
         navigator.navigate(ArtistsRoute)
 
         assertEquals(ArtistsRoute, state.currentTopLevelRoute)
@@ -112,9 +112,9 @@ class NavigationStateTest {
         navigator.navigate(ArtistsRoute)
         assertEquals(ArtistsRoute, state.homeTopLevelRoute)
 
-        navigator.navigate(ArtistDetailRoute(mediaStoreId = 9))
+        navigator.navigate(ArtistDetailRoute(artistName = "Artist 9"))
         assertEquals(ArtistsRoute, state.homeTopLevelRoute)
-        assertEquals(listOf(ArtistsRoute, ArtistDetailRoute(mediaStoreId = 9)), state.currentBackStack)
+        assertEquals(listOf(ArtistsRoute, ArtistDetailRoute(artistName = "Artist 9")), state.currentBackStack)
     }
 
     @Test
@@ -154,7 +154,7 @@ class NavigationStateTest {
         val navigator = Navigator(state)
         navigator.navigate(TrackInfoRoute(volumeName = "external", mediaStoreId = 2))
         navigator.navigate(AlbumDetailRoute(volumeName = "external", mediaStoreId = 3))
-        navigator.navigate(ArtistDetailRoute(mediaStoreId = 5))
+        navigator.navigate(ArtistDetailRoute(artistName = "Artist 5"))
         navigator.navigate(FolderDetailRoute(volumeName = "sdcard", relativePath = "Music"))
         navigator.navigate(PlaylistDetailRoute(playlistId = 4))
         navigator.navigate(AlbumsRoute)
