@@ -48,4 +48,46 @@ class CompactPushDrawerTest {
         assertEquals(-160f, compactDrawerSettledOffset(offset = -81f, drawerWidth = 160f))
         assertEquals(0f, compactDrawerSettledOffset(offset = -80f, drawerWidth = 160f))
     }
+
+    @Test
+    fun `drawer toggles between open and closed states`() {
+        val drawerWidth = 160f
+        // When fully closed, toggle opens the drawer
+        assertEquals(0f, toggleCompactDrawerOffset(offset = -160f, drawerWidth = drawerWidth))
+
+        // When fully open, toggle closes the drawer
+        assertEquals(-160f, toggleCompactDrawerOffset(offset = 0f, drawerWidth = drawerWidth))
+
+        // When animating toward open (targetOffset = 0f), toggle reverses to closed
+        assertEquals(
+            -160f,
+            toggleCompactDrawerOffset(offset = -120f, drawerWidth = drawerWidth, targetOffset = 0f),
+        )
+
+        // When animating toward closed (targetOffset = -drawerWidth), toggle reverses to open
+        assertEquals(
+            0f,
+            toggleCompactDrawerOffset(
+                offset = -40f,
+                drawerWidth = drawerWidth,
+                targetOffset = -drawerWidth,
+            ),
+        )
+
+        // When settled past midpoint towards open, toggle closes
+        assertEquals(
+            -160f,
+            toggleCompactDrawerOffset(offset = -70f, drawerWidth = drawerWidth),
+        )
+
+        // When settled past midpoint towards closed, toggle opens
+        assertEquals(
+            0f,
+            toggleCompactDrawerOffset(offset = -90f, drawerWidth = drawerWidth),
+        )
+
+        // When drawerWidth is zero or invalid
+        assertEquals(0f, toggleCompactDrawerOffset(offset = 0f, drawerWidth = 0f))
+    }
 }
+

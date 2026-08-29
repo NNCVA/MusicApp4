@@ -96,6 +96,19 @@ fun AppShell(
                         )
                     }
                 }
+                fun toggleDrawer() {
+                    scope.launch {
+                        drawerOffset.animateTo(
+                            targetValue =
+                                toggleCompactDrawerOffset(
+                                    offset = drawerOffset.value,
+                                    drawerWidth = drawerWidthPx,
+                                    targetOffset = drawerOffset.targetValue,
+                                ),
+                            animationSpec = CompactDrawerAnimationSpec,
+                        )
+                    }
+                }
 
                 LaunchedEffect(drawerGesturesEnabled) {
                     if (!drawerGesturesEnabled) {
@@ -148,7 +161,7 @@ fun AppShell(
                                 contentInsets = contentInsets,
                                 contentBottomPadding =
                                     if (playerSheetVisible) dimensions.miniPlayerHeight else 0.dp,
-                                content = { insets -> content(insets, policy, ::openDrawer) },
+                                content = { insets -> content(insets, policy, ::toggleDrawer) },
                             )
                         }
                     }
@@ -386,6 +399,21 @@ internal fun compactDrawerSettledOffset(
         0f
     } else {
         -drawerWidth
+    }
+}
+
+internal fun toggleCompactDrawerOffset(
+    offset: Float,
+    drawerWidth: Float,
+    targetOffset: Float = offset,
+): Float {
+    if (drawerWidth <= 0f) {
+        return 0f
+    }
+    return if (targetOffset == 0f || (targetOffset != -drawerWidth && offset > -drawerWidth / 2f)) {
+        -drawerWidth
+    } else {
+        0f
     }
 }
 
