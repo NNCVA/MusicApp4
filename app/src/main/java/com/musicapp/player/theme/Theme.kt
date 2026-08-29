@@ -63,13 +63,14 @@ fun MusicAppTheme(
             presetTheme = presetTheme,
             supportsDynamicColor = supportsDynamicColor,
         )
-    val colorScheme =
+    val baseColorScheme =
         if (colorSource == ColorSource.DYNAMIC && supportsDynamicColor) {
             val context = LocalContext.current
             if (useDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         } else {
             presetColorScheme(checkNotNull(resolvedPreset), useDarkTheme)
         }
+    val colorScheme = applyTranslucentContainers(baseColorScheme)
     val dimensions = MusicDimensions.forTier(windowWidthTier)
     val shapes = DefaultMusicShapes
     val typography = DefaultMusicTypography
@@ -98,3 +99,14 @@ internal fun resolvePresetTheme(
         colorSource == ColorSource.DYNAMIC -> PresetTheme.DEFAULT_BLUE
         else -> presetTheme
     }
+
+const val SURFACE_CONTAINER_ALPHA = 0.5f
+
+internal fun applyTranslucentContainers(colorScheme: ColorScheme): ColorScheme =
+    colorScheme.copy(
+        surfaceContainerLowest = colorScheme.surfaceContainerLowest.copy(alpha = SURFACE_CONTAINER_ALPHA),
+        surfaceContainerLow = colorScheme.surfaceContainerLow.copy(alpha = SURFACE_CONTAINER_ALPHA),
+        surfaceContainer = colorScheme.surfaceContainer.copy(alpha = SURFACE_CONTAINER_ALPHA),
+        surfaceContainerHigh = colorScheme.surfaceContainerHigh.copy(alpha = SURFACE_CONTAINER_ALPHA),
+        surfaceContainerHighest = colorScheme.surfaceContainerHighest.copy(alpha = SURFACE_CONTAINER_ALPHA),
+    )

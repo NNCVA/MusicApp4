@@ -158,6 +158,7 @@ internal fun SidebarExitDialog(
             Card(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
                 shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MusicTheme.colors.surfaceContainer),
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -199,6 +200,7 @@ internal fun SidebarExitDialog(
             Card(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
                 shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MusicTheme.colors.surfaceContainer),
             ) {
                 DialogOptionRow(
                     text = stringResource(R.string.sidebar_cancel),
@@ -241,16 +243,16 @@ private fun SidebarCard(
     contentPadding: Dp = MusicTheme.dimensions.sidebarCardContentPadding,
     content: @Composable () -> Unit,
 ) {
-    ElevatedCard(
+    Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(MusicTheme.dimensions.sidebarCardCornerRadius),
         colors =
-            CardDefaults.elevatedCardColors(
+            CardDefaults.cardColors(
                 containerColor = MusicTheme.colors.surfaceContainer,
             ),
         elevation =
-            CardDefaults.elevatedCardElevation(
-                defaultElevation = MusicTheme.dimensions.spaceExtraSmall,
+            CardDefaults.cardElevation(
+                defaultElevation = 0.dp,
             ),
     ) {
         Column(
