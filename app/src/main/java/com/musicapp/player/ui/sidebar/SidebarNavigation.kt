@@ -18,14 +18,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.musicapp.player.core.designsystem.component.BareIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -156,7 +157,7 @@ internal fun SidebarExitDialog(
         ) {
             // 标题卡片 + 退出选项
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
                 shape = RoundedCornerShape(24.dp),
             ) {
                 Column(
@@ -197,7 +198,7 @@ internal fun SidebarExitDialog(
 
             // 单独的取消卡片
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
                 shape = RoundedCornerShape(24.dp),
             ) {
                 DialogOptionRow(
@@ -267,7 +268,7 @@ private fun SidebarQuickAction(
     tint: Color,
     onClick: () -> Unit,
 ) {
-    IconButton(
+    BareIconButton(
         onClick = onClick,
         modifier = Modifier.size(MusicTheme.dimensions.minimumTouchTarget),
     ) {

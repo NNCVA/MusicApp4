@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
@@ -56,7 +57,7 @@ fun CategoryNavigationIconButton(
             CategoryNavigationAction.DRAWER -> R.string.open_navigation
             CategoryNavigationAction.BACK -> R.string.category_back
         }
-    IconButton(onClick = onClick, modifier = Modifier.size(dimensions.minimumTouchTarget)) {
+    BareIconButton(onClick = onClick, modifier = Modifier.size(dimensions.minimumTouchTarget)) {
         Icon(
             painter = painterResource(iconResId),
             contentDescription = stringResource(descriptionResId),

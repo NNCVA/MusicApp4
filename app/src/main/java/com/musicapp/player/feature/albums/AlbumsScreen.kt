@@ -27,10 +27,10 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.nonInteractiveScrollbar
+import com.musicapp.player.core.designsystem.component.BareIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -270,7 +270,7 @@ private fun AlbumCard(
         onArtworkRequested()
     }
     Column(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clip(MusicTheme.shapes.medium).clickable(onClick = onClick),
     ) {
         AlbumArtwork(
             artwork = artwork,
@@ -410,7 +410,7 @@ private fun AlbumOptionsMenu(
     val dimensions = MusicTheme.dimensions
     val optionsDescription = stringResource(R.string.albums_options_label)
     Box {
-        IconButton(
+        BareIconButton(
             onClick = { expanded = true },
             modifier = Modifier.size(dimensions.minimumTouchTarget),
         ) {

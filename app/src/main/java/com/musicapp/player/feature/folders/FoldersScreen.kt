@@ -24,9 +24,9 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.musicapp.player.core.designsystem.component.BareIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -292,7 +292,7 @@ private fun FoldersHeader(
                     }
                 },
             )
-            IconButton(
+            BareIconButton(
                 onClick = onCloseSearch,
                 modifier = Modifier.size(dimensions.minimumTouchTarget),
             ) {
@@ -311,7 +311,7 @@ private fun FoldersHeader(
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
             )
-            IconButton(
+            BareIconButton(
                 onClick = onOpenSearch,
                 modifier = Modifier.size(dimensions.minimumTouchTarget),
             ) {
@@ -449,7 +449,7 @@ private fun FolderShortcutCard(
                 )
             }
             Box {
-                IconButton(
+                BareIconButton(
                     onClick = { menuExpanded = true },
                     modifier = Modifier.size(dimensions.minimumTouchTarget),
                 ) {

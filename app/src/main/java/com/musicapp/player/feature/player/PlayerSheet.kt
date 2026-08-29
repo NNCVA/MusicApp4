@@ -38,6 +38,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import com.musicapp.player.core.designsystem.component.BareIconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
@@ -268,7 +269,7 @@ private fun MiniPlayer(
             if (state.loadState == PlayerLoadState.BUFFERING) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
         val playbackDescription = stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
-        IconButton(
+        BareIconButton(
             onClick = onTogglePlayback,
             modifier = Modifier.size(dimensions.minimumTouchTarget),
         ) {
@@ -278,7 +279,7 @@ private fun MiniPlayer(
                 modifier = Modifier.size(dimensions.spaceLarge),
             )
         }
-        IconButton(
+        BareIconButton(
             onClick = onNext,
             enabled = state.canSkipNext,
             modifier = Modifier.size(dimensions.minimumTouchTarget),
@@ -406,11 +407,11 @@ private fun FullPlayer(
             Text(formatDuration(state.durationMs), style = MusicTheme.typography.labelMedium)
         }
         Column(
-            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
+            modifier = Modifier.fillMaxWidth()
                 .padding(horizontal = dimensions.contentHorizontalPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            IconButton(
+            BareIconButton(
                 onClick = onCycleMode,
                 modifier = Modifier.size(dimensions.minimumTouchTarget),
             ) {
@@ -426,7 +427,7 @@ private fun FullPlayer(
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 val previousDescription = stringResource(R.string.playback_previous)
-                IconButton(
+                BareIconButton(
                     onClick = onPrevious,
                     enabled = state.canSkipPrevious,
                     modifier = Modifier.size(dimensions.minimumTouchTarget),
@@ -466,7 +467,7 @@ private fun FullPlayer(
                     Text(stringResource(R.string.playback_forward_10_seconds_short))
                 }
                 val nextDescription = stringResource(R.string.playback_next)
-                IconButton(
+                BareIconButton(
                     onClick = onNext,
                     enabled = state.canSkipNext,
                     modifier = Modifier.size(dimensions.minimumTouchTarget),
@@ -572,7 +573,7 @@ private fun QueuePage(
                 color = MusicTheme.colors.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(
+            BareIconButton(
                 onClick = onCycleMode,
                 modifier = Modifier.size(dimensions.minimumTouchTarget),
             ) {

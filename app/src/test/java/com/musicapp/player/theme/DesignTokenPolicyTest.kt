@@ -36,7 +36,7 @@ class DesignTokenPolicyTest {
             assertEquals(80.dp, dimensions.trackListItemHeight)
             assertEquals(dimensions.trackListItemHeight, dimensions.miniPlayerHeight)
             assertEquals(160.dp, dimensions.adaptiveGridMinimumCellWidth)
-            assertEquals(64.dp, dimensions.categoryCardInfoHeight)
+            assertEquals(48.dp, dimensions.categoryCardInfoHeight)
             assertEquals(48.dp, dimensions.minimumTouchTarget)
             assertEquals(360.dp, dimensions.dialogListMaxHeight)
             assertEquals(8.dp, dimensions.spaceSmallMedium)

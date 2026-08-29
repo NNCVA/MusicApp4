@@ -32,7 +32,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,6 +61,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.LoadingState
 import com.musicapp.player.core.designsystem.component.MessageDialog
@@ -386,7 +386,7 @@ private fun TracksTopBar(
                                 }
                             },
                         )
-                        IconButton(
+                        BareIconButton(
                             onClick = onCloseSearch,
                             modifier = Modifier.size(dimensions.minimumTouchTarget),
                         ) {
@@ -405,7 +405,7 @@ private fun TracksTopBar(
                             modifier = Modifier.weight(1f),
                             maxLines = 1,
                         )
-                        IconButton(
+                        BareIconButton(
                             onClick = onOpenSearch,
                             modifier = Modifier.size(dimensions.minimumTouchTarget),
                         ) {
@@ -425,7 +425,7 @@ private fun TracksTopBar(
                         horizontalArrangement = Arrangement.End,
                     ) {
                         Box {
-                            IconButton(
+                            BareIconButton(
                                 onClick = { sortMenuExpanded = true },
                                 modifier = Modifier.size(dimensions.minimumTouchTarget),
                             ) {
@@ -706,7 +706,7 @@ private fun TrackRow(
             )
         }
         if (!selectionMode) {
-            IconButton(
+            BareIconButton(
                 onClick = onAddToQueue,
                 modifier = Modifier.size(dimensions.minimumTouchTarget),
             ) {
@@ -718,7 +718,7 @@ private fun TrackRow(
                 )
             }
             Box {
-                IconButton(
+                BareIconButton(
                     onClick = { menuExpanded = true },
                     modifier = Modifier.size(dimensions.minimumTouchTarget),
                 ) {

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,12 +26,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.musicapp.player.core.designsystem.component.BareIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -305,7 +306,8 @@ private fun ActionCard(
 ) {
     val dimensions = MusicTheme.dimensions
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
         color = MusicTheme.colors.surfaceContainer,
     ) {
@@ -369,10 +371,14 @@ private fun FolderRuleCard(
                     color = MusicTheme.colors.onSurfaceVariant,
                 )
             }
-            IconButton(onClick = { onRemove(rule.id) }) {
+            BareIconButton(
+                onClick = { onRemove(rule.id) },
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_common_close),
                     contentDescription = stringResource(R.string.scan_remove_folder),
+                    modifier = Modifier.size(dimensions.spaceLarge),
                 )
             }
         }
