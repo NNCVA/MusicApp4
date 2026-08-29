@@ -284,7 +284,9 @@ class Navigator(private val state: NavigationState) {
 
         val owner = route.owner()
         state.select(owner)
-        state.push(route)
+        if (state.backStack(owner).lastOrNull() != route) {
+            state.push(route)
+        }
     }
 
     fun goBack(): BackNavigationResult {

@@ -1,5 +1,6 @@
 package com.musicapp.player
 
+import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.ContentTransform
@@ -21,6 +22,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -154,7 +156,12 @@ fun MainNavigation(
             stringResource(request.messageResId, *request.messageFormatArgs.toTypedArray())
         }
 
+    var lastNavCommitTimeMs by remember { mutableLongStateOf(0L) }
+
     fun commitNavigation(action: Navigator.() -> Unit) {
+        val nowMs = SystemClock.elapsedRealtime()
+        if (nowMs - lastNavCommitTimeMs < NAVIGATION_THROTTLE_WINDOW_MS) return
+        lastNavCommitTimeMs = nowMs
         pageTransitionDirection = PageTransitionDirection.FORWARD
         navigator.action()
         encodedSnapshot = navigationState.snapshot().encode()
@@ -454,6 +461,8 @@ fun MainNavigation(
         }
     }
 }
+
+private const val NAVIGATION_THROTTLE_WINDOW_MS: Long = 300L
 
 private enum class PageTransitionDirection {
     FORWARD,

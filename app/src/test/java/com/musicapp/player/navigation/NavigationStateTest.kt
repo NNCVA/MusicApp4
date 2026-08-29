@@ -46,6 +46,33 @@ class NavigationStateTest {
     }
 
     @Test
+    fun navigatingToSameDetailRouteIsSingleTopAndDoesNotDuplicateStackEntry() {
+        val state = NavigationState.initial()
+        val navigator = Navigator(state)
+        val albumDetail = AlbumDetailRoute(volumeName = "external", mediaStoreId = 11)
+
+        navigator.navigate(albumDetail)
+        navigator.navigate(albumDetail)
+        navigator.navigate(albumDetail)
+
+        assertEquals(listOf(AlbumsRoute, albumDetail), state.currentBackStack)
+        assertEquals(listOf(AlbumsRoute, albumDetail), state.backStack(AlbumsRoute))
+    }
+
+    @Test
+    fun navigatingToDifferentDetailRoutesMaintainsSequentialStack() {
+        val state = NavigationState.initial()
+        val navigator = Navigator(state)
+        val folder1 = FolderDetailRoute(volumeName = "primary", relativePath = "Music")
+        val folder2 = FolderDetailRoute(volumeName = "primary", relativePath = "Music/Rock")
+
+        navigator.navigate(folder1)
+        navigator.navigate(folder2)
+
+        assertEquals(listOf(FoldersRoute, folder1, folder2), state.currentBackStack)
+    }
+
+    @Test
     fun selectingCurrentTopLevelRouteAgainReturnsItsStackToRoot() {
         val state = NavigationState.initial()
         val navigator = Navigator(state)

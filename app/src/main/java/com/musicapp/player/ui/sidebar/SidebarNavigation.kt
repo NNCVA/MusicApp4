@@ -35,7 +35,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -327,7 +326,6 @@ private fun SidebarEntryRow(
             color =
                 if (enabled) MusicTheme.colors.onSurface
                 else MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.38f),
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
         )
     }
 }
