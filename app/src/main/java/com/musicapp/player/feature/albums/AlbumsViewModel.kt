@@ -11,6 +11,7 @@ import com.musicapp.player.core.metadata.ArtworkRepository
 import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
+import com.musicapp.player.data.settings.SettingsRepository
 import com.musicapp.player.feature.category.CategoryPlaybackContextFactory
 import com.musicapp.player.feature.category.CategoryTrackSort
 import com.musicapp.player.feature.category.CategoryTrackSortField
@@ -54,16 +55,16 @@ class AlbumsViewModel @Inject constructor(
     mediaLibraryRepository: MediaLibraryRepository,
     private val savedStateHandle: SavedStateHandle,
     private val artworkRepository: ArtworkRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val sort = MutableStateFlow(restoreAlbumSort(savedStateHandle))
-    private val columnCount = MutableStateFlow(restoreAlbumColumnCount(savedStateHandle))
     private val artworkByAlbumId = MutableStateFlow<Map<AlbumId, AlbumArtworkState>>(emptyMap())
     private val albumsAndSort =
-        combine(mediaLibraryRepository.observeTracks(), sort, columnCount) { tracks, currentSort, currentColumnCount ->
+        combine(mediaLibraryRepository.observeTracks(), sort, settingsRepository.settings) { tracks, currentSort, settings ->
             AlbumsUiState(
                 albums = AlbumGrouping.sorted(AlbumGrouping.group(tracks), currentSort),
                 sort = currentSort,
-                columnCount = currentColumnCount,
+                columnCount = settings.albumGridColumns,
             )
         }
 
@@ -74,7 +75,7 @@ class AlbumsViewModel @Inject constructor(
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            AlbumsUiState(sort = sort.value, columnCount = columnCount.value),
+            AlbumsUiState(sort = sort.value, columnCount = settingsRepository.settings.value.albumGridColumns),
         )
 
     fun selectSort(field: AlbumSortField) {
@@ -85,8 +86,9 @@ class AlbumsViewModel @Inject constructor(
 
     fun selectColumnCount(columns: Int) {
         if (columns in 2..4) {
-            columnCount.value = columns
-            savedStateHandle[ALBUM_GRID_COLUMNS_KEY] = columns
+            viewModelScope.launch {
+                settingsRepository.setAlbumGridColumns(columns)
+            }
         }
     }
 
@@ -180,7 +182,6 @@ private const val STOP_TIMEOUT_MS = 5_000L
 private const val ALBUM_ARTWORK_TARGET_PX = 512
 private const val ALBUM_SORT_FIELD_KEY = "albums.sort.field"
 private const val ALBUM_SORT_DIRECTION_KEY = "albums.sort.direction"
-private const val ALBUM_GRID_COLUMNS_KEY = "albums.grid.columns"
 
 private fun restoreAlbumSort(handle: SavedStateHandle): AlbumSort {
     val field = handle.get<String>(ALBUM_SORT_FIELD_KEY)?.let { stored ->
@@ -190,9 +191,4 @@ private fun restoreAlbumSort(handle: SavedStateHandle): AlbumSort {
         com.musicapp.player.feature.category.CategorySortDirection.entries.firstOrNull { it.name == stored }
     } ?: AlbumSort().next(field).let { if (field == AlbumSortField.TITLE) AlbumSort().direction else it.direction }
     return AlbumSort(field, direction)
-}
-
-private fun restoreAlbumColumnCount(handle: SavedStateHandle): Int {
-    val stored = handle.get<Int>(ALBUM_GRID_COLUMNS_KEY)
-    return if (stored != null && stored in 2..4) stored else DEFAULT_ALBUM_GRID_COLUMNS
 }

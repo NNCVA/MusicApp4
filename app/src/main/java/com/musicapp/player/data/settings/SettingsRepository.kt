@@ -42,6 +42,8 @@ interface SettingsRepository {
 
     suspend fun setSkipShortAudio(value: Boolean)
 
+    suspend fun setAlbumGridColumns(value: Int)
+
     suspend fun markLibrarySyncPending(): Long = pendingLibrarySync.value.revision
 
     suspend fun clearLibrarySyncPending(expectedRevision: Long): Boolean = false

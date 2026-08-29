@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.musicapp.player.core.common.coroutines.ApplicationCoroutineScope
@@ -104,6 +105,15 @@ class PreferencesSettingsRepository @Inject constructor(
         }
     }
 
+    override suspend fun setAlbumGridColumns(value: Int) {
+        require(value in AppSettings.MIN_ALBUM_GRID_COLUMNS..AppSettings.MAX_ALBUM_GRID_COLUMNS) {
+            "albumGridColumns must be between ${AppSettings.MIN_ALBUM_GRID_COLUMNS} and ${AppSettings.MAX_ALBUM_GRID_COLUMNS}"
+        }
+        dataStore.edit { preferences ->
+            preferences[Keys.ALBUM_GRID_COLUMNS] = value
+        }
+    }
+
     override suspend fun markLibrarySyncPending(): Long {
         var markedRevision = 0L
         dataStore.edit { preferences ->
@@ -139,6 +149,7 @@ class PreferencesSettingsRepository @Inject constructor(
             preferences.remove(Keys.FADE_THROUGH_DURATION_MS)
             preferences.remove(Keys.SCAN_MODE)
             preferences.remove(Keys.SKIP_SHORT_AUDIO)
+            preferences.remove(Keys.ALBUM_GRID_COLUMNS)
         }
     }
 
@@ -165,6 +176,9 @@ class PreferencesSettingsRepository @Inject constructor(
                 ?: defaults.fadeThroughDurationMs,
             scanMode = preferences.enumValue(Keys.SCAN_MODE, defaults.scanMode),
             skipShortAudio = preferences[Keys.SKIP_SHORT_AUDIO] ?: defaults.skipShortAudio,
+            albumGridColumns = preferences[Keys.ALBUM_GRID_COLUMNS]
+                ?.takeIf { it in AppSettings.MIN_ALBUM_GRID_COLUMNS..AppSettings.MAX_ALBUM_GRID_COLUMNS }
+                ?: defaults.albumGridColumns,
         )
     }
 
@@ -182,6 +196,7 @@ class PreferencesSettingsRepository @Inject constructor(
         val FADE_THROUGH_DURATION_MS = longPreferencesKey("fade_through_duration_ms")
         val SCAN_MODE = stringPreferencesKey("scan_mode")
         val SKIP_SHORT_AUDIO = booleanPreferencesKey("skip_short_audio")
+        val ALBUM_GRID_COLUMNS = intPreferencesKey("album_grid_columns")
         val LIBRARY_SYNC_PENDING = booleanPreferencesKey("library_sync_pending")
         val LIBRARY_SYNC_REVISION = longPreferencesKey("library_sync_revision")
     }

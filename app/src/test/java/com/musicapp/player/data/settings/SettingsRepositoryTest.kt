@@ -151,6 +151,22 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun albumGridColumnsRoundTripsAndRejectsInvalidValues() = runTest {
+        val repository = createRepository()
+
+        listOf(2, 3, 4).forEach { columns ->
+            repository.setAlbumGridColumns(columns)
+            assertEquals(columns, repository.settings.first { it.albumGridColumns == columns }.albumGridColumns)
+        }
+
+        listOf(0, 1, 5, 10).forEach { invalidColumns ->
+            val result = runCatching { repository.setAlbumGridColumns(invalidColumns) }
+            assertTrue(result.exceptionOrNull() is IllegalArgumentException)
+            assertEquals(4, repository.settings.first { it.albumGridColumns == 4 }.albumGridColumns)
+        }
+    }
+
+    @Test
     fun resetRestoresAllDefaults() = runTest {
         val repository = createRepository()
         repository.setColorSource(ColorSource.PRESET)
@@ -160,6 +176,7 @@ class SettingsRepositoryTest {
         repository.setAeroMode(AeroMode.SOLID)
         repository.setFadeThroughDurationMs(2_000)
         repository.setScanMode(ScanMode.SELECTED_DIRECTORIES)
+        repository.setAlbumGridColumns(4)
         val firstPendingRevision = repository.markLibrarySyncPending()
         val pendingRevision = repository.markLibrarySyncPending()
         assertEquals(firstPendingRevision + 1, pendingRevision)

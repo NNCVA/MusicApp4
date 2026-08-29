@@ -14,6 +14,7 @@ import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -300,6 +301,56 @@ class FakePlaybackSnapshotRepository(
     }
     override suspend fun clearSnapshot() {
         snapshot.value = null
+    }
+}
+
+class FakeSettingsRepository(
+    initialSettings: com.musicapp.player.core.domain.model.AppSettings = com.musicapp.player.core.domain.model.AppSettings(),
+    initialLibrarySyncPending: Boolean = false,
+) : com.musicapp.player.data.settings.SettingsRepository {
+    private val mutableSettings = MutableStateFlow(initialSettings)
+    private val mutablePendingLibrarySync = MutableStateFlow(
+        com.musicapp.player.data.settings.PendingLibrarySyncState(isPending = initialLibrarySyncPending),
+    )
+    private val pendingMutex = Mutex()
+
+    override val settings: StateFlow<com.musicapp.player.core.domain.model.AppSettings> = mutableSettings
+    override val pendingLibrarySync: StateFlow<com.musicapp.player.data.settings.PendingLibrarySyncState> = mutablePendingLibrarySync
+
+    override suspend fun currentSettings(): com.musicapp.player.core.domain.model.AppSettings = mutableSettings.value
+    override suspend fun setColorSource(value: com.musicapp.player.core.domain.model.ColorSource) = update { copy(colorSource = value) }
+    override suspend fun setPresetTheme(value: com.musicapp.player.core.domain.model.PresetTheme) = update { copy(presetTheme = value) }
+    override suspend fun setThemeMode(value: com.musicapp.player.core.domain.model.ThemeMode) = update { copy(themeMode = value) }
+    override suspend fun setAppLanguage(value: com.musicapp.player.core.domain.model.AppLanguage) = update { copy(appLanguage = value) }
+    override suspend fun setAeroMode(value: com.musicapp.player.core.domain.model.AeroMode) = update { copy(aeroMode = value) }
+    override suspend fun setFadeThroughDurationMs(value: Long) = update { copy(fadeThroughDurationMs = value) }
+    override suspend fun setScanMode(value: com.musicapp.player.core.domain.model.ScanMode) = update { copy(scanMode = value) }
+    override suspend fun setSkipShortAudio(value: Boolean) = update { copy(skipShortAudio = value) }
+    override suspend fun setAlbumGridColumns(value: Int) = update { copy(albumGridColumns = value) }
+
+    override suspend fun markLibrarySyncPending(): Long = pendingMutex.withLock {
+        val revision = mutablePendingLibrarySync.value.revision + 1
+        mutablePendingLibrarySync.value = com.musicapp.player.data.settings.PendingLibrarySyncState(revision, isPending = true)
+        revision
+    }
+
+    override suspend fun clearLibrarySyncPending(expectedRevision: Long): Boolean =
+        pendingMutex.withLock {
+            val current = mutablePendingLibrarySync.value
+            if (!current.isPending || current.revision != expectedRevision) {
+                false
+            } else {
+                mutablePendingLibrarySync.value = current.copy(isPending = false)
+                true
+            }
+        }
+
+    override suspend fun reset() {
+        mutableSettings.value = com.musicapp.player.core.domain.model.AppSettings()
+    }
+
+    private fun update(transform: com.musicapp.player.core.domain.model.AppSettings.() -> com.musicapp.player.core.domain.model.AppSettings) {
+        mutableSettings.value = mutableSettings.value.transform()
     }
 }
 

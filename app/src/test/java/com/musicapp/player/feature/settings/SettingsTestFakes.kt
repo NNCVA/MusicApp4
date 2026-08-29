@@ -42,6 +42,7 @@ internal class FakeSettingsRepository(
     override suspend fun setFadeThroughDurationMs(value: Long) = update { copy(fadeThroughDurationMs = value) }
     override suspend fun setScanMode(value: ScanMode) = update { copy(scanMode = value) }
     override suspend fun setSkipShortAudio(value: Boolean) = update { copy(skipShortAudio = value) }
+    override suspend fun setAlbumGridColumns(value: Int) = update { copy(albumGridColumns = value) }
 
     override suspend fun markLibrarySyncPending(): Long = pendingMutex.withLock {
         val revision = mutablePendingLibrarySync.value.revision + 1

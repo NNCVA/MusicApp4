@@ -146,6 +146,7 @@ class AndroidMediaLibraryScanSourceTest {
         override suspend fun setFadeThroughDurationMs(value: Long) = Unit
         override suspend fun setScanMode(value: ScanMode) = Unit
         override suspend fun setSkipShortAudio(value: Boolean) = Unit
+        override suspend fun setAlbumGridColumns(value: Int) = Unit
         override suspend fun reset() = Unit
     }
 

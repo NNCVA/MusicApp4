@@ -80,9 +80,9 @@ class AlbumsViewModelTest {
     }
 
     @Test
-    fun `selectColumnCount updates state and persists to savedStateHandle`() = runTest(dispatcher) {
-        val savedStateHandle = SavedStateHandle()
-        val viewModel = subject(savedStateHandle = savedStateHandle)
+    fun `selectColumnCount updates state and persists to settings repository`() = runTest(dispatcher) {
+        val settingsRepository = com.musicapp.player.data.repository.FakeSettingsRepository()
+        val viewModel = subject(settingsRepository = settingsRepository)
         val collection = collectState(viewModel)
         advanceUntilIdle()
 
@@ -91,12 +91,12 @@ class AlbumsViewModelTest {
         viewModel.selectColumnCount(3)
         advanceUntilIdle()
         assertEquals(3, viewModel.uiState.value.columnCount)
-        assertEquals(3, savedStateHandle.get<Int>("albums.grid.columns"))
+        assertEquals(3, settingsRepository.settings.value.albumGridColumns)
 
         viewModel.selectColumnCount(4)
         advanceUntilIdle()
         assertEquals(4, viewModel.uiState.value.columnCount)
-        assertEquals(4, savedStateHandle.get<Int>("albums.grid.columns"))
+        assertEquals(4, settingsRepository.settings.value.albumGridColumns)
 
         // Invalid column count should be ignored
         viewModel.selectColumnCount(1)
@@ -108,9 +108,11 @@ class AlbumsViewModelTest {
     }
 
     @Test
-    fun `savedStateHandle restores persisted column count`() = runTest(dispatcher) {
-        val savedStateHandle = SavedStateHandle(mapOf("albums.grid.columns" to 4))
-        val viewModel = subject(savedStateHandle = savedStateHandle)
+    fun `settingsRepository initial albumGridColumns is observed`() = runTest(dispatcher) {
+        val settingsRepository = com.musicapp.player.data.repository.FakeSettingsRepository(
+            initialSettings = com.musicapp.player.core.domain.model.AppSettings(albumGridColumns = 4),
+        )
+        val viewModel = subject(settingsRepository = settingsRepository)
         val collection = collectState(viewModel)
         advanceUntilIdle()
 
@@ -125,10 +127,12 @@ class AlbumsViewModelTest {
         tracks: List<Track> = listOf(track(id = 1, dateModifiedMs = 10)),
         savedStateHandle: SavedStateHandle = SavedStateHandle(),
         artworkRepository: ArtworkRepository = RecordingArtworkRepository(),
+        settingsRepository: com.musicapp.player.data.settings.SettingsRepository = com.musicapp.player.data.repository.FakeSettingsRepository(),
     ) = AlbumsViewModel(
         mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
         savedStateHandle = savedStateHandle,
         artworkRepository = artworkRepository,
+        settingsRepository = settingsRepository,
     )
 
     private fun track(id: Long, dateModifiedMs: Long) =

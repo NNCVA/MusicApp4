@@ -44,6 +44,7 @@ data class AppSettings(
     val fadeThroughDurationMs: Long = DEFAULT_FADE_THROUGH_DURATION_MS,
     val scanMode: ScanMode = ScanMode.ALL,
     val skipShortAudio: Boolean = true,
+    val albumGridColumns: Int = DEFAULT_ALBUM_GRID_COLUMNS,
 ) {
     init {
         require(fadeThroughDurationMs in MIN_FADE_THROUGH_DURATION_MS..MAX_FADE_THROUGH_DURATION_MS) {
@@ -52,6 +53,9 @@ data class AppSettings(
         require(fadeThroughDurationMs % FADE_THROUGH_STEP_MS == 0L) {
             "fadeThroughDurationMs must use 250 ms steps"
         }
+        require(albumGridColumns in MIN_ALBUM_GRID_COLUMNS..MAX_ALBUM_GRID_COLUMNS) {
+            "albumGridColumns must be between $MIN_ALBUM_GRID_COLUMNS and $MAX_ALBUM_GRID_COLUMNS"
+        }
     }
 
     companion object {
@@ -59,5 +63,8 @@ data class AppSettings(
         const val MAX_FADE_THROUGH_DURATION_MS: Long = 2_000
         const val FADE_THROUGH_STEP_MS: Long = 250
         const val DEFAULT_FADE_THROUGH_DURATION_MS: Long = 500
+        const val MIN_ALBUM_GRID_COLUMNS: Int = 2
+        const val MAX_ALBUM_GRID_COLUMNS: Int = 4
+        const val DEFAULT_ALBUM_GRID_COLUMNS: Int = 2
     }
 }
