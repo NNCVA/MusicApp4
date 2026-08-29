@@ -42,6 +42,10 @@
     <string name="album_index_label">跳转到以 %1$s 开头的专辑</string>
     <string name="artist_index_label">跳转到以 %1$s 开头的艺术家</string>
     <string name="albums_sort_label">排序专辑，当前按%1$s%2$s</string>
+    <string name="albums_options_label">专辑选项</string>
+    <string name="albums_column_2">2 列</string>
+    <string name="albums_column_3">3 列</string>
+    <string name="albums_column_4">4 列</string>
     <string name="album_artwork_description">%1$s 的专辑封面</string>
     <string name="open_navigation">打开导航</string>
     <string name="sidebar_exit">退出</string>

@@ -44,7 +44,7 @@ class AlbumsViewModelTest {
             track(id = 1, dateModifiedMs = 10),
         )
         val artworkRepository = RecordingArtworkRepository()
-        val viewModel = subject(tracks, artworkRepository)
+        val viewModel = subject(tracks, artworkRepository = artworkRepository)
         val collection = collectState(viewModel)
         advanceUntilIdle()
 
@@ -79,15 +79,55 @@ class AlbumsViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `selectColumnCount updates state and persists to savedStateHandle`() = runTest(dispatcher) {
+        val savedStateHandle = SavedStateHandle()
+        val viewModel = subject(savedStateHandle = savedStateHandle)
+        val collection = collectState(viewModel)
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.columnCount)
+
+        viewModel.selectColumnCount(3)
+        advanceUntilIdle()
+        assertEquals(3, viewModel.uiState.value.columnCount)
+        assertEquals(3, savedStateHandle.get<Int>("albums.grid.columns"))
+
+        viewModel.selectColumnCount(4)
+        advanceUntilIdle()
+        assertEquals(4, viewModel.uiState.value.columnCount)
+        assertEquals(4, savedStateHandle.get<Int>("albums.grid.columns"))
+
+        // Invalid column count should be ignored
+        viewModel.selectColumnCount(1)
+        viewModel.selectColumnCount(5)
+        advanceUntilIdle()
+        assertEquals(4, viewModel.uiState.value.columnCount)
+
+        collection.cancel()
+    }
+
+    @Test
+    fun `savedStateHandle restores persisted column count`() = runTest(dispatcher) {
+        val savedStateHandle = SavedStateHandle(mapOf("albums.grid.columns" to 4))
+        val viewModel = subject(savedStateHandle = savedStateHandle)
+        val collection = collectState(viewModel)
+        advanceUntilIdle()
+
+        assertEquals(4, viewModel.uiState.value.columnCount)
+        collection.cancel()
+    }
+
     private fun kotlinx.coroutines.test.TestScope.collectState(viewModel: AlbumsViewModel) =
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
 
     private fun subject(
         tracks: List<Track> = listOf(track(id = 1, dateModifiedMs = 10)),
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
         artworkRepository: ArtworkRepository = RecordingArtworkRepository(),
     ) = AlbumsViewModel(
         mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
-        savedStateHandle = SavedStateHandle(),
+        savedStateHandle = savedStateHandle,
         artworkRepository = artworkRepository,
     )
 

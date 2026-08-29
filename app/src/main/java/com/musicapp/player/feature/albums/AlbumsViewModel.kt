@@ -27,10 +27,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+const val DEFAULT_ALBUM_GRID_COLUMNS = 2
+
 data class AlbumsUiState(
     val albums: List<AlbumSummary> = emptyList(),
     val sort: AlbumSort = AlbumSort(),
     val artworkByAlbumId: Map<AlbumId, AlbumArtworkState> = emptyMap(),
+    val columnCount: Int = DEFAULT_ALBUM_GRID_COLUMNS,
 )
 
 data class AlbumDetailUiState(
@@ -53,12 +56,14 @@ class AlbumsViewModel @Inject constructor(
     private val artworkRepository: ArtworkRepository,
 ) : ViewModel() {
     private val sort = MutableStateFlow(restoreAlbumSort(savedStateHandle))
+    private val columnCount = MutableStateFlow(restoreAlbumColumnCount(savedStateHandle))
     private val artworkByAlbumId = MutableStateFlow<Map<AlbumId, AlbumArtworkState>>(emptyMap())
     private val albumsAndSort =
-        combine(mediaLibraryRepository.observeTracks(), sort) { tracks, currentSort ->
+        combine(mediaLibraryRepository.observeTracks(), sort, columnCount) { tracks, currentSort, currentColumnCount ->
             AlbumsUiState(
                 albums = AlbumGrouping.sorted(AlbumGrouping.group(tracks), currentSort),
                 sort = currentSort,
+                columnCount = currentColumnCount,
             )
         }
 
@@ -69,13 +74,20 @@ class AlbumsViewModel @Inject constructor(
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            AlbumsUiState(sort = sort.value),
+            AlbumsUiState(sort = sort.value, columnCount = columnCount.value),
         )
 
     fun selectSort(field: AlbumSortField) {
         sort.value = sort.value.next(field)
         savedStateHandle[ALBUM_SORT_FIELD_KEY] = sort.value.field.name
         savedStateHandle[ALBUM_SORT_DIRECTION_KEY] = sort.value.direction.name
+    }
+
+    fun selectColumnCount(columns: Int) {
+        if (columns in 2..4) {
+            columnCount.value = columns
+            savedStateHandle[ALBUM_GRID_COLUMNS_KEY] = columns
+        }
     }
 
     fun requestArtwork(album: AlbumSummary) {
@@ -168,6 +180,7 @@ private const val STOP_TIMEOUT_MS = 5_000L
 private const val ALBUM_ARTWORK_TARGET_PX = 512
 private const val ALBUM_SORT_FIELD_KEY = "albums.sort.field"
 private const val ALBUM_SORT_DIRECTION_KEY = "albums.sort.direction"
+private const val ALBUM_GRID_COLUMNS_KEY = "albums.grid.columns"
 
 private fun restoreAlbumSort(handle: SavedStateHandle): AlbumSort {
     val field = handle.get<String>(ALBUM_SORT_FIELD_KEY)?.let { stored ->
@@ -177,4 +190,9 @@ private fun restoreAlbumSort(handle: SavedStateHandle): AlbumSort {
         com.musicapp.player.feature.category.CategorySortDirection.entries.firstOrNull { it.name == stored }
     } ?: AlbumSort().next(field).let { if (field == AlbumSortField.TITLE) AlbumSort().direction else it.direction }
     return AlbumSort(field, direction)
+}
+
+private fun restoreAlbumColumnCount(handle: SavedStateHandle): Int {
+    val stored = handle.get<Int>(ALBUM_GRID_COLUMNS_KEY)
+    return if (stored != null && stored in 2..4) stored else DEFAULT_ALBUM_GRID_COLUMNS
 }

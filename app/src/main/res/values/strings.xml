@@ -45,6 +45,10 @@
     <string name="album_index_label">Jump to albums beginning with %1$s</string>
     <string name="artist_index_label">Jump to artists beginning with %1$s</string>
     <string name="albums_sort_label">Sort albums, currently %1$s %2$s</string>
+    <string name="albums_options_label">Album options</string>
+    <string name="albums_column_2">2 columns</string>
+    <string name="albums_column_3">3 columns</string>
+    <string name="albums_column_4">4 columns</string>
     <string name="album_artwork_description">Artwork for album %1$s</string>
     <string name="open_navigation">Open navigation</string>
     <string name="sidebar_exit">Exit</string>

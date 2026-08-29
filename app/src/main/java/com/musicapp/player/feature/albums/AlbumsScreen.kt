@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -48,6 +49,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
@@ -85,6 +87,7 @@ fun AlbumsScreenRoute(
         openDrawer = openDrawer,
         onScanMusic = onScanMusic,
         onSortSelected = viewModel::selectSort,
+        onColumnCountSelected = viewModel::selectColumnCount,
         onArtworkRequested = viewModel::requestArtwork,
         onAlbumClick = onAlbumClick,
     )
@@ -117,6 +120,7 @@ private fun AlbumsScreen(
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
     onSortSelected: (AlbumSortField) -> Unit,
+    onColumnCountSelected: (Int) -> Unit,
     onArtworkRequested: (AlbumSummary) -> Unit,
     onAlbumClick: (AlbumId) -> Unit,
 ) {
@@ -153,7 +157,14 @@ private fun AlbumsScreen(
             AlbumsHeader(
                 policy = policy,
                 openDrawer = openDrawer,
-                trailingContent = { AlbumSortMenu(state.sort, onSortSelected) },
+                trailingContent = {
+                    AlbumOptionsMenu(
+                        sort = state.sort,
+                        columnCount = state.columnCount,
+                        onSortSelected = onSortSelected,
+                        onColumnCountSelected = onColumnCountSelected,
+                    )
+                },
             )
             if (state.albums.isEmpty()) {
                 EmptyState(
@@ -167,7 +178,7 @@ private fun AlbumsScreen(
                 )
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(dimensions.adaptiveGridMinimumCellWidth),
+                    columns = GridCells.Fixed(state.columnCount),
                     state = gridState,
                     modifier = Modifier.fillMaxWidth().weight(1f)
                         .then(scrollbarModifier)
@@ -389,31 +400,78 @@ private fun AlbumDetailScreen(
 }
 
 @Composable
-private fun AlbumSortMenu(sort: AlbumSort, onSelected: (AlbumSortField) -> Unit) {
+private fun AlbumOptionsMenu(
+    sort: AlbumSort,
+    columnCount: Int,
+    onSortSelected: (AlbumSortField) -> Unit,
+    onColumnCountSelected: (Int) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     val dimensions = MusicTheme.dimensions
-    val sortDescription = stringResource(
-        R.string.albums_sort_label,
-        stringResource(sort.field.labelRes()),
-        stringResource(sort.direction.labelRes()),
-    )
+    val optionsDescription = stringResource(R.string.albums_options_label)
     Box {
         IconButton(
             onClick = { expanded = true },
             modifier = Modifier.size(dimensions.minimumTouchTarget),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_common_sort_alpha),
-                contentDescription = sortDescription,
+                painter = painterResource(R.drawable.ic_common_more_vertical),
+                contentDescription = optionsDescription,
                 tint = MusicTheme.colors.onSurface,
                 modifier = Modifier.size(dimensions.spaceLarge),
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             AlbumSortField.entries.forEach { field ->
+                val isSelected = sort.field == field
                 DropdownMenuItem(
-                    text = { Text(stringResource(field.labelRes())) },
-                    onClick = { onSelected(field); expanded = false },
+                    text = {
+                        Text(
+                            text = stringResource(field.labelRes()),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    },
+                    trailingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_status_check),
+                                contentDescription = null,
+                                tint = MusicTheme.colors.primary,
+                                modifier = Modifier.size(dimensions.spaceMedium),
+                            )
+                        }
+                    } else null,
+                    onClick = { onSortSelected(field); expanded = false },
+                )
+            }
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = dimensions.spaceExtraSmall),
+                color = MusicTheme.colors.outlineVariant,
+            )
+            listOf(
+                2 to R.string.albums_column_2,
+                3 to R.string.albums_column_3,
+                4 to R.string.albums_column_4,
+            ).forEach { (count, labelRes) ->
+                val isSelected = columnCount == count
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(labelRes),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    },
+                    trailingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_status_check),
+                                contentDescription = null,
+                                tint = MusicTheme.colors.primary,
+                                modifier = Modifier.size(dimensions.spaceMedium),
+                            )
+                        }
+                    } else null,
+                    onClick = { onColumnCountSelected(count); expanded = false },
                 )
             }
         }
