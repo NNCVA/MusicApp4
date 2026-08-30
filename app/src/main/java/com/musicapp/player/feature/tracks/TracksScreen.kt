@@ -88,6 +88,7 @@ import com.musicapp.player.core.designsystem.component.QualityBadge
 import com.musicapp.player.core.designsystem.component.resolveQuality
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
+import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -119,7 +120,7 @@ fun TracksScreenRoute(
     val firstTrackLayoutLogged = remember { AtomicBoolean(false) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
-    BackHandler(enabled = state.isSelectionMode) { viewModel.onBack() }
+    BackHandler(enabled = state.isSelectionMode || state.infoTrack != null) { viewModel.onBack() }
     TracksScreen(
         state = state,
         contentInsets = contentInsets,
@@ -133,6 +134,8 @@ fun TracksScreenRoute(
         onTrackPlayNext = viewModel::playTrackNext,
         onTrackHide = viewModel::hideTrack,
         onTrackAddToPlaylist = viewModel::addTrackToPlaylist,
+        onTrackShowInfo = viewModel::showTrackInfo,
+        onDismissTrackInfo = viewModel::dismissTrackInfo,
         onTrackClick = { track ->
             if (state.isSelectionMode) {
                 viewModel.toggleSelection(track.id)
@@ -183,6 +186,8 @@ fun TracksScreen(
     onTrackPlayNext: (TrackId) -> Unit,
     onTrackHide: (TrackId) -> Unit,
     onTrackAddToPlaylist: (TrackId, PlaylistId) -> Unit,
+    onTrackShowInfo: (Track) -> Unit = {},
+    onDismissTrackInfo: () -> Unit = {},
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
     onSelectAll: () -> Unit,
@@ -334,6 +339,7 @@ fun TracksScreen(
                     onPlayNext = onTrackPlayNext,
                     onHide = onTrackHide,
                     onAddToPlaylist = onTrackAddToPlaylist,
+                    onShowTrackInfo = onTrackShowInfo,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
                     onFirstTrackLaidOut = onFirstTrackLaidOut,
@@ -382,6 +388,15 @@ fun TracksScreen(
 
     state.batchResult?.let { result ->
         BatchResultDialog(result, onAcknowledgeBatchResult)
+    }
+
+    state.infoTrack?.let { track ->
+        TrackInfoViewer(
+            track = track,
+            metadata = state.infoMetadata,
+            loading = state.isInfoLoading,
+            onDismiss = onDismissTrackInfo,
+        )
     }
 }
 
@@ -659,6 +674,7 @@ private fun TrackList(
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
     onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
+    onShowTrackInfo: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
     onFirstTrackLaidOut: () -> Unit,
@@ -701,6 +717,7 @@ private fun TrackList(
                     onPlayNext = onPlayNext,
                     onHide = onHide,
                     onAddToPlaylist = onAddToPlaylist,
+                    onShowTrackInfo = onShowTrackInfo,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
                     firstTrackId = tracks.first().id,
@@ -719,6 +736,7 @@ private fun TrackList(
                         onPlayNext = onPlayNext,
                         onHide = onHide,
                         onAddToPlaylist = onAddToPlaylist,
+                        onShowTrackInfo = onShowTrackInfo,
                         onTrackClick = onTrackClick,
                         onTrackLongClick = onTrackLongClick,
                         firstTrackId = tracks.first().id,
@@ -741,6 +759,7 @@ private fun LazyListScope.trackItems(
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
     onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
+    onShowTrackInfo: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
     firstTrackId: TrackId,
@@ -761,6 +780,7 @@ private fun LazyListScope.trackItems(
             onPlayNext = { onPlayNext(track.id) },
             onHide = { onHide(track.id) },
             onAddToPlaylist = { playlistId -> onAddToPlaylist(track.id, playlistId) },
+            onShowTrackInfo = { onShowTrackInfo(track) },
             onClick = { onTrackClick(track) },
             onLongClick = { onTrackLongClick(track) },
             onLaidOut = if (track.id == firstTrackId) onFirstTrackLaidOut else null,
@@ -781,6 +801,7 @@ private fun TrackRow(
     onPlayNext: () -> Unit,
     onHide: () -> Unit,
     onAddToPlaylist: (PlaylistId) -> Unit,
+    onShowTrackInfo: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onLaidOut: (() -> Unit)?,
@@ -887,6 +908,7 @@ private fun TrackRow(
                     onDismissRequest = { menuExpanded = false },
                     onAddToQueue = onAddToQueue,
                     onPlayNext = onPlayNext,
+                    onShowTrackInfo = onShowTrackInfo,
                     onHide = onHide,
                     onAddToPlaylist = onAddToPlaylist,
                 )

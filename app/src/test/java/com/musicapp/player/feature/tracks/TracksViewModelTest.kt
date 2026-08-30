@@ -6,9 +6,11 @@ import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.media.MediaAudioCandidate
+import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkImage
 import com.musicapp.player.core.metadata.ArtworkRepository
 import com.musicapp.player.core.metadata.ArtworkResult
+import com.musicapp.player.core.metadata.TrackMetadataRepository
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.data.repository.FakeMediaLibraryRepository
@@ -56,6 +58,17 @@ class TracksViewModelTest {
         object : ArtworkRepository {
             override suspend fun artwork(track: Track, targetPx: Int): ArtworkResult =
                 ArtworkResult.Placeholder
+        }
+    private val placeholderTrackMetadataRepository =
+        object : TrackMetadataRepository {
+            override suspend fun read(track: Track): AdvancedTrackMetadata =
+                AdvancedTrackMetadata(
+                    encoding = "audio/mp3",
+                    bitrateBps = 320_000,
+                    sampleRateHz = 44_100,
+                    fileSizeBytes = track.sizeBytes,
+                    isReadable = true,
+                )
         }
 
     @Before
@@ -535,6 +548,62 @@ class TracksViewModelTest {
             assertEquals(chineseBTrack.id, playbackController.context?.selectedTrackId)
         }
 
+    @Test
+    fun `showTrackInfo updates infoTrack and loads metadata`() = runTest(dispatcher) {
+        val targetTrack = track(1, "Track 1")
+        val viewModel = subject(tracks = listOf(targetTrack))
+        collectState(viewModel)
+
+        viewModel.showTrackInfo(targetTrack)
+        testScheduler.runCurrent()
+
+        val stateAfterShow = viewModel.uiState.value
+        assertEquals(targetTrack, stateAfterShow.infoTrack)
+        // Wait for metadata reading coroutine to complete
+        testScheduler.advanceUntilIdle()
+
+        val stateAfterLoaded = viewModel.uiState.value
+        assertEquals(targetTrack, stateAfterLoaded.infoTrack)
+        assertFalse(stateAfterLoaded.isInfoLoading)
+        assertEquals("audio/mp3", stateAfterLoaded.infoMetadata?.encoding)
+        assertEquals(320_000L, stateAfterLoaded.infoMetadata?.bitrateBps)
+        assertEquals(44_100, stateAfterLoaded.infoMetadata?.sampleRateHz)
+    }
+
+    @Test
+    fun `dismissTrackInfo clears infoTrack and metadata`() = runTest(dispatcher) {
+        val targetTrack = track(1, "Track 1")
+        val viewModel = subject(tracks = listOf(targetTrack))
+        collectState(viewModel)
+
+        viewModel.showTrackInfo(targetTrack)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.infoTrack != null)
+
+        viewModel.dismissTrackInfo()
+        testScheduler.runCurrent()
+        val dismissedState = viewModel.uiState.value
+        assertEquals(null, dismissedState.infoTrack)
+        assertEquals(null, dismissedState.infoMetadata)
+        assertFalse(dismissedState.isInfoLoading)
+    }
+
+    @Test
+    fun `onBack dismisses info sheet when open`() = runTest(dispatcher) {
+        val targetTrack = track(1, "Track 1")
+        val viewModel = subject(tracks = listOf(targetTrack))
+        collectState(viewModel)
+
+        viewModel.showTrackInfo(targetTrack)
+        testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.infoTrack != null)
+
+        val handled = viewModel.onBack()
+        assertTrue(handled)
+        testScheduler.runCurrent()
+        assertEquals(null, viewModel.uiState.value.infoTrack)
+    }
+
     private suspend fun kotlinx.coroutines.test.TestScope.collectState(viewModel: TracksViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.uiState.first { it.isLibraryLoaded }
@@ -551,6 +620,7 @@ class TracksViewModelTest {
         playlistRepository: PlaylistRepository = FakePlaylistRepository(),
         batchActionExecutor: BatchTrackActionExecutor? = null,
         artworkRepository: ArtworkRepository = placeholderArtworkRepository,
+        trackMetadataRepository: TrackMetadataRepository = placeholderTrackMetadataRepository,
     ): TracksViewModel {
         val clock = FakeClock(123)
         return TracksViewModel(
@@ -567,6 +637,7 @@ class TracksViewModelTest {
                         clock = clock,
                     ),
             artworkRepository = artworkRepository,
+            trackMetadataRepository = trackMetadataRepository,
             computationDispatcher = dispatcher,
         )
     }

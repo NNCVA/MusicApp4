@@ -10,8 +10,10 @@ import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkRepository
 import com.musicapp.player.core.metadata.ArtworkResult
+import com.musicapp.player.core.metadata.TrackMetadataRepository
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
@@ -27,6 +29,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -82,6 +85,9 @@ data class TracksUiState(
     val selectedTrackIds: Set<TrackId> = emptySet(),
     val batchResult: BatchTrackActionResult? = null,
     val isBatchActionRunning: Boolean = false,
+    val infoTrack: Track? = null,
+    val infoMetadata: AdvancedTrackMetadata? = null,
+    val isInfoLoading: Boolean = false,
 )
 
 @HiltViewModel
@@ -92,6 +98,7 @@ class TracksViewModel internal constructor(
     private val playbackController: PlaybackControllerFacade,
     private val batchActionExecutor: BatchTrackActionExecutor,
     private val artworkRepository: ArtworkRepository,
+    private val trackMetadataRepository: TrackMetadataRepository,
     private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
     @Inject
@@ -102,6 +109,7 @@ class TracksViewModel internal constructor(
         playbackController: PlaybackControllerFacade,
         batchActionExecutor: BatchTrackActionExecutor,
         artworkRepository: ArtworkRepository,
+        trackMetadataRepository: TrackMetadataRepository,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playlistRepository = playlistRepository,
@@ -109,6 +117,7 @@ class TracksViewModel internal constructor(
         playbackController = playbackController,
         batchActionExecutor = batchActionExecutor,
         artworkRepository = artworkRepository,
+        trackMetadataRepository = trackMetadataRepository,
         computationDispatcher = Dispatchers.Default,
     )
 
@@ -120,6 +129,10 @@ class TracksViewModel internal constructor(
     private val artworkByTrackId = MutableStateFlow<Map<TrackId, TrackArtworkState>>(emptyMap())
     private val artworkRequestMutex = Mutex()
     private val activeArtworkRequests = mutableMapOf<TrackId, ActiveArtworkRequest>()
+    private val infoTrack = MutableStateFlow<Track?>(null)
+    private val infoMetadata = MutableStateFlow<AdvancedTrackMetadata?>(null)
+    private val isInfoLoading = MutableStateFlow(false)
+    private var infoJob: Job? = null
 
     private val libraryState =
         mediaLibraryRepository.observeTracks()
@@ -150,13 +163,19 @@ class TracksViewModel internal constructor(
             TracksPresentationState(selectionMode, selected, result, isRunning)
         }
 
+    private val infoState =
+        combine(infoTrack, infoMetadata, isInfoLoading) { track, metadata, loading ->
+            TracksInfoState(track, metadata, loading)
+        }
+
     val uiState: StateFlow<TracksUiState> =
         combine(
             sortedTracksState,
             playlists,
             presentationState,
             artworkByTrackId,
-        ) { sortedTracks, playlists, presentation, artwork ->
+            infoState,
+        ) { sortedTracks, playlists, presentation, artwork, info ->
             val visibleSelection =
                 presentation.selectedTrackIds.filterTo(linkedSetOf()) {
                     it in sortedTracks.visibleTrackIds
@@ -172,6 +191,9 @@ class TracksViewModel internal constructor(
                 selectedTrackIds = visibleSelection,
                 batchResult = presentation.batchResult,
                 isBatchActionRunning = presentation.isBatchActionRunning,
+                infoTrack = info.track,
+                infoMetadata = info.metadata,
+                isInfoLoading = info.isLoading,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -251,6 +273,10 @@ class TracksViewModel internal constructor(
     }
 
     fun onBack(): Boolean {
+        if (uiState.value.infoTrack != null) {
+            dismissTrackInfo()
+            return true
+        }
         if (!uiState.value.isSelectionMode) return false
         exitSelection()
         return true
@@ -413,6 +439,28 @@ class TracksViewModel internal constructor(
         executeBatch(BatchTrackAction.PlayNext)
     }
 
+    fun showTrackInfo(track: Track) {
+        infoTrack.value = track
+        infoMetadata.value = null
+        isInfoLoading.value = true
+        infoJob?.cancel()
+        infoJob = viewModelScope.launch {
+            val loaded = trackMetadataRepository.read(track)
+            if (infoTrack.value?.id == track.id) {
+                infoMetadata.value = loaded
+                isInfoLoading.value = false
+            }
+        }
+    }
+
+    fun dismissTrackInfo() {
+        infoJob?.cancel()
+        infoJob = null
+        infoTrack.value = null
+        infoMetadata.value = null
+        isInfoLoading.value = false
+    }
+
     fun acknowledgeBatchResult() {
         batchResult.value = null
     }
@@ -474,6 +522,12 @@ private data class TracksPresentationState(
     val selectedTrackIds: Set<TrackId>,
     val batchResult: BatchTrackActionResult?,
     val isBatchActionRunning: Boolean,
+)
+
+private data class TracksInfoState(
+    val track: Track? = null,
+    val metadata: AdvancedTrackMetadata? = null,
+    val isLoading: Boolean = false,
 )
 
 private data class TracksLibraryState(

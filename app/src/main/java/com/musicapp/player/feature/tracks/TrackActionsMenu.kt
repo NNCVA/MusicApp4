@@ -20,6 +20,7 @@ internal fun TrackActionsMenu(
     onDismissRequest: () -> Unit,
     onAddToQueue: () -> Unit,
     onPlayNext: () -> Unit,
+    onShowTrackInfo: () -> Unit = {},
     onHide: () -> Unit,
     onAddToPlaylist: (PlaylistId) -> Unit,
     modifier: Modifier = Modifier,
@@ -41,6 +42,13 @@ internal fun TrackActionsMenu(
             onClick = {
                 onDismissRequest()
                 onPlayNext()
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.selection_track_info)) },
+            onClick = {
+                onDismissRequest()
+                onShowTrackInfo()
             },
         )
         DropdownMenuItem(
@@ -87,6 +95,7 @@ private fun TrackActionsMenuPreview() {
             onDismissRequest = {},
             onAddToQueue = {},
             onPlayNext = {},
+            onShowTrackInfo = {},
             onHide = {},
             onAddToPlaylist = {},
         )

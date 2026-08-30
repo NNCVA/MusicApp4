@@ -45,6 +45,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
@@ -745,62 +746,6 @@ private fun PlayerStatus(status: PlayerLoadState, @androidx.annotation.StringRes
             color = MusicTheme.colors.error,
         )
         PlayerLoadState.EMPTY, PlayerLoadState.READY -> Spacer(Modifier.height(MusicTheme.dimensions.spaceSmall))
-    }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun TrackInfoViewer(
-    track: Track,
-    metadata: AdvancedTrackMetadata?,
-    loading: Boolean,
-    onDismiss: () -> Unit,
-) {
-    val compact = MusicTheme.dimensions.windowWidthTier == MusicWindowWidthTier.COMPACT
-    if (compact) {
-        ModalBottomSheet(onDismissRequest = onDismiss) { TrackInfoContent(track, metadata, loading) }
-    } else {
-        Dialog(onDismissRequest = onDismiss) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().widthIn(max = MusicTheme.dimensions.trackInfoDialogMaxWidth),
-                shape = MusicTheme.shapes.extraLarge,
-            ) { TrackInfoContent(track, metadata, loading) }
-        }
-    }
-}
-
-@Composable
-private fun TrackInfoContent(track: Track, metadata: AdvancedTrackMetadata?, loading: Boolean) {
-    val dimensions = MusicTheme.dimensions
-    val clipboard = LocalClipboardManager.current
-    val path = track.relativePath + track.displayName
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(dimensions.spaceLarge),
-        verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-    ) {
-        Text(stringResource(R.string.track_info_title), style = MusicTheme.typography.headlineMedium, color = MusicTheme.colors.onSurface)
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        InfoRow(R.string.track_info_encoding, metadata?.encoding ?: track.mimeType.orEmpty())
-        InfoRow(R.string.track_info_bitrate, metadata?.bitrateBps?.let { stringResource(R.string.track_info_bitrate_value, it / 1_000) }.orEmpty())
-        InfoRow(R.string.track_info_sample_rate, metadata?.sampleRateHz?.let { stringResource(R.string.track_info_sample_rate_value, it) }.orEmpty())
-        InfoRow(
-            R.string.track_info_file_size,
-            pluralStringResource(
-                R.plurals.track_info_file_size_value,
-                track.sizeBytes.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-                track.sizeBytes,
-            ),
-        )
-        InfoRow(R.string.track_info_path, path)
-        TextButton(onClick = { clipboard.setText(AnnotatedString(path)) }) { Text(stringResource(R.string.track_info_copy_path)) }
-    }
-}
-
-@Composable
-private fun InfoRow(label: Int, value: String) {
-    Column {
-        Text(stringResource(label), style = MusicTheme.typography.labelMedium, color = MusicTheme.colors.onSurfaceVariant)
-        Text(value.ifBlank { stringResource(R.string.track_info_unknown) }, style = MusicTheme.typography.bodyLarge, color = MusicTheme.colors.onSurface)
     }
 }
 

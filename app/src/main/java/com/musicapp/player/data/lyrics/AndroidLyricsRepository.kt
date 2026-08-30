@@ -4,10 +4,6 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.os.Build
 import android.provider.MediaStore
-import androidx.annotation.OptIn
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.extractor.metadata.id3.BinaryFrame
-import androidx.media3.extractor.metadata.id3.Id3Decoder
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.lyrics.LrcParser
 import com.musicapp.player.core.lyrics.LyricsCandidate
@@ -26,9 +22,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Singleton
-@OptIn(UnstableApi::class)
 internal class AndroidLyricsRepository @Inject constructor(
-    @param:ApplicationContext context: android.content.Context,
+    @ApplicationContext context: android.content.Context,
     private val trackUriResolver: TrackContentUriResolver,
     private val loadCoordinator: LyricsLoadCoordinator,
 ) : LyricsRepository {
@@ -36,6 +31,10 @@ internal class AndroidLyricsRepository @Inject constructor(
     private val lrcParser = LrcParser()
     private val sourceResolver = LyricsSourceResolver()
     private val frameSelector = EmbeddedLyricsFrameSelector(Id3LyricsFrameParser(lrcParser))
+    private val embeddedLyricsExtractor = EmbeddedLyricsExtractor(
+        lrcParser = lrcParser,
+        id3FrameSelector = frameSelector,
+    )
 
     override suspend fun load(track: Track): ResolvedLyrics {
         val key = MetadataCacheKey(track.id, track.dateModifiedMs)
@@ -81,46 +80,14 @@ internal class AndroidLyricsRepository @Inject constructor(
     }.getOrNull()
 
     private fun readEmbeddedLyrics(track: Track): Pair<LyricsCandidate?, LyricsCandidate?> = runCatching {
-        val tag = resolver.openInputStream(trackUriResolver.resolve(track.id))?.use(::readId3Tag)
-            ?: return@runCatching null to null
-        val metadata = Id3Decoder().decode(tag, tag.size) ?: return@runCatching null to null
-        frameSelector.select(
-            buildList {
-                for (index in 0 until metadata.length()) {
-                    val frame = metadata[index] as? BinaryFrame ?: continue
-                    if (frame.id == "SYLT" || frame.id == "SLT" || frame.id == "USLT" || frame.id == "ULT") {
-                        add(EmbeddedLyricsFrame(frame.id, frame.data))
-                    }
-                }
-            },
-        )
+        resolver.openInputStream(trackUriResolver.resolve(track.id))?.use { input ->
+            embeddedLyricsExtractor.extract(
+                input = input,
+                mimeType = track.mimeType,
+                displayName = track.displayName,
+            )
+        } ?: (null to null)
     }.getOrElse { null to null }
-
-    private fun readId3Tag(input: InputStream): ByteArray? {
-        val header = input.readExactly(ID3_HEADER_SIZE) ?: return null
-        if (header[0] != 'I'.code.toByte() || header[1] != 'D'.code.toByte() || header[2] != '3'.code.toByte()) {
-            return null
-        }
-        if ((6..9).any { header[it].toInt() and 0x80 != 0 }) return null
-        val payloadSize = ((header[6].toInt() and 0x7F) shl 21) or
-            ((header[7].toInt() and 0x7F) shl 14) or
-            ((header[8].toInt() and 0x7F) shl 7) or
-            (header[9].toInt() and 0x7F)
-        if (payloadSize !in 1..MAX_ID3_BYTES) return null
-        return header + (input.readExactly(payloadSize) ?: return null)
-    }
-
-    private fun InputStream.readExactly(byteCount: Int): ByteArray? {
-        val result = ByteArray(byteCount)
-        var offset = 0
-        while (offset < byteCount) {
-            val count = read(result, offset, byteCount - offset)
-            if (count < 0) return null
-            if (count == 0) continue
-            offset += count
-        }
-        return result
-    }
 
     private fun InputStream.readAtMost(maxBytes: Int): ByteArray {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -136,8 +103,6 @@ internal class AndroidLyricsRepository @Inject constructor(
     }
 
     private companion object {
-        const val ID3_HEADER_SIZE = 10
-        const val MAX_ID3_BYTES = 4 * 1024 * 1024
         const val MAX_LRC_BYTES = 2 * 1024 * 1024
     }
 }
