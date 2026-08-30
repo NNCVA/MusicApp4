@@ -220,6 +220,21 @@ class TracksViewModel internal constructor(
         return true
     }
 
+    fun playAll() {
+        val orderedTrackIds =
+            uiState.value.tracks
+                .filter { it.availability == Availability.AVAILABLE }
+                .map(Track::id)
+        val firstTrackId = orderedTrackIds.firstOrNull() ?: return
+        playbackController.play(
+            PlaybackContext(
+                source = PlaybackContextSource.TRACKS,
+                orderedTrackIds = orderedTrackIds,
+                selectedTrackId = firstTrackId,
+            ),
+        )
+    }
+
     fun playTrack(trackId: TrackId) {
         val orderedTrackIds =
             uiState.value.tracks

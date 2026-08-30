@@ -4,14 +4,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import androidx.compose.foundation.selection.selectable
@@ -57,6 +62,7 @@ fun SettingsScreenRoute(
     policy: WindowLayoutPolicy,
     onBack: () -> Unit,
     onShowMessage: (Int) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SettingsScreen(
@@ -64,6 +70,7 @@ fun SettingsScreenRoute(
         contentInsets = contentInsets,
         policy = policy,
         onBack = onBack,
+        bottomPadding = bottomPadding,
         onColorSourceChange = viewModel::setColorSource,
         onPresetThemeChange = viewModel::setPresetTheme,
         onThemeModeChange = viewModel::setThemeMode,
@@ -95,6 +102,7 @@ private fun SettingsScreen(
     onConfirmAction: () -> Unit,
     onAcknowledgeMessage: () -> Unit,
     onShowMessage: (Int) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     LaunchedEffect(state.message) {
@@ -103,7 +111,7 @@ private fun SettingsScreen(
         onAcknowledgeMessage()
     }
     Box(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         contentAlignment = Alignment.TopCenter,
     ) {
         Column(
@@ -124,6 +132,10 @@ private fun SettingsScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll()
                     .padding(horizontal = dimensions.contentHorizontalPadding),
+                contentPadding = PaddingValues(
+                    top = dimensions.spaceSmall,
+                    bottom = dimensions.spaceSmall + bottomPadding,
+                ),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
             ) {
                 item { AppearanceSettings(state.settings, onColorSourceChange, onPresetThemeChange, onThemeModeChange) }

@@ -8,11 +8,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -60,6 +64,7 @@ fun HistoryScreenRoute(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     onBack: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
@@ -69,6 +74,7 @@ fun HistoryScreenRoute(
         contentInsets = contentInsets,
         policy = policy,
         onBack = onBack,
+        bottomPadding = bottomPadding,
         onQueryChange = viewModel::setQuery,
         onTrackClick = { entry ->
             if (state.isSelectionMode) {
@@ -119,12 +125,13 @@ private fun HistoryScreen(
     onCancelClearHistory: () -> Unit,
     onConfirmClearHistory: () -> Unit,
     onAcknowledgeBatchResult: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
         modifier =
             Modifier.fillMaxSize()
-                .windowInsetsPadding(contentInsets),
+                .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         CategoryHeader(
             title =
@@ -173,28 +180,34 @@ private fun HistoryScreen(
             state.isLoading ->
                 Column(
                     modifier = Modifier.fillMaxWidth().weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .padding(bottom = bottomPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) { CircularProgressIndicator() }
             state.entries.isEmpty() ->
                 EmptyState(
                     modifier = Modifier.weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .padding(bottom = bottomPadding),
                     title = stringResource(R.string.history_empty_title),
                     description = stringResource(R.string.history_empty_description),
                 )
             state.visibleEntries.isEmpty() ->
                 EmptyState(
                     modifier = Modifier.weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .padding(bottom = bottomPadding),
                     title = stringResource(R.string.history_no_results_title),
                     description = stringResource(R.string.history_no_results_description),
                 )
             else ->
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
-                    contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
+                    contentPadding = PaddingValues(
+                        top = dimensions.spaceSmall,
+                        bottom = dimensions.spaceSmall + bottomPadding,
+                    ),
                 ) {
                     items(
                         items = state.visibleEntries,

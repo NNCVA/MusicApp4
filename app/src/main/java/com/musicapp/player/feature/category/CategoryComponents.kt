@@ -1,6 +1,8 @@
 package com.musicapp.player.feature.category
 
+import android.annotation.SuppressLint
 import androidx.annotation.StringRes
+import java.util.Locale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,7 +37,8 @@ import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.designsystem.component.TrackSummaryRow
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
-import java.util.Locale
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 enum class CategoryNavigationAction {
     DRAWER,
@@ -113,11 +116,16 @@ fun CategoryTrackList(
     tracks: List<Track>,
     onTrackClick: (Track) -> Unit,
     modifier: Modifier = Modifier,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     LazyColumn(
         modifier = modifier.fillMaxWidth().bounceOverscroll(),
-        contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
+        contentPadding =
+            PaddingValues(
+                top = dimensions.spaceSmall,
+                bottom = dimensions.spaceSmall + bottomPadding,
+            ),
     ) {
         items(tracks, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { track ->
             TrackSummaryRow(

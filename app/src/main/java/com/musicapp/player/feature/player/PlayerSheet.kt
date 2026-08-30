@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -71,6 +74,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.window.Dialog
@@ -158,8 +162,11 @@ fun PlayerSheet(
     LaunchedEffect(progress) { onExpansionChanged(progress > 0f) }
     BackHandler(enabled = progress > 0f) { progress = 0f }
 
+    val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
+    val totalCollapsedHeight = dimensions.miniPlayerHeight + bottomInset
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val travelPx = with(density) { (maxHeight - dimensions.miniPlayerHeight).toPx().coerceAtLeast(1f) }
+        val travelPx = with(density) { (maxHeight - totalCollapsedHeight).toPx().coerceAtLeast(1f) }
         val dragSheet: (Float) -> Float = { deltaY ->
             val previous = progress
             progress = PlayerSheetState(progress).dragBy(deltaY, travelPx).expansionProgress
@@ -252,6 +259,7 @@ private fun MiniPlayer(
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
+    val compact = dimensions.windowWidthTier == MusicWindowWidthTier.COMPACT
     Row(
         modifier = modifier.fillMaxWidth().height(dimensions.miniPlayerHeight)
             .clickable(onClick = onExpand).padding(horizontal = dimensions.contentHorizontalPadding),
@@ -260,12 +268,24 @@ private fun MiniPlayer(
     ) {
         PlayerArtwork(
             artwork = state.artwork,
-            shape = RoundedCornerShape(dimensions.miniArtworkCornerRadius),
-            modifier = Modifier.size(dimensions.miniArtworkSize),
+            shape = MusicTheme.shapes.small,
+            modifier = Modifier.size(dimensions.trackArtworkSize),
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(track.title, style = MusicTheme.typography.titleMedium, color = MusicTheme.colors.onSurface, maxLines = 1)
-            Text(track.artistName, style = MusicTheme.typography.bodySmall, color = MusicTheme.colors.onSurfaceVariant, maxLines = 1)
+            Text(
+                text = track.title,
+                style = if (compact) MusicTheme.typography.compactTrackTitle else MusicTheme.typography.expandedTrackTitle,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = track.artistName,
+                style = if (compact) MusicTheme.typography.compactTrackArtist else MusicTheme.typography.expandedTrackArtist,
+                color = MusicTheme.colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (state.loadState == PlayerLoadState.BUFFERING) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
         val playbackDescription = stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)

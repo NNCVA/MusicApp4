@@ -437,6 +437,23 @@ class TracksViewModelTest {
         assertEquals(second.id, playbackController.context?.selectedTrackId)
     }
 
+    @Test
+    fun `playAll starts playback from the first available track in order`() = runTest(dispatcher) {
+        val playbackController = RecordingPlaybackControllerFacade()
+        val first = track(1, "Alpha")
+        val second = track(2, "Beta")
+        val viewModel = subject(
+            tracks = listOf(second, first),
+            playbackController = playbackController,
+        )
+        collectState(viewModel)
+
+        viewModel.playAll()
+
+        assertEquals(listOf(first.id, second.id), playbackController.context?.orderedTrackIds)
+        assertEquals(first.id, playbackController.context?.selectedTrackId)
+    }
+
     private suspend fun kotlinx.coroutines.test.TestScope.collectState(viewModel: TracksViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.uiState.first { it.isLibraryLoaded }

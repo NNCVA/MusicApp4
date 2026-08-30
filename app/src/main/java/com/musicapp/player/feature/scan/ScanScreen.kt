@@ -10,15 +10,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -70,6 +75,7 @@ fun ScanMusicScreenRoute(
     onOpenPermissionSettings: () -> Unit,
     onOpenApplicationSettings: () -> Unit,
     onScanMusic: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -121,6 +127,7 @@ fun ScanMusicScreenRoute(
         },
         onRemoveFolder = viewModel::removeFolder,
         onOpenApplicationSettings = onOpenApplicationSettings,
+        bottomPadding = bottomPadding,
     )
 
     if (permissionDialogVisible) {
@@ -154,11 +161,12 @@ private fun ScanMusicScreen(
     onAddBlockedFolder: () -> Unit,
     onRemoveFolder: (com.musicapp.player.core.domain.model.PathRuleId) -> Unit,
     onOpenApplicationSettings: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     var blockedFoldersExpanded by rememberSaveable { mutableStateOf(false) }
     Box(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         contentAlignment = Alignment.TopCenter,
     ) {
         Column(
@@ -178,9 +186,11 @@ private fun ScanMusicScreen(
             }
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    horizontal = dimensions.contentHorizontalPadding,
-                    vertical = dimensions.spaceSmall,
+                contentPadding = PaddingValues(
+                    start = dimensions.contentHorizontalPadding,
+                    end = dimensions.contentHorizontalPadding,
+                    top = dimensions.spaceSmall,
+                    bottom = dimensions.spaceSmall + bottomPadding,
                 ),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
             ) {

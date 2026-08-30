@@ -8,13 +8,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
@@ -73,6 +77,7 @@ fun FoldersScreenRoute(
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
     onFolderClick: (FolderId) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     FoldersScreen(
@@ -83,6 +88,7 @@ fun FoldersScreenRoute(
         onScanMusic = onScanMusic,
         onFolderClick = onFolderClick,
         onPlayFolder = viewModel::playFolder,
+        bottomPadding = bottomPadding,
     )
 }
 
@@ -93,6 +99,7 @@ fun FolderDetailScreenRoute(
     contentInsets: WindowInsets,
     onBack: () -> Unit,
     onFolderClick: (FolderId) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(folderId) { viewModel.open(folderId) }
@@ -105,6 +112,7 @@ fun FolderDetailScreenRoute(
         onTrackSortSelected = viewModel::selectTrackSort,
         onFolderClick = onFolderClick,
         onTrackClick = { viewModel.playTrack(it.id) },
+        bottomPadding = bottomPadding,
     )
 }
 
@@ -117,6 +125,7 @@ private fun FoldersScreen(
     onScanMusic: () -> Unit,
     onFolderClick: (FolderId) -> Unit,
     onPlayFolder: (FolderId) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
@@ -168,7 +177,7 @@ private fun FoldersScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
             FoldersHeader(
                 policy = policy,
@@ -186,7 +195,8 @@ private fun FoldersScreen(
                 !hasContent ->
                     EmptyState(
                         modifier = Modifier.weight(1f)
-                            .padding(horizontal = dimensions.contentHorizontalPadding),
+                            .padding(horizontal = dimensions.contentHorizontalPadding)
+                            .padding(bottom = bottomPadding),
                         title = stringResource(R.string.folders_empty_title),
                         description = stringResource(R.string.folders_empty_description),
                         actionLabel = stringResource(R.string.navigation_scan_music),
@@ -200,7 +210,7 @@ private fun FoldersScreen(
                             .padding(horizontal = dimensions.contentHorizontalPadding),
                         contentPadding = PaddingValues(
                             top = dimensions.spaceSmall,
-                            bottom = dimensions.spaceSmall,
+                            bottom = dimensions.spaceSmall + bottomPadding,
                             end = dimensions.spaceExtraSmall,
                         ),
                         verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
@@ -238,7 +248,9 @@ private fun FoldersScreen(
         }
         RightGutterOverlay(
             mode = gutterMode,
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+            modifier = Modifier.fillMaxSize()
+                .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                .padding(bottom = bottomPadding),
         )
     }
 }
@@ -492,6 +504,7 @@ private fun FolderDetailScreen(
     onTrackSortSelected: (CategoryTrackSortField) -> Unit,
     onFolderClick: (FolderId) -> Unit,
     onTrackClick: (Track) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     if (state.isBrowserOnly) {
         FolderBrowserScreen(
@@ -499,12 +512,13 @@ private fun FolderDetailScreen(
             contentInsets = contentInsets,
             onBack = onBack,
             onFolderClick = onFolderClick,
+            bottomPadding = bottomPadding,
         )
         return
     }
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         CategoryHeader(
             title = folderDetailTitle(state),
@@ -530,14 +544,18 @@ private fun FolderDetailScreen(
         if (state.childFolders.isEmpty() && state.directTracks.isEmpty()) {
             EmptyState(
                 modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                    .padding(horizontal = dimensions.contentHorizontalPadding)
+                    .padding(bottom = bottomPadding),
                 title = stringResource(R.string.folder_empty_title),
                 description = stringResource(R.string.folder_empty_description),
             )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
-                contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
+                contentPadding = PaddingValues(
+                    top = dimensions.spaceSmall,
+                    bottom = dimensions.spaceSmall + bottomPadding,
+                ),
             ) {
                 if (state.childFolders.isNotEmpty()) {
                     item {
@@ -603,10 +621,11 @@ private fun FolderBrowserScreen(
     contentInsets: WindowInsets,
     onBack: () -> Unit,
     onFolderClick: (FolderId) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         CategoryHeader(
             title = folderDetailTitle(state),
@@ -615,7 +634,8 @@ private fun FolderBrowserScreen(
         if (state.childFolders.isEmpty()) {
             EmptyState(
                 modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                    .padding(horizontal = dimensions.contentHorizontalPadding)
+                    .padding(bottom = bottomPadding),
                 title = stringResource(R.string.folder_empty_title),
                 description = stringResource(R.string.folder_empty_description),
             )
@@ -623,7 +643,10 @@ private fun FolderBrowserScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll()
                     .padding(horizontal = dimensions.contentHorizontalPadding),
-                contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
+                contentPadding = PaddingValues(
+                    top = dimensions.spaceSmall,
+                    bottom = dimensions.spaceSmall + bottomPadding,
+                ),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
             ) {
                 items(state.childFolders, key = { it.id.sourceId }) { folder ->

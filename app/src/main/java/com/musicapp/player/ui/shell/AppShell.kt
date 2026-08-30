@@ -157,12 +157,9 @@ fun AppShell(
                         Box(
                             modifier = Modifier.width(availableWidth).fillMaxHeight(),
                         ) {
-                            ShellContent(
-                                contentInsets = contentInsets,
-                                contentBottomPadding =
-                                    if (playerSheetVisible) dimensions.miniPlayerHeight else 0.dp,
-                                content = { insets -> content(insets, policy, ::toggleDrawer) },
-                            )
+                            ShellContent {
+                                content(contentInsets, policy, ::toggleDrawer)
+                            }
                         }
                     }
                 }
@@ -175,12 +172,9 @@ fun AppShell(
                         navigationContent(policy) {}
                     }
                     Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        ShellContent(
-                            contentInsets = contentInsets,
-                            contentBottomPadding =
-                                if (playerSheetVisible) dimensions.miniPlayerHeight else 0.dp,
-                            content = { insets -> content(insets, policy) {} },
-                        )
+                        ShellContent {
+                            content(contentInsets, policy) {}
+                        }
                     }
                 }
             }
@@ -199,12 +193,10 @@ fun AppShell(
 
 @Composable
 private fun ShellContent(
-    contentInsets: WindowInsets,
-    contentBottomPadding: Dp,
-    content: @Composable (WindowInsets) -> Unit,
+    content: @Composable () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize().padding(bottom = contentBottomPadding)) {
-        content(contentInsets)
+    Box(modifier = Modifier.fillMaxSize()) {
+        content()
     }
 }
 

@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -196,6 +199,7 @@ fun MainNavigation(
                     policy = policy,
                     selectedRoute = navigationState.currentTopLevelRoute,
                     themeMode = themeMode,
+                    playerSheetVisible = playerState.currentTrack != null,
                     onSelect = { route ->
                         commitNavigation { navigate(route) }
                         closeDrawer()
@@ -221,6 +225,8 @@ fun MainNavigation(
                 )
             },
             content = { contentInsets, policy, openDrawer ->
+                val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
+                val bottomPadding = bottomInset + if (playerState.currentTrack != null) MusicTheme.dimensions.miniPlayerHeight else 0.dp
                 val destinationEntryProvider =
                     entryProvider<MusicNavKey> {
                         entry<TracksRoute> {
@@ -230,6 +236,7 @@ fun MainNavigation(
                                 policy = policy,
                                 openDrawer = openDrawer,
                                 onScanMusic = ::navigateToScanMusic,
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<ScanMusicRoute> {
@@ -244,6 +251,7 @@ fun MainNavigation(
                                 onOpenPermissionSettings = onOpenPermissionSettings,
                                 onOpenApplicationSettings = onOpenApplicationSettings,
                                 onScanMusic = onScanMusic,
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<AlbumsRoute> {
@@ -258,6 +266,7 @@ fun MainNavigation(
                                         navigate(AlbumDetailRoute(albumId.volumeName, albumId.mediaStoreId))
                                     }
                                 },
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<ArtistsRoute> {
@@ -270,6 +279,7 @@ fun MainNavigation(
                                 onArtistClick = { artistId ->
                                     commitNavigation { navigate(ArtistDetailRoute(artistId.name)) }
                                 },
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<PlaylistsRoute> {
@@ -281,6 +291,7 @@ fun MainNavigation(
                                 onPlaylistClick = { playlistId ->
                                     commitNavigation { navigate(PlaylistDetailRoute(playlistId.value)) }
                                 },
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<HistoryRoute> {
@@ -289,6 +300,7 @@ fun MainNavigation(
                                 contentInsets = contentInsets,
                                 policy = policy,
                                 onBack = ::handleBack,
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<FoldersRoute> {
@@ -303,6 +315,7 @@ fun MainNavigation(
                                         navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))
                                     }
                                 },
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<SettingsRoute> {
@@ -314,6 +327,7 @@ fun MainNavigation(
                                 onShowMessage = { messageResId ->
                                     messageBubbleQueue.enqueue(messageResId)
                                 },
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<AboutRoute> {
@@ -322,6 +336,7 @@ fun MainNavigation(
                                 contentInsets = contentInsets,
                                 policy = policy,
                                 onBack = ::handleBack,
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<TrackInfoRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
@@ -333,6 +348,7 @@ fun MainNavigation(
                                 ),
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<ArtistDetailRoute> { key ->
@@ -343,6 +359,7 @@ fun MainNavigation(
                                 ),
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<PlaylistDetailRoute> { key ->
@@ -351,6 +368,7 @@ fun MainNavigation(
                                 viewModel = viewModel<PlaylistDetailViewModel>(key = "playlist:${key.playlistId}"),
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<FolderDetailRoute> { key ->
@@ -366,6 +384,7 @@ fun MainNavigation(
                                         navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))
                                     }
                                 },
+                                bottomPadding = bottomPadding,
                             )
                         }
                     }
@@ -417,6 +436,7 @@ fun MainNavigation(
             },
           )
         }
+        val bottomInset = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
         MessageBubbleHost(
             request = messageBubbleRequest,
             message = messageBubbleText,
@@ -430,7 +450,7 @@ fun MainNavigation(
                                 MusicTheme.dimensions.miniPlayerHeight
                             } else {
                                 MusicTheme.dimensions.spaceMedium
-                            }) + MusicTheme.dimensions.messageBubbleBottomLift,
+                            }) + bottomInset + MusicTheme.dimensions.messageBubbleBottomLift,
                     ),
         )
     }

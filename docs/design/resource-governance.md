@@ -47,6 +47,7 @@
 | MusicApp 资源 | Google 源文件 | MusicApp2 中间文件 | 用途与修改 |
 |---|---|---|---|
 | `ic_playback_play.xml` | `src/av/play_arrow/materialicons/24px.svg` | `app/src/main/res/drawable/ic_play.xml` | 播放；转为 `VectorDrawable`、重命名并改为中性路径色 |
+| `ic_playback_play_circle.xml` | `src/av/play_circle_outline/materialicons/24px.svg` | 无（直接自 Google Material Icons 生成） | 列表全部播放操作；转为 `VectorDrawable` 并设为中性路径色 |
 | `ic_playback_pause.xml` | `src/av/pause/materialicons/24px.svg` | `app/src/main/res/drawable/ic_pause.xml` | 暂停；转为 `VectorDrawable`、重命名并改为中性路径色 |
 | `ic_playback_skip_previous.xml` | `src/av/skip_previous/materialicons/24px.svg` | `app/src/main/res/drawable/ic_skip_previous.xml` | 上一首；转为 `VectorDrawable`、重命名并改为中性路径色 |
 | `ic_playback_skip_next.xml` | `src/av/skip_next/materialicons/24px.svg` | `app/src/main/res/drawable/ic_skip_next.xml` | 下一首；转为 `VectorDrawable`、重命名并改为中性路径色 |

@@ -9,15 +9,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -56,6 +60,7 @@ internal fun SidebarNavigation(
     policy: WindowLayoutPolicy,
     selectedRoute: TopLevelNavKey,
     themeMode: ThemeMode,
+    playerSheetVisible: Boolean = false,
     onSelect: (TopLevelNavKey) -> Unit,
     onRequestExit: () -> Unit,
     onCycleTheme: () -> Unit,
@@ -68,16 +73,19 @@ internal fun SidebarNavigation(
         } else {
             dimensions.sidebarOuterPadding
         }
+    val bottomInset = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
     Column(
         modifier =
             Modifier.fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                 .verticalScroll(rememberScrollState())
                 .padding(
                     start = outerPadding,
                     top = outerPadding,
                     end = outerPadding,
-                    bottom = dimensions.miniPlayerHeight + outerPadding,
+                    bottom = (if (playerSheetVisible) dimensions.miniPlayerHeight else 0.dp) +
+                        bottomInset +
+                        outerPadding,
                 ),
         verticalArrangement = Arrangement.spacedBy(dimensions.sidebarCardSpacing),
     ) {

@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,6 +24,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -59,6 +63,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
@@ -96,6 +101,7 @@ fun TracksScreenRoute(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val loadStartedNs = remember { SystemClock.elapsedRealtimeNanos() }
     val firstTrackLayoutLogged = remember { AtomicBoolean(false) }
@@ -108,6 +114,7 @@ fun TracksScreenRoute(
         policy = policy,
         openDrawer = openDrawer,
         onScanMusic = onScanMusic,
+        bottomPadding = bottomPadding,
         onSortSelected = viewModel::selectSort,
         onTrackArtworkRequested = viewModel::requestArtwork,
         onTrackAddToQueue = viewModel::addTrackToQueue,
@@ -124,8 +131,8 @@ fun TracksScreenRoute(
         onTrackLongClick = { track ->
             if (!state.isSelectionMode) {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.toggleSelection(track.id)
             }
-            viewModel.toggleSelection(track.id)
         },
         onSelectAll = viewModel::selectAllCurrentResults,
         onSelectTracks = viewModel::selectTracks,
@@ -135,12 +142,13 @@ fun TracksScreenRoute(
         onPlayNext = viewModel::playSelectedNext,
         onHideSelected = viewModel::hideSelected,
         onAcknowledgeBatchResult = viewModel::acknowledgeBatchResult,
+        onPlayAll = viewModel::playAll,
         onFirstTrackLaidOut = {
             if (firstTrackLayoutLogged.compareAndSet(false, true)) {
                 val completedNs = SystemClock.elapsedRealtimeNanos()
                 Log.i(
-                    TRACKS_LOAD_LOG_TAG,
-                    "event=first_track_laid_out duration_us=${(completedNs - loadStartedNs) / 1_000} " +
+                    "BenchmarkTrace",
+                    "TracksFirstTrackLaidOut duration_ms=${(completedNs - loadStartedNs) / 1_000_000.0} " +
                         "track_count=${state.tracks.size} start_ns=$loadStartedNs end_ns=$completedNs",
                 )
             }
@@ -155,6 +163,7 @@ fun TracksScreen(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
+    bottomPadding: Dp = 0.dp,
     onSortSelected: (TrackSortField) -> Unit,
     onTrackArtworkRequested: suspend (Track) -> Unit,
     onTrackAddToQueue: (TrackId) -> Unit,
@@ -171,6 +180,7 @@ fun TracksScreen(
     onPlayNext: () -> Unit,
     onHideSelected: () -> Unit,
     onAcknowledgeBatchResult: () -> Unit,
+    onPlayAll: () -> Unit = {},
     onFirstTrackLaidOut: () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
@@ -227,7 +237,7 @@ fun TracksScreen(
         Column(
             modifier =
                 Modifier.fillMaxSize()
-                    .windowInsetsPadding(contentInsets),
+                    .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
             TracksTopBar(
                 state = state,
@@ -236,6 +246,7 @@ fun TracksScreen(
                 onSortSelected = onSortSelected,
                 searchActive = searchActive,
                 searchQuery = searchQuery,
+                filteredTracks = filteredTracks,
                 onOpenSearch = { searchActive = true },
                 onCloseSearch = {
                     searchActive = false
@@ -254,13 +265,25 @@ fun TracksScreen(
                 onAddToQueue = onAddToQueue,
                 onPlayNext = onPlayNext,
                 onHideSelected = onHideSelected,
+                onPlayAll = {
+                    val targetTracks = if (searchActive && searchQuery.isNotBlank()) filteredTracks else state.tracks
+                    val firstAvailable = targetTracks.firstOrNull { it.availability == Availability.AVAILABLE }
+                    if (firstAvailable != null) {
+                        if (searchActive && searchQuery.isNotBlank()) {
+                            onTrackClick(firstAvailable)
+                        } else {
+                            onPlayAll()
+                        }
+                    }
+                },
             )
             if (!state.isLibraryLoaded) {
                 LoadingState(modifier = Modifier.weight(1f))
             } else if (state.tracks.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .padding(bottom = bottomPadding),
                     title = stringResource(R.string.tracks_empty_title),
                     description = stringResource(R.string.tracks_empty_description),
                     actionLabel = stringResource(R.string.navigation_scan_music),
@@ -270,7 +293,8 @@ fun TracksScreen(
             } else if (filteredTracks.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .padding(bottom = bottomPadding),
                     title = stringResource(R.string.tracks_no_results_title),
                     description = stringResource(R.string.tracks_no_results_description),
                 )
@@ -292,13 +316,16 @@ fun TracksScreen(
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
                     onFirstTrackLaidOut = onFirstTrackLaidOut,
+                    bottomPadding = bottomPadding,
                     modifier = Modifier.weight(1f),
                 )
             }
         }
         RightGutterOverlay(
             mode = gutterMode,
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+            modifier = Modifier.fillMaxSize()
+                .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                .padding(bottom = bottomPadding),
         )
     }
     state.batchResult?.let { result ->
@@ -314,6 +341,7 @@ private fun TracksTopBar(
     onSortSelected: (TrackSortField) -> Unit,
     searchActive: Boolean,
     searchQuery: String,
+    filteredTracks: List<Track>,
     onOpenSearch: () -> Unit,
     onCloseSearch: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -323,6 +351,7 @@ private fun TracksTopBar(
     onAddToQueue: () -> Unit,
     onPlayNext: () -> Unit,
     onHideSelected: () -> Unit,
+    onPlayAll: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -441,8 +470,43 @@ private fun TracksTopBar(
                     Row(
                         modifier = Modifier.fillMaxWidth().height(dimensions.minimumTouchTarget),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
                     ) {
+                        val targetTracks = if (searchActive && searchQuery.isNotBlank()) filteredTracks else state.tracks
+                        val hasAvailableTracks = targetTracks.any { it.availability == Availability.AVAILABLE }
+                        BareIconButton(
+                            onClick = onPlayAll,
+                            enabled = hasAvailableTracks,
+                            modifier = Modifier.size(dimensions.minimumTouchTarget),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_playback_play_circle),
+                                contentDescription = stringResource(R.string.category_play_all),
+                                tint = if (hasAvailableTracks) {
+                                    MusicTheme.colors.onSurface
+                                } else {
+                                    MusicTheme.colors.onSurface.copy(alpha = 0.38f)
+                                },
+                                modifier = Modifier.size(dimensions.spaceLarge),
+                            )
+                        }
+                        val trackCountDescription = pluralStringResource(
+                            R.plurals.category_track_count,
+                            targetTracks.size,
+                            targetTracks.size,
+                        )
+                        Text(
+                            text = "${targetTracks.size}",
+                            style = MusicTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MusicTheme.colors.onSurface,
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics {
+                                    contentDescription = trackCountDescription
+                                },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         Box {
                             BareIconButton(
                                 onClick = { sortMenuExpanded = true },
@@ -528,6 +592,7 @@ private fun TrackList(
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
     onFirstTrackLaidOut: () -> Unit,
+    bottomPadding: Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -550,7 +615,7 @@ private fun TrackList(
                     //start = dimensions.spaceSmall,
                     top = dimensions.spaceSmall,
                     //end = dimensions.spaceSmall,
-                    bottom = dimensions.spaceSmall,
+                    bottom = dimensions.spaceSmall + bottomPadding,
                 ),
         ) {
             if (sections.isEmpty()) {

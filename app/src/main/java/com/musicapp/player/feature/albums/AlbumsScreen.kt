@@ -12,13 +12,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -81,6 +85,7 @@ fun AlbumsScreenRoute(
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
     onAlbumClick: (AlbumId) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     AlbumsScreen(
@@ -89,6 +94,7 @@ fun AlbumsScreenRoute(
         policy = policy,
         openDrawer = openDrawer,
         onScanMusic = onScanMusic,
+        bottomPadding = bottomPadding,
         onSortSelected = viewModel::selectSort,
         onColumnCountSelected = viewModel::selectColumnCount,
         onArtworkRequested = viewModel::requestArtwork,
@@ -102,12 +108,14 @@ fun AlbumDetailScreenRoute(
     viewModel: AlbumDetailViewModel,
     contentInsets: WindowInsets,
     onBack: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(albumId) { viewModel.open(albumId) }
     AlbumDetailScreen(
         state = state,
         contentInsets = contentInsets,
+        bottomPadding = bottomPadding,
         onBack = onBack,
         onPlayAll = viewModel::playAll,
         onSortSelected = viewModel::selectSort,
@@ -122,6 +130,7 @@ private fun AlbumsScreen(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
+    bottomPadding: Dp = 0.dp,
     onSortSelected: (AlbumSortField) -> Unit,
     onColumnCountSelected: (Int) -> Unit,
     onArtworkRequested: (AlbumSummary) -> Unit,
@@ -172,7 +181,7 @@ private fun AlbumsScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
             AlbumsHeader(
                 policy = policy,
@@ -189,7 +198,8 @@ private fun AlbumsScreen(
             if (state.albums.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .padding(bottom = bottomPadding),
                     title = stringResource(R.string.albums_empty_title),
                     description = stringResource(R.string.albums_empty_description),
                     actionLabel = stringResource(R.string.navigation_scan_music),
@@ -203,7 +213,11 @@ private fun AlbumsScreen(
                     modifier = Modifier.fillMaxWidth().weight(1f)
                         .bounceOverscroll()
                         .padding(horizontal = dimensions.contentHorizontalPadding),
-                    contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
+                    contentPadding =
+                        PaddingValues(
+                            top = dimensions.spaceSmall,
+                            bottom = dimensions.spaceSmall + bottomPadding,
+                        ),
                     horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                     verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                 ) {
@@ -226,7 +240,9 @@ private fun AlbumsScreen(
         }
         RightGutterOverlay(
             mode = gutterMode,
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+            modifier = Modifier.fillMaxSize()
+                .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                .padding(bottom = bottomPadding),
         )
     }
 }
@@ -369,10 +385,11 @@ private fun AlbumDetailScreen(
     onPlayAll: () -> Unit,
     onSortSelected: (CategoryTrackSortField) -> Unit,
     onTrackClick: (com.musicapp.player.core.domain.model.Track) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         CategoryHeader(
             title = state.title ?: stringResource(R.string.album_unknown_title),
@@ -397,15 +414,17 @@ private fun AlbumDetailScreen(
         if (state.tracks.isEmpty()) {
             EmptyState(
                 modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                    .padding(horizontal = dimensions.contentHorizontalPadding)
+                    .padding(bottom = bottomPadding),
                 title = stringResource(R.string.album_empty_title),
                 description = stringResource(R.string.album_empty_description),
             )
         } else {
             CategoryTrackList(
-                state.tracks,
-                onTrackClick,
-                Modifier.weight(1f),
+                tracks = state.tracks,
+                onTrackClick = onTrackClick,
+                bottomPadding = bottomPadding,
+                modifier = Modifier.weight(1f),
             )
         }
     }

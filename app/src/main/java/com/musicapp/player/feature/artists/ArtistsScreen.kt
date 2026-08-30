@@ -10,12 +10,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -69,6 +73,7 @@ fun ArtistsScreenRoute(
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
     onArtistClick: (ArtistId) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     ArtistsScreen(
@@ -77,6 +82,7 @@ fun ArtistsScreenRoute(
         policy = policy,
         openDrawer = openDrawer,
         onScanMusic = onScanMusic,
+        bottomPadding = bottomPadding,
         onArtworkRequested = viewModel::requestArtwork,
         onArtistClick = onArtistClick,
     )
@@ -88,12 +94,14 @@ fun ArtistDetailScreenRoute(
     viewModel: ArtistDetailViewModel,
     contentInsets: WindowInsets,
     onBack: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(artistId) { viewModel.open(artistId) }
     ArtistDetailScreen(
         state = state,
         contentInsets = contentInsets,
+        bottomPadding = bottomPadding,
         onBack = onBack,
         onPlayAll = viewModel::playAll,
         onSortSelected = viewModel::selectSort,
@@ -110,6 +118,7 @@ private fun ArtistsScreen(
     onScanMusic: () -> Unit,
     onArtworkRequested: (ArtistSummary) -> Unit,
     onArtistClick: (ArtistId) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
@@ -148,13 +157,14 @@ private fun ArtistsScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
             ArtistsHeader(policy = policy, openDrawer = openDrawer)
             if (state.artists.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .padding(bottom = bottomPadding),
                     title = stringResource(R.string.artists_empty_title),
                     description = stringResource(R.string.artists_empty_description),
                     actionLabel = stringResource(R.string.navigation_scan_music),
@@ -167,7 +177,7 @@ private fun ArtistsScreen(
                     modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
                     contentPadding = PaddingValues(
                         top = dimensions.spaceExtraSmall,
-                        bottom = dimensions.spaceSmall,
+                        bottom = dimensions.spaceSmall + bottomPadding,
                     ),
                 ) {
                     items(displayArtists, key = { it.id.name }) { artist ->
@@ -188,7 +198,9 @@ private fun ArtistsScreen(
         }
         RightGutterOverlay(
             mode = gutterMode,
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+            modifier = Modifier.fillMaxSize()
+                .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                .padding(bottom = bottomPadding),
         )
     }
 }
@@ -325,10 +337,11 @@ private fun ArtistDetailScreen(
     onPlayAll: () -> Unit,
     onSortSelected: (CategoryTrackSortField) -> Unit,
     onTrackClick: (Track) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         CategoryHeader(
             title = state.displayName ?: stringResource(R.string.artist_unknown_name),
@@ -353,15 +366,17 @@ private fun ArtistDetailScreen(
         if (state.tracks.isEmpty()) {
             EmptyState(
                 modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                    .padding(horizontal = dimensions.contentHorizontalPadding)
+                    .padding(bottom = bottomPadding),
                 title = stringResource(R.string.artist_empty_title),
                 description = stringResource(R.string.artist_empty_description),
             )
         } else {
             CategoryTrackList(
-                state.tracks,
-                onTrackClick,
-                Modifier.weight(1f),
+                tracks = state.tracks,
+                onTrackClick = onTrackClick,
+                bottomPadding = bottomPadding,
+                modifier = Modifier.weight(1f),
             )
         }
     }

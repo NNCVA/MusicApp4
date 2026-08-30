@@ -13,12 +13,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -69,6 +73,7 @@ fun PlaylistsScreenRoute(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onPlaylistClick: (PlaylistId) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     PlaylistsScreen(
@@ -77,6 +82,7 @@ fun PlaylistsScreenRoute(
         policy = policy,
         openDrawer = openDrawer,
         onPlaylistClick = onPlaylistClick,
+        bottomPadding = bottomPadding,
         onArtworkRequested = viewModel::requestArtwork,
         onCreate = viewModel::create,
         onRename = viewModel::rename,
@@ -90,6 +96,7 @@ fun PlaylistDetailScreenRoute(
     viewModel: PlaylistDetailViewModel,
     contentInsets: WindowInsets,
     onBack: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     BackHandler(enabled = state.isSelectionMode) { viewModel.clearSelection() }
@@ -97,6 +104,7 @@ fun PlaylistDetailScreenRoute(
     PlaylistDetailScreen(
         state = state,
         contentInsets = contentInsets,
+        bottomPadding = bottomPadding,
         onBack = onBack,
         onPlayAll = viewModel::playAll,
         onTrackClick = {
@@ -126,6 +134,7 @@ private fun PlaylistsScreen(
     onCreate: (String) -> Unit,
     onRename: (PlaylistId, String) -> Unit,
     onDelete: (PlaylistId) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     val playlistListStartPadding =
@@ -139,7 +148,7 @@ private fun PlaylistsScreen(
     var deletePlaylistId by rememberSaveable { mutableLongStateOf(NO_PLAYLIST_ID) }
     var pageMenuExpanded by rememberSaveable { mutableStateOf(false) }
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         CategoryHeader(
             title = stringResource(R.string.navigation_playlists),
@@ -178,14 +187,15 @@ private fun PlaylistsScreen(
         if (state.playlists.isEmpty()) {
             PlaylistEmptyState(
                 modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                    .padding(horizontal = dimensions.contentHorizontalPadding)
+                    .padding(bottom = bottomPadding),
             )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
                 contentPadding = PaddingValues(
                     top = dimensions.spaceSmall,
-                    bottom = dimensions.spaceSmall,
+                    bottom = dimensions.spaceSmall + bottomPadding,
                 ),
             ) {
                 items(state.playlists, key = { it.id.value }) { playlist ->
@@ -427,10 +437,11 @@ private fun PlaylistDetailScreen(
     onRemoveSelected: () -> Unit,
     onRemoveTrack: (Track) -> Unit,
     onAcknowledgePlaybackFeedback: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         CategoryHeader(
             title =
@@ -481,14 +492,18 @@ private fun PlaylistDetailScreen(
         if (state.tracks.isEmpty()) {
             EmptyState(
                 modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                    .padding(horizontal = dimensions.contentHorizontalPadding)
+                    .padding(bottom = bottomPadding),
                 title = stringResource(R.string.playlist_empty_title),
                 description = stringResource(R.string.playlist_empty_description),
             )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
-                contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
+                contentPadding = PaddingValues(
+                    top = dimensions.spaceSmall,
+                    bottom = dimensions.spaceSmall + bottomPadding,
+                ),
             ) {
                 items(state.tracks, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { track ->
                     PlaylistTrackRow(
