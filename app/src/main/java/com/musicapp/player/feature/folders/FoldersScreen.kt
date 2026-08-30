@@ -45,7 +45,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
-import com.musicapp.player.core.designsystem.component.SectionIndexBar
+import com.musicapp.player.core.designsystem.component.GutterMode
+import com.musicapp.player.core.designsystem.component.RightGutterOverlay
+import com.musicapp.player.core.designsystem.component.SectionSortOrder
 import com.musicapp.player.core.designsystem.component.TrackSummaryRow
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
@@ -138,14 +140,29 @@ private fun FoldersScreen(
             )
         }
     }
-    val sectionDescriptions = indexLabels.associateWith { label ->
-        when (label) {
-            FOLDER_SECTION_DIGIT_LABEL -> stringResource(R.string.folder_index_digits_label)
-            FOLDER_SECTION_OTHER_LABEL -> stringResource(R.string.folder_index_other_label)
-            else -> stringResource(R.string.folder_index_label, label)
+    val canScroll by remember(listState) {
+        derivedStateOf {
+            listState.canScrollForward || listState.canScrollBackward
         }
     }
-    val showSectionIndex = displayFolders.isNotEmpty()
+    val gutterMode = remember(displayFolders, canScroll, selectedSection, sections, sectionPositions) {
+        if (displayFolders.isEmpty() || !canScroll) {
+            GutterMode.Hidden
+        } else {
+            GutterMode.Index(
+                sortOrder = SectionSortOrder.ASCENDING,
+                activeSection = selectedSection,
+                populatedBuckets = sections.map(FolderSection::label).toSet(),
+                onSectionSelected = { label ->
+                    sectionPositions[label]?.let { position ->
+                        coroutineScope.launch {
+                            listState.scrollToItem(position.coerceAtLeast(0))
+                        }
+                    }
+                },
+            )
+        }
+    }
     val hasContent = state.volumes.isNotEmpty() || state.musicFolders.isNotEmpty()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -218,33 +235,10 @@ private fun FoldersScreen(
                     }
             }
         }
-        if (showSectionIndex) {
-            Box(
-                modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
-            ) {
-                SectionIndexBar(
-                    sections = indexLabels,
-                    selectedSection = selectedSection,
-                    onSectionClick = { label ->
-                        sectionPositions[label]?.let { position ->
-                            coroutineScope.launch {
-                                listState.animateScrollToItem(position.coerceAtLeast(0))
-                            }
-                        }
-                    },
-                    onSectionDrag = { label ->
-                        sectionPositions[label]?.let { position ->
-                            coroutineScope.launch {
-                                listState.scrollToItem(position.coerceAtLeast(0))
-                            }
-                        }
-                    },
-                    sectionContentDescription = { label -> sectionDescriptions.getValue(label) },
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                        .padding(end = dimensions.spaceExtraSmall),
-                )
-            }
-        }
+        RightGutterOverlay(
+            mode = gutterMode,
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        )
     }
 }
 

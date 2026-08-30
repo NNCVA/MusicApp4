@@ -1,6 +1,10 @@
 package com.musicapp.player.feature.albums
 
-import com.ibm.icu.text.Transliterator
+import com.musicapp.player.core.designsystem.component.SectionSortOrder
+import com.musicapp.player.core.designsystem.component.classifySectionLabel
+import com.musicapp.player.core.designsystem.component.resolveNearestPopulatedBucket
+import com.musicapp.player.core.designsystem.component.sectionIndexLabelsForOrder
+import com.musicapp.player.feature.category.CategorySortDirection
 
 internal data class AlbumSection(
     val label: String,
@@ -9,38 +13,77 @@ internal data class AlbumSection(
 
 internal fun sectionLabelForAlbum(album: AlbumSummary, field: AlbumSortField): String? =
     when (field) {
-        AlbumSortField.TITLE -> sectionLabel(album.title)
-        AlbumSortField.ARTIST -> sectionLabel(album.artistName)
+        AlbumSortField.TITLE -> classifySectionLabel(album.title)
+        AlbumSortField.ARTIST -> classifySectionLabel(album.artistName)
         AlbumSortField.TRACK_COUNT,
         AlbumSortField.DATE_ADDED,
         -> null
     }
 
+internal fun albumSortDirectionToSectionOrder(direction: CategorySortDirection): SectionSortOrder =
+    when (direction) {
+        CategorySortDirection.ASCENDING -> SectionSortOrder.ASCENDING
+        CategorySortDirection.DESCENDING -> SectionSortOrder.DESCENDING
+    }
+
 internal fun groupAlbumsIntoSections(
     albums: List<AlbumSummary>,
     field: AlbumSortField,
+    direction: CategorySortDirection = CategorySortDirection.ASCENDING,
 ): List<AlbumSection> {
     val albumsByLabel = linkedMapOf<String, MutableList<AlbumSummary>>()
     albums.forEach { album ->
         val label = sectionLabelForAlbum(album, field) ?: return@forEach
         albumsByLabel.getOrPut(label, ::mutableListOf) += album
     }
-    return albumsByLabel.map { (label, sectionAlbums) ->
-        AlbumSection(label = label, albums = sectionAlbums.toList())
+    val order = albumSortDirectionToSectionOrder(direction)
+    val orderedLabels = sectionIndexLabelsForOrder(order)
+    return orderedLabels.mapNotNull { label ->
+        albumsByLabel[label]?.let { sectionAlbums ->
+            AlbumSection(label = label, albums = sectionAlbums.toList())
+        }
     }
 }
 
-internal fun sectionIndexLabels(sections: List<AlbumSection>): List<String> =
-    sections.map(AlbumSection::label).distinct()
+internal fun sectionIndexLabels(direction: CategorySortDirection = CategorySortDirection.ASCENDING): List<String> =
+    sectionIndexLabelsForOrder(albumSortDirectionToSectionOrder(direction))
 
-internal fun sectionStartPositions(sections: List<AlbumSection>): Map<String, Int> {
+internal fun sectionIndexLabels(
+    @Suppress("UNUSED_PARAMETER") sections: List<AlbumSection>,
+    direction: CategorySortDirection = CategorySortDirection.ASCENDING,
+): List<String> = sectionIndexLabels(direction)
+
+internal fun sectionStartPositions(
+    sections: List<AlbumSection>,
+    direction: CategorySortDirection = CategorySortDirection.ASCENDING,
+): Map<String, Int> {
+    val labels = sectionIndexLabels(direction)
+    val starts = linkedMapOf<String, Int>()
     var itemPosition = 0
+    sections.forEach { section ->
+        starts.putIfAbsent(section.label, itemPosition)
+        itemPosition += section.albums.size
+    }
+    val lastPosition = (itemPosition - 1).coerceAtLeast(0)
+
+    val populatedIndices = sections.mapNotNull { section ->
+        val idx = labels.indexOf(section.label)
+        if (idx >= 0) idx else null
+    }.toSet()
+
     return buildMap {
-        sections.forEach { section ->
-            if (!containsKey(section.label)) {
-                put(section.label, itemPosition)
+        labels.forEachIndexed { bucketIndex, label ->
+            val position = starts[label] ?: run {
+                val nearestBucketIndex = resolveNearestPopulatedBucket(
+                    targetBucketIndex = bucketIndex,
+                    populatedBucketIndices = populatedIndices,
+                    dragDirection = 0,
+                    bucketCount = labels.size,
+                )
+                val nearestLabel = labels.getOrNull(nearestBucketIndex)
+                nearestLabel?.let { starts[it] } ?: lastPosition
             }
-            itemPosition += section.albums.size
+            put(label, position.coerceIn(0, lastPosition))
         }
     }
 }
@@ -49,31 +92,14 @@ internal fun sectionLabelAtPosition(
     sections: List<AlbumSection>,
     itemPosition: Int,
 ): String? {
+    if (sections.isEmpty()) return null
+    val totalAlbums = sections.sumOf { it.albums.size }
+    val safePosition = itemPosition.coerceIn(0, (totalAlbums - 1).coerceAtLeast(0))
     var sectionStart = 0
-    var activeLabel: String? = null
     sections.forEach { section ->
-        if (sectionStart > itemPosition) return@forEach
-        activeLabel = section.label
-        sectionStart += section.albums.size
+        val sectionEnd = sectionStart + section.albums.size
+        if (safePosition < sectionEnd) return section.label
+        sectionStart = sectionEnd
     }
-    return activeLabel
-}
-
-private fun sectionLabel(value: String?): String {
-    val first = value.orEmpty().trim().firstOrNull()?.uppercaseChar() ?: return "#"
-    return when {
-        first.isDigit() -> "0"
-        first in 'A'..'Z' -> first.toString()
-        else -> pinyinInitial(first)?.toString() ?: "#"
-    }
-}
-
-private fun pinyinInitial(value: Char): Char? =
-    HAN_TO_LATIN.transliterate(value.toString())
-        .firstOrNull { it in 'A'..'Z' || it in 'a'..'z' }
-        ?.uppercaseChar()
-        ?.takeIf { it in 'A'..'Z' }
-
-private val HAN_TO_LATIN: Transliterator by lazy {
-    Transliterator.getInstance("Han-Latin")
+    return sections.last().label
 }

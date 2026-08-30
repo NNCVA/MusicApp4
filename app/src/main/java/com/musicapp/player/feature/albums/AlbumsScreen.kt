@@ -54,7 +54,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
-import com.musicapp.player.core.designsystem.component.SectionIndexBar
+import com.musicapp.player.core.designsystem.component.GutterMode
+import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.metadata.ArtworkResult
@@ -127,28 +128,45 @@ private fun AlbumsScreen(
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
-    val sections = remember(state.albums, state.sort.field) {
-        groupAlbumsIntoSections(state.albums, state.sort.field)
+    val sections = remember(state.albums, state.sort.field, state.sort.direction) {
+        groupAlbumsIntoSections(state.albums, state.sort.field, state.sort.direction)
     }
-    val indexLabels = remember(sections) { sectionIndexLabels(sections) }
-    val sectionPositions = remember(sections) { sectionStartPositions(sections) }
+    val sectionPositions = remember(sections, state.sort.direction) {
+        sectionStartPositions(sections, state.sort.direction)
+    }
     val selectedSection by remember(gridState, sections) {
         derivedStateOf {
             sectionLabelAtPosition(sections, gridState.firstVisibleItemIndex)
         }
     }
-    val sectionDescriptions = sections.associate { section ->
-        section.label to stringResource(R.string.album_index_label, section.label)
-    }
-    val showSectionIndex = state.albums.isNotEmpty() && indexLabels.isNotEmpty()
-    val scrollbarModifier =
-        if (!showSectionIndex) {
-            gridState.scrollIndicatorState?.let { scrollIndicatorState ->
-                Modifier.nonInteractiveScrollbar(scrollIndicatorState, Orientation.Vertical)
-            } ?: Modifier
-        } else {
-            Modifier
+    val canScroll by remember(gridState) {
+        derivedStateOf {
+            gridState.canScrollForward || gridState.canScrollBackward
         }
+    }
+    val isTextSort = state.sort.field in listOf(
+        AlbumSortField.TITLE,
+        AlbumSortField.ARTIST,
+    )
+    val gutterMode = remember(state.albums, canScroll, isTextSort, state.sort.direction, selectedSection, sections, sectionPositions) {
+        when {
+            state.albums.isEmpty() || !canScroll -> GutterMode.Hidden
+            isTextSort ->
+                GutterMode.Index(
+                    sortOrder = albumSortDirectionToSectionOrder(state.sort.direction),
+                    activeSection = selectedSection,
+                    populatedBuckets = sections.map(AlbumSection::label).toSet(),
+                    onSectionSelected = { label ->
+                        sectionPositions[label]?.let { position ->
+                            coroutineScope.launch {
+                                gridState.scrollToItem(position)
+                            }
+                        }
+                    },
+                )
+            else -> GutterMode.Scrollbar
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -181,7 +199,6 @@ private fun AlbumsScreen(
                     columns = GridCells.Fixed(state.columnCount),
                     state = gridState,
                     modifier = Modifier.fillMaxWidth().weight(1f)
-                        .then(scrollbarModifier)
                         .padding(horizontal = dimensions.contentHorizontalPadding),
                     contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                     horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
@@ -204,26 +221,10 @@ private fun AlbumsScreen(
                 }
             }
         }
-        if (showSectionIndex) {
-            Box(
-                modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
-            ) {
-                SectionIndexBar(
-                    sections = indexLabels,
-                    selectedSection = selectedSection,
-                    onSectionClick = { label ->
-                        sectionPositions[label]?.let { position ->
-                            coroutineScope.launch {
-                                gridState.animateScrollToItem(position)
-                            }
-                        }
-                    },
-                    sectionContentDescription = { label -> sectionDescriptions.getValue(label) },
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                        .padding(end = dimensions.spaceExtraSmall),
-                )
-            }
-        }
+        RightGutterOverlay(
+            mode = gutterMode,
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        )
     }
 }
 

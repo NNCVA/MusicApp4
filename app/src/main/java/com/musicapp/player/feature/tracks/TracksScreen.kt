@@ -65,7 +65,8 @@ import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.LoadingState
 import com.musicapp.player.core.designsystem.component.MessageDialog
-import com.musicapp.player.core.designsystem.component.SectionIndexBar
+import com.musicapp.player.core.designsystem.component.GutterMode
+import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
@@ -176,21 +177,47 @@ fun TracksScreen(
             state.tracks.filter { it.matchesSearch(searchQuery) }
         }
     val listState = rememberLazyListState()
-    val sections = remember(filteredTracks, state.sort.field) {
-        groupTracksIntoSections(filteredTracks, state.sort.field)
+    val sections = remember(filteredTracks, state.sort.field, state.sort.direction) {
+        groupTracksIntoSections(filteredTracks, state.sort.field, state.sort.direction)
     }
-    val indexLabels = remember(sections) { sectionIndexLabels(sections) }
-    val sectionPositions = remember(sections) { sectionStartPositions(sections) }
+    val sectionPositions = remember(sections, state.sort.direction) {
+        sectionStartPositions(sections, state.sort.direction)
+    }
     val selectedSection by remember(listState, sections) {
         derivedStateOf {
             sectionLabelAtPosition(sections, listState.firstVisibleItemIndex)
         }
     }
-    val sectionDescriptions = sections.associate { section ->
-        section.label to stringResource(R.string.track_index_label, section.label)
+    val canScroll by remember(listState) {
+        derivedStateOf {
+            listState.canScrollForward || listState.canScrollBackward
+        }
     }
-    val showSectionIndex =
-        state.tracks.isNotEmpty() && filteredTracks.isNotEmpty() && indexLabels.isNotEmpty()
+    val isTextSort = state.sort.field in listOf(
+        TrackSortField.TITLE,
+        TrackSortField.ARTIST,
+        TrackSortField.ALBUM,
+    )
+    val gutterMode = remember(state.isLibraryLoaded, state.tracks, filteredTracks, canScroll, isTextSort, state.sort.direction, selectedSection, sections, sectionPositions) {
+        when {
+            !state.isLibraryLoaded || state.tracks.isEmpty() || filteredTracks.isEmpty() || !canScroll ->
+                GutterMode.Hidden
+            isTextSort ->
+                GutterMode.Index(
+                    sortOrder = trackSortDirectionToSectionOrder(state.sort.direction),
+                    activeSection = selectedSection,
+                    populatedBuckets = sections.map(TrackSection::label).toSet(),
+                    onSectionSelected = { label ->
+                        sectionPositions[label]?.let { position ->
+                            coroutineScope.launch {
+                                listState.scrollToItem(position)
+                            }
+                        }
+                    },
+                )
+            else -> GutterMode.Scrollbar
+        }
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier =
@@ -246,7 +273,7 @@ fun TracksScreen(
                 TrackList(
                     tracks = filteredTracks,
                     sections = sections,
-                    showSectionIndex = showSectionIndex,
+                    showSectionIndex = gutterMode is GutterMode.Index,
                     listState = listState,
                     selectedIds = state.selectedTrackIds,
                     selectionMode = state.isSelectionMode,
@@ -264,27 +291,10 @@ fun TracksScreen(
                 )
             }
         }
-        if (showSectionIndex) {
-            Box(
-                modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
-            ) {
-                SectionIndexBar(
-                    sections = indexLabels,
-                    selectedSection = selectedSection,
-                    onSectionClick = { label ->
-                        sectionPositions[label]?.let { position ->
-                            coroutineScope.launch {
-                                listState.animateScrollToItem(position)
-                            }
-                        }
-                    },
-                    sectionContentDescription = { label -> sectionDescriptions.getValue(label) },
-                    modifier =
-                        Modifier.align(Alignment.CenterEnd)
-                            .padding(end = dimensions.spaceExtraSmall),
-                )
-            }
-        }
+        RightGutterOverlay(
+            mode = gutterMode,
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        )
     }
     state.batchResult?.let { result ->
         BatchResultDialog(result, onAcknowledgeBatchResult)

@@ -1,5 +1,7 @@
 package com.musicapp.player.feature.tracks
 
+import com.musicapp.player.core.designsystem.component.SECTION_INDEX_ASCENDING_LABELS
+import com.musicapp.player.core.designsystem.component.SECTION_INDEX_DESCENDING_LABELS
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import org.junit.Assert.assertEquals
@@ -45,7 +47,7 @@ class TrackSectionIndexTest {
     }
 
     @Test
-    fun `sections preserve supplied order and calculate section positions`() {
+    fun `sections preserve fixed 28 bucket labels and calculate section positions`() {
         val tracks = listOf(
             track(1, "Alpha"),
             track(2, "Another"),
@@ -56,11 +58,30 @@ class TrackSectionIndexTest {
         val sections = groupTracksIntoSections(tracks, TrackSortField.TITLE)
 
         assertEquals(listOf("0", "A", "B"), sections.map(TrackSection::label))
+        assertEquals(SECTION_INDEX_ASCENDING_LABELS, sectionIndexLabels(sections))
         assertEquals(listOf("123 title"), sections[0].tracks.map(Track::title))
-        assertEquals(
-            mapOf("0" to 0, "A" to 1, "B" to 3),
-            sectionStartPositions(sections),
+
+        val positions = sectionStartPositions(sections)
+        assertEquals(0, positions.getValue("0"))
+        assertEquals(1, positions.getValue("A"))
+        assertEquals(3, positions.getValue("B"))
+        assertEquals(3, positions.getValue("C"))
+        assertEquals(3, positions.getValue("#"))
+    }
+
+    @Test
+    fun `descending order reverses sections and fixed bucket labels`() {
+        val tracks = listOf(
+            track(1, "Alpha"),
+            track(2, "Bravo"),
+            track(3, "123 title"),
+            track(4, "!special"),
         )
+
+        val sections = groupTracksIntoSections(tracks, TrackSortField.TITLE, TrackSortDirection.DESCENDING)
+
+        assertEquals(listOf("#", "B", "A", "0"), sections.map(TrackSection::label))
+        assertEquals(SECTION_INDEX_DESCENDING_LABELS, sectionIndexLabels(direction = TrackSortDirection.DESCENDING))
     }
 
     @Test
@@ -76,11 +97,7 @@ class TrackSectionIndexTest {
         val sections = groupTracksIntoSections(tracks, TrackSortField.TITLE)
 
         assertEquals(listOf("0", "A", "B", "#"), sections.map(TrackSection::label))
-        assertEquals(listOf("0", "A", "B", "#"), sectionIndexLabels(sections))
-        assertEquals(
-            mapOf("0" to 0, "A" to 1, "B" to 2, "#" to 3),
-            sectionStartPositions(sections),
-        )
+        assertEquals(SECTION_INDEX_ASCENDING_LABELS, sectionIndexLabels(sections))
         assertEquals(
             listOf("!special title", "@another special title"),
             sections.last().tracks.map(Track::title),

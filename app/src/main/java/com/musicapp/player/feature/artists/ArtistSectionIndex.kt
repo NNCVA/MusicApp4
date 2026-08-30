@@ -1,14 +1,14 @@
 package com.musicapp.player.feature.artists
 
 import com.ibm.icu.text.Transliterator
+import com.musicapp.player.core.designsystem.component.SECTION_INDEX_ASCENDING_LABELS
+import com.musicapp.player.core.designsystem.component.SECTION_INDEX_DIGIT_LABEL
+import com.musicapp.player.core.designsystem.component.SECTION_INDEX_OTHER_LABEL
+import com.musicapp.player.core.designsystem.component.classifySectionLabel
+import com.musicapp.player.core.designsystem.component.resolveNearestPopulatedBucket
 import java.util.Locale
 
-internal const val ARTIST_SECTION_DIGIT_LABEL = "0"
-internal const val ARTIST_SECTION_OTHER_LABEL = "#"
-
-/** The artist index is intentionally fixed, even when some labels have no artists. */
-internal val ARTIST_SECTION_INDEX_LABELS: List<String> =
-    listOf(ARTIST_SECTION_DIGIT_LABEL) + ('A'..'Z').map(Char::toString) + ARTIST_SECTION_OTHER_LABEL
+internal val ARTIST_SECTION_INDEX_LABELS: List<String> = SECTION_INDEX_ASCENDING_LABELS
 
 internal data class ArtistSection(
     val label: String,
@@ -35,10 +35,6 @@ internal fun sectionIndexLabels(): List<String> = ARTIST_SECTION_INDEX_LABELS
 internal fun sectionIndexLabels(@Suppress("UNUSED_PARAMETER") sections: List<ArtistSection>): List<String> =
     ARTIST_SECTION_INDEX_LABELS
 
-/**
- * Returns a safe list position for every fixed label. Missing labels point at the
- * insertion point before the next populated section, or the nearest list boundary.
- */
 internal fun sectionStartPositions(sections: List<ArtistSection>): Map<String, Int> {
     val ordered = orderedSections(sections)
     val starts = linkedMapOf<String, Int>()
@@ -50,14 +46,23 @@ internal fun sectionStartPositions(sections: List<ArtistSection>): Map<String, I
     val itemCount = itemPosition
     val lastPosition = (itemCount - 1).coerceAtLeast(0)
 
+    val populatedIndices = ordered.mapNotNull { section ->
+        val idx = ARTIST_SECTION_INDEX_LABELS.indexOf(section.label)
+        if (idx >= 0) idx else null
+    }.toSet()
+
     return buildMap {
-        ARTIST_SECTION_INDEX_LABELS.forEach { label ->
-            val position =
-                starts[label]
-                    ?: ordered
-                        .firstOrNull { sectionOrder(it.label) > sectionOrder(label) }
-                        ?.let { nextSection -> starts[nextSection.label] }
-                    ?: lastPosition
+        ARTIST_SECTION_INDEX_LABELS.forEachIndexed { bucketIndex, label ->
+            val position = starts[label] ?: run {
+                val nearestIndex = resolveNearestPopulatedBucket(
+                    targetBucketIndex = bucketIndex,
+                    populatedBucketIndices = populatedIndices,
+                    dragDirection = 0,
+                    bucketCount = ARTIST_SECTION_INDEX_LABELS.size,
+                )
+                val nearestLabel = ARTIST_SECTION_INDEX_LABELS.getOrNull(nearestIndex)
+                nearestLabel?.let { starts[it] } ?: lastPosition
+            }
             put(label, position.coerceIn(0, lastPosition))
         }
     }
@@ -83,16 +88,8 @@ internal fun sectionLabelAtPosition(
 internal fun sectionLabelForArtist(artist: ArtistSummary): String =
     artistSectionLabel(artist.displayName)
 
-internal fun artistSectionLabel(value: String?): String {
-    val firstCodePoint = value.orEmpty().trim().firstCodePointOrNull() ?: return ARTIST_SECTION_OTHER_LABEL
-    return when {
-        Character.isDigit(firstCodePoint.codePoint) -> ARTIST_SECTION_DIGIT_LABEL
-            firstCodePoint.codePoint in 'A'.code..'Z'.code ||
-            firstCodePoint.codePoint in 'a'.code..'z'.code ->
-            firstCodePoint.text.uppercase(Locale.ROOT)
-        else -> pinyinInitial(firstCodePoint)?.toString() ?: ARTIST_SECTION_OTHER_LABEL
-    }
-}
+internal fun artistSectionLabel(value: String?): String =
+    classifySectionLabel(value)
 
 private val artistNameComparator =
     compareBy<ArtistSummary>(
@@ -111,23 +108,6 @@ private fun orderedSections(sections: List<ArtistSection>): List<ArtistSection> 
 
 private fun sectionOrder(label: String): Int =
     ARTIST_SECTION_INDEX_LABELS.indexOf(label).takeIf { it >= 0 } ?: ARTIST_SECTION_INDEX_LABELS.lastIndex
-
-private data class CodePointText(
-    val text: String,
-    val codePoint: Int,
-)
-
-private fun String.firstCodePointOrNull(): CodePointText? {
-    if (isEmpty()) return null
-    val codePoint = codePointAt(0)
-    return CodePointText(String(Character.toChars(codePoint)), codePoint)
-}
-
-private fun pinyinInitial(value: CodePointText): Char? =
-    HAN_TO_LATIN.transliterate(value.text)
-        .firstOrNull { it in 'A'..'Z' || it in 'a'..'z' }
-        ?.uppercaseChar()
-        ?.takeIf { it in 'A'..'Z' }
 
 private val HAN_TO_LATIN: Transliterator by lazy {
     Transliterator.getInstance("Han-Latin")

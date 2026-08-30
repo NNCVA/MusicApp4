@@ -1,14 +1,14 @@
 package com.musicapp.player.feature.folders
 
 import com.ibm.icu.text.Transliterator
+import com.musicapp.player.core.designsystem.component.SECTION_INDEX_ASCENDING_LABELS
+import com.musicapp.player.core.designsystem.component.SECTION_INDEX_DIGIT_LABEL
+import com.musicapp.player.core.designsystem.component.SECTION_INDEX_OTHER_LABEL
+import com.musicapp.player.core.designsystem.component.classifySectionLabel
+import com.musicapp.player.core.designsystem.component.resolveNearestPopulatedBucket
 import java.util.Locale
 
-internal const val FOLDER_SECTION_DIGIT_LABEL = "0"
-internal const val FOLDER_SECTION_OTHER_LABEL = "#"
-
-/** The folder index remains stable even when a label has no matching folder. */
-internal val FOLDER_SECTION_INDEX_LABELS: List<String> =
-    listOf(FOLDER_SECTION_DIGIT_LABEL) + ('A'..'Z').map(Char::toString) + FOLDER_SECTION_OTHER_LABEL
+internal val FOLDER_SECTION_INDEX_LABELS: List<String> = SECTION_INDEX_ASCENDING_LABELS
 
 internal data class FolderSection(
     val label: String,
@@ -30,13 +30,6 @@ internal fun sortFoldersByIndexedName(folders: List<FolderNode>): List<FolderNod
 
 internal fun sectionIndexLabels(): List<String> = FOLDER_SECTION_INDEX_LABELS
 
-/**
- * Returns list positions for every fixed label. [leadingItemCount] accounts for storage cards that
- * are rendered before the searchable folder shortcuts.
- *
- * Empty labels point to the next populated group, or the nearest list boundary when there is no
- * later group. Positions are safe for a list containing the leading cards and folder items.
- */
 internal fun sectionStartPositions(
     sections: List<FolderSection>,
     leadingItemCount: Int = 0,
@@ -50,14 +43,24 @@ internal fun sectionStartPositions(
     }
     val itemCount = itemPosition
     val lastPosition = (itemCount - 1).coerceAtLeast(0)
+
+    val populatedIndices = ordered.mapNotNull { section ->
+        val idx = FOLDER_SECTION_INDEX_LABELS.indexOf(section.label)
+        if (idx >= 0) idx else null
+    }.toSet()
+
     return buildMap {
-        FOLDER_SECTION_INDEX_LABELS.forEach { label ->
-            val position =
-                starts[label]
-                    ?: ordered
-                        .firstOrNull { sectionOrder(it.label) > sectionOrder(label) }
-                        ?.let { nextSection -> starts[nextSection.label] }
-                    ?: lastPosition
+        FOLDER_SECTION_INDEX_LABELS.forEachIndexed { bucketIndex, label ->
+            val position = starts[label] ?: run {
+                val nearestIndex = resolveNearestPopulatedBucket(
+                    targetBucketIndex = bucketIndex,
+                    populatedBucketIndices = populatedIndices,
+                    dragDirection = 0,
+                    bucketCount = FOLDER_SECTION_INDEX_LABELS.size,
+                )
+                val nearestLabel = FOLDER_SECTION_INDEX_LABELS.getOrNull(nearestIndex)
+                nearestLabel?.let { starts[it] } ?: lastPosition
+            }
             put(label, position.coerceIn(0, lastPosition))
         }
     }
@@ -84,16 +87,8 @@ internal fun sectionLabelAtPosition(
     return ordered.last().label
 }
 
-internal fun folderSectionLabel(value: String?): String {
-    val firstCodePoint = value.orEmpty().trim().firstCodePointOrNull() ?: return FOLDER_SECTION_OTHER_LABEL
-    return when {
-        Character.isDigit(firstCodePoint.codePoint) -> FOLDER_SECTION_DIGIT_LABEL
-        firstCodePoint.codePoint in 'A'.code..'Z'.code ||
-            firstCodePoint.codePoint in 'a'.code..'z'.code ->
-            firstCodePoint.text.uppercase(Locale.ROOT)
-        else -> pinyinInitial(firstCodePoint)?.toString() ?: FOLDER_SECTION_OTHER_LABEL
-    }
-}
+internal fun folderSectionLabel(value: String?): String =
+    classifySectionLabel(value)
 
 internal fun folderSearchKey(value: String): String =
     HAN_TO_LATIN.transliterate(value.trim()).lowercase(Locale.ROOT)
@@ -113,23 +108,6 @@ private fun orderedSections(sections: List<FolderSection>): List<FolderSection> 
 
 private fun sectionOrder(label: String): Int =
     FOLDER_SECTION_INDEX_LABELS.indexOf(label).takeIf { it >= 0 } ?: FOLDER_SECTION_INDEX_LABELS.lastIndex
-
-private data class CodePointText(
-    val text: String,
-    val codePoint: Int,
-)
-
-private fun String.firstCodePointOrNull(): CodePointText? {
-    if (isEmpty()) return null
-    val codePoint = codePointAt(0)
-    return CodePointText(String(Character.toChars(codePoint)), codePoint)
-}
-
-private fun pinyinInitial(value: CodePointText): Char? =
-    HAN_TO_LATIN.transliterate(value.text)
-        .firstOrNull { it in 'A'..'Z' || it in 'a'..'z' }
-        ?.uppercaseChar()
-        ?.takeIf { it in 'A'..'Z' }
 
 private val HAN_TO_LATIN: Transliterator by lazy {
     Transliterator.getInstance("Han-Latin")

@@ -41,6 +41,12 @@
     <string name="track_index_label">跳转到以 %1$s 开头的歌曲</string>
     <string name="album_index_label">跳转到以 %1$s 开头的专辑</string>
     <string name="artist_index_label">跳转到以 %1$s 开头的艺术家</string>
+    <string name="section_index_bar_description">字母索引栏</string>
+    <string name="section_index_state_description">当前字母：%1$s，%2$s，第 %3$d 共 28 个</string>
+    <string name="section_index_sort_asc">升序</string>
+    <string name="section_index_sort_desc">降序</string>
+    <string name="section_index_action_prev">跳转到上一非空字母</string>
+    <string name="section_index_action_next">跳转到下一非空字母</string>
     <string name="albums_sort_label">排序专辑，当前按%1$s%2$s</string>
     <string name="albums_options_label">专辑选项</string>
     <string name="albums_column_2">2 列</string>

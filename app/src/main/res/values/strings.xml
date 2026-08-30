@@ -44,6 +44,12 @@
     <string name="track_index_label">Jump to tracks beginning with %1$s</string>
     <string name="album_index_label">Jump to albums beginning with %1$s</string>
     <string name="artist_index_label">Jump to artists beginning with %1$s</string>
+    <string name="section_index_bar_description">Alphabet index bar</string>
+    <string name="section_index_state_description">Current: %1$s, %2$s, %3$d of 28</string>
+    <string name="section_index_sort_asc">Ascending</string>
+    <string name="section_index_sort_desc">Descending</string>
+    <string name="section_index_action_prev">Jump to previous non-empty section</string>
+    <string name="section_index_action_next">Jump to next non-empty section</string>
     <string name="albums_sort_label">Sort albums, currently %1$s %2$s</string>
     <string name="albums_options_label">Album options</string>
     <string name="albums_column_2">2 columns</string>

@@ -43,7 +43,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
-import com.musicapp.player.core.designsystem.component.SectionIndexBar
+import com.musicapp.player.core.designsystem.component.GutterMode
+import com.musicapp.player.core.designsystem.component.RightGutterOverlay
+import com.musicapp.player.core.designsystem.component.SectionSortOrder
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
@@ -113,17 +115,35 @@ private fun ArtistsScreen(
     val listState = rememberLazyListState()
     val sections = remember(state.artists) { groupArtistsIntoSections(state.artists) }
     val displayArtists = remember(sections) { sections.flatMap(ArtistSection::artists) }
-    val indexLabels = remember(sections) { sectionIndexLabels(sections) }
     val sectionPositions = remember(sections) { sectionStartPositions(sections) }
     val selectedSection by remember(listState, sections) {
         derivedStateOf {
             sectionLabelAtPosition(sections, listState.firstVisibleItemIndex)
         }
     }
-    val sectionDescriptions = indexLabels.associateWith { label ->
-        stringResource(R.string.artist_index_label, label)
+    val canScroll by remember(listState) {
+        derivedStateOf {
+            listState.canScrollForward || listState.canScrollBackward
+        }
     }
-    val showSectionIndex = displayArtists.isNotEmpty() && indexLabels.isNotEmpty()
+    val gutterMode = remember(displayArtists, canScroll, selectedSection, sections, sectionPositions) {
+        if (displayArtists.isEmpty() || !canScroll) {
+            GutterMode.Hidden
+        } else {
+            GutterMode.Index(
+                sortOrder = SectionSortOrder.ASCENDING,
+                activeSection = selectedSection,
+                populatedBuckets = sections.map(ArtistSection::label).toSet(),
+                onSectionSelected = { label ->
+                    sectionPositions[label]?.let { position ->
+                        coroutineScope.launch {
+                            listState.scrollToItem(position.coerceIn(0, displayArtists.lastIndex))
+                        }
+                    }
+                },
+            )
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -148,7 +168,6 @@ private fun ArtistsScreen(
                     contentPadding = PaddingValues(
                         top = dimensions.spaceExtraSmall,
                         bottom = dimensions.spaceSmall,
-                        end = dimensions.sectionIndexItemSize + dimensions.spaceLarge,
                     ),
                 ) {
                     items(displayArtists, key = { it.id.name }) { artist ->
@@ -167,37 +186,10 @@ private fun ArtistsScreen(
                 }
             }
         }
-        if (showSectionIndex) {
-            Box(
-                modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
-            ) {
-                SectionIndexBar(
-                    sections = indexLabels,
-                    selectedSection = selectedSection,
-                    onSectionClick = { label ->
-                        if (displayArtists.isNotEmpty()) {
-                            sectionPositions[label]?.let { position ->
-                                coroutineScope.launch {
-                                    listState.animateScrollToItem(position.coerceIn(0, displayArtists.lastIndex))
-                                }
-                            }
-                        }
-                    },
-                    onSectionDrag = { label ->
-                        if (displayArtists.isNotEmpty()) {
-                            sectionPositions[label]?.let { position ->
-                                coroutineScope.launch {
-                                    listState.scrollToItem(position.coerceIn(0, displayArtists.lastIndex))
-                                }
-                            }
-                        }
-                    },
-                    sectionContentDescription = { label -> sectionDescriptions.getValue(label) },
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                        .padding(end = dimensions.spaceExtraSmall),
-                )
-            }
-        }
+        RightGutterOverlay(
+            mode = gutterMode,
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets),
+        )
     }
 }
 
