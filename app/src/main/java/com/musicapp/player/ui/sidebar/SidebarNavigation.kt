@@ -1,5 +1,8 @@
 package com.musicapp.player.ui.sidebar
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,7 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -26,11 +28,14 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import com.musicapp.player.core.designsystem.component.BareIconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -39,10 +44,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.navigation.TopLevelNavKey
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun SidebarNavigation(
@@ -98,6 +105,7 @@ internal fun SidebarNavigation(
                         ),
                     tint = SidebarIconPalette.Theme,
                     onClick = onCycleTheme,
+                    rotateOnClick = true,
                 )
                 SidebarQuickAction(
                     iconResId = R.drawable.ic_sidebar_equalizer,
@@ -265,16 +273,38 @@ private fun SidebarQuickAction(
     label: String,
     tint: Color,
     onClick: () -> Unit,
+    rotateOnClick: Boolean = false,
 ) {
+    val rotation = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+
     BareIconButton(
-        onClick = onClick,
+        onClick = {
+            if (rotateOnClick) {
+                coroutineScope.launch {
+                    rotation.animateTo(
+                        targetValue = rotation.targetValue + 360f,
+                        animationSpec =
+                            tween(
+                                durationMillis = 400,
+                                easing = FastOutSlowInEasing,
+                            ),
+                    )
+                }
+            }
+            onClick()
+        },
         modifier = Modifier.size(MusicTheme.dimensions.minimumTouchTarget),
     ) {
         Icon(
             painter = painterResource(iconResId),
             contentDescription = label,
             tint = tint,
-            modifier = Modifier.size(MusicTheme.dimensions.spaceLarge),
+            modifier =
+                Modifier.size(MusicTheme.dimensions.spaceLarge)
+                    .graphicsLayer {
+                        rotationZ = rotation.value
+                    },
         )
     }
 }

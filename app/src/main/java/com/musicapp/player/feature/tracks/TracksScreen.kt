@@ -68,6 +68,8 @@ import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.LoadingState
 import com.musicapp.player.core.designsystem.component.MessageDialog
+import com.musicapp.player.core.designsystem.component.QualityBadge
+import com.musicapp.player.core.designsystem.component.resolveQuality
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.domain.model.Availability
@@ -699,18 +701,8 @@ private fun TrackRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
             ) {
-                track.qualityLabelResId()?.let { qualityResId ->
-                    Surface(
-                        color = MusicTheme.colors.secondaryContainer,
-                        shape = MusicTheme.shapes.extraSmall,
-                    ) {
-                        Text(
-                            text = stringResource(qualityResId),
-                            style = MusicTheme.typography.labelSmall,
-                            color = MusicTheme.colors.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = dimensions.spaceExtraSmall),
-                        )
-                    }
+                track.resolveQuality()?.let { quality ->
+                    QualityBadge(quality = quality)
                 }
                 Text(
                     text = subtitle,
@@ -830,21 +822,6 @@ private fun TrackArtworkPlaceholder(
 @Composable
 private fun String.localizedArtistName(): String =
     if (this == UNKNOWN_ARTIST_SENTINEL) stringResource(R.string.unknown_artist) else this
-
-private fun Track.qualityLabelResId(): Int? =
-    when (mimeType?.lowercase(Locale.ROOT)) {
-        "audio/flac",
-        "audio/wav",
-        "audio/x-wav",
-        -> R.string.track_quality_high
-        "audio/mpeg",
-        "audio/aac",
-        "audio/mp4",
-        "audio/ogg",
-        "audio/opus",
-        -> R.string.track_quality_standard
-        else -> null
-    }
 
 private fun Track.matchesSearch(query: String): Boolean {
     val normalizedQuery = query.trim()

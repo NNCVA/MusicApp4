@@ -36,6 +36,7 @@
     <string name="track_more_actions">此歌曲的更多操作</string>
     <string name="track_artwork_description">%1$s 的封面</string>
     <string name="track_artist_album">%1$s - %2$s</string>
+    <string name="track_quality_hi_res">HR</string>
     <string name="track_quality_high">HQ</string>
     <string name="track_quality_standard">SQ</string>
     <string name="track_index_label">跳转到以 %1$s 开头的歌曲</string>

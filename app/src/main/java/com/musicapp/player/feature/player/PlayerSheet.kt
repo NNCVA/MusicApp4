@@ -254,7 +254,7 @@ private fun MiniPlayer(
     val dimensions = MusicTheme.dimensions
     Row(
         modifier = modifier.fillMaxWidth().height(dimensions.miniPlayerHeight)
-            .clickable(onClick = onExpand).padding(horizontal = dimensions.spaceSmall),
+            .clickable(onClick = onExpand).padding(horizontal = dimensions.contentHorizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {

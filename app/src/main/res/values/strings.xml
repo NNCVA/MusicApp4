@@ -39,6 +39,7 @@
     <string name="track_more_actions">More actions for this track</string>
     <string name="track_artwork_description">Artwork for %1$s</string>
     <string name="track_artist_album">%1$s - %2$s</string>
+    <string name="track_quality_hi_res">HR</string>
     <string name="track_quality_high">HQ</string>
     <string name="track_quality_standard">SQ</string>
     <string name="track_index_label">Jump to tracks beginning with %1$s</string>
