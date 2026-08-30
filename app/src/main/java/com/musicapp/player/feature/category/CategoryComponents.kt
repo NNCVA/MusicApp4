@@ -74,7 +74,7 @@ fun CategoryHeader(
     onBack: (() -> Unit)? = null,
     navigationAction: CategoryNavigationAction? = null,
     onNavigationClick: () -> Unit = {},
-    titleStyle: TextStyle = MusicTheme.typography.headlineMedium,
+    titleStyle: TextStyle = MusicTheme.typography.titleLarge,
     trailingContent: @Composable () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions

@@ -600,7 +600,6 @@ private fun FolderBrowserScreen(
         CategoryHeader(
             title = folderDetailTitle(state),
             onBack = onBack,
-            titleStyle = MusicTheme.typography.titleLarge,
         )
         if (state.childFolders.isEmpty()) {
             EmptyState(
@@ -664,7 +663,7 @@ private fun BrowserFolderRow(
 private fun FolderRow(folder: FolderNode, onClick: (FolderId) -> Unit) {
     val dimensions = MusicTheme.dimensions
     Row(
-        modifier = Modifier.fillMaxWidth().height(dimensions.trackListItemHeight)
+        modifier = Modifier.fillMaxWidth().height(dimensions.folderListItemHeight)
             .clickable { onClick(folder.id) }
             .padding(horizontal = dimensions.spaceSmall),
         verticalAlignment = Alignment.CenterVertically,

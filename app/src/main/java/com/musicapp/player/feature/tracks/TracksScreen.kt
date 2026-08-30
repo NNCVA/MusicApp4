@@ -59,6 +59,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
@@ -414,7 +415,7 @@ private fun TracksTopBar(
                     } else {
                         Text(
                             text = stringResource(R.string.tracks_page_title),
-                            style = MusicTheme.typography.headlineMedium,
+                            style = MusicTheme.typography.titleLarge,
                             color = MusicTheme.colors.onSurface,
                             modifier = Modifier.weight(1f),
                             maxLines = 1,
@@ -683,9 +684,14 @@ private fun TrackRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = track.title,
-                style = if (compact) MusicTheme.typography.compactTrackTitle else MusicTheme.typography.expandedTrackTitle,
+                style = if (compact) {
+                    MusicTheme.typography.compactTrackTitle
+                } else {
+                    MusicTheme.typography.expandedTrackTitle
+                },
                 color = MusicTheme.colors.onSurface,
-                maxLines = 1,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,

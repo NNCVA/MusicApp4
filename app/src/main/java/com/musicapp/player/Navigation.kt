@@ -502,7 +502,7 @@ private fun DestinationPlaceholder(
         Text(
             text = stringResource(route.titleResId()),
             color = MusicTheme.colors.onSurface,
-            style = MusicTheme.typography.headlineMedium,
+            style = MusicTheme.typography.titleLarge,
         )
     }
 }

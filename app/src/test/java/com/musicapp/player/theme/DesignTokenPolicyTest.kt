@@ -33,8 +33,9 @@ class DesignTokenPolicyTest {
             assertEquals(16.dp, dimensions.sidebarOuterPadding)
             assertEquals(16.dp, dimensions.sidebarCardSpacing)
             assertEquals(8.dp, dimensions.sidebarCardContentPadding)
-            assertEquals(80.dp, dimensions.trackListItemHeight)
-            assertEquals(dimensions.trackListItemHeight, dimensions.miniPlayerHeight)
+            assertEquals(72.dp, dimensions.trackListItemHeight)
+            assertEquals(80.dp, dimensions.folderListItemHeight)
+            assertEquals(80.dp, dimensions.miniPlayerHeight)
             assertEquals(160.dp, dimensions.adaptiveGridMinimumCellWidth)
             assertEquals(48.dp, dimensions.categoryCardInfoHeight)
             assertEquals(48.dp, dimensions.minimumTouchTarget)
@@ -52,6 +53,10 @@ class DesignTokenPolicyTest {
             assertTrue(
                 "${tier.name} track rows must remain accessible",
                 dimensions.trackListItemHeight >= dimensions.minimumTouchTarget,
+            )
+            assertTrue(
+                "${tier.name} folder rows must remain accessible",
+                dimensions.folderListItemHeight >= dimensions.minimumTouchTarget,
             )
         }
     }

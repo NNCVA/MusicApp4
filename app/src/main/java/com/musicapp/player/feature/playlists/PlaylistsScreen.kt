@@ -145,7 +145,6 @@ private fun PlaylistsScreen(
             policy = policy,
             navigationAction = CategoryNavigationAction.DRAWER,
             onNavigationClick = openDrawer,
-            titleStyle = MusicTheme.typography.titleLarge,
             trailingContent = {
                 Box {
                     BareIconButton(
