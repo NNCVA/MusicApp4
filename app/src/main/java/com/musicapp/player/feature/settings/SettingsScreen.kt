@@ -206,6 +206,7 @@ private fun FadeSettings(value: Long, onValueChange: (Long) -> Unit) {
         Text(
             text = stringResource(R.string.settings_fade_duration, draft.roundToInt()),
             style = MusicTheme.typography.titleMedium,
+            color = MusicTheme.colors.onSurface,
         )
         Slider(
             value = draft,
@@ -248,12 +249,17 @@ private fun SettingsSection(title: String, content: @Composable ColumnScope.() -
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
         color = MusicTheme.aeroCardContainerColor,
+        contentColor = MusicTheme.colors.onSurface,
     ) {
         Column(
             modifier = Modifier.padding(dimensions.spaceMedium),
             verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
         ) {
-            Text(title, style = MusicTheme.typography.titleLarge)
+            Text(
+                text = title,
+                style = MusicTheme.typography.titleLarge,
+                color = MusicTheme.colors.onSurface,
+            )
             content()
         }
     }
@@ -267,14 +273,22 @@ private fun <T> ChoiceGroup(
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
 ) {
-    Text(title, style = MusicTheme.typography.titleMedium)
+    Text(
+        text = title,
+        style = MusicTheme.typography.titleMedium,
+        color = MusicTheme.colors.onSurface,
+    )
     values.forEach { value ->
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = MusicTheme.dimensions.minimumTouchTarget),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RadioButton(selected = value == selected, onClick = { onSelect(value) })
-            Text(label(value), style = MusicTheme.typography.bodyLarge)
+            Text(
+                text = label(value),
+                style = MusicTheme.typography.bodyLarge,
+                color = MusicTheme.colors.onSurface,
+            )
         }
     }
     HorizontalDivider()
@@ -302,8 +316,8 @@ private fun ConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(description) },
+        title = { Text(title, color = MusicTheme.colors.onSurface) },
+        text = { Text(description, color = MusicTheme.colors.onSurfaceVariant) },
         confirmButton = { TextButton(onClick = onConfirm) { Text(confirmLabel) } },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }

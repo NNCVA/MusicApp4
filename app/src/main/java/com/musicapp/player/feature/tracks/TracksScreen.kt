@@ -340,6 +340,7 @@ private fun TracksTopBar(
                         state.selectedTrackIds.size,
                     ),
                 style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
                 modifier = Modifier.weight(1f),
             )
             TextButton(onClick = onSelectAll, shape = MusicTheme.shapes.small) {

@@ -264,7 +264,7 @@ private fun MiniPlayer(
             modifier = Modifier.size(dimensions.miniArtworkSize),
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(track.title, style = MusicTheme.typography.titleMedium, maxLines = 1)
+            Text(track.title, style = MusicTheme.typography.titleMedium, color = MusicTheme.colors.onSurface, maxLines = 1)
             Text(track.artistName, style = MusicTheme.typography.bodySmall, color = MusicTheme.colors.onSurfaceVariant, maxLines = 1)
             if (state.loadState == PlayerLoadState.BUFFERING) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
@@ -350,7 +350,7 @@ private fun FullPlayer(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(onClick = onCollapse) { Text(stringResource(R.string.player_collapse)) }
-            Text(track.title, style = MusicTheme.typography.titleLarge, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(track.title, style = MusicTheme.typography.titleLarge, color = MusicTheme.colors.onSurface, maxLines = 1, modifier = Modifier.weight(1f))
             TextButton(onClick = onShowInfo) { Text(stringResource(R.string.track_info_title)) }
         }
         HorizontalPager(
@@ -403,8 +403,8 @@ private fun FullPlayer(
                 .padding(horizontal = dimensions.contentHorizontalPadding),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(formatDuration(state.positionMs), style = MusicTheme.typography.labelMedium)
-            Text(formatDuration(state.durationMs), style = MusicTheme.typography.labelMedium)
+            Text(formatDuration(state.positionMs), style = MusicTheme.typography.labelMedium, color = MusicTheme.colors.onSurfaceVariant)
+            Text(formatDuration(state.durationMs), style = MusicTheme.typography.labelMedium, color = MusicTheme.colors.onSurfaceVariant)
         }
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -496,7 +496,7 @@ private fun ArtworkPage(state: PlayerUiState, track: Track) {
             shape = CircleShape,
             modifier = Modifier.size(dimensions.fullPlayerArtworkSize),
         )
-        Text(track.title, style = MusicTheme.typography.headlineMedium, maxLines = 2)
+        Text(track.title, style = MusicTheme.typography.headlineMedium, color = MusicTheme.colors.onSurface, maxLines = 2)
         Text(track.artistName, style = MusicTheme.typography.titleMedium, color = MusicTheme.colors.onSurfaceVariant)
     }
 }
@@ -663,9 +663,18 @@ private fun PlayerStatus(status: PlayerLoadState, @androidx.annotation.StringRes
     when (status) {
         PlayerLoadState.PREPARING -> Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(MusicTheme.dimensions.statusIndicatorSize))
-            Text(stringResource(R.string.player_preparing), Modifier.padding(start = MusicTheme.dimensions.spaceSmall))
+            Text(
+                stringResource(R.string.player_preparing),
+                style = MusicTheme.typography.bodyMedium,
+                color = MusicTheme.colors.onSurface,
+                modifier = Modifier.padding(start = MusicTheme.dimensions.spaceSmall),
+            )
         }
-        PlayerLoadState.BUFFERING -> Text(stringResource(R.string.player_buffering))
+        PlayerLoadState.BUFFERING -> Text(
+            stringResource(R.string.player_buffering),
+            style = MusicTheme.typography.bodyMedium,
+            color = MusicTheme.colors.onSurface,
+        )
         PlayerLoadState.ERROR -> Text(
             stringResource(errorMessageRes ?: R.string.player_error_unknown),
             color = MusicTheme.colors.error,
@@ -704,7 +713,7 @@ private fun TrackInfoContent(track: Track, metadata: AdvancedTrackMetadata?, loa
         modifier = Modifier.fillMaxWidth().padding(dimensions.spaceLarge),
         verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
-        Text(stringResource(R.string.track_info_title), style = MusicTheme.typography.headlineMedium)
+        Text(stringResource(R.string.track_info_title), style = MusicTheme.typography.headlineMedium, color = MusicTheme.colors.onSurface)
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         InfoRow(R.string.track_info_encoding, metadata?.encoding ?: track.mimeType.orEmpty())
         InfoRow(R.string.track_info_bitrate, metadata?.bitrateBps?.let { stringResource(R.string.track_info_bitrate_value, it / 1_000) }.orEmpty())
@@ -726,7 +735,7 @@ private fun TrackInfoContent(track: Track, metadata: AdvancedTrackMetadata?, loa
 private fun InfoRow(label: Int, value: String) {
     Column {
         Text(stringResource(label), style = MusicTheme.typography.labelMedium, color = MusicTheme.colors.onSurfaceVariant)
-        Text(value.ifBlank { stringResource(R.string.track_info_unknown) }, style = MusicTheme.typography.bodyLarge)
+        Text(value.ifBlank { stringResource(R.string.track_info_unknown) }, style = MusicTheme.typography.bodyLarge, color = MusicTheme.colors.onSurface)
     }
 }
 

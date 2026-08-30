@@ -285,13 +285,19 @@ private fun SwitchCard(
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
         color = MusicTheme.aeroCardContainerColor,
+        contentColor = MusicTheme.colors.onSurface,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
                 .padding(horizontal = dimensions.spaceMedium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, modifier = Modifier.weight(1f), style = MusicTheme.typography.titleMedium)
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
+            )
             Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
     }
@@ -310,6 +316,7 @@ private fun ActionCard(
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
         color = MusicTheme.aeroCardContainerColor,
+        contentColor = MusicTheme.colors.primary,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
@@ -349,6 +356,7 @@ private fun FolderRuleCard(
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
         color = MusicTheme.aeroCardContainerColor,
+        contentColor = MusicTheme.colors.onSurface,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(dimensions.spaceMedium),
@@ -364,6 +372,7 @@ private fun FolderRuleCard(
                 Text(
                     text = rule.directory.ifBlank { stringResource(R.string.scan_storage_root) },
                     style = MusicTheme.typography.titleMedium,
+                    color = MusicTheme.colors.onSurface,
                 )
                 Text(
                     text = scanFolderPath(rule),
@@ -401,6 +410,7 @@ private fun TechnicalSupportCard() {
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
         color = MusicTheme.aeroCardContainerColor,
+        contentColor = MusicTheme.colors.onSurfaceVariant,
     ) {
         Text(
             text = stringResource(R.string.scan_technical_support),
@@ -420,7 +430,7 @@ private fun PermissionExplanationDialog(
     val isPermanent = state is MediaPermissionState.PermanentlyDenied
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.scan_permission_dialog_title)) },
+        title = { Text(stringResource(R.string.scan_permission_dialog_title), color = MusicTheme.colors.onSurface) },
         text = {
             Text(
                 stringResource(
@@ -430,6 +440,7 @@ private fun PermissionExplanationDialog(
                         R.string.scan_permission_dialog_description
                     },
                 ),
+                color = MusicTheme.colors.onSurfaceVariant,
             )
         },
         dismissButton = {

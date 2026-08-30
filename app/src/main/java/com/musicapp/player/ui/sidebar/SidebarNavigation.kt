@@ -172,6 +172,7 @@ internal fun SidebarExitDialog(
                             bottom = 16.dp,
                         ),
                         style = MaterialTheme.typography.headlineSmall,
+                        color = MusicTheme.colors.onSurface,
                     )
 
                     HorizontalDivider()
@@ -234,6 +235,7 @@ private fun DialogOptionRow(
             text = text,
             modifier = Modifier.weight(1f),
             style = textStyle,
+            color = MusicTheme.colors.onSurface,
         )
     }
 }
