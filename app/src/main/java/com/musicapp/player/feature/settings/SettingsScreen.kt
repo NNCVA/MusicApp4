@@ -247,7 +247,7 @@ private fun SettingsSection(title: String, content: @Composable ColumnScope.() -
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
-        color = MusicTheme.colors.surfaceContainer,
+        color = MusicTheme.aeroCardContainerColor,
     ) {
         Column(
             modifier = Modifier.padding(dimensions.spaceMedium),

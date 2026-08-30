@@ -337,7 +337,7 @@ private fun FolderVolumeCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MusicTheme.colors.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(dimensions.spaceMedium),
@@ -407,7 +407,7 @@ private fun FolderShortcutCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MusicTheme.colors.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = dimensions.spaceMedium, end = dimensions.spaceSmall),
@@ -624,7 +624,7 @@ private fun BrowserFolderRow(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MusicTheme.colors.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth()

@@ -25,6 +25,7 @@ import com.musicapp.player.core.aero.ArtworkColorSampler
 import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.metadata.ArtworkImage
 import com.musicapp.player.theme.MusicTheme
+import com.musicapp.player.theme.ProvideAeroCardTransparency
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -76,7 +77,9 @@ fun AeroBackground(
             runtimeState.effectiveMode == AeroMode.GLOW_AURA -> GlowAuraAeroCanvas(palette)
             else -> SolidAeroCanvas(palette)
         }
-        content()
+        ProvideAeroCardTransparency(enabled = runtimeState.schedulesCanvasFrames) {
+            content()
+        }
     }
 }
 

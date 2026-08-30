@@ -248,7 +248,7 @@ private fun SidebarCard(
         shape = RoundedCornerShape(MusicTheme.dimensions.sidebarCardCornerRadius),
         colors =
             CardDefaults.cardColors(
-                containerColor = MusicTheme.colors.surfaceContainer,
+                containerColor = MusicTheme.aeroCardContainerColor,
             ),
         elevation =
             CardDefaults.cardElevation(

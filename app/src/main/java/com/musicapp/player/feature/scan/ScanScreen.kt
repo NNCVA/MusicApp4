@@ -253,7 +253,7 @@ private fun ScanActionCard(enabled: Boolean, onClick: () -> Unit) {
         enabled = enabled,
         modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight),
         shape = MusicTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MusicTheme.colors.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(dimensions.spaceMedium),
@@ -284,7 +284,7 @@ private fun SwitchCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
-        color = MusicTheme.colors.surfaceContainer,
+        color = MusicTheme.aeroCardContainerColor,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
@@ -309,7 +309,7 @@ private fun ActionCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
-        color = MusicTheme.colors.surfaceContainer,
+        color = MusicTheme.aeroCardContainerColor,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
@@ -348,7 +348,7 @@ private fun FolderRuleCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
-        color = MusicTheme.colors.surfaceContainer,
+        color = MusicTheme.aeroCardContainerColor,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(dimensions.spaceMedium),
@@ -400,7 +400,7 @@ private fun TechnicalSupportCard() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
-        color = MusicTheme.colors.surfaceContainer,
+        color = MusicTheme.aeroCardContainerColor,
     ) {
         Text(
             text = stringResource(R.string.scan_technical_support),

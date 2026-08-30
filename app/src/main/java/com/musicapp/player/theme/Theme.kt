@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.musicapp.player.core.domain.model.ColorSource
 import com.musicapp.player.core.domain.model.PresetTheme
@@ -18,6 +19,7 @@ import com.musicapp.player.core.domain.model.ThemeMode
 private val LocalMusicDimensions = staticCompositionLocalOf { MusicDimensions.Compact }
 private val LocalMusicShapes = staticCompositionLocalOf { DefaultMusicShapes }
 private val LocalMusicTypography = staticCompositionLocalOf { DefaultMusicTypography }
+private val LocalAeroCardTransparencyEnabled = staticCompositionLocalOf { false }
 
 object MusicTheme {
     val colors: ColorScheme
@@ -39,6 +41,15 @@ object MusicTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalMusicTypography.current
+
+    /** Container color for persistent page cards that intentionally reveal the active Aero background. */
+    val aeroCardContainerColor: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = resolveAeroCardContainerColor(
+            surfaceContainer = MaterialTheme.colorScheme.surfaceContainer,
+            transparencyEnabled = LocalAeroCardTransparencyEnabled.current,
+        )
 }
 
 @Composable
@@ -70,7 +81,6 @@ fun MusicAppTheme(
         } else {
             presetColorScheme(checkNotNull(resolvedPreset), useDarkTheme)
         }
-    val colorScheme = applyTranslucentContainers(baseColorScheme)
     val dimensions = MusicDimensions.forTier(windowWidthTier)
     val shapes = DefaultMusicShapes
     val typography = DefaultMusicTypography
@@ -81,7 +91,7 @@ fun MusicAppTheme(
         LocalMusicTypography provides typography,
     ) {
         MaterialTheme(
-            colorScheme = colorScheme,
+            colorScheme = baseColorScheme,
             shapes = shapes.material,
             typography = typography.material,
             content = content,
@@ -100,13 +110,20 @@ internal fun resolvePresetTheme(
         else -> presetTheme
     }
 
-const val SURFACE_CONTAINER_ALPHA = 0.5f
+const val AERO_CARD_CONTAINER_ALPHA = 0.5f
 
-internal fun applyTranslucentContainers(colorScheme: ColorScheme): ColorScheme =
-    colorScheme.copy(
-        surfaceContainerLowest = colorScheme.surfaceContainerLowest.copy(alpha = SURFACE_CONTAINER_ALPHA),
-        surfaceContainerLow = colorScheme.surfaceContainerLow.copy(alpha = SURFACE_CONTAINER_ALPHA),
-        surfaceContainer = colorScheme.surfaceContainer.copy(alpha = SURFACE_CONTAINER_ALPHA),
-        surfaceContainerHigh = colorScheme.surfaceContainerHigh.copy(alpha = SURFACE_CONTAINER_ALPHA),
-        surfaceContainerHighest = colorScheme.surfaceContainerHighest.copy(alpha = SURFACE_CONTAINER_ALPHA),
+@Composable
+internal fun ProvideAeroCardTransparency(
+    enabled: Boolean,
+    content: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(
+        LocalAeroCardTransparencyEnabled provides enabled,
+        content = content,
     )
+}
+
+internal fun resolveAeroCardContainerColor(
+    surfaceContainer: Color,
+    transparencyEnabled: Boolean,
+): Color = surfaceContainer.copy(alpha = if (transparencyEnabled) AERO_CARD_CONTAINER_ALPHA else 1f)
