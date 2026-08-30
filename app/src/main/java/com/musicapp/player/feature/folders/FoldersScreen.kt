@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,12 +49,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
-import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
 import com.musicapp.player.core.designsystem.component.TrackSummaryRow
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.feature.category.CategoryNavigationAction
@@ -140,7 +141,8 @@ private fun FoldersScreen(
     val sectionPositions = remember(sections, state.volumes.size) {
         sectionStartPositions(sections, leadingItemCount = state.volumes.size)
     }
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     val selectedSection by remember(listState, sections, state.volumes.size) {
         derivedStateOf {
             sectionLabelAtPosition(
@@ -206,7 +208,8 @@ private fun FoldersScreen(
                 else ->
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll()
+                        overscrollEffect = overscrollEffect,
+                        modifier = Modifier.fillMaxWidth().weight(1f)
                             .padding(horizontal = dimensions.contentHorizontalPadding),
                         contentPadding = PaddingValues(
                             top = dimensions.spaceSmall,
@@ -517,6 +520,8 @@ private fun FolderDetailScreen(
         return
     }
     val dimensions = MusicTheme.dimensions
+    val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     Column(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
@@ -551,7 +556,9 @@ private fun FolderDetailScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
+                state = listState,
+                overscrollEffect = overscrollEffect,
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(
                     top = dimensions.spaceSmall,
                     bottom = dimensions.spaceSmall + bottomPadding,
@@ -624,6 +631,8 @@ private fun FolderBrowserScreen(
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
+    val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     Column(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
@@ -641,7 +650,9 @@ private fun FolderBrowserScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll()
+                state = listState,
+                overscrollEffect = overscrollEffect,
+                modifier = Modifier.fillMaxWidth().weight(1f)
                     .padding(horizontal = dimensions.contentHorizontalPadding),
                 contentPadding = PaddingValues(
                     top = dimensions.spaceSmall,

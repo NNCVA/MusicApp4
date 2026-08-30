@@ -42,6 +42,51 @@ fun classifySectionLabel(value: String?): String {
     }
 }
 
+fun pinyinSortKey(value: String?): String {
+    val trimmed = value.orEmpty().trim()
+    if (trimmed.isEmpty()) return ""
+    return HAN_TO_LATIN.transliterate(trimmed).lowercase(Locale.ROOT)
+}
+
+fun sectionBucketOrder(label: String, order: SectionSortOrder = SectionSortOrder.ASCENDING): Int {
+    val labels = sectionIndexLabelsForOrder(order)
+    val index = labels.indexOf(label)
+    return if (index >= 0) index else labels.lastIndex
+}
+
+fun <T> createSectionTextComparator(
+    order: SectionSortOrder,
+    textSelector: (T) -> String?,
+    tieBreaker: Comparator<T>,
+): Comparator<T> {
+    val labels = sectionIndexLabelsForOrder(order)
+    val bucketComparator = Comparator<T> { a, b ->
+        val labelA = classifySectionLabel(textSelector(a))
+        val labelB = classifySectionLabel(textSelector(b))
+        val indexA = labels.indexOf(labelA).let { if (it >= 0) it else labels.lastIndex }
+        val indexB = labels.indexOf(labelB).let { if (it >= 0) it else labels.lastIndex }
+        indexA.compareTo(indexB)
+    }
+    val inBucketPinyinComparator = Comparator<T> { a, b ->
+        val keyA = pinyinSortKey(textSelector(a))
+        val keyB = pinyinSortKey(textSelector(b))
+        keyA.compareTo(keyB)
+    }
+    val inBucketRawComparator = Comparator<T> { a, b ->
+        val rawA = textSelector(a).orEmpty().lowercase(Locale.ROOT)
+        val rawB = textSelector(b).orEmpty().lowercase(Locale.ROOT)
+        rawA.compareTo(rawB)
+    }
+    val inBucketDirected =
+        if (order == SectionSortOrder.ASCENDING) {
+            inBucketPinyinComparator.then(inBucketRawComparator)
+        } else {
+            inBucketPinyinComparator.reversed().then(inBucketRawComparator.reversed())
+        }
+    val directedTieBreaker = if (order == SectionSortOrder.ASCENDING) tieBreaker else tieBreaker.reversed()
+    return bucketComparator.then(inBucketDirected).then(directedTieBreaker)
+}
+
 private val HAN_TO_LATIN: Transliterator by lazy {
     Transliterator.getInstance("Han-Latin")
 }

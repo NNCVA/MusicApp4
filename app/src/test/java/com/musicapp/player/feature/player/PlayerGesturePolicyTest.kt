@@ -17,7 +17,7 @@ class PlayerGesturePolicyTest {
         assertEquals(PlayerGestureOwner.CONTENT, PlayerGesturePolicy.owner(PlayerGestureRegion.QUEUE_CONTENT, 0f, 40f))
         assertEquals(
             QueueEdgeBehavior.SCROLL_CONTENT,
-            PlayerGesturePolicy.queueDecision(0f, 40f, canScrollBackward = true, canScrollForward = true).behavior,
+            PlayerGesturePolicy.queueDecision(0f, 40f, canScrollBackward = true).behavior,
         )
     }
 
@@ -25,29 +25,27 @@ class PlayerGesturePolicyTest {
     fun `queue top hands downward drag to sheet`() {
         assertEquals(
             QueueEdgeBehavior.DRAG_SHEET,
-            PlayerGesturePolicy.queueDecision(0f, 40f, canScrollBackward = false, canScrollForward = true).behavior,
+            PlayerGesturePolicy.queueDecision(0f, 40f, canScrollBackward = false).behavior,
         )
     }
 
     @Test
-    fun `queue end resists upward drag without requesting another sheet anchor`() {
-        val decision =
+    fun `queue end leaves upward drag to content overscroll`() {
+        assertEquals(
+            QueueEdgeBehavior.SCROLL_CONTENT,
             PlayerGesturePolicy.queueDecision(
                 deltaX = 0f,
                 deltaY = -40f,
                 canScrollBackward = true,
-                canScrollForward = false,
-            )
-
-        assertEquals(QueueEdgeBehavior.RESIST_END, decision.behavior)
-        assertEquals(-8f, decision.resistedDeltaY)
+            ).behavior,
+        )
     }
 
     @Test
     fun `horizontal queue input remains content owned at either edge`() {
         assertEquals(
             QueueEdgeBehavior.SCROLL_CONTENT,
-            PlayerGesturePolicy.queueDecision(40f, 2f, canScrollBackward = false, canScrollForward = false).behavior,
+            PlayerGesturePolicy.queueDecision(40f, 2f, canScrollBackward = false).behavior,
         )
     }
 
@@ -71,29 +69,48 @@ class PlayerGesturePolicyTest {
     }
 
     @Test
-    fun `gesture router transfers queue top and applies end resistance callback`() {
+    fun `gesture router transfers queue top and leaves queue end to content`() {
         var sheetDelta = 0f
-        var resistedDelta = 0f
         val topConsumed = PlayerGestureRouter.routeQueueDrag(
             deltaX = 0f,
             deltaY = 40f,
             canScrollBackward = false,
-            canScrollForward = true,
             dragSheet = { delta -> sheetDelta = delta; delta },
-            resistEnd = { resistedDelta = it },
         )
         val endConsumed = PlayerGestureRouter.routeQueueDrag(
             deltaX = 0f,
             deltaY = -40f,
             canScrollBackward = true,
-            canScrollForward = false,
             dragSheet = { it },
-            resistEnd = { resistedDelta = it },
         )
 
         assertEquals(40f, topConsumed)
         assertEquals(40f, sheetDelta)
-        assertEquals(-40f, endConsumed)
-        assertEquals(-8f, resistedDelta)
+        assertEquals(0f, endConsumed)
+    }
+
+    @Test
+    fun `queue fling transfers only downward velocity at the top`() {
+        assertEquals(
+            QueueEdgeBehavior.DRAG_SHEET,
+            PlayerGesturePolicy.queueFlingDecision(
+                velocityY = 800f,
+                canScrollBackward = false,
+            ),
+        )
+        assertEquals(
+            QueueEdgeBehavior.SCROLL_CONTENT,
+            PlayerGesturePolicy.queueFlingDecision(
+                velocityY = -800f,
+                canScrollBackward = false,
+            ),
+        )
+        assertEquals(
+            QueueEdgeBehavior.SCROLL_CONTENT,
+            PlayerGesturePolicy.queueFlingDecision(
+                velocityY = 800f,
+                canScrollBackward = true,
+            ),
+        )
     }
 }

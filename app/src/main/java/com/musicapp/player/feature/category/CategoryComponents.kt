@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -30,7 +31,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import com.musicapp.player.core.designsystem.component.BareIconButton
-import com.musicapp.player.core.designsystem.component.bounceOverscroll
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
@@ -119,8 +120,12 @@ fun CategoryTrackList(
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
+    val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     LazyColumn(
-        modifier = modifier.fillMaxWidth().bounceOverscroll(),
+        state = listState,
+        overscrollEffect = overscrollEffect,
+        modifier = modifier.fillMaxWidth(),
         contentPadding =
             PaddingValues(
                 top = dimensions.spaceSmall,

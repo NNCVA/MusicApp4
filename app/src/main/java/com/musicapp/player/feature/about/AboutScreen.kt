@@ -15,9 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.theme.MusicTheme
@@ -67,20 +68,19 @@ fun AboutScreen(
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
+    val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     Box(
         modifier =
             Modifier.fillMaxSize()
                 .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         contentAlignment = Alignment.TopCenter,
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().bounceOverscroll().widthIn(max = dimensions.settingsContentMaxWidth),
-            contentPadding = PaddingValues(
-                bottom = dimensions.spaceMedium + bottomPadding,
-            ),
-            verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            item {
+            Box(modifier = Modifier.fillMaxWidth().widthIn(max = dimensions.settingsContentMaxWidth)) {
                 CategoryHeader(
                     title = stringResource(R.string.navigation_about),
                     policy = policy,
@@ -88,6 +88,16 @@ fun AboutScreen(
                     onNavigationClick = onBack,
                 )
             }
+            LazyColumn(
+                state = listState,
+                overscrollEffect = overscrollEffect,
+                modifier = Modifier.fillMaxWidth().weight(1f)
+                    .widthIn(max = dimensions.settingsContentMaxWidth),
+                contentPadding = PaddingValues(
+                    bottom = dimensions.spaceMedium + bottomPadding,
+                ),
+                verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
+            ) {
             if (state.loadFailed) {
                 item {
                     Box(
@@ -153,6 +163,7 @@ fun AboutScreen(
                 }
             }
         }
+    }
     }
     val metadata = state.metadata
     if (state.isLicenseVisible && metadata != null) {

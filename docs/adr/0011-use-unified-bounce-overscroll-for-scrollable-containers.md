@@ -1,6 +1,6 @@
 # 使用统一物理阻尼弹性过度滚动 (Bounce Overscroll)
 
-> **状态：已接受 (Accepted)**。
+> **状态：已由 [0012-use-state-aware-compose-overscroll-effect.md](0012-use-state-aware-compose-overscroll-effect.md) 取代 (Superseded)**。
 
 ## 背景与上下文
 

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -37,7 +38,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.musicapp.player.core.designsystem.component.BareIconButton
-import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +55,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.PathRule
 import com.musicapp.player.core.domain.model.PathRuleKind
 import com.musicapp.player.feature.category.CategoryNavigationAction
@@ -164,6 +165,8 @@ private fun ScanMusicScreen(
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
+    val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     var blockedFoldersExpanded by rememberSaveable { mutableStateOf(false) }
     Box(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
@@ -185,7 +188,9 @@ private fun ScanMusicScreen(
                 )
             }
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
+                state = listState,
+                overscrollEffect = overscrollEffect,
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(
                     start = dimensions.contentHorizontalPadding,
                     end = dimensions.contentHorizontalPadding,

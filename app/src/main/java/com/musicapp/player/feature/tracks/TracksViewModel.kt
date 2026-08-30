@@ -18,6 +18,8 @@ import com.musicapp.player.data.repository.PlaylistRepository
 import com.musicapp.player.feature.tracks.batch.BatchTrackAction
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
+import com.musicapp.player.core.designsystem.component.SectionSortOrder
+import com.musicapp.player.core.designsystem.component.createSectionTextComparator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import java.util.Locale
@@ -480,14 +482,24 @@ private fun TrackSort.comparator(): Comparator<Track> {
             { it.id.volumeName.lowercase(Locale.ROOT) },
             { it.id.mediaStoreId },
         )
-    val primary =
-        when (field) {
-            TrackSortField.TITLE -> compareBy<Track> { it.title.lowercase(Locale.ROOT) }
-            TrackSortField.ARTIST -> compareBy<Track> { it.artistName.lowercase(Locale.ROOT) }
-            TrackSortField.ALBUM -> compareBy<Track> { it.albumTitle.orEmpty().lowercase(Locale.ROOT) }
-            TrackSortField.DATE_ADDED -> compareBy<Track> { it.dateAddedMs }
-            TrackSortField.DURATION -> compareBy<Track> { it.durationMs }
+    val sectionOrder =
+        when (direction) {
+            TrackSortDirection.ASCENDING -> SectionSortOrder.ASCENDING
+            TrackSortDirection.DESCENDING -> SectionSortOrder.DESCENDING
         }
-    return (if (direction == TrackSortDirection.ASCENDING) primary else primary.reversed())
-        .then(textTieBreaker)
+    return when (field) {
+        TrackSortField.TITLE -> createSectionTextComparator(sectionOrder, Track::title, textTieBreaker)
+        TrackSortField.ARTIST -> createSectionTextComparator(sectionOrder, Track::artistName, textTieBreaker)
+        TrackSortField.ALBUM -> createSectionTextComparator(sectionOrder, { it.albumTitle.orEmpty() }, textTieBreaker)
+        TrackSortField.DATE_ADDED -> {
+            val primary = compareBy<Track> { it.dateAddedMs }
+            (if (direction == TrackSortDirection.ASCENDING) primary else primary.reversed())
+                .then(textTieBreaker)
+        }
+        TrackSortField.DURATION -> {
+            val primary = compareBy<Track> { it.durationMs }
+            (if (direction == TrackSortDirection.ASCENDING) primary else primary.reversed())
+                .then(textTieBreaker)
+        }
+    }
 }

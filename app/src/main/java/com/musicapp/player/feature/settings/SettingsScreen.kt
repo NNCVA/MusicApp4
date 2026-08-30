@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
-import com.musicapp.player.core.designsystem.component.bounceOverscroll
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.AppLanguage
 import com.musicapp.player.core.domain.model.AppSettings
@@ -105,6 +106,8 @@ private fun SettingsScreen(
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
+    val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     LaunchedEffect(state.message) {
         val message = state.message ?: return@LaunchedEffect
         onShowMessage(message.labelRes())
@@ -130,7 +133,9 @@ private fun SettingsScreen(
                 )
             }
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll()
+                state = listState,
+                overscrollEffect = overscrollEffect,
+                modifier = Modifier.fillMaxWidth().weight(1f)
                     .padding(horizontal = dimensions.contentHorizontalPadding),
                 contentPadding = PaddingValues(
                     top = dimensions.spaceSmall,

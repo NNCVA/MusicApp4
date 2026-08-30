@@ -46,7 +46,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
-import com.musicapp.player.core.designsystem.component.bounceOverscroll
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
@@ -123,6 +123,7 @@ private fun ArtistsScreen(
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     val sections = remember(state.artists) { groupArtistsIntoSections(state.artists) }
     val displayArtists = remember(sections) { sections.flatMap(ArtistSection::artists) }
     val sectionPositions = remember(sections) { sectionStartPositions(sections) }
@@ -174,7 +175,8 @@ private fun ArtistsScreen(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
+                    overscrollEffect = overscrollEffect,
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(
                         top = dimensions.spaceExtraSmall,
                         bottom = dimensions.spaceSmall + bottomPadding,

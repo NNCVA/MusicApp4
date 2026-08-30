@@ -454,6 +454,41 @@ class TracksViewModelTest {
         assertEquals(first.id, playbackController.context?.selectedTrackId)
     }
 
+    @Test
+    fun `tracks sorting orders by 28-bucket sections with digits, pinyin, and symbols aligned with playback context`() =
+        runTest(dispatcher) {
+            val playbackController = RecordingPlaybackControllerFacade()
+            val symbolTrack = track(1, "#Symbol")
+            val numberTrack = track(2, "123 Number")
+            val englishTrack = track(3, "Apple")
+            val chineseBTrack = track(4, "北京欢迎你")
+            val chineseZTrack = track(5, "周杰伦")
+            val allTracks = listOf(symbolTrack, numberTrack, englishTrack, chineseBTrack, chineseZTrack)
+
+            val viewModel = subject(tracks = allTracks, playbackController = playbackController)
+            collectState(viewModel)
+
+            // 升序：0 (数字) -> A-Z (英文与拼音) -> # (符号)
+            val expectedAscending = listOf(numberTrack.id, englishTrack.id, chineseBTrack.id, chineseZTrack.id, symbolTrack.id)
+            assertEquals(expectedAscending, viewModel.uiState.value.tracks.map { it.id })
+
+            viewModel.playAll()
+            assertEquals(expectedAscending, playbackController.context?.orderedTrackIds)
+            assertEquals(numberTrack.id, playbackController.context?.selectedTrackId)
+
+            // 切换为降序：# (符号) -> Z-A (逆序) -> 0 (数字)
+            viewModel.selectSort(TrackSortField.TITLE)
+            val expectedDescending = listOf(symbolTrack.id, chineseZTrack.id, chineseBTrack.id, englishTrack.id, numberTrack.id)
+            assertEquals(
+                expectedDescending,
+                viewModel.awaitSort(TrackSort(TrackSortField.TITLE, TrackSortDirection.DESCENDING)).tracks.map { it.id },
+            )
+
+            viewModel.playTrack(chineseBTrack.id)
+            assertEquals(expectedDescending, playbackController.context?.orderedTrackIds)
+            assertEquals(chineseBTrack.id, playbackController.context?.selectedTrackId)
+        }
+
     private suspend fun kotlinx.coroutines.test.TestScope.collectState(viewModel: TracksViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.uiState.first { it.isLibraryLoaded }

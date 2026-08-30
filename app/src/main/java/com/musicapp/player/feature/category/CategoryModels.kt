@@ -17,20 +17,49 @@ data class CategoryTrackSort(
 )
 
 fun sortCategoryTracks(tracks: List<Track>, sort: CategoryTrackSort): List<Track> {
-    val primary =
-        when (sort.field) {
-            CategoryTrackSortField.TITLE -> compareBy<Track> { it.title.lowercase(Locale.ROOT) }
-            CategoryTrackSortField.ARTIST -> compareBy<Track> { it.artistName.lowercase(Locale.ROOT) }
-            CategoryTrackSortField.ALBUM -> compareBy<Track> { it.albumTitle.orEmpty().lowercase(Locale.ROOT) }
-            CategoryTrackSortField.DATE_ADDED -> compareBy(Track::dateAddedMs)
-            CategoryTrackSortField.DURATION -> compareBy(Track::durationMs)
+    val textTieBreaker =
+        compareBy<Track>(
+            { it.title.lowercase(Locale.ROOT) },
+            { it.id.volumeName.lowercase(Locale.ROOT) },
+            { it.id.mediaStoreId },
+        )
+    val sectionOrder =
+        when (sort.direction) {
+            CategorySortDirection.ASCENDING -> com.musicapp.player.core.designsystem.component.SectionSortOrder.ASCENDING
+            CategorySortDirection.DESCENDING -> com.musicapp.player.core.designsystem.component.SectionSortOrder.DESCENDING
         }
-    val directed = if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed()
-    return tracks.sortedWith(
-        directed.thenBy { it.title.lowercase(Locale.ROOT) }
-            .thenBy { it.id.volumeName }
-            .thenBy { it.id.mediaStoreId },
-    )
+    val comparator =
+        when (sort.field) {
+            CategoryTrackSortField.TITLE ->
+                com.musicapp.player.core.designsystem.component.createSectionTextComparator(
+                    sectionOrder,
+                    Track::title,
+                    textTieBreaker,
+                )
+            CategoryTrackSortField.ARTIST ->
+                com.musicapp.player.core.designsystem.component.createSectionTextComparator(
+                    sectionOrder,
+                    Track::artistName,
+                    textTieBreaker,
+                )
+            CategoryTrackSortField.ALBUM ->
+                com.musicapp.player.core.designsystem.component.createSectionTextComparator(
+                    sectionOrder,
+                    { it.albumTitle.orEmpty() },
+                    textTieBreaker,
+                )
+            CategoryTrackSortField.DATE_ADDED -> {
+                val primary = compareBy<Track> { it.dateAddedMs }
+                (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
+                    .then(textTieBreaker)
+            }
+            CategoryTrackSortField.DURATION -> {
+                val primary = compareBy<Track> { it.durationMs }
+                (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
+                    .then(textTieBreaker)
+            }
+        }
+    return tracks.sortedWith(comparator)
 }
 
 fun CategoryTrackSort.next(field: CategoryTrackSortField): CategoryTrackSort =

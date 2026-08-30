@@ -2,8 +2,8 @@ package com.musicapp.player.feature.player
 
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -55,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -91,6 +92,7 @@ import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkResult
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.feature.lyrics.LyricsPaneRoute
 import com.musicapp.player.feature.lyrics.LyricsViewModel
 import com.musicapp.player.feature.aero.AeroBackground
@@ -98,6 +100,7 @@ import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
 import kotlin.math.roundToInt
 import java.util.Locale
+import kotlinx.coroutines.Job
 
 @Composable
 fun PlayerSheetRoute(
@@ -164,42 +167,49 @@ fun PlayerSheet(
     val dimensions = MusicTheme.dimensions
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
-    val progressAnimatable = remember { Animatable(0f) }
-    val progress = progressAnimatable.value
+    var progress by rememberSaveable { mutableFloatStateOf(0f) }
+    var sheetAnimationJob by remember { mutableStateOf<Job?>(null) }
     val springSpec = remember {
         spring<Float>(
             stiffness = Spring.StiffnessMediumLow,
             dampingRatio = Spring.DampingRatioNoBouncy,
         )
     }
-    LaunchedEffect(progress) { onExpansionChanged(progress > 0f) }
-    BackHandler(enabled = progress > 0f) {
-        coroutineScope.launch { progressAnimatable.animateTo(0f, springSpec) }
-    }
+    val isExpanded = progress > 0f
+    LaunchedEffect(isExpanded) { onExpansionChanged(isExpanded) }
 
     val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
     val totalCollapsedHeight = dimensions.miniPlayerHeight + bottomInset
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val travelPx = with(density) { (maxHeight - totalCollapsedHeight).toPx().coerceAtLeast(1f) }
-        val dragSheet: (Float) -> Float = { deltaY ->
-            val previous = progressAnimatable.value
-            val targetProgress = PlayerSheetState(previous).dragBy(deltaY, travelPx).expansionProgress
-            coroutineScope.launch {
-                progressAnimatable.snapTo(targetProgress)
+        val animateSheetTo: (Float, Float) -> Unit = { targetProgress, initialVelocity ->
+            sheetAnimationJob?.cancel()
+            sheetAnimationJob = coroutineScope.launch {
+                animate(
+                    initialValue = progress,
+                    targetValue = targetProgress,
+                    initialVelocity = initialVelocity,
+                    animationSpec = springSpec,
+                ) { value, _ ->
+                    progress = value.coerceIn(0f, 1f)
+                }
             }
+        }
+        val dragSheet: (Float) -> Float = { deltaY ->
+            sheetAnimationJob?.cancel()
+            sheetAnimationJob = null
+            val previous = progress
+            val targetProgress = PlayerSheetState(previous).dragBy(deltaY, travelPx).expansionProgress
+            progress = targetProgress
             (previous - targetProgress) * travelPx
         }
         val settleSheet: (Float) -> Unit = { velocityY ->
-            val targetProgress = PlayerSheetState(progressAnimatable.value).settle(velocityY).expansionProgress
-            coroutineScope.launch {
-                progressAnimatable.animateTo(
-                    targetValue = targetProgress,
-                    animationSpec = springSpec,
-                    initialVelocity = if (travelPx > 0f) -velocityY / travelPx else 0f,
-                )
-            }
+            val targetProgress = PlayerSheetState(progress).settle(velocityY).expansionProgress
+            val initialVelocity = if (travelPx > 0f) -velocityY / travelPx else 0f
+            animateSheetTo(targetProgress, initialVelocity)
         }
+        BackHandler(enabled = progress > 0f) { animateSheetTo(0f, 0f) }
         val miniDragState = rememberDraggableState { deltaY ->
             PlayerGestureRouter.routeSheetDrag(
                 region = PlayerGestureRegion.SHEET_BACKGROUND,
@@ -221,7 +231,7 @@ fun PlayerSheet(
                     state = state,
                     track = track,
                     onExpand = {
-                        coroutineScope.launch { progressAnimatable.animateTo(1f, springSpec) }
+                        animateSheetTo(1f, 0f)
                     },
                     onTogglePlayback = onTogglePlayback,
                     onNext = onNext,
@@ -248,7 +258,7 @@ fun PlayerSheet(
                             track = track,
                             contentInsets = contentInsets,
                             onCollapse = {
-                                coroutineScope.launch { progressAnimatable.animateTo(0f, springSpec) }
+                                animateSheetTo(0f, 0f)
                             },
                             onTogglePlayback = onTogglePlayback,
                             onPrevious = onPrevious,
@@ -561,11 +571,13 @@ private fun QueuePage(
     onSheetSettle: (Float) -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
-    val density = LocalDensity.current
     val listState = rememberLazyListState()
-    var edgeResistancePx by remember { mutableFloatStateOf(0f) }
-    val maximumResistancePx = with(density) { dimensions.queueEdgeResistanceDistance.toPx() }
-    val nestedScrollConnection = remember(listState, maximumResistancePx, onSheetDrag, onSheetSettle) {
+    val overscrollEffect =
+        rememberBounceOverscrollEffect(
+            state = listState,
+            allowStartEdge = false,
+        )
+    val nestedScrollConnection = remember(listState, onSheetDrag, onSheetSettle) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (source != NestedScrollSource.UserInput || available.y == 0f) return Offset.Zero
@@ -573,24 +585,19 @@ private fun QueuePage(
                     deltaX = available.x,
                     deltaY = available.y,
                     canScrollBackward = listState.canScrollBackward,
-                    canScrollForward = listState.canScrollForward,
                     dragSheet = onSheetDrag,
-                    resistEnd = { resistedDeltaY ->
-                        edgeResistancePx =
-                            (edgeResistancePx + resistedDeltaY)
-                                .coerceIn(-maximumResistancePx, 0f)
-                    },
                 )
-                if (available.y > 0f) edgeResistancePx = 0f
                 return if (consumedY == 0f) Offset.Zero else Offset(0f, consumedY)
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                edgeResistancePx = 0f
-                return if (!listState.canScrollBackward) {
+                return if (
+                    PlayerGesturePolicy.queueFlingDecision(
+                        velocityY = available.y,
+                        canScrollBackward = listState.canScrollBackward,
+                    ) == QueueEdgeBehavior.DRAG_SHEET
+                ) {
                     onSheetSettle(available.y)
-                    available
-                } else if (available.y < 0f && !listState.canScrollForward) {
                     available
                 } else {
                     Velocity.Zero
@@ -598,8 +605,7 @@ private fun QueuePage(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                edgeResistancePx = 0f
-                if (!listState.canScrollBackward) {
+                if (available.y > 0f && !listState.canScrollBackward) {
                     onSheetSettle(available.y)
                     return available
                 }
@@ -644,9 +650,9 @@ private fun QueuePage(
         }
         LazyColumn(
             state = listState,
+            overscrollEffect = overscrollEffect,
             modifier = Modifier.fillMaxWidth().weight(1f)
-                .nestedScroll(nestedScrollConnection)
-                .graphicsLayer { translationY = edgeResistancePx },
+                .nestedScroll(nestedScrollConnection),
         ) {
             if (rows.isEmpty()) {
                 item {

@@ -68,8 +68,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
-import com.musicapp.player.core.designsystem.component.BounceOverscrollMath
-import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.LoadingState
 import com.musicapp.player.core.designsystem.component.MessageDialog
@@ -77,6 +75,7 @@ import com.musicapp.player.core.designsystem.component.QualityBadge
 import com.musicapp.player.core.designsystem.component.resolveQuality
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
@@ -596,6 +595,7 @@ private fun TrackList(
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     val scrollbarModifier =
         if (!showSectionIndex) {
             listState.scrollIndicatorState?.let { scrollIndicatorState ->
@@ -607,8 +607,8 @@ private fun TrackList(
     Box(modifier = modifier.fillMaxWidth()) {
         LazyColumn(
             state = listState,
+            overscrollEffect = overscrollEffect,
             modifier = Modifier.fillMaxSize()
-                .bounceOverscroll()
                 .then(scrollbarModifier),
             contentPadding =
                 PaddingValues(

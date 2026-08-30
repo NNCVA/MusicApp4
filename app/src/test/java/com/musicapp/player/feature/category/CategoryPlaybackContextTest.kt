@@ -52,6 +52,34 @@ class CategoryPlaybackContextTest {
         )
     }
 
+    @Test
+    fun `sortCategoryTracks orders by 28-bucket sections with digits, pinyin, and symbols`() {
+        val symbolTrack = track(1).copy(title = "#Symbol")
+        val numberTrack = track(2).copy(title = "123 Number")
+        val englishTrack = track(3).copy(title = "Apple")
+        val chineseBTrack = track(4).copy(title = "北京欢迎你")
+        val chineseZTrack = track(5).copy(title = "周杰伦")
+        val allTracks = listOf(symbolTrack, numberTrack, englishTrack, chineseBTrack, chineseZTrack)
+
+        val ascending = sortCategoryTracks(
+            allTracks,
+            CategoryTrackSort(CategoryTrackSortField.TITLE, CategorySortDirection.ASCENDING),
+        )
+        assertEquals(
+            listOf(numberTrack.id, englishTrack.id, chineseBTrack.id, chineseZTrack.id, symbolTrack.id),
+            ascending.map { it.id },
+        )
+
+        val descending = sortCategoryTracks(
+            allTracks,
+            CategoryTrackSort(CategoryTrackSortField.TITLE, CategorySortDirection.DESCENDING),
+        )
+        assertEquals(
+            listOf(symbolTrack.id, chineseZTrack.id, chineseBTrack.id, englishTrack.id, numberTrack.id),
+            descending.map { it.id },
+        )
+    }
+
     private fun track(value: Long, availability: Availability = Availability.AVAILABLE) =
         Track(
             id = TrackId("external", value),

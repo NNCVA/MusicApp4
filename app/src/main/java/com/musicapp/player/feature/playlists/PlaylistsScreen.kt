@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -35,7 +36,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.musicapp.player.core.designsystem.component.BareIconButton
-import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -137,6 +138,8 @@ private fun PlaylistsScreen(
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
+    val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     val playlistListStartPadding =
         if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
             dimensions.topBarNavigationVisualStartPadding
@@ -192,7 +195,9 @@ private fun PlaylistsScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
+                state = listState,
+                overscrollEffect = overscrollEffect,
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(
                     top = dimensions.spaceSmall,
                     bottom = dimensions.spaceSmall + bottomPadding,
@@ -440,6 +445,8 @@ private fun PlaylistDetailScreen(
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
+    val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     Column(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
@@ -499,7 +506,9 @@ private fun PlaylistDetailScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
+                state = listState,
+                overscrollEffect = overscrollEffect,
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(
                     top = dimensions.spaceSmall,
                     bottom = dimensions.spaceSmall + bottomPadding,

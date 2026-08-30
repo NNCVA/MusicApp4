@@ -1,199 +1,165 @@
 package com.musicapp.player.core.designsystem.component
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.runtime.BroadcastFrameClock
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.unit.Velocity
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
-import kotlin.math.abs
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class BounceOverscrollTest {
-
     @Test
-    fun `math calculates initial resistance correctly at zero offset`() {
-        val maxPx = 300f
-        val delta = 100f
-        val resisted = BounceOverscrollMath.calculateResistedDelta(
-            currentOffsetPx = 0f,
-            deltaY = delta,
-            maxDisplacementPx = maxPx,
-            dampingBase = 0.4f,
+    fun `drag limit uses ten percent of viewport up to 96dp cap`() {
+        assertEquals(
+            60f,
+            BounceOverscrollPhysics.maxDragDisplacementPx(
+                viewportHeightPx = 600f,
+                capPx = 96f,
+            ),
+            0.001f,
         )
-        assertEquals(40f, resisted, 0.001f)
+        assertEquals(
+            96f,
+            BounceOverscrollPhysics.maxDragDisplacementPx(
+                viewportHeightPx = 1_200f,
+                capPx = 96f,
+            ),
+            0.001f,
+        )
     }
 
     @Test
-    fun `math dampens more as offset approaches max displacement`() {
-        val maxPx = 300f
-        val delta = 50f
-        val lowOffsetResisted = BounceOverscrollMath.calculateResistedDelta(
-            currentOffsetPx = 50f,
-            deltaY = delta,
-            maxDisplacementPx = maxPx,
-        )
-        val highOffsetResisted = BounceOverscrollMath.calculateResistedDelta(
-            currentOffsetPx = 250f,
-            deltaY = delta,
-            maxDisplacementPx = maxPx,
-        )
-        assertTrue(lowOffsetResisted > highOffsetResisted)
-        assertTrue(highOffsetResisted > 0f)
+    fun `drag resistance never exceeds adaptive displacement`() {
+        val maxPx = 80f
+        val offset =
+            BounceOverscrollPhysics.resistedOffsetPx(
+                currentOffsetPx = 75f,
+                deltaY = 1_000f,
+                maxDisplacementPx = maxPx,
+            )
+
+        assertEquals(maxPx, offset, 0.001f)
     }
 
     @Test
-    fun `math clamps strictly to max displacement`() {
-        val maxPx = 300f
-        val delta = 500f
-        val resisted = BounceOverscrollMath.calculateResistedDelta(
-            currentOffsetPx = 280f,
-            deltaY = delta,
-            maxDisplacementPx = maxPx,
+    fun `fling velocity is clamped from 24dp displacement budget`() {
+        assertEquals(
+            288f,
+            BounceOverscrollPhysics.flingVelocityPx(
+                remainingVelocityY = 10_000f,
+                maxFlingDisplacementPx = 24f,
+            ),
+            0.001f,
         )
-        // 280 + resisted should not exceed 300
-        assertEquals(20f, resisted, 0.001f)
+        assertEquals(
+            -288f,
+            BounceOverscrollPhysics.flingVelocityPx(
+                remainingVelocityY = -10_000f,
+                maxFlingDisplacementPx = 24f,
+            ),
+            0.001f,
+        )
     }
 
     @Test
-    fun `math calculates fling velocity clamped to max velocity`() {
-        val maxDisplacementPx = 200f
-        val moderateVelocity = BounceOverscrollMath.calculateFlingVelocity(
-            availableVelocityY = 1000f,
-            maxDisplacementPx = maxDisplacementPx,
-            velocityDampingFactor = 0.6f,
+    fun `edge requires matching direction and a scrollable list`() {
+        assertEquals(
+            BounceEdge.START,
+            BounceOverscrollPhysics.edgeFor(
+                deltaY = 20f,
+                canScrollBackward = false,
+                canScrollForward = true,
+            ),
         )
-        assertEquals(600f, moderateVelocity, 0.001f)
-
-        val extremeVelocity = BounceOverscrollMath.calculateFlingVelocity(
-            availableVelocityY = 10000f,
-            maxDisplacementPx = maxDisplacementPx,
-            velocityDampingFactor = 0.6f,
+        assertEquals(
+            BounceEdge.END,
+            BounceOverscrollPhysics.edgeFor(
+                deltaY = -20f,
+                canScrollBackward = true,
+                canScrollForward = false,
+            ),
         )
-        // max is 200 * 12 = 2400f
-        assertEquals(2400f, extremeVelocity, 0.001f)
-
-        val negativeVelocity = BounceOverscrollMath.calculateFlingVelocity(
-            availableVelocityY = -10000f,
-            maxDisplacementPx = maxDisplacementPx,
-            velocityDampingFactor = 0.6f,
+        assertNull(
+            BounceOverscrollPhysics.edgeFor(
+                deltaY = -20f,
+                canScrollBackward = false,
+                canScrollForward = true,
+            ),
         )
-        assertEquals(-2400f, negativeVelocity, 0.001f)
+        assertNull(
+            BounceOverscrollPhysics.edgeFor(
+                deltaY = 20f,
+                canScrollBackward = false,
+                canScrollForward = false,
+            ),
+        )
     }
 
     @Test
-    fun `preScroll consumes opposite delta when overscrolled`() = runTest {
-        val testDispatcher = StandardTestDispatcher(testScheduler)
-        val testScope = TestScope(testDispatcher + BroadcastFrameClock())
-        val animatable = Animatable(50f)
-        val connection = BounceOverscrollConnection(
-            scope = testScope,
-            animatable = animatable,
-            maxDisplacementPx = 300f,
-            maxFlingPx = 100f,
+    fun `queue can disable start edge without disabling end edge`() {
+        assertNull(
+            BounceOverscrollPhysics.edgeFor(
+                deltaY = 20f,
+                canScrollBackward = false,
+                canScrollForward = true,
+                allowStartEdge = false,
+            ),
         )
-
-        // Pulling up while offset is +50px: should consume negative delta
-        val consumed = connection.onPreScroll(
-            available = Offset(0f, -30f),
-            source = NestedScrollSource.UserInput,
+        assertEquals(
+            BounceEdge.END,
+            BounceOverscrollPhysics.edgeFor(
+                deltaY = -20f,
+                canScrollBackward = true,
+                canScrollForward = false,
+                allowStartEdge = false,
+            ),
         )
-        assertEquals(-30f, consumed.y, 0.001f)
-
-        // If delta is larger than current offset, only consume up to -50px
-        val overConsumed = connection.onPreScroll(
-            available = Offset(0f, -80f),
-            source = NestedScrollSource.UserInput,
-        )
-        assertEquals(-50f, overConsumed.y, 0.001f)
     }
 
     @Test
-    fun `preScroll does not consume when not overscrolled`() = runTest {
-        val testDispatcher = StandardTestDispatcher(testScheduler)
-        val testScope = TestScope(testDispatcher + BroadcastFrameClock())
-        val animatable = Animatable(0f)
-        val connection = BounceOverscrollConnection(
-            scope = testScope,
-            animatable = animatable,
-            maxDisplacementPx = 300f,
-            maxFlingPx = 100f,
-        )
+    fun `mid-list leftover delta is not converted into overscroll`() = runTest {
+        val effect =
+            BounceOverscrollEffect(
+                canScrollBackward = { true },
+                canScrollForward = { true },
+                animationsEnabled = { true },
+                maxDragCapPx = 96f,
+                maxFlingDisplacementPx = 24f,
+            )
 
-        val consumed = connection.onPreScroll(
-            available = Offset(0f, -30f),
-            source = NestedScrollSource.UserInput,
-        )
-        assertEquals(0f, consumed.y, 0.001f)
+        val consumed =
+            effect.applyToScroll(
+                delta = Offset(0f, -40f),
+                source = NestedScrollSource.UserInput,
+                performScroll = { Offset.Zero },
+            )
+
+        assertEquals(Offset.Zero, consumed)
+        assertEquals(0f, effect.currentOffsetPx, 0.001f)
+        assertFalse(effect.isInProgress)
     }
 
     @Test
-    fun `postScroll consumes unhandled drag delta and triggers displacement`() = runTest {
-        val testDispatcher = StandardTestDispatcher(testScheduler)
-        val testScope = TestScope(testDispatcher + BroadcastFrameClock())
-        val animatable = Animatable(0f)
-        val connection = BounceOverscrollConnection(
-            scope = testScope,
-            animatable = animatable,
-            maxDisplacementPx = 300f,
-            maxFlingPx = 100f,
-        )
+    fun `disabled animation delegates input without consuming overscroll`() = runTest {
+        val effect =
+            BounceOverscrollEffect(
+                canScrollBackward = { false },
+                canScrollForward = { true },
+                animationsEnabled = { false },
+                maxDragCapPx = 96f,
+                maxFlingDisplacementPx = 24f,
+            )
 
-        val consumed = connection.onPostScroll(
-            consumed = Offset.Zero,
-            available = Offset(0f, 60f),
-            source = NestedScrollSource.UserInput,
-        )
-        assertEquals(60f, consumed.y, 0.001f)
+        val consumed =
+            effect.applyToScroll(
+                delta = Offset(0f, 40f),
+                source = NestedScrollSource.UserInput,
+                performScroll = { Offset.Zero },
+            )
 
-        testScheduler.advanceUntilIdle()
-        assertTrue(animatable.value > 0f)
-    }
-
-    @Test
-    fun `preFling absorbs velocity when overscrolled and settles`() = runTest {
-        val testDispatcher = StandardTestDispatcher(testScheduler)
-        val frameClock = BroadcastFrameClock()
-        val testScope = TestScope(testDispatcher + frameClock)
-        val animatable = Animatable(40f)
-        val connection = BounceOverscrollConnection(
-            scope = testScope,
-            animatable = animatable,
-            maxDisplacementPx = 300f,
-            maxFlingPx = 100f,
-        )
-
-        val consumedVelocity = connection.onPreFling(Velocity(0f, 500f))
-        assertEquals(500f, consumedVelocity.y, 0.001f)
-        testScheduler.runCurrent()
-        assertEquals(0f, animatable.targetValue, 0.001f)
-    }
-
-    @Test
-    fun `postFling absorbs leftover velocity and starts continuous spring to zero`() = runTest {
-        val testDispatcher = StandardTestDispatcher(testScheduler)
-        val frameClock = BroadcastFrameClock()
-        val testScope = TestScope(testDispatcher + frameClock)
-        val animatable = Animatable(0f)
-        val connection = BounceOverscrollConnection(
-            scope = testScope,
-            animatable = animatable,
-            maxDisplacementPx = 200f,
-            maxFlingPx = 48f,
-        )
-
-        val consumedVelocity = connection.onPostFling(
-            consumed = Velocity.Zero,
-            available = Velocity(0f, -800f),
-        )
-        assertEquals(-800f, consumedVelocity.y, 0.001f)
-        testScheduler.runCurrent()
-        assertEquals(0f, animatable.targetValue, 0.001f)
+        assertEquals(Offset.Zero, consumed)
+        assertEquals(0f, effect.currentOffsetPx, 0.001f)
+        assertFalse(effect.isInProgress)
     }
 }

@@ -52,16 +52,13 @@ data class FullPlayerState(val page: FullPlayerPage = FullPlayerPage.ARTWORK) {
 
 enum class PlayerGestureRegion { SHEET_BACKGROUND, HORIZONTAL_PAGER, PROGRESS_SLIDER, QUEUE_CONTENT }
 enum class PlayerGestureOwner { SHEET, CONTENT }
-enum class QueueEdgeBehavior { SCROLL_CONTENT, DRAG_SHEET, RESIST_END }
+enum class QueueEdgeBehavior { SCROLL_CONTENT, DRAG_SHEET }
 
 data class QueueGestureDecision(
     val behavior: QueueEdgeBehavior,
-    val resistedDeltaY: Float = 0f,
 )
 
 object PlayerGesturePolicy {
-    const val END_RESISTANCE_FACTOR = 0.2f
-
     fun owner(region: PlayerGestureRegion, deltaX: Float, deltaY: Float): PlayerGestureOwner =
         when (region) {
             PlayerGestureRegion.PROGRESS_SLIDER,
@@ -77,17 +74,21 @@ object PlayerGesturePolicy {
         deltaX: Float,
         deltaY: Float,
         canScrollBackward: Boolean,
-        canScrollForward: Boolean,
     ): QueueGestureDecision =
         when {
             abs(deltaX) > abs(deltaY) -> QueueGestureDecision(QueueEdgeBehavior.SCROLL_CONTENT)
             deltaY > 0f && !canScrollBackward -> QueueGestureDecision(QueueEdgeBehavior.DRAG_SHEET)
-            deltaY < 0f && !canScrollForward ->
-                QueueGestureDecision(
-                    behavior = QueueEdgeBehavior.RESIST_END,
-                    resistedDeltaY = deltaY * END_RESISTANCE_FACTOR,
-                )
             else -> QueueGestureDecision(QueueEdgeBehavior.SCROLL_CONTENT)
+        }
+
+    fun queueFlingDecision(
+        velocityY: Float,
+        canScrollBackward: Boolean,
+    ): QueueEdgeBehavior =
+        if (velocityY > 0f && !canScrollBackward) {
+            QueueEdgeBehavior.DRAG_SHEET
+        } else {
+            QueueEdgeBehavior.SCROLL_CONTENT
         }
 }
 
@@ -108,23 +109,16 @@ object PlayerGestureRouter {
         deltaX: Float,
         deltaY: Float,
         canScrollBackward: Boolean,
-        canScrollForward: Boolean,
         dragSheet: (Float) -> Float,
-        resistEnd: (Float) -> Unit,
     ): Float {
         val decision = PlayerGesturePolicy.queueDecision(
             deltaX = deltaX,
             deltaY = deltaY,
             canScrollBackward = canScrollBackward,
-            canScrollForward = canScrollForward,
         )
         return when (decision.behavior) {
                 QueueEdgeBehavior.SCROLL_CONTENT -> 0f
                 QueueEdgeBehavior.DRAG_SHEET -> dragSheet(deltaY)
-                QueueEdgeBehavior.RESIST_END -> {
-                    resistEnd(decision.resistedDeltaY)
-                    deltaY
-                }
         }
     }
 }

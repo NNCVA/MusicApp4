@@ -58,7 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
-import com.musicapp.player.core.designsystem.component.bounceOverscroll
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
@@ -139,6 +139,7 @@ private fun AlbumsScreen(
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
+    val overscrollEffect = rememberBounceOverscrollEffect(gridState)
     val sections = remember(state.albums, state.sort.field, state.sort.direction) {
         groupAlbumsIntoSections(state.albums, state.sort.field, state.sort.direction)
     }
@@ -210,8 +211,8 @@ private fun AlbumsScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(state.columnCount),
                     state = gridState,
+                    overscrollEffect = overscrollEffect,
                     modifier = Modifier.fillMaxWidth().weight(1f)
-                        .bounceOverscroll()
                         .padding(horizontal = dimensions.contentHorizontalPadding),
                     contentPadding =
                         PaddingValues(

@@ -46,6 +46,51 @@ class AlbumGroupingTest {
         assertEquals(listOf(10L, 11L), sorted.map { it.id.mediaStoreId })
     }
 
+    @Test
+    fun `album sort orders by 28-bucket sections with digits, pinyin, and symbols`() {
+        val albums =
+            listOf(
+                AlbumSummary(
+                    id = AlbumId("external", 1),
+                    title = "#Special Album",
+                    artistName = "Artist",
+                    trackCount = 1,
+                    latestDateAddedMs = 1,
+                    representativeTrack = track(1, AlbumId("external", 1), "#Special Album"),
+                ),
+                AlbumSummary(
+                    id = AlbumId("external", 2),
+                    title = "123 Album",
+                    artistName = "Artist",
+                    trackCount = 1,
+                    latestDateAddedMs = 2,
+                    representativeTrack = track(2, AlbumId("external", 2), "123 Album"),
+                ),
+                AlbumSummary(
+                    id = AlbumId("external", 3),
+                    title = "Alpha Album",
+                    artistName = "Artist",
+                    trackCount = 1,
+                    latestDateAddedMs = 3,
+                    representativeTrack = track(3, AlbumId("external", 3), "Alpha Album"),
+                ),
+                AlbumSummary(
+                    id = AlbumId("external", 4),
+                    title = "周杰伦专辑",
+                    artistName = "Artist",
+                    trackCount = 1,
+                    latestDateAddedMs = 4,
+                    representativeTrack = track(4, AlbumId("external", 4), "周杰伦专辑"),
+                ),
+            )
+
+        val ascending = AlbumGrouping.sorted(albums, AlbumSort(AlbumSortField.TITLE, CategorySortDirection.ASCENDING))
+        assertEquals(listOf(2L, 3L, 4L, 1L), ascending.map { it.id.mediaStoreId })
+
+        val descending = AlbumGrouping.sorted(albums, AlbumSort(AlbumSortField.TITLE, CategorySortDirection.DESCENDING))
+        assertEquals(listOf(1L, 4L, 3L, 2L), descending.map { it.id.mediaStoreId })
+    }
+
     private fun track(value: Long, albumId: AlbumId, albumTitle: String) =
         Track(
             id = TrackId(albumId.volumeName, value),

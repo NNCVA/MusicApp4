@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,8 +45,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
-import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.MessageDialog
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -128,6 +129,8 @@ private fun HistoryScreen(
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
+    val listState = rememberLazyListState()
+    val overscrollEffect = rememberBounceOverscrollEffect(listState)
     Column(
         modifier =
             Modifier.fillMaxSize()
@@ -203,7 +206,9 @@ private fun HistoryScreen(
                 )
             else ->
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
+                    state = listState,
+                    overscrollEffect = overscrollEffect,
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(
                         top = dimensions.spaceSmall,
                         bottom = dimensions.spaceSmall + bottomPadding,
