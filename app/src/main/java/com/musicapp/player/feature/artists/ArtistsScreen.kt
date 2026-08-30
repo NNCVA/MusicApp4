@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
@@ -163,7 +164,7 @@ private fun ArtistsScreen(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
                     contentPadding = PaddingValues(
                         top = dimensions.spaceExtraSmall,
                         bottom = dimensions.spaceSmall,

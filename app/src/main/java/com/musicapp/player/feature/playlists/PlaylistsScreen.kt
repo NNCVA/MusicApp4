@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -181,7 +182,7 @@ private fun PlaylistsScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
                 contentPadding = PaddingValues(
                     top = dimensions.spaceSmall,
                     bottom = dimensions.spaceSmall,
@@ -486,7 +487,7 @@ private fun PlaylistDetailScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
                 contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
             ) {
                 items(state.tracks, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { track ->

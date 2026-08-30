@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
@@ -64,7 +65,7 @@ fun AboutScreen(
         contentAlignment = Alignment.TopCenter,
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().widthIn(max = dimensions.settingsContentMaxWidth),
+            modifier = Modifier.fillMaxWidth().bounceOverscroll().widthIn(max = dimensions.settingsContentMaxWidth),
             verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
         ) {
             item {

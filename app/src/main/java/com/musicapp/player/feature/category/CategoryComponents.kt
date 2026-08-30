@@ -28,6 +28,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
@@ -115,7 +116,7 @@ fun CategoryTrackList(
 ) {
     val dimensions = MusicTheme.dimensions
     LazyColumn(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().bounceOverscroll(),
         contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
     ) {
         items(tracks, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { track ->

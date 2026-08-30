@@ -53,6 +53,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
@@ -199,6 +201,7 @@ private fun AlbumsScreen(
                     columns = GridCells.Fixed(state.columnCount),
                     state = gridState,
                     modifier = Modifier.fillMaxWidth().weight(1f)
+                        .bounceOverscroll()
                         .padding(horizontal = dimensions.contentHorizontalPadding),
                     contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                     horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),

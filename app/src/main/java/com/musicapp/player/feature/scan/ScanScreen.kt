@@ -32,6 +32,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -176,7 +177,7 @@ private fun ScanMusicScreen(
                 )
             }
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     horizontal = dimensions.contentHorizontalPadding,
                     vertical = dimensions.spaceSmall,

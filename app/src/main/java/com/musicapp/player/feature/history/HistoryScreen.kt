@@ -40,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
@@ -192,7 +193,7 @@ private fun HistoryScreen(
                 )
             else ->
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
                     contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                 ) {
                     items(

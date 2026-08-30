@@ -63,6 +63,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.BounceOverscrollMath
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.LoadingState
 import com.musicapp.player.core.designsystem.component.MessageDialog
@@ -539,6 +541,7 @@ private fun TrackList(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize()
+                .bounceOverscroll()
                 .then(scrollbarModifier),
             contentPadding =
                 PaddingValues(

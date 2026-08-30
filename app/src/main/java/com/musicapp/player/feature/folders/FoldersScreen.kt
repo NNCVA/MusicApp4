@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
@@ -195,7 +196,7 @@ private fun FoldersScreen(
                 else ->
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxWidth().weight(1f)
+                        modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll()
                             .padding(horizontal = dimensions.contentHorizontalPadding),
                         contentPadding = PaddingValues(
                             top = dimensions.spaceSmall,
@@ -535,7 +536,7 @@ private fun FolderDetailScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(),
                 contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
             ) {
                 if (state.childFolders.isNotEmpty()) {
@@ -620,7 +621,7 @@ private fun FolderBrowserScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f)
+                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll()
                     .padding(horizontal = dimensions.contentHorizontalPadding),
                 contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
