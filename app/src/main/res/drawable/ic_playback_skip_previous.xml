@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Recovered from MusicApp2 app/src/main/res/drawable/ic_skip_previous.xml at revision f18fbf683d6e2854d14b1e415cc18732a0b09694; original artwork: Google Material Icons src/av/skip_previous/materialicons/24px.svg at revision 50f0603134ce7b70b2d71b686cc13e8b57ccb74c (Apache-2.0). Converted to VectorDrawable, renamed to ic_playback_skip_previous.xml, and changed fillColor to neutral #FF000000 for Compose tinting. -->
+<!-- Artwork: Google Material Icons Round (src/av/skip_previous/materialiconsround/24px.svg); Apache-2.0. Converted to VectorDrawable, named ic_playback_skip_previous.xml, neutral #FF000000 for Compose tinting. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,5 +7,5 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FF000000"
-        android:pathData="M6,6h2v12L6,18zM9.5,12l8.5,6L18,6z" />
+        android:pathData="M7.0,6.0c0.55,0.0 1.0,0.45 1.0,1.0v10.0c0.0,0.55 -0.45,1.0 -1.0,1.0s-1.0,-0.45 -1.0,-1.0L6.0,7.0c0.0,-0.55 0.45,-1.0 1.0,-1.0zM10.66,12.82l5.77,4.07c0.66,0.47 1.58,-0.01 1.58,-0.82L18.01,7.93c0.0,-0.81 -0.91,-1.28 -1.58,-0.82l-5.77,4.07c-0.57,0.4 -0.57,1.24 0.0,1.64z" />
 </vector>

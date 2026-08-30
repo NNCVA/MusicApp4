@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Original artwork: Google Material Icons src/av/play_circle_outline/materialicons/24px.svg at revision 50f0603134ce7b70b2d71b686cc13e8b57ccb74c (Apache-2.0). Converted to VectorDrawable, named ic_playback_play_circle.xml, and changed fillColor to neutral #FF000000 for Compose tinting. -->
+<!-- Artwork: Google Material Icons Round (src/av/play_circle_outline/materialiconsround/24px.svg); Apache-2.0. Converted to VectorDrawable, named ic_playback_play_circle.xml, neutral #FF000000 for Compose tinting. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,5 +7,5 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FF000000"
-        android:pathData="M10,16.5l6,-4.5 -6,-4.5v9zM12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zm0,18c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8z" />
+        android:pathData="M10.8,15.9l4.67,-3.5c0.27,-0.2 0.27,-0.6 0.0,-0.8L10.8,8.1c-0.33,-0.25 -0.8,-0.01 -0.8,0.4v7.0c0.0,0.41 0.47,0.65 0.8,0.4zM12.0,2.0C6.48,2.0 2.0,6.48 2.0,12.0s4.48,10.0 10.0,10.0s10.0,-4.48 10.0,-10.0S17.52,2.0 12.0,2.0zM12.0,20.0c-4.41,0.0 -8.0,-3.59 -8.0,-8.0s3.59,-8.0 8.0,-8.0s8.0,3.59 8.0,8.0s-3.59,8.0 -8.0,8.0z" />
 </vector>

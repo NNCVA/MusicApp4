@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Recovered from MusicApp2 app/src/main/res/drawable/ic_play.xml at revision f18fbf683d6e2854d14b1e415cc18732a0b09694; original artwork: Google Material Icons src/av/play_arrow/materialicons/24px.svg at revision 50f0603134ce7b70b2d71b686cc13e8b57ccb74c (Apache-2.0). Converted to VectorDrawable, renamed to ic_playback_play.xml, and changed fillColor to neutral #FF000000 for Compose tinting. -->
+<!-- Artwork: Google Material Icons Round (src/av/play_arrow/materialiconsround/24px.svg); Apache-2.0. Converted to VectorDrawable, named ic_playback_play.xml, neutral #FF000000 for Compose tinting. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,5 +7,5 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FF000000"
-        android:pathData="M8,5v14l11,-7z" />
+        android:pathData="M8.0,6.82v10.36c0.0,0.79 0.87,1.27 1.54,0.84l8.14,-5.18c0.62,-0.39 0.62,-1.29 0.0,-1.69L9.54,5.98C8.87,5.55 8.0,6.03 8.0,6.82z" />
 </vector>

@@ -1,3 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artwork: Google Material Icons Round (src/image/brightness_medium/materialiconsround/24px.svg); Apache-2.0. Converted to VectorDrawable, named ic_sidebar_theme.xml, neutral #FF000000 for Compose tinting. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -5,5 +7,5 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FF000000"
-        android:pathData="M20,15.31L23.31,12 20,8.69V4h-4.69L12,0.69 8.69,4H4v4.69L0.69,12 4,15.31V20h4.69L12,23.31 15.31,20H20v-4.69zM12,18V6a6,6 0,0 1,0 12z" />
+        android:pathData="M20.0,15.31l1.9,-1.9c0.78,-0.78 0.78,-2.05 0.0,-2.83L20.0,8.69L20.0,6.0c0.0,-1.1 -0.9,-2.0 -2.0,-2.0h-2.69l-1.9,-1.9c-0.78,-0.78 -2.05,-0.78 -2.83,0.0L8.69,4.0L6.0,4.0c-1.1,0.0 -2.0,0.9 -2.0,2.0v2.69l-1.9,1.9c-0.78,0.78 -0.78,2.05 0.0,2.83l1.9,1.9L4.0,18.0c0.0,1.1 0.9,2.0 2.0,2.0h2.69l1.9,1.9c0.78,0.78 2.05,0.78 2.83,0.0l1.9,-1.9L18.0,20.0c1.1,0.0 2.0,-0.9 2.0,-2.0v-2.69zM12.0,16.9L12.0,7.1c0.0,-0.61 0.55,-1.11 1.15,-0.99C15.91,6.65 18.0,9.08 18.0,12.0s-2.09,5.35 -4.85,5.89c-0.6,0.12 -1.15,-0.38 -1.15,-0.99z" />
 </vector>

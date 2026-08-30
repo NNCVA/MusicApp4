@@ -281,7 +281,7 @@ DataStore 只保存用户设置：
 ### 10.4 设计系统与可访问性
 
 - 页面只从 `MusicDimensions`、`MusicShapes`、`MusicTypography` 读取间距、圆角、字号和固定高度。
-- 业务图标使用项目内 Android `VectorDrawable`，保持中性路径颜色并由 `MusicTheme` 着色；资源 ID 按业务模型或稳定展示模型集中映射。
+- 业务图标使用项目内 Android `VectorDrawable`，保持中性路径颜色并由 `MusicTheme` 着色；图标图形规范统一采用 **Google Material Icons Round（圆角）** 体系（开源许可 Apache-2.0）及平滑圆角设计语言，杜绝直角/尖角几何图标（如播放、暂停、切歌等核心控件一律使用圆角平滑顶点）；资源 ID 按业务模型或稳定展示模型集中映射。
 - 水平边距按紧凑、中等、展开使用 `16/24/32 dp`；卡片间距为 `12/16/20 dp`。
 - 组件内部使用 `4 dp` 基准网格。
 - 专辑网格卡片使用正方形封面和 `64 dp` 固定信息区；封面与卡片圆角在紧凑窗口为 `16 dp`，中等及展开窗口为 `20 dp`。

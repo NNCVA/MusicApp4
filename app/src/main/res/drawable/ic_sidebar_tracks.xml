@@ -1,3 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artwork: Google Material Icons Round (src/image/audiotrack/materialiconsround/24px.svg); Apache-2.0. Converted to VectorDrawable, named ic_sidebar_tracks.xml, neutral #FF000000 for Compose tinting. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -5,5 +7,5 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FF000000"
-        android:pathData="M12,3v10.55A4,4 0,1 0,14 17V7h4V3h-6z" />
+        android:pathData="M12.0,5.0v8.55c-0.94,-0.54 -2.1,-0.75 -3.33,-0.32c-1.34,0.48 -2.37,1.67 -2.61,3.07c-0.46,2.74 1.86,5.08 4.59,4.65c1.96,-0.31 3.35,-2.11 3.35,-4.1V7.0h2.0c1.1,0.0 2.0,-0.9 2.0,-2.0s-0.9,-2.0 -2.0,-2.0h-2.0c-1.1,0.0 -2.0,0.9 -2.0,2.0z" />
 </vector>
