@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artwork: Google Material Icons Round (src/navigation/cancel/materialiconsround/24px.svg); Apache-2.0. Converted to VectorDrawable, named ic_common_close_circle.xml, neutral #FF000000 for Compose tinting. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12.0,2.0C6.47,2.0 2.0,6.47 2.0,12.0s4.47,10.0 10.0,10.0s10.0,-4.47 10.0,-10.0S17.53,2.0 12.0,2.0zM16.3,15.3c0.39,0.39 0.39,1.02 0.0,1.41c-0.39,0.39 -1.02,0.39 -1.41,0.0L12.0,13.83l-2.89,2.88c-0.39,0.39 -1.02,0.39 -1.41,0.0c-0.39,-0.39 -0.39,-1.02 0.0,-1.41L10.59,12.42L7.7,9.53c-0.39,-0.39 -0.39,-1.02 0.0,-1.41c0.39,-0.39 1.02,-0.39 1.41,0.0L12.0,11.01l2.89,-2.89c0.39,-0.39 1.02,-0.39 1.41,0.0c0.39,0.39 0.39,1.02 0.0,1.41L13.41,12.42l2.89,2.88z" />
+</vector>

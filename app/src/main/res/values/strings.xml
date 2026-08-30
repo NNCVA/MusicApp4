@@ -103,11 +103,15 @@
     <string name="sort_direction_ascending"> ↑</string>
     <string name="sort_direction_descending"> ↓</string>
     <string name="selection_close">Done</string>
+    <string name="selection_cancel">Exit selection</string>
     <plurals name="selection_count">
         <item quantity="one">%1$d selected</item>
         <item quantity="other">%1$d selected</item>
     </plurals>
     <string name="selection_select_all">Select all</string>
+    <string name="selection_deselect_all">Deselect all</string>
+    <string name="selection_add_to_playlist">Add to playlist</string>
+    <string name="selection_add_to_playlist_dialog_title">Add to playlist</string>
     <string name="selection_hide">Hide</string>
     <string name="scan_result_title">Scan complete</string>
     <string name="scan_result_failed_title">Scan failed</string>

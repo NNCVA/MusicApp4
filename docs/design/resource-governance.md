@@ -61,7 +61,13 @@
 |---|---|---|
 | `ic_common_add.xml` | `src/content/add/materialiconsround/24px.svg` | 添加操作；十字端点圆角化 |
 | `ic_common_close.xml` | `src/navigation/close/materialiconsround/24px.svg` | 关闭与清除；交叉叉号端点圆角化 |
+| `ic_common_close_circle.xml` | `src/navigation/cancel/materialiconsround/24px.svg` | 退出多选；圆圈内叉号端点圆角化 |
+| `ic_common_radio_button_unchecked.xml` | `src/toggle/radio_button_unchecked/materialiconsround/24px.svg` | 未选中/未全选状态；平滑圆圈轮廓 |
+| `ic_common_radio_button_checked.xml` | `src/toggle/radio_button_checked/materialiconsround/24px.svg` | 已全选/部分选中状态；圆圈与中心同心圆 |
+| `ic_common_check_circle.xml` | `src/action/check_circle/materialiconsround/24px.svg` | 列表项已选中状态；平滑圆圈与对勾 |
 | `ic_common_folder_add.xml` | `src/file/create_new_folder/materialiconsround/24px.svg` | 新建文件夹；文件夹折角与十字圆角化 |
+| `ic_common_playlist_add.xml` | `src/av/playlist_add/materialiconsround/24px.svg` | 加入歌单操作；列表横线与加号圆角化 |
+| `ic_common_queue_add.xml` | `src/av/queue_music/materialiconsround/24px.svg` | 加入队列操作；列表横线与音符圆角化 |
 | `ic_common_open_in_new.xml` | `src/action/open_in_new/materialiconsround/24px.svg` | 外部打开；外链边框与箭头圆角化 |
 | `ic_common_search.xml` | `src/action/search/materialiconsround/24px.svg` | 搜索；放大镜轮廓平滑圆角化 |
 | `ic_common_sort_alpha.xml` | `src/av/sort_by_alpha/materialiconsround/24px.svg` | 字母排序；排序箭头与字母端点圆角化 |

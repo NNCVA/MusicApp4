@@ -9,20 +9,31 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -32,13 +43,15 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -130,12 +143,13 @@ fun TracksScreenRoute(
         onTrackLongClick = { track ->
             if (!state.isSelectionMode) {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                viewModel.toggleSelection(track.id)
+                viewModel.startSelection(track.id)
             }
         },
         onSelectAll = viewModel::selectAllCurrentResults,
         onSelectTracks = viewModel::selectTracks,
-        onClearSelection = viewModel::clearSelection,
+        onToggleSelectAll = viewModel::toggleSelectAll,
+        onClearSelection = viewModel::exitSelection,
         onAddToPlaylist = viewModel::addSelectedToPlaylist,
         onAddToQueue = viewModel::addSelectedToQueue,
         onPlayNext = viewModel::playSelectedNext,
@@ -173,6 +187,7 @@ fun TracksScreen(
     onTrackLongClick: (Track) -> Unit,
     onSelectAll: () -> Unit,
     onSelectTracks: (Collection<TrackId>) -> Unit,
+    onToggleSelectAll: () -> Unit = onSelectAll,
     onClearSelection: () -> Unit,
     onAddToPlaylist: (PlaylistId) -> Unit,
     onAddToQueue: () -> Unit,
@@ -186,6 +201,7 @@ fun TracksScreen(
     val coroutineScope = rememberCoroutineScope()
     var searchActive by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     val filteredTracks =
         remember(state.tracks, searchQuery) {
             state.tracks.filter { it.matchesSearch(searchQuery) }
@@ -232,6 +248,11 @@ fun TracksScreen(
             else -> GutterMode.Scrollbar
         }
     }
+    val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
+    val hasMiniPlayer = bottomPadding > bottomInset + 1.dp
+    val selectionBarHeight = dimensions.minimumTouchTarget
+    val dynamicBottomPadding = bottomPadding + if (state.isSelectionMode) selectionBarHeight else 0.dp
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier =
@@ -252,18 +273,19 @@ fun TracksScreen(
                     searchQuery = ""
                 },
                 onSearchQueryChange = { searchQuery = it },
-                onSelectAll = {
-                    if (searchQuery.isBlank()) {
-                        onSelectAll()
+                onToggleSelectAll = {
+                    if (searchActive && searchQuery.isNotBlank()) {
+                        val visibleIds = filteredTracks.map(Track::id).toSet()
+                        if (visibleIds.isNotEmpty() && state.selectedTrackIds.containsAll(visibleIds)) {
+                            onClearSelection()
+                        } else {
+                            onSelectTracks(visibleIds)
+                        }
                     } else {
-                        onSelectTracks(filteredTracks.map(Track::id))
+                        onToggleSelectAll()
                     }
                 },
                 onClearSelection = onClearSelection,
-                onAddToPlaylist = onAddToPlaylist,
-                onAddToQueue = onAddToQueue,
-                onPlayNext = onPlayNext,
-                onHideSelected = onHideSelected,
                 onPlayAll = {
                     val targetTracks = if (searchActive && searchQuery.isNotBlank()) filteredTracks else state.tracks
                     val firstAvailable = targetTracks.firstOrNull { it.availability == Availability.AVAILABLE }
@@ -282,7 +304,7 @@ fun TracksScreen(
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)
-                        .padding(bottom = bottomPadding),
+                        .padding(bottom = dynamicBottomPadding),
                     title = stringResource(R.string.tracks_empty_title),
                     description = stringResource(R.string.tracks_empty_description),
                     actionLabel = stringResource(R.string.navigation_scan_music),
@@ -293,7 +315,7 @@ fun TracksScreen(
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)
-                        .padding(bottom = bottomPadding),
+                        .padding(bottom = dynamicBottomPadding),
                     title = stringResource(R.string.tracks_no_results_title),
                     description = stringResource(R.string.tracks_no_results_description),
                 )
@@ -315,18 +337,49 @@ fun TracksScreen(
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
                     onFirstTrackLaidOut = onFirstTrackLaidOut,
-                    bottomPadding = bottomPadding,
+                    bottomPadding = dynamicBottomPadding,
                     modifier = Modifier.weight(1f),
                 )
             }
         }
+
+        AnimatedVisibility(
+            visible = state.isSelectionMode,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = if (hasMiniPlayer) bottomPadding else 0.dp)
+                .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Horizontal)),
+        ) {
+            SelectionBottomBar(
+                selectedCount = state.selectedTrackIds.size,
+                contentInsets = contentInsets,
+                applyBottomInset = !hasMiniPlayer,
+                onAddToPlaylistClick = { showAddToPlaylistDialog = true },
+                onAddToQueueClick = onAddToQueue,
+            )
+        }
+
         RightGutterOverlay(
             mode = gutterMode,
             modifier = Modifier.fillMaxSize()
                 .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                .padding(bottom = bottomPadding),
+                .padding(bottom = dynamicBottomPadding),
         )
     }
+
+    if (showAddToPlaylistDialog) {
+        AddToPlaylistSelectionDialog(
+            playlists = state.playlists,
+            onSelectPlaylist = { playlistId ->
+                onAddToPlaylist(playlistId)
+                showAddToPlaylistDialog = false
+            },
+            onDismiss = { showAddToPlaylistDialog = false },
+        )
+    }
+
     state.batchResult?.let { result ->
         BatchResultDialog(result, onAcknowledgeBatchResult)
     }
@@ -344,130 +397,148 @@ private fun TracksTopBar(
     onOpenSearch: () -> Unit,
     onCloseSearch: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
-    onSelectAll: () -> Unit,
+    onToggleSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
-    onAddToPlaylist: (PlaylistId) -> Unit,
-    onAddToQueue: () -> Unit,
-    onPlayNext: () -> Unit,
-    onHideSelected: () -> Unit,
     onPlayAll: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     var sortMenuExpanded by remember { mutableStateOf(false) }
-    var batchMenuExpanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = dimensions.topBarHorizontalPadding,
+                end = dimensions.contentHorizontalPadding,
+            ),
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.minimumTouchTarget)
-                .padding(
-                    start = dimensions.topBarHorizontalPadding,
-                    end = dimensions.contentHorizontalPadding,
-                ),
+            modifier = Modifier.fillMaxWidth().height(dimensions.playerHeaderHeight),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
         ) {
-        if (state.isSelectionMode) {
-            TextButton(onClick = onClearSelection, shape = MusicTheme.shapes.small) {
-                Text(stringResource(R.string.selection_close))
+            if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
+                CategoryNavigationIconButton(CategoryNavigationAction.DRAWER, openDrawer)
             }
-            Text(
-                text =
-                    pluralStringResource(
-                        R.plurals.selection_count,
-                        state.selectedTrackIds.size,
-                        state.selectedTrackIds.size,
-                    ),
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onSelectAll, shape = MusicTheme.shapes.small) {
-                Text(stringResource(R.string.selection_select_all))
-            }
-            Box {
-                TextButton(
-                    onClick = { batchMenuExpanded = true },
-                    enabled = !state.isBatchActionRunning,
-                    shape = MusicTheme.shapes.small,
-                ) {
-                    Text(stringResource(R.string.selection_more_actions))
-                }
-                TrackActionsMenu(
-                    expanded = batchMenuExpanded && !state.isBatchActionRunning,
-                    playlists = state.playlists,
-                    onDismissRequest = { batchMenuExpanded = false },
-                    onAddToQueue = onAddToQueue,
-                    onPlayNext = onPlayNext,
-                    onHide = onHideSelected,
-                    onAddToPlaylist = onAddToPlaylist,
+            if (searchActive) {
+                BasicTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = MusicTheme.typography.titleLarge.copy(color = MusicTheme.colors.onSurface),
+                    decorationBox = { innerTextField ->
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            if (searchQuery.isBlank()) {
+                                Text(
+                                    text = stringResource(R.string.tracks_search_placeholder),
+                                    style = MusicTheme.typography.titleMedium,
+                                    color = MusicTheme.colors.onSurfaceVariant,
+                                )
+                            }
+                            innerTextField()
+                        }
+                    },
                 )
+                BareIconButton(
+                    onClick = onCloseSearch,
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_close),
+                        contentDescription = stringResource(R.string.tracks_search_close),
+                        tint = MusicTheme.colors.onSurface,
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.tracks_page_title),
+                    style = MusicTheme.typography.titleLarge,
+                    color = MusicTheme.colors.onSurface,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                )
+                BareIconButton(
+                    onClick = onOpenSearch,
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_search),
+                        contentDescription = stringResource(R.string.tracks_search_label),
+                        tint = MusicTheme.colors.onSurface,
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
             }
-        } else {
-            Column(modifier = Modifier.fillMaxWidth()) {
+        }
+        Crossfade(
+            targetState = state.isSelectionMode,
+            label = "TracksSecondRowCrossfade",
+            modifier = Modifier.fillMaxWidth().height(dimensions.minimumTouchTarget),
+        ) { isSelection ->
+            if (isSelection) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(dimensions.playerHeaderHeight),
+                    modifier = Modifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
                 ) {
-                    if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
-                        CategoryNavigationIconButton(CategoryNavigationAction.DRAWER, openDrawer)
+                    BareIconButton(
+                        onClick = onClearSelection,
+                        modifier = Modifier.size(dimensions.minimumTouchTarget),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_common_close_circle),
+                            contentDescription = stringResource(R.string.selection_cancel),
+                            tint = MusicTheme.colors.onSurface,
+                            modifier = Modifier.size(dimensions.spaceLarge),
+                        )
                     }
-                    if (searchActive) {
-                        BasicTextField(
-                            value = searchQuery,
-                            onValueChange = onSearchQueryChange,
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            textStyle = MusicTheme.typography.titleLarge.copy(color = MusicTheme.colors.onSurface),
-                            decorationBox = { innerTextField ->
-                                Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.CenterStart,
-                                ) {
-                                    if (searchQuery.isBlank()) {
-                                        Text(
-                                            text = stringResource(R.string.tracks_search_placeholder),
-                                            style = MusicTheme.typography.titleMedium,
-                                            color = MusicTheme.colors.onSurfaceVariant,
-                                        )
-                                    }
-                                    innerTextField()
-                                }
-                            },
-                        )
-                        BareIconButton(
-                            onClick = onCloseSearch,
-                            modifier = Modifier.size(dimensions.minimumTouchTarget),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_common_close),
-                                contentDescription = stringResource(R.string.tracks_search_close),
-                                tint = MusicTheme.colors.onSurface,
-                                modifier = Modifier.size(dimensions.spaceLarge),
-                            )
-                        }
+                    val selectedCount = state.selectedTrackIds.size
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.selection_count,
+                            selectedCount,
+                            selectedCount,
+                        ),
+                        style = MusicTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MusicTheme.colors.onSurface,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    val targetCount = if (searchActive && searchQuery.isNotBlank()) filteredTracks.size else state.tracks.size
+                    val isAllSelected = targetCount > 0 && selectedCount >= targetCount
+                    val hasSelection = selectedCount > 0
+                    val selectAllIcon = if (hasSelection) {
+                        R.drawable.ic_common_radio_button_checked
                     } else {
-                        Text(
-                            text = stringResource(R.string.tracks_page_title),
-                            style = MusicTheme.typography.titleLarge,
-                            color = MusicTheme.colors.onSurface,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1,
+                        R.drawable.ic_common_radio_button_unchecked
+                    }
+                    val selectAllDesc = if (isAllSelected) {
+                        stringResource(R.string.selection_deselect_all)
+                    } else {
+                        stringResource(R.string.selection_select_all)
+                    }
+                    BareIconButton(
+                        onClick = onToggleSelectAll,
+                        modifier = Modifier.size(dimensions.minimumTouchTarget),
+                    ) {
+                        Icon(
+                            painter = painterResource(selectAllIcon),
+                            contentDescription = selectAllDesc,
+                            tint = MusicTheme.colors.onSurface,
+                            modifier = Modifier.size(dimensions.spaceLarge),
                         )
-                        BareIconButton(
-                            onClick = onOpenSearch,
-                            modifier = Modifier.size(dimensions.minimumTouchTarget),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_common_search),
-                                contentDescription = stringResource(R.string.tracks_search_label),
-                                tint = MusicTheme.colors.onSurface,
-                                modifier = Modifier.size(dimensions.spaceLarge),
-                            )
-                        }
                     }
                 }
+            } else {
                 if (state.tracks.isNotEmpty()) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().height(dimensions.minimumTouchTarget),
+                        modifier = Modifier.fillMaxSize(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
                     ) {
@@ -742,9 +813,6 @@ private fun TrackRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
-        if (selectionMode) {
-            Checkbox(checked = selected, onCheckedChange = { onClick() })
-        }
         TrackArtwork(
             artwork = artwork,
             trackTitle = track.title,
@@ -784,7 +852,23 @@ private fun TrackRow(
                 color = MusicTheme.colors.onSurfaceVariant,
             )
         }
-        if (!selectionMode) {
+        if (selectionMode) {
+            BareIconButton(
+                onClick = onClick,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(
+                        if (selected) R.drawable.ic_common_check_circle else R.drawable.ic_common_radio_button_unchecked
+                    ),
+                    contentDescription = stringResource(
+                        if (selected) R.string.selection_deselect_all else R.string.selection_select_all
+                    ),
+                    tint = if (selected) MusicTheme.colors.primary else MusicTheme.colors.onSurfaceVariant,
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
+        } else {
             Box {
                 BareIconButton(
                     onClick = { menuExpanded = true },
@@ -809,6 +893,168 @@ private fun TrackRow(
             }
         }
     }
+}
+
+@Composable
+private fun SelectionBottomBar(
+    selectedCount: Int,
+    contentInsets: WindowInsets,
+    applyBottomInset: Boolean,
+    onAddToPlaylistClick: () -> Unit,
+    onAddToQueueClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dimensions = MusicTheme.dimensions
+    val isEnabled = selectedCount > 0
+    val contentColor =
+        if (isEnabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = 0.38f)
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MusicTheme.colors.surface,
+        tonalElevation = dimensions.spaceExtraSmall,
+    ) {
+        Column(
+            modifier =
+                if (applyBottomInset) {
+                    Modifier.windowInsetsPadding(contentInsets.only(WindowInsetsSides.Bottom))
+                } else {
+                    Modifier
+                },
+        ) {
+            HorizontalDivider(
+                color = MusicTheme.colors.outlineVariant.copy(alpha = 0.5f),
+                thickness = 1.dp,
+            )
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(dimensions.minimumTouchTarget),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable(enabled = isEnabled, onClick = onAddToPlaylistClick),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_add),
+                        contentDescription = null,
+                        tint = contentColor,
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                    Spacer(modifier = Modifier.width(dimensions.spaceSmall))
+                    Text(
+                        text = stringResource(R.string.selection_add_to_playlist),
+                        style = MusicTheme.typography.titleMedium,
+                        color = contentColor,
+                    )
+                }
+
+                VerticalDivider(
+                    modifier =
+                        Modifier
+                            .height(dimensions.spaceLarge)
+                            .width(1.dp),
+                    color = MusicTheme.colors.outlineVariant.copy(alpha = 0.5f),
+                )
+
+                Row(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable(enabled = isEnabled, onClick = onAddToQueueClick),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_queue_add),
+                        contentDescription = null,
+                        tint = contentColor,
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                    Spacer(modifier = Modifier.width(dimensions.spaceSmall))
+                    Text(
+                        text = stringResource(R.string.selection_add_to_queue),
+                        style = MusicTheme.typography.titleMedium,
+                        color = contentColor,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddToPlaylistSelectionDialog(
+    playlists: List<com.musicapp.player.core.domain.model.Playlist>,
+    onSelectPlaylist: (PlaylistId) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val dimensions = MusicTheme.dimensions
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.selection_add_to_playlist_dialog_title),
+                style = MusicTheme.typography.titleLarge,
+            )
+        },
+        text = {
+            if (playlists.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.selection_no_playlists),
+                    style = MusicTheme.typography.bodyMedium,
+                    color = MusicTheme.colors.onSurfaceVariant,
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
+                ) {
+                    items(playlists, key = { it.id.value }) { playlist ->
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(dimensions.minimumTouchTarget)
+                                    .clickable { onSelectPlaylist(playlist.id) }
+                                    .padding(horizontal = dimensions.spaceSmall),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_sidebar_playlists),
+                                contentDescription = null,
+                                tint = MusicTheme.colors.onSurfaceVariant,
+                                modifier = Modifier.size(dimensions.spaceLarge),
+                            )
+                            Spacer(modifier = Modifier.width(dimensions.spaceMedium))
+                            Text(
+                                text = playlist.displayName,
+                                style = MusicTheme.typography.bodyLarge,
+                                color = MusicTheme.colors.onSurface,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss, shape = MusicTheme.shapes.small) {
+                Text(stringResource(R.string.playlist_cancel))
+            }
+        },
+        shape = MusicTheme.shapes.extraLarge,
+    )
 }
 
 @Composable

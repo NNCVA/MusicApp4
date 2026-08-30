@@ -78,13 +78,11 @@ data class TracksUiState(
     val artworkByTrackId: Map<TrackId, TrackArtworkState> = emptyMap(),
     val playlists: List<Playlist> = emptyList(),
     val sort: TrackSort = TrackSort.defaultFor(TrackSortField.TITLE),
+    val isSelectionMode: Boolean = false,
     val selectedTrackIds: Set<TrackId> = emptySet(),
     val batchResult: BatchTrackActionResult? = null,
     val isBatchActionRunning: Boolean = false,
-) {
-    val isSelectionMode: Boolean
-        get() = selectedTrackIds.isNotEmpty()
-}
+)
 
 @HiltViewModel
 class TracksViewModel internal constructor(
@@ -115,6 +113,7 @@ class TracksViewModel internal constructor(
     )
 
     private val sort = MutableStateFlow(restoreSort(savedStateHandle))
+    private val isSelectionMode = MutableStateFlow(false)
     private val selectedTrackIds = MutableStateFlow<Set<TrackId>>(emptySet())
     private val batchResult = MutableStateFlow<BatchTrackActionResult?>(null)
     private val isBatchActionRunning = MutableStateFlow(false)
@@ -143,11 +142,12 @@ class TracksViewModel internal constructor(
 
     private val presentationState =
         combine(
+            isSelectionMode,
             selectedTrackIds,
             batchResult,
             isBatchActionRunning,
-        ) { selected, result, isRunning ->
-            TracksPresentationState(selected, result, isRunning)
+        ) { selectionMode, selected, result, isRunning ->
+            TracksPresentationState(selectionMode, selected, result, isRunning)
         }
 
     val uiState: StateFlow<TracksUiState> =
@@ -157,16 +157,19 @@ class TracksViewModel internal constructor(
             presentationState,
             artworkByTrackId,
         ) { sortedTracks, playlists, presentation, artwork ->
+            val visibleSelection =
+                presentation.selectedTrackIds.filterTo(linkedSetOf()) {
+                    it in sortedTracks.visibleTrackIds
+                }
+            val isSelectionActive = presentation.isSelectionMode && sortedTracks.tracks.isNotEmpty()
             TracksUiState(
                 tracks = sortedTracks.tracks,
                 isLibraryLoaded = sortedTracks.isLibraryLoaded,
                 artworkByTrackId = artwork.filterKeys { it in sortedTracks.visibleTrackIds },
                 playlists = playlists,
                 sort = sortedTracks.sort,
-                selectedTrackIds =
-                    presentation.selectedTrackIds.filterTo(linkedSetOf()) {
-                        it in sortedTracks.visibleTrackIds
-                    },
+                isSelectionMode = isSelectionActive,
+                selectedTrackIds = visibleSelection,
                 batchResult = presentation.batchResult,
                 isBatchActionRunning = presentation.isBatchActionRunning,
             )
@@ -196,18 +199,44 @@ class TracksViewModel internal constructor(
         savedStateHandle[SORT_DIRECTION_KEY] = updated.direction.name
     }
 
+    fun startSelection(trackId: TrackId) {
+        isSelectionMode.value = true
+        val visibleTrackIds = uiState.value.tracks.mapTo(hashSetOf(), Track::id)
+        if (trackId in visibleTrackIds) {
+            selectedTrackIds.value = setOf(trackId)
+        }
+    }
+
     fun toggleSelection(trackId: TrackId) {
+        if (!isSelectionMode.value) {
+            isSelectionMode.value = true
+        }
         val effectiveSelection = currentVisibleSelection()
         selectedTrackIds.value = LinkedHashSet(effectiveSelection).apply {
             if (!remove(trackId)) add(trackId)
         }
     }
 
+    fun toggleSelectAll(targetTrackIds: Collection<TrackId>? = null) {
+        isSelectionMode.value = true
+        val targetIds = (targetTrackIds ?: uiState.value.tracks.map(Track::id)).toSet()
+        val visibleIds = uiState.value.tracks.mapTo(hashSetOf(), Track::id)
+        val candidateIds = targetIds.filter { it in visibleIds }.toSet()
+        val effectiveSelection = currentVisibleSelection()
+        if (candidateIds.isNotEmpty() && effectiveSelection.containsAll(candidateIds)) {
+            clearSelection()
+        } else {
+            selectTracks(candidateIds)
+        }
+    }
+
     fun selectAllCurrentResults() {
+        isSelectionMode.value = true
         selectTracks(uiState.value.tracks.map(Track::id))
     }
 
     fun selectTracks(trackIds: Collection<TrackId>) {
+        isSelectionMode.value = true
         val visibleTrackIds = uiState.value.tracks.mapTo(hashSetOf(), Track::id)
         selectedTrackIds.value = trackIds.filterTo(linkedSetOf()) { it in visibleTrackIds }
     }
@@ -216,9 +245,14 @@ class TracksViewModel internal constructor(
         selectedTrackIds.value = emptySet()
     }
 
+    fun exitSelection() {
+        isSelectionMode.value = false
+        selectedTrackIds.value = emptySet()
+    }
+
     fun onBack(): Boolean {
-        if (currentVisibleSelection().isEmpty()) return false
-        clearSelection()
+        if (!uiState.value.isSelectionMode) return false
+        exitSelection()
         return true
     }
 
@@ -402,6 +436,9 @@ class TracksViewModel internal constructor(
                         selectedTrackIds.value
                             .filterNot(completedIds::contains)
                             .toCollection(linkedSetOf())
+                    if (selectedTrackIds.value.isEmpty()) {
+                        isSelectionMode.value = false
+                    }
                 }
             } finally {
                 isBatchActionRunning.value = false
@@ -433,6 +470,7 @@ class TracksViewModel internal constructor(
 }
 
 private data class TracksPresentationState(
+    val isSelectionMode: Boolean,
     val selectedTrackIds: Set<TrackId>,
     val batchResult: BatchTrackActionResult?,
     val isBatchActionRunning: Boolean,

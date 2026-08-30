@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artwork: Google Material Icons Round (src/av/queue_music/materialiconsround/24px.svg); Apache-2.0. Converted to VectorDrawable, named ic_common_queue_add.xml, neutral #FF000000 for Compose tinting. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M14.0,6.0L3.0,6.0c-0.55,0.0 -1.0,0.45 -1.0,1.0s0.45,1.0 1.0,1.0l11.0,0.0c0.55,0.0 1.0,-0.45 1.0,-1.0s-0.45,-1.0 -1.0,-1.0zM14.0,10.0L3.0,10.0c-0.55,0.0 -1.0,0.45 -1.0,1.0s0.45,1.0 1.0,1.0l11.0,0.0c0.55,0.0 1.0,-0.45 1.0,-1.0s-0.45,-1.0 -1.0,-1.0zM9.0,14.0L3.0,14.0c-0.55,0.0 -1.0,0.45 -1.0,1.0s0.45,1.0 1.0,1.0l6.0,0.0c0.55,0.0 1.0,-0.45 1.0,-1.0s-0.45,-1.0 -1.0,-1.0zM20.0,3.0L16.0,3.0c-0.55,0.0 -1.0,0.45 -1.0,1.0l0.0,8.18C14.47,11.45 13.53,11.0 12.5,11.0c-2.48,0.0 -4.5,2.02 -4.5,4.5s2.02,4.5 4.5,4.5s4.5,-2.02 4.5,-4.5L17.0,6.0l3.0,0.0c0.55,0.0 1.0,-0.45 1.0,-1.0s-0.45,-1.0 -1.0,-1.0z" />
+</vector>

@@ -67,6 +67,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -222,7 +223,7 @@ fun PlayerSheet(
             modifier = Modifier
                 .fillMaxSize()
                 .offsetPx((1f - progress) * travelPx),
-            shape = MusicTheme.shapes.extraLarge,
+            shape = RectangleShape,
             color = MusicTheme.colors.surfaceContainer,
             tonalElevation = dimensions.playerSheetElevation,
         ) {

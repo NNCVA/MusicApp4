@@ -100,10 +100,14 @@
     <string name="sort_direction_ascending"> ↑</string>
     <string name="sort_direction_descending"> ↓</string>
     <string name="selection_close">完成</string>
+    <string name="selection_cancel">退出多选</string>
     <plurals name="selection_count">
         <item quantity="other">已选 %1$d 首</item>
     </plurals>
     <string name="selection_select_all">全选</string>
+    <string name="selection_deselect_all">取消全选</string>
+    <string name="selection_add_to_playlist">加入歌单</string>
+    <string name="selection_add_to_playlist_dialog_title">添加到歌单</string>
     <string name="selection_hide">隐藏</string>
     <string name="scan_result_title">扫描完成</string>
     <string name="scan_result_failed_title">扫描失败</string>

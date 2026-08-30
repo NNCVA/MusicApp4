@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artwork: Google Material Icons Round (src/toggle/radio_button_unchecked/materialiconsround/24px.svg); Apache-2.0. Converted to VectorDrawable, named ic_common_radio_button_unchecked.xml, neutral #FF000000 for Compose tinting. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12.0,2.0C6.48,2.0 2.0,6.48 2.0,12.0s4.48,10.0 10.0,10.0s10.0,-4.48 10.0,-10.0S17.52,2.0 12.0,2.0zM12.0,20.0c-4.42,0.0 -8.0,-3.58 -8.0,-8.0s3.58,-8.0 8.0,-8.0s8.0,3.58 8.0,8.0s-3.58,8.0 -8.0,8.0z" />
+</vector>

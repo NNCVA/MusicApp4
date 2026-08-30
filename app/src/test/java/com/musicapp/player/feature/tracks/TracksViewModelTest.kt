@@ -340,6 +340,52 @@ class TracksViewModelTest {
     }
 
     @Test
+    fun `deselecting all tracks keeps selection mode active until back or exit`() = runTest(dispatcher) {
+        val tracks = listOf(track(1, "One"), track(2, "Two"))
+        val viewModel = subject(tracks)
+        collectState(viewModel)
+
+        viewModel.startSelection(tracks.first().id)
+        testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(setOf(tracks.first().id), viewModel.uiState.value.selectedTrackIds)
+
+        viewModel.toggleSelection(tracks.first().id)
+        testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+
+        assertTrue(viewModel.onBack())
+        testScheduler.runCurrent()
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+    }
+
+    @Test
+    fun `toggleSelectAll toggles between all selected and empty selection`() = runTest(dispatcher) {
+        val tracks = listOf(track(1, "One"), track(2, "Two"), track(3, "Three"))
+        val viewModel = subject(tracks)
+        collectState(viewModel)
+
+        viewModel.startSelection(tracks.first().id)
+        testScheduler.runCurrent()
+        assertEquals(1, viewModel.uiState.value.selectedTrackIds.size)
+
+        viewModel.toggleSelectAll()
+        testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(tracks.map(Track::id).toSet(), viewModel.uiState.value.selectedTrackIds)
+
+        viewModel.toggleSelectAll()
+        testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+
+        viewModel.exitSelection()
+        testScheduler.runCurrent()
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+    }
+
+    @Test
     fun `batch actions preserve user selection order and empty selection is not dispatched`() =
         runTest(dispatcher) {
             val tracks = listOf(track(1, "Charlie"), track(2, "Alpha"), track(3, "Beta"))
