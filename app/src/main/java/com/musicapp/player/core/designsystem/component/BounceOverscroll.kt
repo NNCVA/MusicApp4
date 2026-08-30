@@ -38,13 +38,14 @@ object BounceOverscrollMath {
         return clamped - currentOffsetPx
     }
 
-    fun calculateFlingImpulse(
+    fun calculateFlingVelocity(
         availableVelocityY: Float,
-        maxFlingPx: Float,
-        velocityFactor: Float = 0.025f,
+        maxDisplacementPx: Float,
+        velocityDampingFactor: Float = 0.6f,
     ): Float {
-        if (maxFlingPx <= 0f) return 0f
-        return (availableVelocityY * velocityFactor).coerceIn(-maxFlingPx, maxFlingPx)
+        if (maxDisplacementPx <= 0f) return 0f
+        val maxVelocity = maxDisplacementPx * 12f
+        return (availableVelocityY * velocityDampingFactor).coerceIn(-maxVelocity, maxVelocity)
     }
 }
 
@@ -112,6 +113,7 @@ class BounceOverscrollConnection(
             scope.launch {
                 animatable.animateTo(
                     targetValue = 0f,
+                    initialVelocity = available.y,
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioLowBouncy,
                         stiffness = 100f,
@@ -125,21 +127,15 @@ class BounceOverscrollConnection(
 
     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
         if (available.y != 0f) {
-            val impulse = BounceOverscrollMath.calculateFlingImpulse(
+            val initialVelocity = BounceOverscrollMath.calculateFlingVelocity(
                 availableVelocityY = available.y,
-                maxFlingPx = maxFlingPx,
+                maxDisplacementPx = maxDisplacementPx,
             )
-            if (impulse != 0f) {
+            if (initialVelocity != 0f) {
                 scope.launch {
                     animatable.animateTo(
-                        targetValue = impulse,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow,
-                        ),
-                    )
-                    animatable.animateTo(
                         targetValue = 0f,
+                        initialVelocity = initialVelocity,
                         animationSpec = spring(
                             dampingRatio = Spring.DampingRatioLowBouncy,
                             stiffness = 100f,

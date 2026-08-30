@@ -2,6 +2,9 @@ package com.musicapp.player.feature.player
 
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,9 +56,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -158,9 +163,19 @@ fun PlayerSheet(
     val track = state.currentTrack ?: return
     val dimensions = MusicTheme.dimensions
     val density = LocalDensity.current
-    var progress by rememberSaveable { mutableFloatStateOf(0f) }
+    val coroutineScope = rememberCoroutineScope()
+    val progressAnimatable = remember { Animatable(0f) }
+    val progress = progressAnimatable.value
+    val springSpec = remember {
+        spring<Float>(
+            stiffness = Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioNoBouncy,
+        )
+    }
     LaunchedEffect(progress) { onExpansionChanged(progress > 0f) }
-    BackHandler(enabled = progress > 0f) { progress = 0f }
+    BackHandler(enabled = progress > 0f) {
+        coroutineScope.launch { progressAnimatable.animateTo(0f, springSpec) }
+    }
 
     val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
     val totalCollapsedHeight = dimensions.miniPlayerHeight + bottomInset
@@ -168,12 +183,22 @@ fun PlayerSheet(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val travelPx = with(density) { (maxHeight - totalCollapsedHeight).toPx().coerceAtLeast(1f) }
         val dragSheet: (Float) -> Float = { deltaY ->
-            val previous = progress
-            progress = PlayerSheetState(progress).dragBy(deltaY, travelPx).expansionProgress
-            (previous - progress) * travelPx
+            val previous = progressAnimatable.value
+            val targetProgress = PlayerSheetState(previous).dragBy(deltaY, travelPx).expansionProgress
+            coroutineScope.launch {
+                progressAnimatable.snapTo(targetProgress)
+            }
+            (previous - targetProgress) * travelPx
         }
         val settleSheet: (Float) -> Unit = { velocityY ->
-            progress = PlayerSheetState(progress).settle(velocityY).expansionProgress
+            val targetProgress = PlayerSheetState(progressAnimatable.value).settle(velocityY).expansionProgress
+            coroutineScope.launch {
+                progressAnimatable.animateTo(
+                    targetValue = targetProgress,
+                    animationSpec = springSpec,
+                    initialVelocity = if (travelPx > 0f) -velocityY / travelPx else 0f,
+                )
+            }
         }
         val miniDragState = rememberDraggableState { deltaY ->
             PlayerGestureRouter.routeSheetDrag(
@@ -195,7 +220,9 @@ fun PlayerSheet(
                 MiniPlayer(
                     state = state,
                     track = track,
-                    onExpand = { progress = 1f },
+                    onExpand = {
+                        coroutineScope.launch { progressAnimatable.animateTo(1f, springSpec) }
+                    },
                     onTogglePlayback = onTogglePlayback,
                     onNext = onNext,
                     modifier = Modifier
@@ -220,7 +247,9 @@ fun PlayerSheet(
                             lyricsViewModel = lyricsViewModel,
                             track = track,
                             contentInsets = contentInsets,
-                            onCollapse = { progress = 0f },
+                            onCollapse = {
+                                coroutineScope.launch { progressAnimatable.animateTo(0f, springSpec) }
+                            },
                             onTogglePlayback = onTogglePlayback,
                             onPrevious = onPrevious,
                             onNext = onNext,
@@ -558,7 +587,7 @@ private fun QueuePage(
 
             override suspend fun onPreFling(available: Velocity): Velocity {
                 edgeResistancePx = 0f
-                return if (available.y > 0f && !listState.canScrollBackward) {
+                return if (!listState.canScrollBackward) {
                     onSheetSettle(available.y)
                     available
                 } else if (available.y < 0f && !listState.canScrollForward) {
@@ -566,6 +595,15 @@ private fun QueuePage(
                 } else {
                     Velocity.Zero
                 }
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                edgeResistancePx = 0f
+                if (!listState.canScrollBackward) {
+                    onSheetSettle(available.y)
+                    return available
+                }
+                return super.onPostFling(consumed, available)
             }
         }
     }

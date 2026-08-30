@@ -62,28 +62,29 @@ class BounceOverscrollTest {
     }
 
     @Test
-    fun `math calculates fling impulse clamped to max fling distance`() {
-        val maxFlingPx = 100f
-        val moderateImpulse = BounceOverscrollMath.calculateFlingImpulse(
+    fun `math calculates fling velocity clamped to max velocity`() {
+        val maxDisplacementPx = 200f
+        val moderateVelocity = BounceOverscrollMath.calculateFlingVelocity(
             availableVelocityY = 1000f,
-            maxFlingPx = maxFlingPx,
-            velocityFactor = 0.025f,
+            maxDisplacementPx = maxDisplacementPx,
+            velocityDampingFactor = 0.6f,
         )
-        assertEquals(25f, moderateImpulse, 0.001f)
+        assertEquals(600f, moderateVelocity, 0.001f)
 
-        val extremeImpulse = BounceOverscrollMath.calculateFlingImpulse(
+        val extremeVelocity = BounceOverscrollMath.calculateFlingVelocity(
             availableVelocityY = 10000f,
-            maxFlingPx = maxFlingPx,
-            velocityFactor = 0.025f,
+            maxDisplacementPx = maxDisplacementPx,
+            velocityDampingFactor = 0.6f,
         )
-        assertEquals(100f, extremeImpulse, 0.001f)
+        // max is 200 * 12 = 2400f
+        assertEquals(2400f, extremeVelocity, 0.001f)
 
-        val negativeImpulse = BounceOverscrollMath.calculateFlingImpulse(
+        val negativeVelocity = BounceOverscrollMath.calculateFlingVelocity(
             availableVelocityY = -10000f,
-            maxFlingPx = maxFlingPx,
-            velocityFactor = 0.025f,
+            maxDisplacementPx = maxDisplacementPx,
+            velocityDampingFactor = 0.6f,
         )
-        assertEquals(-100f, negativeImpulse, 0.001f)
+        assertEquals(-2400f, negativeVelocity, 0.001f)
     }
 
     @Test
@@ -170,6 +171,28 @@ class BounceOverscrollTest {
 
         val consumedVelocity = connection.onPreFling(Velocity(0f, 500f))
         assertEquals(500f, consumedVelocity.y, 0.001f)
+        testScheduler.runCurrent()
+        assertEquals(0f, animatable.targetValue, 0.001f)
+    }
+
+    @Test
+    fun `postFling absorbs leftover velocity and starts continuous spring to zero`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val frameClock = BroadcastFrameClock()
+        val testScope = TestScope(testDispatcher + frameClock)
+        val animatable = Animatable(0f)
+        val connection = BounceOverscrollConnection(
+            scope = testScope,
+            animatable = animatable,
+            maxDisplacementPx = 200f,
+            maxFlingPx = 48f,
+        )
+
+        val consumedVelocity = connection.onPostFling(
+            consumed = Velocity.Zero,
+            available = Velocity(0f, -800f),
+        )
+        assertEquals(-800f, consumedVelocity.y, 0.001f)
         testScheduler.runCurrent()
         assertEquals(0f, animatable.targetValue, 0.001f)
     }
