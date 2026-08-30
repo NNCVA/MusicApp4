@@ -340,7 +340,12 @@ private fun FolderVolumeCard(
         colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(dimensions.spaceMedium),
+            modifier = Modifier.fillMaxWidth().padding(
+                start = dimensions.spaceMedium,
+                top = dimensions.spaceMedium,
+                end = dimensions.spaceSmall,
+                bottom = dimensions.spaceMedium,
+            ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
         ) {
@@ -369,12 +374,17 @@ private fun FolderVolumeCard(
                 }
                 StorageCapacityText(volume.usedBytes, volume.totalBytes)
             }
-            Icon(
-                painter = painterResource(R.drawable.ic_common_chevron_right),
-                contentDescription = null,
-                tint = MusicTheme.colors.onSurfaceVariant,
-                modifier = Modifier.size(dimensions.spaceLarge),
-            )
+            Box(
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_chevron_right),
+                    contentDescription = null,
+                    tint = MusicTheme.colors.onSurfaceVariant,
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
         }
     }
 }

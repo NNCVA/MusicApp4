@@ -324,7 +324,10 @@ private fun TracksTopBar(
     var batchMenuExpanded by remember { mutableStateOf(false) }
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.minimumTouchTarget)
-                .padding(horizontal = dimensions.topBarHorizontalPadding),
+                .padding(
+                    start = dimensions.topBarHorizontalPadding,
+                    end = dimensions.contentHorizontalPadding,
+                ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
         ) {
@@ -717,17 +720,6 @@ private fun TrackRow(
             )
         }
         if (!selectionMode) {
-            BareIconButton(
-                onClick = onAddToQueue,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = androidx.compose.ui.res.painterResource(R.drawable.ic_common_add),
-                    contentDescription = stringResource(R.string.track_add_to_queue),
-                    tint = MusicTheme.colors.onSurfaceVariant,
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
             Box {
                 BareIconButton(
                     onClick = { menuExpanded = true },

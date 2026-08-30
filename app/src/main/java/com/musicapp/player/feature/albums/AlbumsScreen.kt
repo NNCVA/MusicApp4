@@ -235,10 +235,18 @@ private fun AlbumsHeader(
     trailingContent: @Composable () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
+    val iconVisualOffset = (dimensions.minimumTouchTarget - dimensions.spaceLarge) / 2
+    val headerStartPadding =
+        if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
+            dimensions.contentHorizontalPadding - iconVisualOffset
+        } else {
+            dimensions.contentHorizontalPadding
+        }
+    val headerEndPadding = dimensions.contentHorizontalPadding - iconVisualOffset
     Row(
         modifier = Modifier.fillMaxWidth()
             .heightIn(min = dimensions.playerHeaderHeight)
-            .padding(horizontal = dimensions.topBarHorizontalPadding),
+            .padding(start = headerStartPadding, end = headerEndPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
     ) {

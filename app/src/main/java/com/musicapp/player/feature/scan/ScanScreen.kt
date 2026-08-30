@@ -251,12 +251,13 @@ private fun ScanActionCard(enabled: Boolean, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight),
+        modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(dimensions.spaceMedium),
+            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
+                .padding(horizontal = dimensions.spaceMedium),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
         ) {
