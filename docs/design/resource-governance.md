@@ -142,6 +142,7 @@ MusicApp2 仅作为本次资源的中间存放仓库及固定 revision 证据，
 |---|---|---|
 | `ic_common_storage.xml` | 文件夹一级页存储卷卡片的存储卷图标 | 以中性描边和路径绘制存储卷轮廓，保存为 Android `VectorDrawable` 并由 `MusicTheme` 着色 |
 | `ic_common_folder.xml` | 文件夹一级快捷项与纯中间目录卡片的文件夹图标 | 以中性描边绘制文件夹轮廓，保存为 Android `VectorDrawable` 并由 `MusicTheme` 着色 |
+| `ic_common_sort.xml` | 歌曲列表等排序按钮图标 | 双向垂直箭头描边图标，保存为 Android `VectorDrawable` 并由 `MusicTheme` 着色 |
 
 ## 明确排除
 

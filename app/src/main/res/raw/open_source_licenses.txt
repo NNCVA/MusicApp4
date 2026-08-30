@@ -125,6 +125,13 @@ Bundled visual asset notices:
   Modifications: authored as a neutral Android VectorDrawable outline/path and
   tinted by MusicTheme at runtime.
 
+- `ic_common_sort.xml` sort outline icon.
+  Source: original MusicApp project artwork; no third-party upstream, intermediate
+  repository, fixed revision, or copyright material is used.
+  License: distributed as part of the MusicApp project.
+  Modifications: authored as a neutral Android VectorDrawable outline/path and
+  tinted by MusicTheme at runtime.
+
 The complete common license text follows. Component-specific NOTICE attribution is retained above.
 
 Apache License

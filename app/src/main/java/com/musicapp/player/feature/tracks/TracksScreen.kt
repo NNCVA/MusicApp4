@@ -598,7 +598,7 @@ private fun TracksTopBar(
                                 modifier = Modifier.size(dimensions.minimumTouchTarget),
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.ic_common_sort_alpha),
+                                    painter = painterResource(R.drawable.ic_common_sort),
                                     contentDescription = stringResource(R.string.tracks_sort_label),
                                     tint = MusicTheme.colors.onSurface,
                                     modifier = Modifier.size(dimensions.spaceLarge),

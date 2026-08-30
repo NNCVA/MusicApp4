@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+  <!--
+    fillColor 设置为透明 (#00000000)
+    strokeColor 设置为图片中的蓝色 (#5C85C5)
+    strokeWidth 设置线条宽度为 2
+    strokeLineCap/Join 设置为圆角，使箭头看起来更平滑
+  -->
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="2"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"
+      android:pathData="M8,20 L8,4 M5,8 L8,4 L11,8 M16,4 L16,20 M13,16 L16,20 L19,16" />
+</vector>
