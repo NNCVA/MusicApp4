@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
@@ -191,8 +192,7 @@ private fun HistoryScreen(
                 )
             else ->
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
                 ) {
                     items(
@@ -336,6 +336,7 @@ private fun HistoryRow(
         modifier =
             Modifier.fillMaxWidth()
                 .heightIn(min = dimensions.trackListItemHeight)
+                .clip(MusicTheme.shapes.medium)
                 .combinedClickable(
                     enabled = entry.isActionable,
                     onClick = onClick,
@@ -345,7 +346,11 @@ private fun HistoryRow(
         shape = MusicTheme.shapes.medium,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = dimensions.spaceSmall, vertical = dimensions.spaceExtraSmall),
+            modifier =
+                Modifier.padding(
+                    horizontal = dimensions.contentHorizontalPadding + dimensions.spaceSmall,
+                    vertical = dimensions.spaceExtraSmall,
+                ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
         ) {

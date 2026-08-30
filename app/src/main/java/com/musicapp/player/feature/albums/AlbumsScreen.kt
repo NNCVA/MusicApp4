@@ -402,7 +402,7 @@ private fun AlbumDetailScreen(
             CategoryTrackList(
                 state.tracks,
                 onTrackClick,
-                Modifier.weight(1f).padding(horizontal = dimensions.contentHorizontalPadding),
+                Modifier.weight(1f),
             )
         }
     }

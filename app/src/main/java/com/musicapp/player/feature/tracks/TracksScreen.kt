@@ -539,8 +539,7 @@ private fun TrackList(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize()
-                .then(scrollbarModifier)
-                .padding(horizontal = dimensions.contentHorizontalPadding),
+                .then(scrollbarModifier),
             contentPadding =
                 PaddingValues(
                     //start = dimensions.spaceSmall,
@@ -668,8 +667,8 @@ private fun TrackRow(
                         Modifier
                     },
                 )
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-                //.padding(horizontal = dimensions.spaceSmall),
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .padding(horizontal = dimensions.contentHorizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {

@@ -130,6 +130,7 @@ fun CategoryTrackList(
                     } else {
                         null
                     },
+                outerHorizontalPadding = dimensions.contentHorizontalPadding,
                 onClick = { onTrackClick(track) },
             )
         }

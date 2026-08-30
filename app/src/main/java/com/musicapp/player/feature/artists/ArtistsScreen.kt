@@ -163,8 +163,7 @@ private fun ArtistsScreen(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxWidth().weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(
                         top = dimensions.spaceExtraSmall,
                         bottom = dimensions.spaceSmall,
@@ -237,7 +236,10 @@ private fun ArtistRow(
         modifier = Modifier.fillMaxWidth()
             .heightIn(min = dimensions.minimumTouchTarget)
             .clickable(onClick = onClick)
-            .padding(vertical = dimensions.spaceSmallMedium),
+            .padding(
+                horizontal = dimensions.contentHorizontalPadding,
+                vertical = dimensions.spaceSmallMedium,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ArtistArtwork(
@@ -358,7 +360,7 @@ private fun ArtistDetailScreen(
             CategoryTrackList(
                 state.tracks,
                 onTrackClick,
-                Modifier.weight(1f).padding(horizontal = dimensions.contentHorizontalPadding),
+                Modifier.weight(1f),
             )
         }
     }

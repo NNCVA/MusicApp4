@@ -15,6 +15,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicTheme
 
@@ -33,6 +35,7 @@ fun TrackSummaryRow(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     statusLabel: String? = null,
+    outerHorizontalPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     Row(
@@ -41,7 +44,7 @@ fun TrackSummaryRow(
             .height(dimensions.trackListItemHeight)
             .semantics(mergeDescendants = true) { role = Role.Button }
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = dimensions.spaceSmall),
+            .padding(horizontal = outerHorizontalPadding + dimensions.spaceSmall),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {

@@ -107,21 +107,25 @@ internal fun SidebarNavigation(
                 )
             }
         }
-        SidebarCard {
+        SidebarCard(contentPadding = 0.dp) {
             SidebarGroups.mediaBrowse.forEachIndexed { index, entry ->
                 SidebarEntryRow(
                     entry = entry,
                     selected = entry.route == selectedRoute,
+                    isFirst = index == 0,
+                    isLast = index == SidebarGroups.mediaBrowse.lastIndex,
                     tint = SidebarIconPalette.media[index],
                     onClick = { onSelect(entry.route) },
                 )
             }
         }
-        SidebarCard {
+        SidebarCard(contentPadding = 0.dp) {
             SidebarGroups.appOperations.forEachIndexed { index, entry ->
                 SidebarEntryRow(
                     entry = entry,
                     selected = entry.route == selectedRoute,
+                    isFirst = index == 0,
+                    isLast = index == SidebarGroups.appOperations.lastIndex,
                     tint = SidebarIconPalette.operations[index],
                     onClick = { onSelect(entry.route) },
                 )
@@ -279,22 +283,40 @@ private fun SidebarQuickAction(
 private fun SidebarEntryRow(
     entry: SidebarEntry,
     selected: Boolean,
+    isFirst: Boolean,
+    isLast: Boolean,
     enabled: Boolean = true,
     tint: Color,
     onClick: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
+    val edgePadding = dimensions.sidebarCardContentPadding
+    val topPadding = if (isFirst) edgePadding else 0.dp
+    val bottomPadding = if (isLast) edgePadding else 0.dp
+    val shape =
+        RoundedCornerShape(
+            topStart = if (isFirst) dimensions.sidebarCardCornerRadius else 0.dp,
+            topEnd = if (isFirst) dimensions.sidebarCardCornerRadius else 0.dp,
+            bottomEnd = if (isLast) dimensions.sidebarCardCornerRadius else 0.dp,
+            bottomStart = if (isLast) dimensions.sidebarCardCornerRadius else 0.dp,
+        )
     Row(
         modifier =
             Modifier.fillMaxWidth()
-                .heightIn(min = dimensions.minimumTouchTarget)
+                .heightIn(min = dimensions.minimumTouchTarget + topPadding + bottomPadding)
+                .clip(shape)
                 .selectable(
                     selected = selected,
                     enabled = enabled,
                     role = Role.Tab,
                     onClick = onClick,
                 )
-                .padding(horizontal = dimensions.spaceSmall),
+                .padding(
+                    start = edgePadding + dimensions.spaceSmall,
+                    top = topPadding,
+                    end = edgePadding + dimensions.spaceSmall,
+                    bottom = bottomPadding,
+                ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(

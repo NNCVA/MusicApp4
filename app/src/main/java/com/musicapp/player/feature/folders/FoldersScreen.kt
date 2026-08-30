@@ -535,8 +535,7 @@ private fun FolderDetailScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
             ) {
                 if (state.childFolders.isNotEmpty()) {
@@ -545,12 +544,18 @@ private fun FolderDetailScreen(
                             stringResource(R.string.folder_subfolders_section),
                             style = MusicTheme.typography.titleMedium,
                             color = MusicTheme.colors.onSurface,
-                            modifier = Modifier.padding(dimensions.spaceSmall),
+                            modifier =
+                                Modifier.padding(
+                                    horizontal = dimensions.contentHorizontalPadding + dimensions.spaceSmall,
+                                    vertical = dimensions.spaceSmall,
+                                ),
                         )
                     }
                     items(state.childFolders, key = { it.id.sourceId }) { folder ->
                         FolderRow(folder, onFolderClick)
-                        HorizontalDivider()
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
+                        )
                     }
                 }
                 if (state.directTracks.isNotEmpty()) {
@@ -559,7 +564,11 @@ private fun FolderDetailScreen(
                             stringResource(R.string.folder_tracks_section),
                             style = MusicTheme.typography.titleMedium,
                             color = MusicTheme.colors.onSurface,
-                            modifier = Modifier.padding(dimensions.spaceSmall),
+                            modifier =
+                                Modifier.padding(
+                                    horizontal = dimensions.contentHorizontalPadding + dimensions.spaceSmall,
+                                    vertical = dimensions.spaceSmall,
+                                ),
                         )
                     }
                     items(
@@ -577,6 +586,7 @@ private fun FolderDetailScreen(
                                 } else {
                                     null
                                 },
+                            outerHorizontalPadding = dimensions.contentHorizontalPadding,
                             onClick = { onTrackClick(track) },
                         )
                     }
@@ -665,7 +675,9 @@ private fun FolderRow(folder: FolderNode, onClick: (FolderId) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().height(dimensions.folderListItemHeight)
             .clickable { onClick(folder.id) }
-            .padding(horizontal = dimensions.spaceSmall),
+            .padding(
+                horizontal = dimensions.contentHorizontalPadding + dimensions.spaceSmall,
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {

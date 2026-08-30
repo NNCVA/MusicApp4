@@ -183,9 +183,7 @@ private fun PlaylistsScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(
-                    start = playlistListStartPadding,
                     top = dimensions.spaceSmall,
-                    end = dimensions.topBarHorizontalPadding,
                     bottom = dimensions.spaceSmall,
                 ),
             ) {
@@ -195,6 +193,11 @@ private fun PlaylistsScreen(
                         artwork = state.artworkByPlaylistId[playlist.id.value]
                             ?: ArtworkResult.Placeholder,
                         onArtworkRequested = { onArtworkRequested(playlist) },
+                        contentPadding =
+                            PaddingValues(
+                                start = playlistListStartPadding,
+                                end = dimensions.topBarHorizontalPadding,
+                            ),
                         onClick = { onPlaylistClick(playlist.id) },
                         onRename = {
                             editorPlaylistId = playlist.id.value
@@ -262,6 +265,7 @@ private fun PlaylistRow(
     playlist: Playlist,
     artwork: ArtworkResult,
     onArtworkRequested: () -> Unit,
+    contentPadding: PaddingValues,
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
@@ -273,7 +277,8 @@ private fun PlaylistRow(
     Row(
         modifier = Modifier.fillMaxWidth()
             .height(dimensions.trackListItemHeight)
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
@@ -481,8 +486,7 @@ private fun PlaylistDetailScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(vertical = dimensions.spaceSmall),
             ) {
                 items(state.tracks, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { track ->
@@ -494,7 +498,9 @@ private fun PlaylistDetailScreen(
                         onLongClick = onTrackLongClick,
                         onRemove = onRemoveTrack,
                     )
-                    HorizontalDivider()
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
+                    )
                 }
             }
         }
@@ -539,7 +545,9 @@ private fun PlaylistTrackRow(
                 onClick = { onClick(track) },
                 onLongClick = { onLongClick(track) },
             )
-            .padding(horizontal = dimensions.spaceSmall),
+            .padding(
+                horizontal = dimensions.contentHorizontalPadding + dimensions.spaceSmall,
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
