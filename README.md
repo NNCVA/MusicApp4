@@ -50,7 +50,7 @@ MusicApp 是一款使用 Kotlin 与 Jetpack Compose 构建的现代化 Android �
 
 | 类别 | 方案 |
 | --- | --- |
-| 平台 | Android，`minSdk 26`，`targetSdk 36` |
+| 平台 | Android，`minSdk 26`，`targetSdk 37` |
 | 语言与工具链 | Kotlin 2.x，JDK 17，Gradle |
 | UI | Jetpack Compose，Material 3，Navigation 3 |
 | 播放 | AndroidX Media3，ExoPlayer，MediaSession，MediaLibraryService |

@@ -6,7 +6,7 @@
 
 ## 已实现基线
 
-- 保留 JUnit4、`kotlinx-coroutines-test`、Turbine 与少量 Robolectric 平台适配测试；纯业务规则继续放在 `app/src/test`。JDK 17 下 Robolectric 使用 API 35 Runtime（API 36 Runtime 要求 Java 21），应用保持 `targetSdk 36`，`compileSdk` 以 [`app/build.gradle.kts`](../../app/build.gradle.kts) 为准。
+- 保留 JUnit4、`kotlinx-coroutines-test`、Turbine 与少量 Robolectric 平台适配测试；纯业务规则继续放在 `app/src/test`。JDK 17 下 Robolectric 使用 API 35 Runtime（API 36 Runtime 要求 Java 21），应用保持 `targetSdk 37`，`compileSdk` 以 [`app/build.gradle.kts`](../../app/build.gradle.kts) 为准。
 - 需要真实 Android Runtime 的 Room、Hilt、Service、资源和启动行为迁移到 `app/src/androidTest`，统一使用 `AndroidJUnit4`；Hilt 测试使用 `com.musicapp.player.HiltTestRunner`。迁移范围为 `MusicDatabaseMigrationTest`、`HistoryRepositoryTest`、`MediaLibraryRepositoryTest`、`PlaylistRepositoryTest`、`PlaybackSnapshotRepositoryTest`、`MediaLibrarySyncTest`、`ApplicationGraphTest`、`PlaybackServiceHiltTest` 与 `AboutMetadataTest`，并新增 `ApplicationStartupIntegrationTest` 作为资源启动冒烟；`ProjectSmokeTest` 不再承担测试冒烟职责。
 - 验证环境、门禁命令、设备要求和无设备回退统一见 [`../verification.md`](../verification.md)；本审阅只保留测试策略和边界。
 

@@ -120,7 +120,7 @@ adb devices -l
 - API 37 平台和 Build Tools 36.0.0 已足以完成当前构建；若未来显式要求 Build Tools 37，应先安装并重新运行门禁。
 - --no-daemon 仍会启动一个 single-use Daemon；命令结束后该进程会退出。需要清理残留的 Gradle daemon 时使用 ./gradlew --stop。
 - 在受限执行环境中若出现 ~/.gradle/*.lck (Operation not permitted)，先检查用户对 Gradle 用户目录的写权限；这属于环境权限问题，不应直接判定为源码或 Wrapper 错误。
-- README.md 和部分 design 文档仍保留 targetSdk=36 的历史描述；当前构建以 app/build.gradle.kts 的 compileSdk/targetSdk=37 为准，文档同步应单独处理。
+- README.md 与 design 规范已统一同步为 compileSdk/targetSdk=37，与 app/build.gradle.kts 保持一致。
 
 ### Select the JVM before running Gradle
 
