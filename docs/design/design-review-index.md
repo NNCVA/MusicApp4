@@ -24,6 +24,7 @@
 ## 实施文档
 
 - [首版实现规格](implementation-spec.md)
+- [选项与开关组件开发规范](selection-and-toggle-controls.md)
 - [资源治理](resource-governance.md)
 - [首版短计划](../plan/implementation-plan.md)
 - [首版逐过程执行计划](../plan/implementation-execution-plan.md)

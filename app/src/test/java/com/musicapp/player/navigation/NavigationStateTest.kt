@@ -9,7 +9,7 @@ import org.junit.Test
 
 class NavigationStateTest {
     @Test
-    fun routeTableContainsEightStableTopLevelStacks() {
+    fun routeTableContainsNineStableTopLevelStacks() {
         assertEquals(
             listOf(
                 TracksRoute,
@@ -18,6 +18,7 @@ class NavigationStateTest {
                 PlaylistsRoute,
                 HistoryRoute,
                 FoldersRoute,
+                ScanMusicRoute,
                 SettingsRoute,
                 AboutRoute,
             ),
@@ -31,7 +32,7 @@ class NavigationStateTest {
     }
 
     @Test
-    fun switchingTopLevelRoutesRetainsEachStackHistory() {
+    fun selectingTopLevelRouteResetsDestinationToRoot() {
         val state = NavigationState.initial()
         val navigator = Navigator(state)
         val albumDetail = AlbumDetailRoute(volumeName = "external", mediaStoreId = 11)
@@ -41,8 +42,24 @@ class NavigationStateTest {
         navigator.navigate(playlistDetail)
         navigator.navigate(AlbumsRoute)
 
-        assertEquals(listOf(AlbumsRoute, albumDetail), state.currentBackStack)
+        assertEquals(listOf(AlbumsRoute), state.currentBackStack)
         assertEquals(listOf(PlaylistsRoute, playlistDetail), state.backStack(PlaylistsRoute))
+    }
+
+    @Test
+    fun navigatingToScanAndSwitchingTopLevelResetsToRoot() {
+        val state = NavigationState.initial()
+        val navigator = Navigator(state)
+
+        navigator.navigate(ScanMusicRoute)
+        assertEquals(listOf(ScanMusicRoute), state.currentBackStack)
+
+        navigator.navigate(AlbumsRoute)
+        assertEquals(listOf(AlbumsRoute), state.currentBackStack)
+        assertEquals(listOf(ScanMusicRoute), state.backStack(ScanMusicRoute))
+
+        navigator.navigate(TracksRoute)
+        assertEquals(listOf(TracksRoute), state.currentBackStack)
     }
 
     @Test
@@ -145,16 +162,15 @@ class NavigationStateTest {
     }
 
     @Test
-    fun scanReturnsToTheRouteThatOpenedIt() {
+    fun scanRouteBackReturnsToHomeRoot() {
         val state = NavigationState.initial()
         val navigator = Navigator(state)
         navigator.navigate(ArtistsRoute)
-        val scanRoute = ScanMusicRoute(returnRoute = ArtistsRoute)
 
-        navigator.navigate(scanRoute)
+        navigator.navigate(ScanMusicRoute)
 
-        assertEquals(ArtistsRoute, state.currentTopLevelRoute)
-        assertEquals(listOf(ArtistsRoute, scanRoute), state.currentBackStack)
+        assertEquals(ScanMusicRoute, state.currentTopLevelRoute)
+        assertEquals(listOf(ScanMusicRoute), state.currentBackStack)
         assertEquals(BackNavigationResult.CONSUMED, navigator.goBack())
         assertEquals(ArtistsRoute, state.currentTopLevelRoute)
         assertEquals(listOf(ArtistsRoute), state.currentBackStack)
@@ -194,23 +210,22 @@ class NavigationStateTest {
     }
 
     @Test
-    fun serializedSnapshotPersistsHomeAndScanReturnRoute() {
+    fun serializedSnapshotPersistsHomeAndScanRoute() {
         val state = NavigationState.initial()
         val navigator = Navigator(state)
         navigator.navigate(ArtistsRoute)
-        val scanRoute = ScanMusicRoute(returnRoute = ArtistsRoute)
-        navigator.navigate(scanRoute)
+        navigator.navigate(ScanMusicRoute)
 
         val restored = NavigationState.restore(NavigationSnapshot.decode(state.snapshot().encode()))
 
         assertEquals(ArtistsRoute, restored.homeTopLevelRoute)
-        assertEquals(listOf(ArtistsRoute, scanRoute), restored.backStack(ArtistsRoute))
+        assertEquals(ScanMusicRoute, restored.currentTopLevelRoute)
+        assertEquals(listOf(ScanMusicRoute), restored.backStack(ScanMusicRoute))
         assertEquals(state.snapshot(), restored.snapshot())
     }
 
     @Test
     fun legacySnapshotMapsScanToTracksAndDerivesHomeFromCurrentRoute() {
-        val scanRoute = ScanMusicRoute(returnRoute = TracksRoute)
         val snapshot =
             legacySnapshot(
                 currentTopLevelRoute = ArtistsRoute,
@@ -218,7 +233,7 @@ class NavigationStateTest {
                     topLevelNavKeys.map { root ->
                         NavigationStackSnapshot(
                             root = root,
-                            routes = if (root == TracksRoute) listOf(root, scanRoute) else listOf(root),
+                            routes = listOf(root),
                         )
                     },
             )
@@ -226,7 +241,7 @@ class NavigationStateTest {
         val restored = NavigationState.restore(NavigationSnapshot.decode(snapshot))
 
         assertEquals(ArtistsRoute, restored.homeTopLevelRoute)
-        assertEquals(listOf(TracksRoute, scanRoute), restored.backStack(TracksRoute))
+        assertEquals(listOf(ScanMusicRoute), restored.backStack(ScanMusicRoute))
     }
 
     @Test
@@ -295,7 +310,7 @@ class NavigationStateTest {
             FoldersRoute -> writeByte(5)
             SettingsRoute -> writeByte(6)
             AboutRoute -> writeByte(7)
-            is ScanMusicRoute -> writeByte(13)
+            ScanMusicRoute -> writeByte(13)
             else -> error("legacy test fixture only supports top-level and scan routes")
         }
     }

@@ -7,7 +7,6 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +21,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -40,9 +40,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.PathRule
@@ -276,14 +280,22 @@ private fun ScanActionCard(enabled: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SwitchCard(
+internal fun SwitchCard(
     title: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MusicTheme.shapes.large)
+            .toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = onCheckedChange,
+            )
+            .semantics(mergeDescendants = true) {},
         shape = MusicTheme.shapes.large,
         color = MusicTheme.aeroCardContainerColor,
         contentColor = MusicTheme.colors.onSurface,
@@ -299,7 +311,11 @@ private fun SwitchCard(
                 style = MusicTheme.typography.titleMedium,
                 color = MusicTheme.colors.onSurface,
             )
-            Switch(checked = checked, onCheckedChange = onCheckedChange)
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                modifier = Modifier.clearAndSetSemantics {},
+            )
         }
     }
 }

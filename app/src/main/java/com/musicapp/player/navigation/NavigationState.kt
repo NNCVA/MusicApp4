@@ -118,10 +118,7 @@ private object NavigationSnapshotCodec {
                 writeUTF(route.volumeName)
                 writeUTF(route.relativePath)
             }
-            is ScanMusicRoute -> {
-                writeByte(13)
-                writeRoute(route.returnRoute)
-            }
+            ScanMusicRoute -> writeByte(13)
         }
     }
 
@@ -140,15 +137,7 @@ private object NavigationSnapshotCodec {
             10 -> ArtistDetailRoute(artistName = readUTF())
             11 -> PlaylistDetailRoute(playlistId = readLong())
             12 -> FolderDetailRoute(volumeName = readUTF(), relativePath = readUTF())
-            13 ->
-                ScanMusicRoute(
-                    returnRoute =
-                        if (legacy) {
-                            TracksRoute
-                        } else {
-                            readRoute(legacy = false).asTopLevel()
-                        },
-                )
+            13 -> ScanMusicRoute
             else -> throw IllegalArgumentException("unknown navigation route type: $routeType")
         }
 
@@ -278,7 +267,7 @@ enum class BackNavigationResult {
 class Navigator(private val state: NavigationState) {
     fun navigate(route: MusicNavKey) {
         if (route is TopLevelNavKey) {
-            if (route == state.currentTopLevelRoute) state.reset(route) else state.select(route)
+            state.reset(route)
             return
         }
 

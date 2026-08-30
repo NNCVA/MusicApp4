@@ -60,6 +60,8 @@ room {
 dependencies {
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
+  debugImplementation(composeBom)
+  androidTestImplementation(composeBom)
 
   // Core Android dependencies
   implementation(libs.androidx.core.ktx)
@@ -89,6 +91,7 @@ dependencies {
   implementation(libs.androidx.compose.material3)
   // Tooling
   debugImplementation(libs.androidx.compose.ui.tooling)
+  debugImplementation(libs.androidx.compose.ui.test.manifest)
 
   // Navigation
   implementation(libs.androidx.navigation3.ui)
@@ -108,6 +111,8 @@ dependencies {
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.rules)
   androidTestImplementation(libs.androidx.test.ext.junit)
+  androidTestImplementation(libs.androidx.test.espresso.core)
+  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   androidTestImplementation(libs.androidx.room.testing)
   androidTestImplementation(libs.hilt.android.testing)
   kspAndroidTest(libs.hilt.compiler)

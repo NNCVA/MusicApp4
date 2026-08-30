@@ -7,10 +7,10 @@ import com.musicapp.player.navigation.ArtistsRoute
 import com.musicapp.player.navigation.FoldersRoute
 import com.musicapp.player.navigation.HistoryRoute
 import com.musicapp.player.navigation.PlaylistsRoute
+import com.musicapp.player.navigation.ScanMusicRoute
 import com.musicapp.player.navigation.SettingsRoute
 import com.musicapp.player.navigation.TracksRoute
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SidebarModelsTest {
@@ -18,27 +18,21 @@ class SidebarModelsTest {
     fun `media card follows the accepted destination order`() {
         assertEquals(
             listOf(TracksRoute, AlbumsRoute, ArtistsRoute, FoldersRoute, PlaylistsRoute),
-            SidebarGroups.mediaBrowse.map(SidebarEntry.Destination::route),
+            SidebarGroups.mediaBrowse.map(SidebarEntry::route),
         )
     }
 
     @Test
-    fun `operation card keeps scan as an action instead of a route`() {
+    fun `operation card provides top level destination routes`() {
         assertEquals(
             listOf(
-                SidebarAction.SCAN_LIBRARY,
+                ScanMusicRoute,
                 HistoryRoute,
                 SettingsRoute,
                 AboutRoute,
             ),
-            SidebarGroups.appOperations.map { entry ->
-                when (entry) {
-                    is SidebarEntry.Action -> entry.action
-                    is SidebarEntry.Destination -> entry.route
-                }
-            },
+            SidebarGroups.appOperations.map(SidebarEntry::route),
         )
-        assertTrue(SidebarGroups.appOperations.first() is SidebarEntry.Action)
     }
 
     @Test

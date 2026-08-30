@@ -53,7 +53,6 @@ internal fun SidebarNavigation(
     onRequestExit: () -> Unit,
     onCycleTheme: () -> Unit,
     onEqualizer: () -> Unit,
-    onScanMusic: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     val outerPadding =
@@ -122,17 +121,9 @@ internal fun SidebarNavigation(
             SidebarGroups.appOperations.forEachIndexed { index, entry ->
                 SidebarEntryRow(
                     entry = entry,
-                    selected = (entry as? SidebarEntry.Destination)?.route == selectedRoute,
+                    selected = entry.route == selectedRoute,
                     tint = SidebarIconPalette.operations[index],
-                    onClick = {
-                        when (entry) {
-                            is SidebarEntry.Destination -> onSelect(entry.route)
-                            is SidebarEntry.Action ->
-                                when (entry.action) {
-                                    SidebarAction.SCAN_LIBRARY -> onScanMusic()
-                                }
-                        }
-                    },
+                    onClick = { onSelect(entry.route) },
                 )
             }
         }
@@ -293,27 +284,16 @@ private fun SidebarEntryRow(
     onClick: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
-    val interactionModifier =
-        when (entry) {
-            is SidebarEntry.Destination ->
-                Modifier.selectable(
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .heightIn(min = dimensions.minimumTouchTarget)
+                .selectable(
                     selected = selected,
                     enabled = enabled,
                     role = Role.Tab,
                     onClick = onClick,
                 )
-            is SidebarEntry.Action ->
-                Modifier.clickable(
-                    enabled = enabled,
-                    role = Role.Button,
-                    onClick = onClick,
-                )
-        }
-    Row(
-        modifier =
-            Modifier.fillMaxWidth()
-                .heightIn(min = dimensions.minimumTouchTarget)
-                .then(interactionModifier)
                 .padding(horizontal = dimensions.spaceSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {

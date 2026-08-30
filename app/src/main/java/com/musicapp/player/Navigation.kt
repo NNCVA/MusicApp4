@@ -178,7 +178,7 @@ fun MainNavigation(
 
     fun navigateToScanMusic() {
         commitNavigation {
-            navigate(ScanMusicRoute(returnRoute = navigationState.currentTopLevelRoute))
+            navigate(ScanMusicRoute)
         }
     }
 
@@ -217,10 +217,6 @@ fun MainNavigation(
                     },
                     onEqualizer = {
                         messageBubbleQueue.enqueue(R.string.sidebar_equalizer_placeholder)
-                    },
-                    onScanMusic = {
-                        navigateToScanMusic()
-                        closeDrawer()
                     },
                 )
             },
