@@ -8,6 +8,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import coil3.compose.AsyncImage
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -308,7 +309,7 @@ private fun MiniPlayer(
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
         PlayerArtwork(
-            artwork = state.artwork,
+            track = track,
             shape = MusicTheme.shapes.small,
             modifier = Modifier.size(dimensions.trackArtworkSize),
         )
@@ -553,7 +554,7 @@ private fun ArtworkPage(state: PlayerUiState, track: Track) {
         verticalArrangement = Arrangement.spacedBy(dimensions.spaceLarge, Alignment.CenterVertically),
     ) {
         PlayerArtwork(
-            artwork = state.artwork,
+            track = track,
             shape = CircleShape,
             modifier = Modifier.size(dimensions.fullPlayerArtworkSize),
         )
@@ -701,27 +702,18 @@ private fun QueuePage(
 }
 
 @Composable
-private fun PlayerArtwork(artwork: ArtworkResult, shape: Shape, modifier: Modifier) {
-    when (artwork) {
-        ArtworkResult.Placeholder -> Box(
-            modifier.clip(shape).background(MusicTheme.colors.secondaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_playlist_album),
-                contentDescription = stringResource(R.string.player_artwork_description),
-                tint = MusicTheme.colors.onSecondaryContainer,
-                modifier = Modifier.fillMaxSize(0.5f),
-            )
-        }
-        is ArtworkResult.Embedded -> {
-            val image = artwork.image
-            val bitmap = remember(image) {
-                Bitmap.createBitmap(image.argbPixels, image.width, image.height, Bitmap.Config.ARGB_8888).asImageBitmap()
-            }
-            Image(bitmap, stringResource(R.string.player_artwork_description), modifier.clip(shape), contentScale = ContentScale.Crop)
-        }
-    }
+private fun PlayerArtwork(track: Track?, shape: Shape, modifier: Modifier) {
+    val artworkDescription = stringResource(R.string.player_artwork_description)
+    AsyncImage(
+        model = track,
+        contentDescription = artworkDescription,
+        modifier = modifier
+            .clip(shape)
+            .background(MusicTheme.colors.secondaryContainer),
+        contentScale = ContentScale.Crop,
+        error = painterResource(R.drawable.ic_playlist_album),
+        placeholder = painterResource(R.drawable.ic_playlist_album),
+    )
 }
 
 @Composable

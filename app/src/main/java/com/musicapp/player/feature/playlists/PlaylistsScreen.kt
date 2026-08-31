@@ -7,6 +7,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
+import coil3.compose.AsyncImage
+import com.musicapp.player.core.image.AudioArtworkRequest
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -84,7 +86,6 @@ fun PlaylistsScreenRoute(
         openDrawer = openDrawer,
         onPlaylistClick = onPlaylistClick,
         bottomPadding = bottomPadding,
-        onArtworkRequested = viewModel::requestArtwork,
         onCreate = viewModel::create,
         onRename = viewModel::rename,
         onDelete = viewModel::delete,
@@ -131,7 +132,6 @@ private fun PlaylistsScreen(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onPlaylistClick: (PlaylistId) -> Unit,
-    onArtworkRequested: (Playlist) -> Unit,
     onCreate: (String) -> Unit,
     onRename: (PlaylistId, String) -> Unit,
     onDelete: (PlaylistId) -> Unit,
@@ -206,9 +206,6 @@ private fun PlaylistsScreen(
                 items(state.playlists, key = { it.id.value }) { playlist ->
                     PlaylistRow(
                         playlist = playlist,
-                        artwork = state.artworkByPlaylistId[playlist.id.value]
-                            ?: ArtworkResult.Placeholder,
-                        onArtworkRequested = { onArtworkRequested(playlist) },
                         contentPadding =
                             PaddingValues(
                                 start = playlistListStartPadding,
@@ -279,17 +276,12 @@ private fun PlaylistEmptyState(modifier: Modifier) {
 @Composable
 private fun PlaylistRow(
     playlist: Playlist,
-    artwork: ArtworkResult,
-    onArtworkRequested: () -> Unit,
     contentPadding: PaddingValues,
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
-    LaunchedEffect(playlist.id, playlist.trackIds) {
-        onArtworkRequested()
-    }
     Row(
         modifier = Modifier.fillMaxWidth()
             .height(dimensions.trackListItemHeight)
@@ -299,7 +291,7 @@ private fun PlaylistRow(
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
         PlaylistArtwork(
-            artwork = artwork,
+            playlist = playlist,
             modifier = Modifier.size(dimensions.trackArtworkSize),
         )
         Column(
@@ -362,42 +354,27 @@ private fun PlaylistRow(
 
 @Composable
 private fun PlaylistArtwork(
-    artwork: ArtworkResult,
+    playlist: Playlist,
     modifier: Modifier,
 ) {
-    when (artwork) {
-        ArtworkResult.Placeholder ->
-            Box(
-                modifier = modifier
-                    .clip(MusicTheme.shapes.small)
-                    .background(MusicTheme.colors.secondaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_playlist_album),
-                    contentDescription = null,
-                    tint = MusicTheme.colors.onSecondaryContainer,
-                    modifier = Modifier.fillMaxSize(0.55f),
-                )
-            }
-        is ArtworkResult.Embedded -> {
-            val image = artwork.image
-            val bitmap = remember(image) {
-                Bitmap.createBitmap(
-                    image.argbPixels,
-                    image.width,
-                    image.height,
-                    Bitmap.Config.ARGB_8888,
-                ).asImageBitmap()
-            }
-            Image(
-                bitmap = bitmap,
-                contentDescription = null,
-                modifier = modifier.clip(MusicTheme.shapes.small),
-                contentScale = ContentScale.Crop,
-            )
-        }
+    val firstTrackId = remember(playlist.id, playlist.trackIds) { playlist.trackIds.firstOrNull() }
+    val request = remember(playlist.id, firstTrackId) {
+        AudioArtworkRequest.PlaylistArtworkRequest(
+            playlistId = playlist.id,
+            representativeTrackId = firstTrackId,
+            dateModifiedMs = 0L,
+        )
     }
+    AsyncImage(
+        model = request,
+        contentDescription = null,
+        modifier = modifier
+            .clip(MusicTheme.shapes.small)
+            .background(MusicTheme.colors.secondaryContainer),
+        contentScale = ContentScale.Crop,
+        error = painterResource(R.drawable.ic_playlist_album),
+        placeholder = painterResource(R.drawable.ic_playlist_album),
+    )
 }
 
 @Composable

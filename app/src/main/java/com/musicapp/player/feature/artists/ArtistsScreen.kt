@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import coil3.compose.AsyncImage
+import com.musicapp.player.core.image.AudioArtworkRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -83,7 +85,6 @@ fun ArtistsScreenRoute(
         openDrawer = openDrawer,
         onScanMusic = onScanMusic,
         bottomPadding = bottomPadding,
-        onArtworkRequested = viewModel::requestArtwork,
         onArtistClick = onArtistClick,
     )
 }
@@ -116,7 +117,6 @@ private fun ArtistsScreen(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
-    onArtworkRequested: (ArtistSummary) -> Unit,
     onArtistClick: (ArtistId) -> Unit,
     bottomPadding: Dp = 0.dp,
 ) {
@@ -183,15 +183,8 @@ private fun ArtistsScreen(
                     ),
                 ) {
                     items(displayArtists, key = { it.id.name }) { artist ->
-                        val artworkState = state.artworkByArtistId[artist.id]
-                        val artwork = artworkState
-                            ?.takeIf { it.matches(artist) }
-                            ?.artwork
-                            ?: ArtworkResult.Placeholder
                         ArtistRow(
                             artist = artist,
-                            artwork = artwork,
-                            onArtworkRequested = { onArtworkRequested(artist) },
                             onClick = { onArtistClick(artist.id) },
                         )
                     }
@@ -239,14 +232,9 @@ private fun ArtistsHeader(
 @Composable
 private fun ArtistRow(
     artist: ArtistSummary,
-    artwork: ArtworkResult,
-    onArtworkRequested: () -> Unit,
     onClick: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
-    LaunchedEffect(artist.id, artist.artworkCandidates) {
-        onArtworkRequested()
-    }
     Row(
         modifier = Modifier.fillMaxWidth()
             .heightIn(min = dimensions.minimumTouchTarget)
@@ -258,8 +246,7 @@ private fun ArtistRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ArtistArtwork(
-            artwork = artwork,
-            artistName = artist.displayName,
+            artist = artist,
             modifier = Modifier.size(dimensions.trackArtworkSize),
         )
         Column(
@@ -290,45 +277,28 @@ private fun ArtistRow(
 
 @Composable
 private fun ArtistArtwork(
-    artwork: ArtworkResult,
-    artistName: String,
+    artist: ArtistSummary,
     modifier: Modifier,
 ) {
-    val artworkDescription = stringResource(R.string.artist_artwork_description, artistName)
-    when (artwork) {
-        ArtworkResult.Placeholder ->
-            Box(
-                modifier = modifier
-                    .clip(CircleShape)
-                    .background(MusicTheme.colors.secondaryContainer)
-                    .semantics { contentDescription = artworkDescription },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_playlist_album),
-                    contentDescription = null,
-                    tint = MusicTheme.colors.onSecondaryContainer,
-                    modifier = Modifier.fillMaxSize(0.5f),
-                )
-            }
-        is ArtworkResult.Embedded -> {
-            val image = artwork.image
-            val bitmap = remember(image) {
-                Bitmap.createBitmap(
-                    image.argbPixels,
-                    image.width,
-                    image.height,
-                    Bitmap.Config.ARGB_8888,
-                ).asImageBitmap()
-            }
-            Image(
-                bitmap = bitmap,
-                contentDescription = artworkDescription,
-                modifier = modifier.clip(CircleShape),
-                contentScale = ContentScale.Crop,
-            )
-        }
+    val artworkDescription = stringResource(R.string.artist_artwork_description, artist.displayName)
+    val repTrack = remember(artist.id) { artist.sortedArtworkCandidates().firstOrNull() }
+    val request = remember(artist.id, repTrack?.id, repTrack?.dateModifiedMs) {
+        AudioArtworkRequest.ArtistArtworkRequest(
+            artistName = artist.id.name,
+            representativeTrackId = repTrack?.id,
+            dateModifiedMs = repTrack?.dateModifiedMs ?: 0L,
+        )
     }
+    AsyncImage(
+        model = request,
+        contentDescription = artworkDescription,
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MusicTheme.colors.secondaryContainer),
+        contentScale = ContentScale.Crop,
+        error = painterResource(R.drawable.ic_playlist_album),
+        placeholder = painterResource(R.drawable.ic_playlist_album),
+    )
 }
 
 @Composable

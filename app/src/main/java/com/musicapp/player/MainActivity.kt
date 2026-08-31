@@ -60,9 +60,11 @@ class MainActivity : AppCompatActivity() {
           launchPermissionRequest = permissionLauncher::launch,
         ),
       )
-    if (mediaPermissionCoordinator.canQueryMediaStore && !ProcessSyncLifecycle.coldStartDispatched) {
-      ProcessSyncLifecycle.coldStartDispatched = true
-      librarySyncCoordinator.onColdStart()
+    window.decorView.post {
+      if (mediaPermissionCoordinator.canQueryMediaStore && !ProcessSyncLifecycle.coldStartDispatched) {
+        ProcessSyncLifecycle.coldStartDispatched = true
+        librarySyncCoordinator.onColdStart()
+      }
     }
     enableEdgeToEdge()
     setContent {

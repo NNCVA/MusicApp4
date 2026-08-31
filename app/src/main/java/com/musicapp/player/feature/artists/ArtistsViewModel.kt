@@ -32,12 +32,14 @@ import kotlinx.coroutines.launch
 
 data class ArtistsUiState(
     val artists: List<ArtistSummary> = emptyList(),
-    val artworkByArtistId: Map<ArtistId, ArtistArtworkState> = emptyMap(),
-)
+) {
+    @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
+    val artworkByArtistId: Map<ArtistId, ArtistArtworkState> get() = emptyMap()
+}
 
 data class ArtistArtworkState(
-    val signature: ArtistArtworkSignature,
-    val artwork: ArtworkResult,
+    val signature: ArtistArtworkSignature = emptyList(),
+    val artwork: ArtworkResult = ArtworkResult.Placeholder,
 ) {
     fun matches(artist: ArtistSummary): Boolean = signature == artist.artworkSignature()
 }
@@ -52,86 +54,26 @@ data class ArtistDetailUiState(
 @HiltViewModel
 class ArtistsViewModel @Inject constructor(
     mediaLibraryRepository: MediaLibraryRepository,
-    private val artworkRepository: ArtworkRepository,
 ) : ViewModel() {
-    private val artworkByArtistId = MutableStateFlow<Map<ArtistId, ArtistArtworkState>>(emptyMap())
-    private val artworkRequests = mutableMapOf<ArtistId, ArtworkRequest>()
+    constructor(
+        mediaLibraryRepository: MediaLibraryRepository,
+        artworkRepository: ArtworkRepository,
+    ) : this(mediaLibraryRepository)
+
     private val artists = mediaLibraryRepository.observeTracks().map(ArtistGrouping::group)
 
     val uiState: StateFlow<ArtistsUiState> =
-        combine(artists, artworkByArtistId) { currentArtists, artwork ->
-            val visibleArtistIds = currentArtists.mapTo(hashSetOf(), ArtistSummary::id)
-            ArtistsUiState(
-                artists = currentArtists,
-                artworkByArtistId = artwork.filterKeys { it in visibleArtistIds },
+        artists.map { ArtistsUiState(artists = it) }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+                ArtistsUiState(),
             )
-        }.stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            ArtistsUiState(),
-        )
 
+    @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
     fun requestArtwork(artist: ArtistSummary) {
-        val candidates = artist.sortedArtworkCandidates()
-        val signature = candidates.artworkSignature()
-        val current = artworkByArtistId.value[artist.id]
-        if (current?.signature == signature) return
-
-        artworkRequests.remove(artist.id)?.job?.cancel()
-        val request = ArtworkRequest()
-        artworkRequests[artist.id] = request
-        artworkByArtistId.update { cached ->
-            cached +
-                (
-                    artist.id to
-                        ArtistArtworkState(
-                            signature = signature,
-                            artwork = ArtworkResult.Placeholder,
-                        )
-                    )
-        }
-
-        if (candidates.isEmpty()) {
-            artworkRequests.remove(artist.id)
-            return
-        }
-
-        request.job = viewModelScope.launch {
-            try {
-                val artwork = loadFirstEmbedded(candidates)
-                artworkByArtistId.update { cached ->
-                    val state = cached[artist.id]
-                    if (state?.signature == signature) {
-                        cached + (artist.id to state.copy(artwork = artwork))
-                    } else {
-                        cached
-                    }
-                }
-            } finally {
-                if (artworkRequests[artist.id] === request) {
-                    artworkRequests.remove(artist.id)
-                }
-            }
-        }
+        // No-op: artwork is loaded directly by Coil AsyncImage in Composable
     }
-
-    private suspend fun loadFirstEmbedded(candidates: List<Track>): ArtworkResult {
-        candidates.forEach { candidate ->
-            currentCoroutineContext().ensureActive()
-            val result =
-                try {
-                    artworkRepository.artwork(candidate, ARTIST_ARTWORK_TARGET_PX)
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: Throwable) {
-                    ArtworkResult.Placeholder
-                }
-            if (result is ArtworkResult.Embedded) return result
-        }
-        return ArtworkResult.Placeholder
-    }
-
-    private class ArtworkRequest(var job: Job? = null)
 }
 
 @HiltViewModel

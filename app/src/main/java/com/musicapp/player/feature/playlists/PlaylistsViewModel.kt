@@ -35,8 +35,10 @@ enum class PlaylistOperationMessage {
 data class PlaylistsUiState(
     val playlists: List<Playlist> = emptyList(),
     val operationMessage: PlaylistOperationMessage? = null,
-    val artworkByPlaylistId: Map<Long, ArtworkResult> = emptyMap(),
-)
+) {
+    @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
+    val artworkByPlaylistId: Map<Long, ArtworkResult> get() = emptyMap()
+}
 
 data class PlaylistDetailUiState(
     val playlist: Playlist? = null,
@@ -57,70 +59,28 @@ val PlaylistDetailUiState.selectedTrackIdsInOrder: List<TrackId>
 class PlaylistsViewModel @Inject constructor(
     repository: PlaylistRepository,
     private val useCase: PlaylistUseCase,
-    private val mediaLibraryRepository: MediaLibraryRepository,
-    private val artworkRepository: ArtworkRepository,
 ) : ViewModel() {
+    constructor(
+        repository: PlaylistRepository,
+        useCase: PlaylistUseCase,
+        mediaLibraryRepository: MediaLibraryRepository,
+        artworkRepository: ArtworkRepository,
+    ) : this(repository, useCase)
+
     private val operationMessage = MutableStateFlow<PlaylistOperationMessage?>(null)
-    private val artworkCache = MutableStateFlow<Map<Long, PlaylistArtworkState>>(emptyMap())
     private val playlists = repository.observePlaylists()
 
     val uiState: StateFlow<PlaylistsUiState> =
-        combine(playlists, operationMessage, artworkCache) { currentPlaylists, message, cachedArtwork ->
-            val visiblePlaylistIds = currentPlaylists.mapTo(hashSetOf()) { it.id.value }
+        combine(playlists, operationMessage) { currentPlaylists, message ->
             PlaylistsUiState(
                 playlists = currentPlaylists,
                 operationMessage = message,
-                artworkByPlaylistId = cachedArtwork
-                    .filterKeys(visiblePlaylistIds::contains)
-                    .mapValues { (_, state) -> state.artwork },
             )
-        }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlaylistsUiState())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlaylistsUiState())
 
+    @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
     fun requestArtwork(playlist: Playlist) {
-        viewModelScope.launch {
-            val track = findLastAvailableTrack(playlist.trackIds)
-            val key = PlaylistArtworkKey(track?.id, track?.dateModifiedMs)
-            var shouldLoad = false
-            artworkCache.update { cached ->
-                val current = cached[playlist.id.value]
-                if (current?.key == key) {
-                    cached
-                } else {
-                    shouldLoad = true
-                    cached +
-                        (
-                            playlist.id.value to
-                                PlaylistArtworkState(
-                                    key = key,
-                                    artwork = ArtworkResult.Placeholder,
-                                )
-                            )
-                }
-            }
-            if (!shouldLoad) return@launch
-
-            val result =
-                if (track == null) {
-                    ArtworkResult.Placeholder
-                } else {
-                    try {
-                        artworkRepository.artwork(track, PLAYLIST_ARTWORK_TARGET_PX)
-                    } catch (cancellation: CancellationException) {
-                        throw cancellation
-                    } catch (_: Exception) {
-                        ArtworkResult.Placeholder
-                    }
-                }
-            artworkCache.update { cached ->
-                val current = cached[playlist.id.value]
-                if (current?.key == key) {
-                    cached + (playlist.id.value to current.copy(artwork = result))
-                } else {
-                    cached
-                }
-            }
-        }
+        // No-op: artwork is loaded directly by Coil AsyncImage in Composable
     }
 
     fun create(rawName: String) = mutate(PlaylistOperationMessage.CREATED) { useCase.create(rawName) }
@@ -148,31 +108,6 @@ class PlaylistsViewModel @Inject constructor(
                 }
         }
     }
-
-    private suspend fun findLastAvailableTrack(trackIds: List<TrackId>): Track? {
-        for (trackId in trackIds.asReversed()) {
-            val track =
-                try {
-                    mediaLibraryRepository.getTrack(trackId)
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: Exception) {
-                    null
-                }
-            if (track?.availability == Availability.AVAILABLE) return track
-        }
-        return null
-    }
-
-    private data class PlaylistArtworkKey(
-        val trackId: TrackId?,
-        val dateModifiedMs: Long?,
-    )
-
-    private data class PlaylistArtworkState(
-        val key: PlaylistArtworkKey,
-        val artwork: ArtworkResult,
-    )
 }
 
 @HiltViewModel

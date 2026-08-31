@@ -73,158 +73,28 @@ class PlaylistsViewModelTest {
     }
 
     @Test
-    fun `main view model uses the last available track artwork and removes it after deletion`() =
-        runTest(dispatcher) {
-            val first = track(1)
-            val lastAvailable = track(2)
-            val newestUnavailable = track(3, Availability.TEMPORARILY_UNAVAILABLE)
-            val playlist = Playlist(
-                id = PlaylistId(1),
-                displayName = "Cover",
-                normalizedName = "cover",
-                trackIds = listOf(first.id, lastAvailable.id, newestUnavailable.id),
-                createdAtMs = 0,
-            )
-            val repository = FakePlaylistRepository(
-                initialPlaylists = listOf(playlist),
-                existingTrackIds = setOf(first.id, lastAvailable.id, newestUnavailable.id),
-            )
-            val artworkRepository = RecordingArtworkRepository(
-                outcomes = mapOf(lastAvailable.id to embeddedArtwork(2)),
-            )
-            val viewModel = PlaylistsViewModel(
-                repository = repository,
-                useCase = PlaylistUseCase(repository, Clock { 10 }),
-                mediaLibraryRepository = FakeMediaLibraryRepository(
-                    listOf(first, lastAvailable, newestUnavailable),
-                ),
-                artworkRepository = artworkRepository,
-            )
-            val collection = backgroundScope.launch { viewModel.uiState.collect {} }
-            advanceUntilIdle()
-
-            viewModel.requestArtwork(playlist)
-            advanceUntilIdle()
-
-            assertEquals(listOf(lastAvailable.id), artworkRepository.requests.map(ArtworkRequest::trackId))
-            assertEquals(
-                2,
-                embeddedPixel(viewModel.uiState.value.artworkByPlaylistId.getValue(playlist.id.value)),
-            )
-
-            viewModel.delete(playlist.id)
-            advanceUntilIdle()
-            assertFalse(viewModel.uiState.value.artworkByPlaylistId.containsKey(playlist.id.value))
-            collection.cancel()
-        }
-
-    @Test
-    fun `main view model uses placeholder for empty unavailable and unreadable artwork`() =
-        runTest(dispatcher) {
-            val unavailable = track(2, Availability.TEMPORARILY_UNAVAILABLE)
-            val unreadable = track(3)
-            val emptyPlaylist = Playlist(
-                id = PlaylistId(1),
-                displayName = "Empty",
-                normalizedName = "empty",
-                createdAtMs = 0,
-            )
-            val unavailablePlaylist = Playlist(
-                id = PlaylistId(2),
-                displayName = "Unavailable",
-                normalizedName = "unavailable",
-                trackIds = listOf(unavailable.id),
-                createdAtMs = 0,
-            )
-            val unreadablePlaylist = Playlist(
-                id = PlaylistId(3),
-                displayName = "Unreadable",
-                normalizedName = "unreadable",
-                trackIds = listOf(unreadable.id),
-                createdAtMs = 0,
-            )
-            val repository = FakePlaylistRepository(
-                initialPlaylists = listOf(emptyPlaylist, unavailablePlaylist, unreadablePlaylist),
-                existingTrackIds = setOf(unavailable.id, unreadable.id),
-            )
-            val artworkRepository = RecordingArtworkRepository(
-                failure = IllegalStateException("decode failed"),
-            )
-            val viewModel = PlaylistsViewModel(
-                repository = repository,
-                useCase = PlaylistUseCase(repository, Clock { 10 }),
-                mediaLibraryRepository = FakeMediaLibraryRepository(listOf(unavailable, unreadable)),
-                artworkRepository = artworkRepository,
-            )
-            val collection = backgroundScope.launch { viewModel.uiState.collect {} }
-            advanceUntilIdle()
-
-            viewModel.requestArtwork(emptyPlaylist)
-            viewModel.requestArtwork(unavailablePlaylist)
-            viewModel.requestArtwork(unreadablePlaylist)
-            advanceUntilIdle()
-
-            assertSame(
-                ArtworkResult.Placeholder,
-                viewModel.uiState.value.artworkByPlaylistId.getValue(emptyPlaylist.id.value),
-            )
-            assertSame(
-                ArtworkResult.Placeholder,
-                viewModel.uiState.value.artworkByPlaylistId.getValue(unavailablePlaylist.id.value),
-            )
-            assertSame(
-                ArtworkResult.Placeholder,
-                viewModel.uiState.value.artworkByPlaylistId.getValue(unreadablePlaylist.id.value),
-            )
-            assertEquals(listOf(unreadable.id), artworkRepository.requests.map(ArtworkRequest::trackId))
-            collection.cancel()
-        }
-
-    @Test
-    fun `main view model ignores artwork result for an older playlist request`() = runTest(dispatcher) {
-        val first = track(1)
-        val second = track(2)
-        val original = Playlist(
+    fun `main view model exposes pure decoupled playlist state`() = runTest(dispatcher) {
+        val playlist = Playlist(
             id = PlaylistId(1),
-            displayName = "Changing",
-            normalizedName = "changing",
-            trackIds = listOf(first.id),
+            displayName = "Favorites",
+            normalizedName = "favorites",
+            trackIds = listOf(TrackId("external", 1), TrackId("external", 2)),
             createdAtMs = 0,
         )
-        val updated = original.copy(trackIds = listOf(second.id), updatedAtMs = 1)
         val repository = FakePlaylistRepository(
-            initialPlaylists = listOf(original),
-            existingTrackIds = setOf(first.id, second.id),
+            initialPlaylists = listOf(playlist),
         )
-        val staleResult = CompletableDeferred<ArtworkResult>()
         val viewModel = PlaylistsViewModel(
             repository = repository,
             useCase = PlaylistUseCase(repository, Clock { 10 }),
-            mediaLibraryRepository = FakeMediaLibraryRepository(listOf(first, second)),
-            artworkRepository = SuspendingArtworkRepository(
-                suspendedTrackId = first.id,
-                suspendedResult = staleResult,
-                immediateResult = embeddedArtwork(2),
-            ),
         )
         val collection = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        viewModel.requestArtwork(original)
-        runCurrent()
-        viewModel.requestArtwork(updated)
-        advanceUntilIdle()
-        assertEquals(
-            2,
-            embeddedPixel(viewModel.uiState.value.artworkByPlaylistId.getValue(original.id.value)),
-        )
-
-        staleResult.complete(embeddedArtwork(1))
-        advanceUntilIdle()
-        assertEquals(
-            2,
-            embeddedPixel(viewModel.uiState.value.artworkByPlaylistId.getValue(original.id.value)),
-        )
+        val playlists = viewModel.uiState.value.playlists
+        assertEquals(1, playlists.size)
+        assertEquals("Favorites", playlists.single().displayName)
+        assertEquals(2, playlists.single().trackIds.size)
         collection.cancel()
     }
 

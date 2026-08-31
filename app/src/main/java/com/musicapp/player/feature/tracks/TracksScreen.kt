@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
+import coil3.compose.AsyncImage
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
@@ -129,7 +130,6 @@ fun TracksScreenRoute(
         onScanMusic = onScanMusic,
         bottomPadding = bottomPadding,
         onSortSelected = viewModel::selectSort,
-        onTrackArtworkRequested = viewModel::requestArtwork,
         onTrackAddToQueue = viewModel::addTrackToQueue,
         onTrackPlayNext = viewModel::playTrackNext,
         onTrackHide = viewModel::hideTrack,
@@ -181,7 +181,7 @@ fun TracksScreen(
     onScanMusic: () -> Unit,
     bottomPadding: Dp = 0.dp,
     onSortSelected: (TrackSortField) -> Unit,
-    onTrackArtworkRequested: suspend (Track) -> Unit,
+    onTrackArtworkRequested: suspend (Track) -> Unit = {},
     onTrackAddToQueue: (TrackId) -> Unit,
     onTrackPlayNext: (TrackId) -> Unit,
     onTrackHide: (TrackId) -> Unit,
@@ -332,9 +332,7 @@ fun TracksScreen(
                     listState = listState,
                     selectedIds = state.selectedTrackIds,
                     selectionMode = state.isSelectionMode,
-                    artworkByTrackId = state.artworkByTrackId,
                     playlists = state.playlists,
-                    onArtworkRequested = onTrackArtworkRequested,
                     onAddToQueue = onTrackAddToQueue,
                     onPlayNext = onTrackPlayNext,
                     onHide = onTrackHide,
@@ -667,9 +665,7 @@ private fun TrackList(
     listState: LazyListState,
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
-    artworkByTrackId: Map<TrackId, TrackArtworkState>,
     playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onArtworkRequested: suspend (Track) -> Unit,
     onAddToQueue: (TrackId) -> Unit,
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
@@ -710,9 +706,7 @@ private fun TrackList(
                     tracks = tracks,
                     selectedIds = selectedIds,
                     selectionMode = selectionMode,
-                    artworkByTrackId = artworkByTrackId,
                     playlists = playlists,
-                    onArtworkRequested = onArtworkRequested,
                     onAddToQueue = onAddToQueue,
                     onPlayNext = onPlayNext,
                     onHide = onHide,
@@ -729,9 +723,7 @@ private fun TrackList(
                         tracks = section.tracks,
                         selectedIds = selectedIds,
                         selectionMode = selectionMode,
-                        artworkByTrackId = artworkByTrackId,
                         playlists = playlists,
-                        onArtworkRequested = onArtworkRequested,
                         onAddToQueue = onAddToQueue,
                         onPlayNext = onPlayNext,
                         onHide = onHide,
@@ -752,9 +744,7 @@ private fun LazyListScope.trackItems(
     tracks: List<Track>,
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
-    artworkByTrackId: Map<TrackId, TrackArtworkState>,
     playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onArtworkRequested: suspend (Track) -> Unit,
     onAddToQueue: (TrackId) -> Unit,
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
@@ -770,12 +760,7 @@ private fun LazyListScope.trackItems(
             track = track,
             selected = track.id in selectedIds,
             selectionMode = selectionMode,
-            artwork = artworkByTrackId[track.id]
-                ?.takeIf { it.dateModifiedMs == track.dateModifiedMs }
-                ?.artwork
-                ?: ArtworkResult.Placeholder,
             playlists = playlists,
-            onArtworkRequested = { onArtworkRequested(track) },
             onAddToQueue = { onAddToQueue(track.id) },
             onPlayNext = { onPlayNext(track.id) },
             onHide = { onHide(track.id) },
@@ -794,9 +779,7 @@ private fun TrackRow(
     track: Track,
     selected: Boolean,
     selectionMode: Boolean,
-    artwork: ArtworkResult,
     playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onArtworkRequested: suspend () -> Unit,
     onAddToQueue: () -> Unit,
     onPlayNext: () -> Unit,
     onHide: () -> Unit,
@@ -815,9 +798,6 @@ private fun TrackRow(
             ?.let { stringResource(R.string.track_artist_album, artistName, it) }
             ?: artistName
     var menuExpanded by remember(track.id) { mutableStateOf(false) }
-    LaunchedEffect(track.id, track.dateModifiedMs) {
-        onArtworkRequested()
-    }
     Row(
         modifier =
             Modifier.fillMaxWidth()
@@ -835,8 +815,7 @@ private fun TrackRow(
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
         TrackArtwork(
-            artwork = artwork,
-            trackTitle = track.title,
+            track = track,
             modifier = Modifier.size(dimensions.trackArtworkSize),
         )
         Column(modifier = Modifier.weight(1f)) {
@@ -1081,49 +1060,21 @@ private fun AddToPlaylistSelectionDialog(
 
 @Composable
 private fun TrackArtwork(
-    artwork: ArtworkResult,
-    trackTitle: String,
+    track: Track,
     modifier: Modifier,
 ) {
     val shape = MusicTheme.shapes.small
-    val artworkDescription = stringResource(R.string.track_artwork_description, trackTitle)
-    when (artwork) {
-        ArtworkResult.Placeholder ->
-            TrackArtworkPlaceholder(
-                modifier = modifier,
-                artworkDescription = artworkDescription,
-            )
-        is ArtworkResult.Embedded -> {
-            val image = artwork.image
-            var bitmap by remember(image) { mutableStateOf<ImageBitmap?>(null) }
-            LaunchedEffect(image) {
-                bitmap =
-                    withContext(Dispatchers.Default) {
-                        Bitmap.createBitmap(
-                            image.argbPixels,
-                            image.width,
-                            image.height,
-                            Bitmap.Config.ARGB_8888,
-                        ).apply { prepareToDraw() }
-                            .asImageBitmap()
-                    }
-            }
-            val preparedBitmap = bitmap
-            if (preparedBitmap == null) {
-                TrackArtworkPlaceholder(
-                    modifier = modifier,
-                    artworkDescription = artworkDescription,
-                )
-            } else {
-                Image(
-                    bitmap = preparedBitmap,
-                    contentDescription = artworkDescription,
-                    modifier = modifier.clip(shape),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-        }
-    }
+    val artworkDescription = stringResource(R.string.track_artwork_description, track.title)
+    AsyncImage(
+        model = track,
+        contentDescription = artworkDescription,
+        modifier = modifier
+            .clip(shape)
+            .background(MusicTheme.colors.secondaryContainer),
+        contentScale = ContentScale.Crop,
+        error = painterResource(R.drawable.ic_playlist_album),
+        placeholder = painterResource(R.drawable.ic_playlist_album),
+    )
 }
 
 private const val TRACKS_LOAD_LOG_TAG = "TracksLoadPerf"

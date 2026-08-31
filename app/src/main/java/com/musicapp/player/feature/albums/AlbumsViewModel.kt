@@ -33,9 +33,11 @@ const val DEFAULT_ALBUM_GRID_COLUMNS = 2
 data class AlbumsUiState(
     val albums: List<AlbumSummary> = emptyList(),
     val sort: AlbumSort = AlbumSort(),
-    val artworkByAlbumId: Map<AlbumId, AlbumArtworkState> = emptyMap(),
     val columnCount: Int = DEFAULT_ALBUM_GRID_COLUMNS,
-)
+) {
+    @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
+    val artworkByAlbumId: Map<AlbumId, AlbumArtworkState> get() = emptyMap()
+}
 
 data class AlbumDetailUiState(
     val albumId: AlbumId? = null,
@@ -45,33 +47,37 @@ data class AlbumDetailUiState(
 )
 
 data class AlbumArtworkState(
-    val trackId: TrackId,
-    val dateModifiedMs: Long,
-    val artwork: ArtworkResult,
+    val trackId: TrackId = TrackId("", 0L),
+    val dateModifiedMs: Long = 0L,
+    val artwork: ArtworkResult = ArtworkResult.Placeholder,
 )
 
 @HiltViewModel
 class AlbumsViewModel @Inject constructor(
     mediaLibraryRepository: MediaLibraryRepository,
     private val savedStateHandle: SavedStateHandle,
-    private val artworkRepository: ArtworkRepository,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
+    constructor(
+        mediaLibraryRepository: MediaLibraryRepository,
+        savedStateHandle: SavedStateHandle,
+        artworkRepository: ArtworkRepository,
+        settingsRepository: SettingsRepository,
+    ) : this(
+        mediaLibraryRepository = mediaLibraryRepository,
+        savedStateHandle = savedStateHandle,
+        settingsRepository = settingsRepository,
+    )
+
     private val sort = MutableStateFlow(restoreAlbumSort(savedStateHandle))
-    private val artworkByAlbumId = MutableStateFlow<Map<AlbumId, AlbumArtworkState>>(emptyMap())
-    private val albumsAndSort =
+
+    val uiState: StateFlow<AlbumsUiState> =
         combine(mediaLibraryRepository.observeTracks(), sort, settingsRepository.settings) { tracks, currentSort, settings ->
             AlbumsUiState(
                 albums = AlbumGrouping.sorted(AlbumGrouping.group(tracks), currentSort),
                 sort = currentSort,
                 columnCount = settings.albumGridColumns,
             )
-        }
-
-    val uiState: StateFlow<AlbumsUiState> =
-        combine(albumsAndSort, artworkByAlbumId) { albumState, artwork ->
-            val visibleAlbumIds = albumState.albums.mapTo(hashSetOf(), AlbumSummary::id)
-            albumState.copy(artworkByAlbumId = artwork.filterKeys { it in visibleAlbumIds })
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -92,46 +98,9 @@ class AlbumsViewModel @Inject constructor(
         }
     }
 
+    @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
     fun requestArtwork(album: AlbumSummary) {
-        val track = album.representativeTrack
-        var shouldLoad = false
-        artworkByAlbumId.update { cached ->
-            val current = cached[album.id]
-            if (current?.trackId == track.id && current.dateModifiedMs == track.dateModifiedMs) {
-                cached
-            } else {
-                shouldLoad = true
-                cached +
-                    (
-                        album.id to
-                            AlbumArtworkState(
-                                trackId = track.id,
-                                dateModifiedMs = track.dateModifiedMs,
-                                artwork = ArtworkResult.Placeholder,
-                            )
-                        )
-            }
-        }
-        if (!shouldLoad) return
-
-        viewModelScope.launch {
-            val result =
-                try {
-                    artworkRepository.artwork(track, ALBUM_ARTWORK_TARGET_PX)
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: Throwable) {
-                    ArtworkResult.Placeholder
-                }
-            artworkByAlbumId.update { cached ->
-                val current = cached[album.id]
-                if (current?.trackId == track.id && current.dateModifiedMs == track.dateModifiedMs) {
-                    cached + (album.id to current.copy(artwork = result))
-                } else {
-                    cached
-                }
-            }
-        }
+        // No-op: artwork is loaded directly by Coil AsyncImage in Composable
     }
 }
 

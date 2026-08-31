@@ -97,6 +97,9 @@ dependencies {
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
 
+  // Coil 3 Image Loading Pipeline (Offline / Local-First)
+  implementation(libs.coil.compose)
+
   // JVM tests
   testImplementation(libs.junit4)
   testImplementation(libs.kotlinx.coroutines.test)

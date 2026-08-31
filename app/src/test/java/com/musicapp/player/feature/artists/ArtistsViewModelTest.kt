@@ -40,83 +40,36 @@ class ArtistsViewModelTest {
     }
 
     @Test
-    fun `artwork candidates are attempted in track identity order and stop at first embedded`() =
-        runTest(dispatcher) {
-            val first = track(1, dateModifiedMs = 10)
-            val second = track(2, dateModifiedMs = 20)
-            val third = track(3, dateModifiedMs = 30)
-            val repository = RecordingArtworkRepository(
-                outcomes = mapOf(
-                    first.id to IllegalStateException("unreadable"),
-                    second.id to ArtworkResult.Embedded(image()),
-                    third.id to ArtworkResult.Embedded(image(0xFF00FF00.toInt())),
-                ),
-            )
-            val viewModel = subject(listOf(first, second, third), repository)
-            collectState(viewModel)
-            advanceUntilIdle()
+    fun `artist grouping creates distinct artists with track counts`() = runTest(dispatcher) {
+        val first = track(1, dateModifiedMs = 10, artistName = "Jay Chou")
+        val second = track(2, dateModifiedMs = 20, artistName = "Jay Chou")
+        val third = track(3, dateModifiedMs = 30, artistName = "Eason Chan")
+        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(first, second, third)))
+        collectState(viewModel)
+        advanceUntilIdle()
 
-            val artist =
-                ArtistSummary(
-                    id = ArtistId("artist"),
-                    displayName = "Artist",
-                    trackCount = 3,
-                    artworkCandidates = listOf(third, first, second),
-                )
-            viewModel.requestArtwork(artist)
-            viewModel.requestArtwork(artist)
-            advanceUntilIdle()
-
-            assertEquals(listOf(first.id, second.id), repository.requests.map { it.trackId })
-            assertTrue(repository.requests.all { it.targetPx == 128 })
-            assertTrue(viewModel.uiState.value.artworkByArtistId.getValue(artist.id).artwork is ArtworkResult.Embedded)
-            assertTrue(viewModel.uiState.value.artworkByArtistId.getValue(artist.id).matches(artist))
-        }
+        val artists = viewModel.uiState.value.artists
+        assertEquals(2, artists.size)
+        val jay = artists.first { it.id == ArtistId("jay chou") }
+        assertEquals("Jay Chou", jay.displayName)
+        assertEquals(2, jay.trackCount)
+        val eason = artists.first { it.id == ArtistId("eason chan") }
+        assertEquals("Eason Chan", eason.displayName)
+        assertEquals(1, eason.trackCount)
+    }
 
     @Test
-    fun `a changed candidate signature prevents an older request from replacing newer artwork`() =
-        runTest(dispatcher) {
-            val oldTrack = track(1, dateModifiedMs = 10)
-            val newTrack = track(2, dateModifiedMs = 20)
-            val oldResult = CompletableDeferred<ArtworkResult>()
-            val repository = SuspendingArtworkRepository(oldTrack.id, oldResult)
-            val viewModel = subject(listOf(oldTrack), repository)
-            collectState(viewModel)
-            advanceUntilIdle()
+    fun `artists uiState is immediately loaded and exposes stable summaries`() = runTest(dispatcher) {
+        val track = track(1, dateModifiedMs = 10, artistName = "Solo Artist")
+        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(track)))
+        collectState(viewModel)
+        advanceUntilIdle()
 
-            val oldArtist = artist(oldTrack)
-            val newArtist = artist(newTrack)
-            viewModel.requestArtwork(oldArtist)
-            testScheduler.runCurrent()
-            viewModel.requestArtwork(newArtist)
-            advanceUntilIdle()
-
-            val state = viewModel.uiState.value.artworkByArtistId.getValue(newArtist.id)
-            assertTrue(state.matches(newArtist))
-            assertTrue(state.artwork is ArtworkResult.Embedded)
-            assertEquals(listOf(oldTrack.id, newTrack.id), repository.requests.map { it.trackId })
-        }
-
-    @Test
-    fun `all missing candidates leave a placeholder and duplicate requests are cached`() =
-        runTest(dispatcher) {
-            val track = track(1, dateModifiedMs = 10)
-            val repository = RecordingArtworkRepository(
-                outcomes = mapOf(track.id to ArtworkResult.Placeholder),
-            )
-            val viewModel = subject(listOf(track), repository)
-            collectState(viewModel)
-            advanceUntilIdle()
-            val artist = artist(track)
-
-            viewModel.requestArtwork(artist)
-            advanceUntilIdle()
-            viewModel.requestArtwork(artist)
-            advanceUntilIdle()
-
-            assertEquals(1, repository.requests.size)
-            assertSame(ArtworkResult.Placeholder, viewModel.uiState.value.artworkByArtistId.getValue(artist.id).artwork)
-        }
+        val artist = viewModel.uiState.value.artists.single()
+        assertEquals(ArtistId("solo artist"), artist.id)
+        assertEquals("Solo Artist", artist.displayName)
+        assertEquals(1, artist.trackCount)
+    }
 
     @Test
     fun `artist detail filters tracks including collaboration songs and matches display name`() =

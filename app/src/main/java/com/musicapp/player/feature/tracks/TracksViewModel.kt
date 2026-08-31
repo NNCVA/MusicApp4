@@ -77,8 +77,7 @@ data class TrackSort(
 
 data class TracksUiState(
     val tracks: List<Track> = emptyList(),
-    val isLibraryLoaded: Boolean = false,
-    val artworkByTrackId: Map<TrackId, TrackArtworkState> = emptyMap(),
+    val isLibraryLoaded: Boolean = true,
     val playlists: List<Playlist> = emptyList(),
     val sort: TrackSort = TrackSort.defaultFor(TrackSortField.TITLE),
     val isSelectionMode: Boolean = false,
@@ -88,7 +87,10 @@ data class TracksUiState(
     val infoTrack: Track? = null,
     val infoMetadata: AdvancedTrackMetadata? = null,
     val isInfoLoading: Boolean = false,
-)
+) {
+    @Deprecated("Artwork state decoupled from ViewModel StateFlow in M2 (R3). Replaced by Coil AsyncImage in M3.")
+    val artworkByTrackId: Map<TrackId, TrackArtworkState> get() = emptyMap()
+}
 
 @HiltViewModel
 class TracksViewModel internal constructor(
@@ -126,9 +128,6 @@ class TracksViewModel internal constructor(
     private val selectedTrackIds = MutableStateFlow<Set<TrackId>>(emptySet())
     private val batchResult = MutableStateFlow<BatchTrackActionResult?>(null)
     private val isBatchActionRunning = MutableStateFlow(false)
-    private val artworkByTrackId = MutableStateFlow<Map<TrackId, TrackArtworkState>>(emptyMap())
-    private val artworkRequestMutex = Mutex()
-    private val activeArtworkRequests = mutableMapOf<TrackId, ActiveArtworkRequest>()
     private val infoTrack = MutableStateFlow<Track?>(null)
     private val infoMetadata = MutableStateFlow<AdvancedTrackMetadata?>(null)
     private val isInfoLoading = MutableStateFlow(false)
@@ -173,9 +172,8 @@ class TracksViewModel internal constructor(
             sortedTracksState,
             playlists,
             presentationState,
-            artworkByTrackId,
             infoState,
-        ) { sortedTracks, playlists, presentation, artwork, info ->
+        ) { sortedTracks, playlists, presentation, info ->
             val visibleSelection =
                 presentation.selectedTrackIds.filterTo(linkedSetOf()) {
                     it in sortedTracks.visibleTrackIds
@@ -184,7 +182,6 @@ class TracksViewModel internal constructor(
             TracksUiState(
                 tracks = sortedTracks.tracks,
                 isLibraryLoaded = sortedTracks.isLibraryLoaded,
-                artworkByTrackId = artwork.filterKeys { it in sortedTracks.visibleTrackIds },
                 playlists = playlists,
                 sort = sortedTracks.sort,
                 isSelectionMode = isSelectionActive,
@@ -198,7 +195,7 @@ class TracksViewModel internal constructor(
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = TracksUiState(sort = sort.value),
+            initialValue = TracksUiState(sort = sort.value, isLibraryLoaded = true),
         )
 
     fun selectSort(field: TrackSortField) {
@@ -312,99 +309,9 @@ class TracksViewModel internal constructor(
         )
     }
 
+    @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
     suspend fun requestArtwork(track: Track) {
-        while (true) {
-            when (val claim = claimArtworkRequest(track)) {
-                ArtworkRequestClaim.Cached -> return
-                is ArtworkRequestClaim.Await -> {
-                    if (claim.completion.await() == ArtworkRequestOutcome.FINISHED) return
-                }
-                is ArtworkRequestClaim.Load -> {
-                    try {
-                        val result =
-                            try {
-                                artworkRepository.artwork(track, ARTWORK_TARGET_PX)
-                            } catch (cancellation: CancellationException) {
-                                throw cancellation
-                            } catch (_: Throwable) {
-                                ArtworkResult.Placeholder
-                            }
-                        finishArtworkRequest(claim.request, result)
-                        return
-                    } catch (cancellation: CancellationException) {
-                        cancelArtworkRequest(claim.request)
-                        throw cancellation
-                    }
-                }
-            }
-        }
-    }
-
-    private suspend fun claimArtworkRequest(track: Track): ArtworkRequestClaim =
-        artworkRequestMutex.withLock {
-            activeArtworkRequests[track.id]
-                ?.takeIf { it.dateModifiedMs == track.dateModifiedMs }
-                ?.let { return@withLock ArtworkRequestClaim.Await(it.completion) }
-            if (artworkByTrackId.value[track.id]?.dateModifiedMs == track.dateModifiedMs) {
-                return@withLock ArtworkRequestClaim.Cached
-            }
-
-            val loadingState =
-                TrackArtworkState(
-                    dateModifiedMs = track.dateModifiedMs,
-                    artwork = ArtworkResult.Placeholder,
-                )
-            val request =
-                ActiveArtworkRequest(
-                    trackId = track.id,
-                    dateModifiedMs = track.dateModifiedMs,
-                    loadingState = loadingState,
-                )
-            activeArtworkRequests[track.id] = request
-            artworkByTrackId.value = artworkByTrackId.value + (track.id to loadingState)
-            ArtworkRequestClaim.Load(request)
-        }
-
-    private suspend fun finishArtworkRequest(
-        request: ActiveArtworkRequest,
-        result: ArtworkResult,
-    ) {
-        withContext(NonCancellable) {
-            artworkRequestMutex.withLock {
-                if (activeArtworkRequests[request.trackId] === request) {
-                    activeArtworkRequests.remove(request.trackId)
-                    artworkByTrackId.update { cached ->
-                        if (cached[request.trackId] === request.loadingState) {
-                            cached + (request.trackId to request.loadingState.copy(artwork = result))
-                        } else {
-                            cached
-                        }
-                    }
-                }
-                request.completion.complete(ArtworkRequestOutcome.FINISHED)
-            }
-        }
-    }
-
-    private suspend fun cancelArtworkRequest(request: ActiveArtworkRequest) {
-        withContext(NonCancellable) {
-            artworkRequestMutex.withLock {
-                val ownsRequestSlot = activeArtworkRequests[request.trackId] === request
-                if (ownsRequestSlot) {
-                    activeArtworkRequests.remove(request.trackId)
-                    artworkByTrackId.update { cached ->
-                        if (cached[request.trackId] === request.loadingState) {
-                            cached - request.trackId
-                        } else {
-                            cached
-                        }
-                    }
-                }
-                request.completion.complete(
-                    if (ownsRequestSlot) ArtworkRequestOutcome.RETRY else ArtworkRequestOutcome.FINISHED,
-                )
-            }
-        }
+        // No-op: artwork is loaded directly by Coil AsyncImage in Composable
     }
 
     fun hideSelected() {
@@ -532,7 +439,7 @@ private data class TracksInfoState(
 
 private data class TracksLibraryState(
     val tracks: List<Track> = emptyList(),
-    val isLoaded: Boolean = false,
+    val isLoaded: Boolean = true,
 )
 
 private data class SortedTracksState(
@@ -542,29 +449,9 @@ private data class SortedTracksState(
     val sort: TrackSort,
 )
 
-private data class ActiveArtworkRequest(
-    val trackId: TrackId,
-    val dateModifiedMs: Long,
-    val loadingState: TrackArtworkState,
-    val completion: CompletableDeferred<ArtworkRequestOutcome> = CompletableDeferred(),
-)
-
-private sealed interface ArtworkRequestClaim {
-    data object Cached : ArtworkRequestClaim
-
-    data class Await(val completion: CompletableDeferred<ArtworkRequestOutcome>) : ArtworkRequestClaim
-
-    data class Load(val request: ActiveArtworkRequest) : ArtworkRequestClaim
-}
-
-private enum class ArtworkRequestOutcome {
-    FINISHED,
-    RETRY,
-}
-
 data class TrackArtworkState(
-    val dateModifiedMs: Long,
-    val artwork: ArtworkResult,
+    val dateModifiedMs: Long = 0L,
+    val artwork: ArtworkResult = ArtworkResult.Placeholder,
 )
 
 private fun TrackSort.comparator(): Comparator<Track> {

@@ -38,44 +38,35 @@ class AlbumsViewModelTest {
     }
 
     @Test
-    fun `grouped album keeps stable representative and artwork request is cached`() = runTest(dispatcher) {
+    fun `grouped album keeps stable representative and provides clean decoupled state`() = runTest(dispatcher) {
         val tracks = listOf(
             track(id = 2, dateModifiedMs = 20),
             track(id = 1, dateModifiedMs = 10),
         )
-        val artworkRepository = RecordingArtworkRepository()
-        val viewModel = subject(tracks, artworkRepository = artworkRepository)
+        val viewModel = subject(tracks)
         val collection = collectState(viewModel)
         advanceUntilIdle()
 
         val album = viewModel.uiState.value.albums.single()
         assertEquals(1L, album.representativeTrack.id.mediaStoreId)
-
-        viewModel.requestArtwork(album)
-        viewModel.requestArtwork(album)
-        advanceUntilIdle()
-
-        assertEquals(1, artworkRepository.requests.size)
-        assertEquals(512, artworkRepository.requests.single().targetPx)
-        assertSame(ArtworkResult.Placeholder, viewModel.uiState.value.artworkByAlbumId.getValue(album.id).artwork)
+        assertEquals("Album", album.title)
+        assertEquals(2, album.trackCount)
         collection.cancel()
     }
 
     @Test
-    fun `artwork failure is cached as placeholder`() = runTest(dispatcher) {
-        val artworkRepository = RecordingArtworkRepository(failure = IllegalStateException("decode failed"))
-        val viewModel = subject(artworkRepository = artworkRepository)
+    fun `album sort updates and reflects in uiState`() = runTest(dispatcher) {
+        val tracks = listOf(
+            track(id = 1, dateModifiedMs = 10),
+        )
+        val viewModel = subject(tracks)
         val collection = collectState(viewModel)
         advanceUntilIdle()
-        val album = viewModel.uiState.value.albums.single()
 
-        viewModel.requestArtwork(album)
+        assertEquals(AlbumSortField.TITLE, viewModel.uiState.value.sort.field)
+        viewModel.selectSort(AlbumSortField.ARTIST)
         advanceUntilIdle()
-        viewModel.requestArtwork(album)
-        advanceUntilIdle()
-
-        assertEquals(1, artworkRepository.requests.size)
-        assertSame(ArtworkResult.Placeholder, viewModel.uiState.value.artworkByAlbumId.getValue(album.id).artwork)
+        assertEquals(AlbumSortField.ARTIST, viewModel.uiState.value.sort.field)
         collection.cancel()
     }
 

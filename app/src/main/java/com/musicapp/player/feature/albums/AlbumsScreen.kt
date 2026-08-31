@@ -6,6 +6,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import coil3.compose.AsyncImage
+import com.musicapp.player.core.image.AudioArtworkRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -97,7 +99,6 @@ fun AlbumsScreenRoute(
         bottomPadding = bottomPadding,
         onSortSelected = viewModel::selectSort,
         onColumnCountSelected = viewModel::selectColumnCount,
-        onArtworkRequested = viewModel::requestArtwork,
         onAlbumClick = onAlbumClick,
     )
 }
@@ -133,7 +134,6 @@ private fun AlbumsScreen(
     bottomPadding: Dp = 0.dp,
     onSortSelected: (AlbumSortField) -> Unit,
     onColumnCountSelected: (Int) -> Unit,
-    onArtworkRequested: (AlbumSummary) -> Unit,
     onAlbumClick: (AlbumId) -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -225,14 +225,6 @@ private fun AlbumsScreen(
                     items(state.albums, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { album ->
                         AlbumCard(
                             album = album,
-                            artwork = state.artworkByAlbumId[album.id]
-                                ?.takeIf {
-                                    it.trackId == album.representativeTrack.id &&
-                                        it.dateModifiedMs == album.representativeTrack.dateModifiedMs
-                                }
-                                ?.artwork
-                                ?: ArtworkResult.Placeholder,
-                            onArtworkRequested = { onArtworkRequested(album) },
                             onClick = { onAlbumClick(album.id) },
                         )
                     }
@@ -290,20 +282,14 @@ private fun AlbumsHeader(
 @Composable
 private fun AlbumCard(
     album: AlbumSummary,
-    artwork: ArtworkResult,
-    onArtworkRequested: () -> Unit,
     onClick: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
-    LaunchedEffect(album.id, album.representativeTrack.id, album.representativeTrack.dateModifiedMs) {
-        onArtworkRequested()
-    }
     Column(
         modifier = Modifier.fillMaxWidth().clip(MusicTheme.shapes.medium).clickable(onClick = onClick),
     ) {
         AlbumArtwork(
-            artwork = artwork,
-            albumTitle = album.title,
+            album = album,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
         )
         Column(
@@ -336,46 +322,28 @@ private fun AlbumCard(
 
 @Composable
 private fun AlbumArtwork(
-    artwork: ArtworkResult,
-    albumTitle: String,
+    album: AlbumSummary,
     modifier: Modifier,
 ) {
     val shape = MusicTheme.shapes.large
-    val artworkDescription = stringResource(R.string.album_artwork_description, albumTitle)
-    when (artwork) {
-        ArtworkResult.Placeholder ->
-            Box(
-                modifier = modifier
-                    .clip(shape)
-                    .background(MusicTheme.colors.secondaryContainer)
-                    .semantics { contentDescription = artworkDescription },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_playlist_album),
-                    contentDescription = null,
-                    tint = MusicTheme.colors.onSecondaryContainer,
-                    modifier = Modifier.fillMaxSize(0.5f),
-                )
-            }
-        is ArtworkResult.Embedded -> {
-            val image = artwork.image
-            val bitmap = remember(image) {
-                Bitmap.createBitmap(
-                    image.argbPixels,
-                    image.width,
-                    image.height,
-                    Bitmap.Config.ARGB_8888,
-                ).asImageBitmap()
-            }
-            Image(
-                bitmap = bitmap,
-                contentDescription = artworkDescription,
-                modifier = modifier.clip(shape),
-                contentScale = ContentScale.Crop,
-            )
-        }
+    val artworkDescription = stringResource(R.string.album_artwork_description, album.title)
+    val request = remember(album.id, album.representativeTrack.id, album.representativeTrack.dateModifiedMs) {
+        AudioArtworkRequest.AlbumArtworkRequest(
+            albumId = album.id,
+            representativeTrackId = album.representativeTrack.id,
+            dateModifiedMs = album.representativeTrack.dateModifiedMs,
+        )
     }
+    AsyncImage(
+        model = request,
+        contentDescription = artworkDescription,
+        modifier = modifier
+            .clip(shape)
+            .background(MusicTheme.colors.secondaryContainer),
+        contentScale = ContentScale.Crop,
+        error = painterResource(R.drawable.ic_playlist_album),
+        placeholder = painterResource(R.drawable.ic_playlist_album),
+    )
 }
 
 @Composable

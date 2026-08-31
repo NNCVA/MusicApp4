@@ -82,10 +82,10 @@ class TracksViewModelTest {
     }
 
     @Test
-    fun `empty library is marked loaded after its first emission`() = runTest(dispatcher) {
+    fun `empty library is marked loaded immediately without loading flicker`() = runTest(dispatcher) {
         val viewModel = subject()
 
-        assertFalse(viewModel.uiState.value.isLibraryLoaded)
+        assertTrue(viewModel.uiState.value.isLibraryLoaded)
         collectState(viewModel)
 
         assertTrue(viewModel.uiState.value.tracks.isEmpty())
@@ -133,7 +133,7 @@ class TracksViewModelTest {
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
                 viewModel.uiState.collect {}
             }
-        viewModel.uiState.first { it.isLibraryLoaded }
+        viewModel.uiState.first { it.tracks == tracks }
 
         firstCollector.cancelAndJoin()
         testScheduler.advanceTimeBy(5_001)
@@ -157,61 +157,17 @@ class TracksViewModelTest {
     }
 
     @Test
-    fun `artwork completion keeps the sorted track list reference`() = runTest(dispatcher) {
-        val track = track(1, title = "Artwork")
-        val artwork =
-            ArtworkResult.Embedded(
-                ArtworkImage(width = 1, height = 1, argbPixels = intArrayOf(0xFF112233.toInt())),
-            )
-        val viewModel =
-            subject(
-                tracks = listOf(track),
-                artworkRepository = ImmediateArtworkRepository(artwork),
-            )
-        collectState(viewModel)
-        val sortedTracks = viewModel.uiState.value.tracks
-
-        viewModel.requestArtwork(track)
-        val updated = viewModel.uiState.first { it.artworkByTrackId[track.id]?.artwork === artwork }
-
-        assertSame(sortedTracks, updated.tracks)
-    }
-
-    @Test
-    fun `concurrent artwork requests load the same track once`() = runTest(dispatcher) {
-        val track = track(1, title = "Artwork")
-        val artworkRepository = SuspendingArtworkRepository()
-        val viewModel = subject(tracks = listOf(track), artworkRepository = artworkRepository)
+    fun `tracks uiState contains pure domain data and sort state without artwork StateFlow overhead`() = runTest(dispatcher) {
+        val track1 = track(1, title = "Alpha")
+        val track2 = track(2, title = "Beta")
+        val viewModel = subject(tracks = listOf(track1, track2))
         collectState(viewModel)
 
-        val first = launch { viewModel.requestArtwork(track) }
-        val duplicate = launch { viewModel.requestArtwork(track) }
-        testScheduler.runCurrent()
-
-        assertEquals(1, artworkRepository.requestCount)
-        artworkRepository.result.complete(ArtworkResult.Placeholder)
-        testScheduler.advanceUntilIdle()
-        first.join()
-        duplicate.join()
-        assertEquals(1, artworkRepository.requestCount)
-    }
-
-    @Test
-    fun `cancelled artwork request can retry when the row returns`() = runTest(dispatcher) {
-        val track = track(1, title = "Artwork")
-        val artworkRepository = CancellableArtworkRepository()
-        val viewModel = subject(tracks = listOf(track), artworkRepository = artworkRepository)
-        collectState(viewModel)
-
-        val first = launch { viewModel.requestArtwork(track) }
-        testScheduler.runCurrent()
-        assertEquals(1, artworkRepository.requestCount)
-        first.cancelAndJoin()
-
-        val retry = launch { viewModel.requestArtwork(track) }
-        testScheduler.runCurrent()
-        assertEquals(2, artworkRepository.requestCount)
-        retry.cancelAndJoin()
+        val state = viewModel.uiState.value
+        assertEquals(listOf(track1, track2), state.tracks)
+        assertTrue(state.isLibraryLoaded)
+        assertFalse(state.isSelectionMode)
+        assertEquals(TrackSortField.TITLE, state.sort.field)
     }
 
     @Test
@@ -604,13 +560,13 @@ class TracksViewModelTest {
         assertEquals(null, viewModel.uiState.value.infoTrack)
     }
 
-    private suspend fun kotlinx.coroutines.test.TestScope.collectState(viewModel: TracksViewModel) {
+    private fun kotlinx.coroutines.test.TestScope.collectState(viewModel: TracksViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
-        viewModel.uiState.first { it.isLibraryLoaded }
+        testScheduler.advanceUntilIdle()
     }
 
     private suspend fun TracksViewModel.awaitSort(expected: TrackSort): TracksUiState =
-        uiState.first { it.isLibraryLoaded && it.sort == expected }
+        uiState.first { it.sort == expected }
 
     private fun subject(
         tracks: List<Track> = emptyList(),
