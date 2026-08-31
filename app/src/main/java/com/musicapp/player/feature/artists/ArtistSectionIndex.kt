@@ -1,12 +1,10 @@
 package com.musicapp.player.feature.artists
 
-import com.ibm.icu.text.Transliterator
 import com.musicapp.player.core.designsystem.component.SECTION_INDEX_ASCENDING_LABELS
-import com.musicapp.player.core.designsystem.component.SECTION_INDEX_DIGIT_LABEL
-import com.musicapp.player.core.designsystem.component.SECTION_INDEX_OTHER_LABEL
+import com.musicapp.player.core.designsystem.component.SectionSortOrder
 import com.musicapp.player.core.designsystem.component.classifySectionLabel
 import com.musicapp.player.core.designsystem.component.resolveNearestPopulatedBucket
-import java.util.Locale
+import com.musicapp.player.core.designsystem.component.sortedBySectionText
 
 internal val ARTIST_SECTION_INDEX_LABELS: List<String> = SECTION_INDEX_ASCENDING_LABELS
 
@@ -28,7 +26,11 @@ internal fun groupArtistsIntoSections(artists: List<ArtistSummary>): List<Artist
 }
 
 internal fun sortArtistsByIndexedName(artists: List<ArtistSummary>): List<ArtistSummary> =
-    artists.sortedWith(artistNameComparator)
+    artists.sortedBySectionText(
+        order = SectionSortOrder.ASCENDING,
+        textSelector = ArtistSummary::displayName,
+        tieBreaker = compareBy<ArtistSummary> { it.displayName }.thenBy { it.id.name },
+    )
 
 internal fun sectionIndexLabels(): List<String> = ARTIST_SECTION_INDEX_LABELS
 
@@ -91,24 +93,8 @@ internal fun sectionLabelForArtist(artist: ArtistSummary): String =
 internal fun artistSectionLabel(value: String?): String =
     classifySectionLabel(value)
 
-private val artistNameComparator =
-    compareBy<ArtistSummary>(
-        { sectionOrder(sectionLabelForArtist(it)) },
-        { artistSortKey(it.displayName) },
-        { it.displayName.lowercase(Locale.ROOT) },
-        { it.displayName },
-    )
-        .thenBy { it.id.name }
-
-private fun artistSortKey(value: String): String =
-    HAN_TO_LATIN.transliterate(value.trim()).lowercase(Locale.ROOT)
-
 private fun orderedSections(sections: List<ArtistSection>): List<ArtistSection> =
     sections.sortedWith(compareBy { sectionOrder(it.label) })
 
 private fun sectionOrder(label: String): Int =
     ARTIST_SECTION_INDEX_LABELS.indexOf(label).takeIf { it >= 0 } ?: ARTIST_SECTION_INDEX_LABELS.lastIndex
-
-private val HAN_TO_LATIN: Transliterator by lazy {
-    Transliterator.getInstance("Han-Latin")
-}

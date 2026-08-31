@@ -207,16 +207,29 @@ fun TracksScreen(
     var searchActive by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
+    val isSearching = searchQuery.isNotBlank()
     val filteredTracks =
-        remember(state.tracks, searchQuery) {
-            state.tracks.filter { it.matchesSearch(searchQuery) }
+        remember(state.tracks, searchQuery, isSearching) {
+            if (isSearching) {
+                state.tracks.filter { it.matchesSearch(searchQuery) }
+            } else {
+                state.tracks
+            }
         }
     val listState = rememberLazyListState()
-    val sections = remember(filteredTracks, state.sort.field, state.sort.direction) {
-        groupTracksIntoSections(filteredTracks, state.sort.field, state.sort.direction)
+    val sections = remember(filteredTracks, state.sections, isSearching, state.sort.field, state.sort.direction) {
+        if (isSearching) {
+            groupTracksIntoSections(filteredTracks, state.sort.field, state.sort.direction)
+        } else {
+            state.sections
+        }
     }
-    val sectionPositions = remember(sections, state.sort.direction) {
-        sectionStartPositions(sections, state.sort.direction)
+    val sectionPositions = remember(sections, state.sectionPositions, isSearching, state.sort.direction) {
+        if (isSearching) {
+            sectionStartPositions(sections, state.sort.direction)
+        } else {
+            state.sectionPositions
+        }
     }
     val selectedSection by remember(listState, sections) {
         derivedStateOf {

@@ -79,6 +79,8 @@ data class TrackSort(
 
 data class TracksUiState(
     val tracks: List<Track> = emptyList(),
+    val sections: List<TrackSection> = emptyList(),
+    val sectionPositions: Map<String, Int> = emptyMap(),
     val isLibraryLoaded: Boolean = false,
     val playlists: List<Playlist> = emptyList(),
     val sort: TrackSort = TrackSort.defaultFor(TrackSortField.TITLE),
@@ -149,8 +151,12 @@ class TracksViewModel internal constructor(
     private val sortedTracksState =
         combine(libraryState, sort) { library, currentSort ->
             val sortedTracks = library.tracks.sortedWithTrackSort(currentSort)
+            val sections = groupTracksIntoSections(sortedTracks, currentSort.field, currentSort.direction)
+            val sectionPositions = sectionStartPositions(sections, currentSort.direction)
             SortedTracksState(
                 tracks = sortedTracks,
+                sections = sections,
+                sectionPositions = sectionPositions,
                 visibleTrackIds = sortedTracks.mapTo(hashSetOf(), Track::id),
                 isLibraryLoaded = library.isLoaded,
                 sort = currentSort,
@@ -189,6 +195,8 @@ class TracksViewModel internal constructor(
             }
             TracksUiState(
                 tracks = sortedTracks.tracks,
+                sections = sortedTracks.sections,
+                sectionPositions = sortedTracks.sectionPositions,
                 isLibraryLoaded = sortedTracks.isLibraryLoaded,
                 playlists = playlists,
                 sort = sortedTracks.sort,
@@ -452,6 +460,8 @@ private data class TracksLibraryState(
 
 private data class SortedTracksState(
     val tracks: List<Track>,
+    val sections: List<TrackSection> = emptyList(),
+    val sectionPositions: Map<String, Int> = emptyMap(),
     val visibleTrackIds: Set<TrackId>,
     val isLibraryLoaded: Boolean,
     val sort: TrackSort,

@@ -10,6 +10,17 @@
 - 只有存在真正独立、文件互斥且可单独验证的任务包时才并行委派；主线程必须核对实际 diff 和验证结果。
 - 保留用户已有的 staged、unstaged 和 untracked 修改；不要使用 broad rollback、reset 或覆盖无关文件。
 - 构建、测试或设备验证前先读取 [`docs/verification.md`](docs/verification.md)；环境快照不能替代实际任务结果。
+- 执行 Gradle/构建/测试命令前，直接使用固化的 Java 21 环境变量前缀，禁止重复执行环境探测或全局搜索命令：
+  ```shell
+  export JAVA_HOME="$(jenv prefix 21 2>/dev/null || echo '/Users/a1/.jenv/versions/21')"
+  export PATH="$JAVA_HOME/bin:$PATH"
+  ```
+- 标准测试与构建命令（安全命令，可直接执行）：
+  - **全量 JVM 单元测试**：`./gradlew :app:testDebugUnitTest --no-daemon --console=plain`
+  - **指定测试类定向验证**：`./gradlew :app:testDebugUnitTest --tests "<ClassTest>" --no-daemon --console=plain`
+  - **Lint 代码规范分析**：`./gradlew :app:lintDebug --no-daemon --console=plain`
+  - **Debug APK 编译构建**：`./gradlew :app:assembleDebug --no-daemon --console=plain`
+  - **完整门禁（测试+Lint+构建）**：`./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon --console=plain`
 
 ## 权威文档路由
 

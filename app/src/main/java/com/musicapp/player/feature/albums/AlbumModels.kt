@@ -1,5 +1,7 @@
 package com.musicapp.player.feature.albums
 
+import com.musicapp.player.core.designsystem.component.SectionSortOrder
+import com.musicapp.player.core.designsystem.component.sortedBySectionText
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.feature.category.CategorySortDirection
@@ -47,35 +49,37 @@ object AlbumGrouping {
             )
         val sectionOrder =
             when (sort.direction) {
-                CategorySortDirection.ASCENDING -> com.musicapp.player.core.designsystem.component.SectionSortOrder.ASCENDING
-                CategorySortDirection.DESCENDING -> com.musicapp.player.core.designsystem.component.SectionSortOrder.DESCENDING
+                CategorySortDirection.ASCENDING -> SectionSortOrder.ASCENDING
+                CategorySortDirection.DESCENDING -> SectionSortOrder.DESCENDING
             }
-        val comparator =
-            when (sort.field) {
-                AlbumSortField.TITLE ->
-                    com.musicapp.player.core.designsystem.component.createSectionTextComparator(
-                        sectionOrder,
-                        AlbumSummary::title,
-                        textTieBreaker,
-                    )
-                AlbumSortField.ARTIST ->
-                    com.musicapp.player.core.designsystem.component.createSectionTextComparator(
-                        sectionOrder,
-                        AlbumSummary::artistName,
-                        textTieBreaker,
-                    )
-                AlbumSortField.TRACK_COUNT -> {
-                    val primary = compareBy(AlbumSummary::trackCount)
+        return when (sort.field) {
+            AlbumSortField.TITLE ->
+                albums.sortedBySectionText(
+                    order = sectionOrder,
+                    textSelector = AlbumSummary::title,
+                    tieBreaker = textTieBreaker,
+                )
+            AlbumSortField.ARTIST ->
+                albums.sortedBySectionText(
+                    order = sectionOrder,
+                    textSelector = AlbumSummary::artistName,
+                    tieBreaker = textTieBreaker,
+                )
+            AlbumSortField.TRACK_COUNT -> {
+                val primary = compareBy(AlbumSummary::trackCount)
+                albums.sortedWith(
                     (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
-                        .then(textTieBreaker)
-                }
-                AlbumSortField.DATE_ADDED -> {
-                    val primary = compareBy(AlbumSummary::latestDateAddedMs)
-                    (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
-                        .then(textTieBreaker)
-                }
+                        .then(textTieBreaker),
+                )
             }
-        return albums.sortedWith(comparator)
+            AlbumSortField.DATE_ADDED -> {
+                val primary = compareBy(AlbumSummary::latestDateAddedMs)
+                albums.sortedWith(
+                    (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
+                        .then(textTieBreaker),
+                )
+            }
+        }
     }
 
     private val trackIdentityComparator =

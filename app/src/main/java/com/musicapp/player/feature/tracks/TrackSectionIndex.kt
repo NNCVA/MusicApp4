@@ -7,7 +7,7 @@ import com.musicapp.player.core.designsystem.component.resolveNearestPopulatedBu
 import com.musicapp.player.core.designsystem.component.sectionIndexLabelsForOrder
 import com.musicapp.player.core.domain.model.Track
 
-internal data class TrackSection(
+data class TrackSection(
     val label: String,
     val tracks: List<Track>,
 )

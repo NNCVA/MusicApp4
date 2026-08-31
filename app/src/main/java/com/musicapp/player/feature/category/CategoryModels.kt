@@ -1,5 +1,7 @@
 package com.musicapp.player.feature.category
 
+import com.musicapp.player.core.designsystem.component.SectionSortOrder
+import com.musicapp.player.core.designsystem.component.sortedBySectionText
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaybackContext
 import com.musicapp.player.core.domain.model.PlaybackContextSource
@@ -25,41 +27,43 @@ fun sortCategoryTracks(tracks: List<Track>, sort: CategoryTrackSort): List<Track
         )
     val sectionOrder =
         when (sort.direction) {
-            CategorySortDirection.ASCENDING -> com.musicapp.player.core.designsystem.component.SectionSortOrder.ASCENDING
-            CategorySortDirection.DESCENDING -> com.musicapp.player.core.designsystem.component.SectionSortOrder.DESCENDING
+            CategorySortDirection.ASCENDING -> SectionSortOrder.ASCENDING
+            CategorySortDirection.DESCENDING -> SectionSortOrder.DESCENDING
         }
-    val comparator =
-        when (sort.field) {
-            CategoryTrackSortField.TITLE ->
-                com.musicapp.player.core.designsystem.component.createSectionTextComparator(
-                    sectionOrder,
-                    Track::title,
-                    textTieBreaker,
-                )
-            CategoryTrackSortField.ARTIST ->
-                com.musicapp.player.core.designsystem.component.createSectionTextComparator(
-                    sectionOrder,
-                    Track::artistName,
-                    textTieBreaker,
-                )
-            CategoryTrackSortField.ALBUM ->
-                com.musicapp.player.core.designsystem.component.createSectionTextComparator(
-                    sectionOrder,
-                    { it.albumTitle.orEmpty() },
-                    textTieBreaker,
-                )
-            CategoryTrackSortField.DATE_ADDED -> {
-                val primary = compareBy<Track> { it.dateAddedMs }
+    return when (sort.field) {
+        CategoryTrackSortField.TITLE ->
+            tracks.sortedBySectionText(
+                order = sectionOrder,
+                textSelector = Track::title,
+                tieBreaker = textTieBreaker,
+            )
+        CategoryTrackSortField.ARTIST ->
+            tracks.sortedBySectionText(
+                order = sectionOrder,
+                textSelector = Track::artistName,
+                tieBreaker = textTieBreaker,
+            )
+        CategoryTrackSortField.ALBUM ->
+            tracks.sortedBySectionText(
+                order = sectionOrder,
+                textSelector = { it.albumTitle.orEmpty() },
+                tieBreaker = textTieBreaker,
+            )
+        CategoryTrackSortField.DATE_ADDED -> {
+            val primary = compareBy<Track> { it.dateAddedMs }
+            tracks.sortedWith(
                 (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
-                    .then(textTieBreaker)
-            }
-            CategoryTrackSortField.DURATION -> {
-                val primary = compareBy<Track> { it.durationMs }
-                (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
-                    .then(textTieBreaker)
-            }
+                    .then(textTieBreaker),
+            )
         }
-    return tracks.sortedWith(comparator)
+        CategoryTrackSortField.DURATION -> {
+            val primary = compareBy<Track> { it.durationMs }
+            tracks.sortedWith(
+                (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
+                    .then(textTieBreaker),
+            )
+        }
+    }
 }
 
 fun CategoryTrackSort.next(field: CategoryTrackSortField): CategoryTrackSort =

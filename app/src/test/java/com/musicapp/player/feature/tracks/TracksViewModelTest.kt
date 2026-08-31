@@ -623,6 +623,25 @@ class TracksViewModelTest {
         override fun seekTo(positionMs: Long) = Unit
     }
 
+    @Test
+    fun `uiState precomputes sections and sectionPositions in background flow`() = runTest(dispatcher) {
+        val tracks =
+            listOf(
+                track(1, title = "Apple"),
+                track(2, title = "Banana"),
+                track(3, title = "123 Number"),
+            )
+        val viewModel = subject(tracks = tracks)
+        collectState(viewModel)
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf("123 Number", "Apple", "Banana"), state.tracks.map { it.title })
+        assertEquals(listOf("0", "A", "B"), state.sections.map { it.label })
+        assertEquals(0, state.sectionPositions["0"])
+        assertEquals(1, state.sectionPositions["A"])
+        assertEquals(2, state.sectionPositions["B"])
+    }
+
     private fun track(
         id: Long,
         title: String,
@@ -642,7 +661,6 @@ class TracksViewModelTest {
             relativePath = "Music/",
             displayName = "$title.mp3",
         )
-
 }
 
 private class ImmediateArtworkRepository(
