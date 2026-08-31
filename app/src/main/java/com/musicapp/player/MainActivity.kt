@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
 
     val startTime = SystemClock.elapsedRealtime()
     splashScreen.setKeepOnScreenCondition {
-      !tracksViewModel.isInitialDataReady.value && (SystemClock.elapsedRealtime() - startTime < 1200)
+      !tracksViewModel.isInitialDataReady.value && (SystemClock.elapsedRealtime() - startTime < 800)
     }
 
     mediaPermissionCoordinator =
@@ -71,12 +71,6 @@ class MainActivity : AppCompatActivity() {
           launchPermissionRequest = permissionLauncher::launch,
         ),
       )
-    window.decorView.post {
-      if (mediaPermissionCoordinator.canQueryMediaStore && !ProcessSyncLifecycle.coldStartDispatched) {
-        ProcessSyncLifecycle.coldStartDispatched = true
-        librarySyncCoordinator.onColdStart()
-      }
-    }
     enableEdgeToEdge()
     setContent {
       val permissionState by mediaPermissionCoordinator.state.collectAsStateWithLifecycle()

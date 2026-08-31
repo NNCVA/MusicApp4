@@ -197,9 +197,7 @@ private fun AlbumsScreen(
                     )
                 },
             )
-            if (!state.isLoaded) {
-                Spacer(modifier = Modifier.weight(1f))
-            } else if (state.albums.isEmpty()) {
+            if (state.isLoaded && state.albums.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)

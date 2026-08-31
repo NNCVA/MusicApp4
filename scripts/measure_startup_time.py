@@ -207,12 +207,16 @@ def measure_single_run(
     system_displayed_ms = None
     end_to_end_ms = None
 
+    import select
+
     start_wait = time.time()
     try:
         while time.time() - start_wait < timeout:
+            r, _, _ = select.select([logcat_proc.stdout], [], [], 0.1)
+            if not r:
+                continue
             line = logcat_proc.stdout.readline()
             if not line:
-                time.sleep(0.02)
                 continue
 
             # 匹配系统 Displayed: ActivityTaskManager: Displayed com.musicapp.player/.MainActivity: +450ms

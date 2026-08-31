@@ -188,9 +188,7 @@ private fun PlaylistsScreen(
                 }
             },
         )
-        if (!state.isLoaded) {
-            Spacer(modifier = Modifier.weight(1f))
-        } else if (state.playlists.isEmpty()) {
+        if (state.isLoaded && state.playlists.isEmpty()) {
             PlaylistEmptyState(
                 modifier = Modifier.weight(1f)
                     .padding(horizontal = dimensions.contentHorizontalPadding)

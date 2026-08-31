@@ -303,9 +303,7 @@ fun TracksScreen(
                     }
                 },
             )
-            if (!state.isLibraryLoaded) {
-                Spacer(modifier = Modifier.weight(1f))
-            } else if (state.tracks.isEmpty()) {
+            if (state.isLibraryLoaded && state.tracks.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)
@@ -316,7 +314,7 @@ fun TracksScreen(
                     actionIconRes = R.drawable.ic_sidebar_scan,
                     onAction = onScanMusic,
                 )
-            } else if (filteredTracks.isEmpty()) {
+            } else if (state.isLibraryLoaded && filteredTracks.isEmpty() && searchQuery.isNotBlank()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)
@@ -701,6 +699,7 @@ private fun TrackList(
                     bottom = dimensions.spaceSmall + bottomPadding,
                 ),
         ) {
+            val firstTrackId = tracks.firstOrNull()?.id
             if (sections.isEmpty()) {
                 trackItems(
                     tracks = tracks,
@@ -714,7 +713,7 @@ private fun TrackList(
                     onShowTrackInfo = onShowTrackInfo,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
-                    firstTrackId = tracks.first().id,
+                    firstTrackId = firstTrackId,
                     onFirstTrackLaidOut = onFirstTrackLaidOut,
                 )
             } else {
@@ -731,7 +730,7 @@ private fun TrackList(
                         onShowTrackInfo = onShowTrackInfo,
                         onTrackClick = onTrackClick,
                         onTrackLongClick = onTrackLongClick,
-                        firstTrackId = tracks.first().id,
+                        firstTrackId = firstTrackId,
                         onFirstTrackLaidOut = onFirstTrackLaidOut,
                     )
                 }
@@ -752,7 +751,7 @@ private fun LazyListScope.trackItems(
     onShowTrackInfo: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
-    firstTrackId: TrackId,
+    firstTrackId: TrackId?,
     onFirstTrackLaidOut: () -> Unit,
 ) {
     items(tracks, key = { track -> "${track.id.volumeName}:${track.id.mediaStoreId}" }) { track ->

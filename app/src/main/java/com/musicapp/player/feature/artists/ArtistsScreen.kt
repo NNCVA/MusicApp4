@@ -162,9 +162,7 @@ private fun ArtistsScreen(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
             ArtistsHeader(policy = policy, openDrawer = openDrawer)
-            if (!state.isLoaded) {
-                Spacer(modifier = Modifier.weight(1f))
-            } else if (state.artists.isEmpty()) {
+            if (state.isLoaded && state.artists.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)
