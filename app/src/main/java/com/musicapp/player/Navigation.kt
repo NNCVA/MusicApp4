@@ -114,6 +114,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MainNavigation(
+    tracksViewModel: TracksViewModel = viewModel(),
     aeroMode: AeroMode,
     aeroSignals: AeroRuntimeSignals,
     themeMode: ThemeMode,
@@ -231,7 +232,7 @@ fun MainNavigation(
                     entryProvider<MusicNavKey> {
                         entry<TracksRoute> {
                             TracksScreenRoute(
-                                viewModel = viewModel<TracksViewModel>(),
+                                viewModel = tracksViewModel,
                                 contentInsets = contentInsets,
                                 policy = policy,
                                 openDrawer = openDrawer,

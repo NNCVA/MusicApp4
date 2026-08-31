@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 
 data class ArtistsUiState(
     val artists: List<ArtistSummary> = emptyList(),
+    val isLoaded: Boolean = false,
 ) {
     @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
     val artworkByArtistId: Map<ArtistId, ArtistArtworkState> get() = emptyMap()
@@ -63,11 +64,11 @@ class ArtistsViewModel @Inject constructor(
     private val artists = mediaLibraryRepository.observeTracks().map(ArtistGrouping::group)
 
     val uiState: StateFlow<ArtistsUiState> =
-        artists.map { ArtistsUiState(artists = it) }
+        artists.map { ArtistsUiState(artists = it, isLoaded = true) }
             .stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-                ArtistsUiState(),
+                ArtistsUiState(isLoaded = false),
             )
 
     @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")

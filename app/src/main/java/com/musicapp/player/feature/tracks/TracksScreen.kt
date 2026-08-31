@@ -304,7 +304,7 @@ fun TracksScreen(
                 },
             )
             if (!state.isLibraryLoaded) {
-                LoadingState(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f))
             } else if (state.tracks.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)

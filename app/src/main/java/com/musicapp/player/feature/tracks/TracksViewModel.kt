@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -77,7 +78,7 @@ data class TrackSort(
 
 data class TracksUiState(
     val tracks: List<Track> = emptyList(),
-    val isLibraryLoaded: Boolean = true,
+    val isLibraryLoaded: Boolean = false,
     val playlists: List<Playlist> = emptyList(),
     val sort: TrackSort = TrackSort.defaultFor(TrackSortField.TITLE),
     val isSelectionMode: Boolean = false,
@@ -133,8 +134,12 @@ class TracksViewModel internal constructor(
     private val isInfoLoading = MutableStateFlow(false)
     private var infoJob: Job? = null
 
+    private val _isInitialDataReady = MutableStateFlow(false)
+    val isInitialDataReady: StateFlow<Boolean> = _isInitialDataReady
+
     private val libraryState =
         mediaLibraryRepository.observeTracks()
+            .onEach { _isInitialDataReady.value = true }
             .map { tracks -> TracksLibraryState(tracks = tracks, isLoaded = true) }
 
     private val playlists =
@@ -195,7 +200,7 @@ class TracksViewModel internal constructor(
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = TracksUiState(sort = sort.value, isLibraryLoaded = true),
+            initialValue = TracksUiState(sort = sort.value, isLibraryLoaded = false),
         )
 
     fun selectSort(field: TrackSortField) {
@@ -439,7 +444,7 @@ private data class TracksInfoState(
 
 private data class TracksLibraryState(
     val tracks: List<Track> = emptyList(),
-    val isLoaded: Boolean = true,
+    val isLoaded: Boolean = false,
 )
 
 private data class SortedTracksState(

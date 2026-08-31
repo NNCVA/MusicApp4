@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
@@ -196,7 +197,9 @@ private fun AlbumsScreen(
                     )
                 },
             )
-            if (state.albums.isEmpty()) {
+            if (!state.isLoaded) {
+                Spacer(modifier = Modifier.weight(1f))
+            } else if (state.albums.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)

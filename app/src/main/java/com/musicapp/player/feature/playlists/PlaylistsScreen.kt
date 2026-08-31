@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -187,7 +188,9 @@ private fun PlaylistsScreen(
                 }
             },
         )
-        if (state.playlists.isEmpty()) {
+        if (!state.isLoaded) {
+            Spacer(modifier = Modifier.weight(1f))
+        } else if (state.playlists.isEmpty()) {
             PlaylistEmptyState(
                 modifier = Modifier.weight(1f)
                     .padding(horizontal = dimensions.contentHorizontalPadding)

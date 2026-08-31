@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -161,7 +162,9 @@ private fun ArtistsScreen(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
             ArtistsHeader(policy = policy, openDrawer = openDrawer)
-            if (state.artists.isEmpty()) {
+            if (!state.isLoaded) {
+                Spacer(modifier = Modifier.weight(1f))
+            } else if (state.artists.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)

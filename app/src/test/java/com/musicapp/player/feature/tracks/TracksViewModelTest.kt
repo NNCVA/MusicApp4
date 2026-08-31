@@ -82,14 +82,16 @@ class TracksViewModelTest {
     }
 
     @Test
-    fun `empty library is marked loaded immediately without loading flicker`() = runTest(dispatcher) {
+    fun `empty library is marked unready initially and loaded after collection`() = runTest(dispatcher) {
         val viewModel = subject()
 
-        assertTrue(viewModel.uiState.value.isLibraryLoaded)
+        assertFalse(viewModel.uiState.value.isLibraryLoaded)
+        assertFalse(viewModel.isInitialDataReady.value)
         collectState(viewModel)
 
         assertTrue(viewModel.uiState.value.tracks.isEmpty())
         assertTrue(viewModel.uiState.value.isLibraryLoaded)
+        assertTrue(viewModel.isInitialDataReady.value)
     }
 
     @Test

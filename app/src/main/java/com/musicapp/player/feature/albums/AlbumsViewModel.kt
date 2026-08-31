@@ -34,6 +34,7 @@ data class AlbumsUiState(
     val albums: List<AlbumSummary> = emptyList(),
     val sort: AlbumSort = AlbumSort(),
     val columnCount: Int = DEFAULT_ALBUM_GRID_COLUMNS,
+    val isLoaded: Boolean = false,
 ) {
     @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
     val artworkByAlbumId: Map<AlbumId, AlbumArtworkState> get() = emptyMap()
@@ -77,11 +78,12 @@ class AlbumsViewModel @Inject constructor(
                 albums = AlbumGrouping.sorted(AlbumGrouping.group(tracks), currentSort),
                 sort = currentSort,
                 columnCount = settings.albumGridColumns,
+                isLoaded = true,
             )
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            AlbumsUiState(sort = sort.value, columnCount = settingsRepository.settings.value.albumGridColumns),
+            AlbumsUiState(sort = sort.value, columnCount = settingsRepository.settings.value.albumGridColumns, isLoaded = false),
         )
 
     fun selectSort(field: AlbumSortField) {

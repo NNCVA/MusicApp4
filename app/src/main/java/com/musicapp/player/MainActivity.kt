@@ -20,6 +20,10 @@ import com.musicapp.player.core.domain.model.AppLanguage
 import com.musicapp.player.feature.permission.AndroidPermissionGateway
 import com.musicapp.player.feature.permission.MediaPermissionCoordinator
 import com.musicapp.player.feature.permission.MediaPermissionState
+import android.os.SystemClock
+import androidx.activity.viewModels
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.musicapp.player.feature.tracks.TracksViewModel
 import com.musicapp.player.feature.tracks.TracksSyncController
 import com.musicapp.player.data.sync.LibrarySyncCoordinator
 import com.musicapp.player.data.settings.SettingsRepository
@@ -40,6 +44,7 @@ class MainActivity : AppCompatActivity() {
   @Inject lateinit var settingsRepository: SettingsRepository
   @Inject lateinit var aeroSignalSource: AeroSignalSource
 
+  private val tracksViewModel: TracksViewModel by viewModels()
   private lateinit var mediaPermissionCoordinator: MediaPermissionCoordinator
   private var isActivityStarted = false
   private val permissionLauncher =
@@ -51,7 +56,13 @@ class MainActivity : AppCompatActivity() {
     }
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    val splashScreen = installSplashScreen()
     super.onCreate(savedInstanceState)
+
+    val startTime = SystemClock.elapsedRealtime()
+    splashScreen.setKeepOnScreenCondition {
+      !tracksViewModel.isInitialDataReady.value && (SystemClock.elapsedRealtime() - startTime < 1200)
+    }
 
     mediaPermissionCoordinator =
       MediaPermissionCoordinator(
@@ -84,6 +95,7 @@ class MainActivity : AppCompatActivity() {
           windowWidthTier = windowWidthTier,
         ) {
           MainNavigation(
+            tracksViewModel = tracksViewModel,
             aeroMode = appSettings.aeroMode,
             aeroSignals = aeroSignals,
             themeMode = appSettings.themeMode,

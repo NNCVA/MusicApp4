@@ -35,6 +35,7 @@ enum class PlaylistOperationMessage {
 data class PlaylistsUiState(
     val playlists: List<Playlist> = emptyList(),
     val operationMessage: PlaylistOperationMessage? = null,
+    val isLoaded: Boolean = false,
 ) {
     @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
     val artworkByPlaylistId: Map<Long, ArtworkResult> get() = emptyMap()
@@ -75,8 +76,9 @@ class PlaylistsViewModel @Inject constructor(
             PlaylistsUiState(
                 playlists = currentPlaylists,
                 operationMessage = message,
+                isLoaded = true,
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlaylistsUiState())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlaylistsUiState(isLoaded = false))
 
     @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
     fun requestArtwork(playlist: Playlist) {
