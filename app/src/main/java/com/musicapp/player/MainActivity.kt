@@ -59,9 +59,13 @@ class MainActivity : AppCompatActivity() {
     val splashScreen = installSplashScreen()
     super.onCreate(savedInstanceState)
 
+    lifecycleScope.launch {
+      tracksViewModel.uiState.collect {}
+    }
+
     val startTime = SystemClock.elapsedRealtime()
     splashScreen.setKeepOnScreenCondition {
-      !tracksViewModel.isInitialDataReady.value && (SystemClock.elapsedRealtime() - startTime < 800)
+      !tracksViewModel.isInitialDataReady.value && (SystemClock.elapsedRealtime() - startTime < 3000)
     }
 
     mediaPermissionCoordinator =

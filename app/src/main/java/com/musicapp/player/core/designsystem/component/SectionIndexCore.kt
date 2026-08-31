@@ -5,6 +5,10 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 enum class SectionSortOrder {
     ASCENDING,
@@ -21,11 +25,99 @@ val SECTION_INDEX_ASCENDING_LABELS: List<String> =
 val SECTION_INDEX_DESCENDING_LABELS: List<String> =
     listOf(SECTION_INDEX_OTHER_LABEL) + ('Z' downTo 'A').map(Char::toString) + listOf(SECTION_INDEX_DIGIT_LABEL)
 
+val ASCENDING_LABEL_INDEX_MAP: Map<String, Int> =
+    SECTION_INDEX_ASCENDING_LABELS.mapIndexed { idx, label -> label to idx }.toMap()
+
+val DESCENDING_LABEL_INDEX_MAP: Map<String, Int> =
+    SECTION_INDEX_DESCENDING_LABELS.mapIndexed { idx, label -> label to idx }.toMap()
+
 fun sectionIndexLabelsForOrder(order: SectionSortOrder): List<String> =
     when (order) {
         SectionSortOrder.ASCENDING -> SECTION_INDEX_ASCENDING_LABELS
         SectionSortOrder.DESCENDING -> SECTION_INDEX_DESCENDING_LABELS
     }
+
+private fun isAllAscii(text: String): Boolean {
+    for (i in 0 until text.length) {
+        if (text[i].code >= 128) return false
+    }
+    return true
+}
+
+private const val NO_PINYIN_INITIAL: Char = '\u0000'
+private const val PINYIN_CACHE_MAGIC = 0x50494E59 // "PINY"
+private const val PINYIN_CACHE_VERSION = 1
+
+private val pinyinInitialCache = java.util.concurrent.ConcurrentHashMap<String, Char>()
+private val pinyinSortKeyCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+private var diskCacheFile: java.io.File? = null
+private val isDiskCacheDirty = java.util.concurrent.atomic.AtomicBoolean(false)
+private val diskCacheScope = CoroutineScope(Dispatchers.IO)
+
+fun initPinyinDiskCache(baseDir: java.io.File) {
+    val file = java.io.File(baseDir, "pinyin_cache.bin")
+    diskCacheFile = file
+    if (file.exists() && file.length() > 0) {
+        runCatching {
+            java.io.DataInputStream(java.io.BufferedInputStream(java.io.FileInputStream(file))).use { dis ->
+                val magic = dis.readInt()
+                val version = dis.readInt()
+                if (magic == PINYIN_CACHE_MAGIC && version == PINYIN_CACHE_VERSION) {
+                    val count = dis.readInt()
+                    for (i in 0 until count) {
+                        val text = dis.readUTF()
+                        val initial = dis.readChar()
+                        val sortKey = dis.readUTF()
+                        pinyinInitialCache[text] = initial
+                        pinyinSortKeyCache[text] = sortKey
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun savePinyinDiskCache() {
+    val file = diskCacheFile ?: return
+    isDiskCacheDirty.set(false)
+    runCatching {
+        val parent = file.parentFile ?: return
+        if (!parent.exists()) parent.mkdirs()
+        val tempFile = java.io.File(parent, "${file.name}.tmp")
+        val keys = pinyinSortKeyCache.keys().toList()
+        java.io.DataOutputStream(java.io.BufferedOutputStream(java.io.FileOutputStream(tempFile))).use { dos ->
+            dos.writeInt(PINYIN_CACHE_MAGIC)
+            dos.writeInt(PINYIN_CACHE_VERSION)
+            dos.writeInt(keys.size)
+            for (text in keys) {
+                dos.writeUTF(text)
+                dos.writeChar((pinyinInitialCache[text] ?: NO_PINYIN_INITIAL).code)
+                dos.writeUTF(pinyinSortKeyCache[text].orEmpty())
+            }
+        }
+        if (tempFile.exists()) {
+            if (file.exists()) file.delete()
+            tempFile.renameTo(file)
+        }
+    }
+}
+
+private fun scheduleSavePinyinDiskCache() {
+    if (diskCacheFile == null) return
+    if (isDiskCacheDirty.compareAndSet(false, true)) {
+        diskCacheScope.launch {
+            delay(500)
+            savePinyinDiskCache()
+        }
+    }
+}
+
+fun warmupPinyinEngine() {
+    runCatching {
+        classifySectionLabel("音")
+        pinyinSortKey("音乐")
+    }
+}
 
 fun classifySectionLabel(value: String?): String {
     val trimmed = value.orEmpty().trim()
@@ -33,7 +125,9 @@ fun classifySectionLabel(value: String?): String {
     val firstCodePoint = trimmed.codePointAt(0)
     return when {
         Character.isDigit(firstCodePoint) -> SECTION_INDEX_DIGIT_LABEL
-        firstCodePoint in 'A'.code..'Z'.code || firstCodePoint in 'a'.code..'z'.code ->
+        firstCodePoint in 'A'.code..'Z'.code ->
+            String(Character.toChars(firstCodePoint))
+        firstCodePoint in 'a'.code..'z'.code ->
             String(Character.toChars(firstCodePoint)).uppercase(Locale.ROOT)
         else -> {
             val charText = String(Character.toChars(firstCodePoint))
@@ -45,13 +139,22 @@ fun classifySectionLabel(value: String?): String {
 fun pinyinSortKey(value: String?): String {
     val trimmed = value.orEmpty().trim()
     if (trimmed.isEmpty()) return ""
-    return HAN_TO_LATIN.transliterate(trimmed).lowercase(Locale.ROOT)
+    val existing = pinyinSortKeyCache[trimmed]
+    if (existing != null) return existing
+    if (isAllAscii(trimmed)) {
+        val lower = trimmed.lowercase(Locale.ROOT)
+        pinyinSortKeyCache[trimmed] = lower
+        return lower
+    }
+    val computed = HAN_TO_LATIN.transliterate(trimmed).lowercase(Locale.ROOT)
+    pinyinSortKeyCache[trimmed] = computed
+    scheduleSavePinyinDiskCache()
+    return computed
 }
 
 fun sectionBucketOrder(label: String, order: SectionSortOrder = SectionSortOrder.ASCENDING): Int {
-    val labels = sectionIndexLabelsForOrder(order)
-    val index = labels.indexOf(label)
-    return if (index >= 0) index else labels.lastIndex
+    val map = if (order == SectionSortOrder.ASCENDING) ASCENDING_LABEL_INDEX_MAP else DESCENDING_LABEL_INDEX_MAP
+    return map[label] ?: (map.size - 1)
 }
 
 fun <T> createSectionTextComparator(
@@ -59,12 +162,13 @@ fun <T> createSectionTextComparator(
     textSelector: (T) -> String?,
     tieBreaker: Comparator<T>,
 ): Comparator<T> {
-    val labels = sectionIndexLabelsForOrder(order)
+    val labelMap = if (order == SectionSortOrder.ASCENDING) ASCENDING_LABEL_INDEX_MAP else DESCENDING_LABEL_INDEX_MAP
+    val fallbackIndex = labelMap.size - 1
     val bucketComparator = Comparator<T> { a, b ->
         val labelA = classifySectionLabel(textSelector(a))
         val labelB = classifySectionLabel(textSelector(b))
-        val indexA = labels.indexOf(labelA).let { if (it >= 0) it else labels.lastIndex }
-        val indexB = labels.indexOf(labelB).let { if (it >= 0) it else labels.lastIndex }
+        val indexA = labelMap[labelA] ?: fallbackIndex
+        val indexB = labelMap[labelB] ?: fallbackIndex
         indexA.compareTo(indexB)
     }
     val inBucketPinyinComparator = Comparator<T> { a, b ->
@@ -87,15 +191,78 @@ fun <T> createSectionTextComparator(
     return bucketComparator.then(inBucketDirected).then(directedTieBreaker)
 }
 
+fun <T> List<T>.sortedBySectionText(
+    order: SectionSortOrder,
+    textSelector: (T) -> String?,
+    tieBreaker: Comparator<T>,
+): List<T> {
+    if (size <= 1) return this
+    val labelMap = if (order == SectionSortOrder.ASCENDING) ASCENDING_LABEL_INDEX_MAP else DESCENDING_LABEL_INDEX_MAP
+    val fallbackIndex = labelMap.size - 1
+
+    class SortPayload(
+        val item: T,
+        val bucket: Int,
+        val pinyin: String,
+        val rawLower: String,
+    )
+
+    val payloads = ArrayList<SortPayload>(size)
+    for (item in this) {
+        val raw = textSelector(item).orEmpty().trim()
+        val label = classifySectionLabel(raw)
+        val bucket = labelMap[label] ?: fallbackIndex
+        val pinyin = pinyinSortKey(raw)
+        val rawLower = raw.lowercase(Locale.ROOT)
+        payloads.add(SortPayload(item, bucket, pinyin, rawLower))
+    }
+
+    val payloadComparator = Comparator<SortPayload> { a, b ->
+        val bucketCmp = a.bucket.compareTo(b.bucket)
+        if (bucketCmp != 0) return@Comparator bucketCmp
+
+        val pinyinCmp = if (order == SectionSortOrder.ASCENDING) {
+            a.pinyin.compareTo(b.pinyin)
+        } else {
+            b.pinyin.compareTo(a.pinyin)
+        }
+        if (pinyinCmp != 0) return@Comparator pinyinCmp
+
+        val rawCmp = if (order == SectionSortOrder.ASCENDING) {
+            a.rawLower.compareTo(b.rawLower)
+        } else {
+            b.rawLower.compareTo(a.rawLower)
+        }
+        if (rawCmp != 0) return@Comparator rawCmp
+
+        if (order == SectionSortOrder.ASCENDING) {
+            tieBreaker.compare(a.item, b.item)
+        } else {
+            tieBreaker.compare(b.item, a.item)
+        }
+    }
+
+    payloads.sortWith(payloadComparator)
+    return payloads.map { it.item }
+}
+
 private val HAN_TO_LATIN: Transliterator by lazy {
     Transliterator.getInstance("Han-Latin")
 }
 
-private fun pinyinInitial(text: String): Char? =
-    HAN_TO_LATIN.transliterate(text)
+private fun pinyinInitial(text: String): Char? {
+    val cached = pinyinInitialCache[text]
+    if (cached != null) {
+        return if (cached == NO_PINYIN_INITIAL) null else cached
+    }
+    val computed = HAN_TO_LATIN.transliterate(text)
         .firstOrNull { it in 'A'..'Z' || it in 'a'..'z' }
         ?.uppercaseChar()
         ?.takeIf { it in 'A'..'Z' }
+    pinyinInitialCache[text] = computed ?: NO_PINYIN_INITIAL
+    scheduleSavePinyinDiskCache()
+    return computed
+}
 
 fun mapPointerYToBucketIndex(
     pointerY: Float,

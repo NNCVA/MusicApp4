@@ -22,6 +22,7 @@ import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
 import com.musicapp.player.core.designsystem.component.createSectionTextComparator
+import com.musicapp.player.core.designsystem.component.sortedBySectionText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import java.util.Locale
@@ -139,7 +140,6 @@ class TracksViewModel internal constructor(
 
     private val libraryState =
         mediaLibraryRepository.observeTracks()
-            .onEach { _isInitialDataReady.value = true }
             .map { tracks -> TracksLibraryState(tracks = tracks, isLoaded = true) }
 
     private val playlists =
@@ -148,7 +148,7 @@ class TracksViewModel internal constructor(
 
     private val sortedTracksState =
         combine(libraryState, sort) { library, currentSort ->
-            val sortedTracks = library.tracks.sortedWith(currentSort.comparator())
+            val sortedTracks = library.tracks.sortedWithTrackSort(currentSort)
             SortedTracksState(
                 tracks = sortedTracks,
                 visibleTrackIds = sortedTracks.mapTo(hashSetOf(), Track::id),
@@ -184,6 +184,9 @@ class TracksViewModel internal constructor(
                     it in sortedTracks.visibleTrackIds
                 }
             val isSelectionActive = presentation.isSelectionMode && sortedTracks.tracks.isNotEmpty()
+            if (sortedTracks.isLibraryLoaded) {
+                _isInitialDataReady.value = true
+            }
             TracksUiState(
                 tracks = sortedTracks.tracks,
                 isLibraryLoaded = sortedTracks.isLibraryLoaded,
@@ -458,6 +461,33 @@ data class TrackArtworkState(
     val dateModifiedMs: Long = 0L,
     val artwork: ArtworkResult = ArtworkResult.Placeholder,
 )
+
+private fun List<Track>.sortedWithTrackSort(sort: TrackSort): List<Track> {
+    val textTieBreaker =
+        compareBy<Track>(
+            { it.title.lowercase(Locale.ROOT) },
+            { it.id.volumeName.lowercase(Locale.ROOT) },
+            { it.id.mediaStoreId },
+        )
+    val sectionOrder =
+        when (sort.direction) {
+            TrackSortDirection.ASCENDING -> SectionSortOrder.ASCENDING
+            TrackSortDirection.DESCENDING -> SectionSortOrder.DESCENDING
+        }
+    return when (sort.field) {
+        TrackSortField.TITLE -> sortedBySectionText(sectionOrder, Track::title, textTieBreaker)
+        TrackSortField.ARTIST -> sortedBySectionText(sectionOrder, Track::artistName, textTieBreaker)
+        TrackSortField.ALBUM -> sortedBySectionText(sectionOrder, { it.albumTitle.orEmpty() }, textTieBreaker)
+        TrackSortField.DATE_ADDED -> {
+            val primary = compareBy<Track> { it.dateAddedMs }
+            sortedWith((if (sort.direction == TrackSortDirection.ASCENDING) primary else primary.reversed()).then(textTieBreaker))
+        }
+        TrackSortField.DURATION -> {
+            val primary = compareBy<Track> { it.durationMs }
+            sortedWith((if (sort.direction == TrackSortDirection.ASCENDING) primary else primary.reversed()).then(textTieBreaker))
+        }
+    }
+}
 
 private fun TrackSort.comparator(): Comparator<Track> {
     val textTieBreaker =

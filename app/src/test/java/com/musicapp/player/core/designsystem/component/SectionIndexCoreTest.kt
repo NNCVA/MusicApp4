@@ -87,4 +87,22 @@ class SectionIndexCoreTest {
         assertEquals("#", mediumSample.last())
         assertTrue("A" in mediumSample)
     }
+
+    @Test
+    fun `pinyin disk cache persists and restores sort keys and initial labels`() {
+        val tempDir = java.nio.file.Files.createTempDirectory("pinyin_test").toFile()
+        try {
+            initPinyinDiskCache(tempDir)
+            val expectedLabel = classifySectionLabel("周杰伦")
+            val expectedKey = pinyinSortKey("周杰伦")
+            savePinyinDiskCache()
+
+            // Re-initialize with saved cache
+            initPinyinDiskCache(tempDir)
+            assertEquals(expectedLabel, classifySectionLabel("周杰伦"))
+            assertEquals(expectedKey, pinyinSortKey("周杰伦"))
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
 }

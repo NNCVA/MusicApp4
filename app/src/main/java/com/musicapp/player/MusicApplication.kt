@@ -5,6 +5,8 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.musicapp.player.data.local.MusicDatabase
+import com.musicapp.player.core.designsystem.component.initPinyinDiskCache
+import com.musicapp.player.core.designsystem.component.warmupPinyinEngine
 import dagger.Lazy
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -24,9 +26,13 @@ class MusicApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         if (!isUnitTestRuntime()) {
+            initPinyinDiskCache(filesDir)
             CoroutineScope(Dispatchers.IO).launch {
                 runCatching {
                     database.get().openHelper.readableDatabase
+                }
+                runCatching {
+                    warmupPinyinEngine()
                 }
             }
         }
