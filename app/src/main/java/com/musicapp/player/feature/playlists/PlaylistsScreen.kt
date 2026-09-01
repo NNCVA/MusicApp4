@@ -39,6 +39,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -238,23 +239,17 @@ private fun PlaylistsScreen(
         )
     }
     if (deletePlaylistId != NO_PLAYLIST_ID) {
-        AlertDialog(
-            onDismissRequest = { deletePlaylistId = NO_PLAYLIST_ID },
-            title = { Text(stringResource(R.string.playlist_delete_title)) },
-            text = { Text(stringResource(R.string.playlist_delete_description)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDelete(PlaylistId(deletePlaylistId))
-                        deletePlaylistId = NO_PLAYLIST_ID
-                    },
-                ) { Text(stringResource(R.string.playlist_delete)) }
+        ConfirmationDialog(
+            title = stringResource(R.string.playlist_delete_title),
+            text = stringResource(R.string.playlist_delete_description),
+            confirmLabel = stringResource(R.string.playlist_delete),
+            cancelLabel = stringResource(R.string.playlist_cancel),
+            onConfirm = {
+                onDelete(PlaylistId(deletePlaylistId))
+                deletePlaylistId = NO_PLAYLIST_ID
             },
-            dismissButton = {
-                TextButton(onClick = { deletePlaylistId = NO_PLAYLIST_ID }) {
-                    Text(stringResource(R.string.playlist_cancel))
-                }
-            },
+            onDismiss = { deletePlaylistId = NO_PLAYLIST_ID },
+            isDestructive = true,
         )
     }
 }

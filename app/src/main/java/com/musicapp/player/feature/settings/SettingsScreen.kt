@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material3.AlertDialog
+import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -163,10 +163,12 @@ private fun SettingsScreen(
     state.confirmation?.let { confirmation ->
         ConfirmationDialog(
             title = stringResource(confirmation.titleRes()),
-            description = stringResource(confirmation.descriptionRes()),
+            text = stringResource(confirmation.descriptionRes()),
             confirmLabel = stringResource(confirmation.actionRes()),
+            cancelLabel = stringResource(R.string.settings_cancel),
             onConfirm = onConfirmAction,
             onDismiss = onCancelConfirmation,
+            isDestructive = true,
         )
     }
 }
@@ -477,24 +479,6 @@ private fun SettingsAction(titleRes: Int, summaryRes: Int, onClick: () -> Unit) 
     }
 }
 
-@Composable
-private fun ConfirmationDialog(
-    title: String,
-    description: String,
-    confirmLabel: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title, color = MusicTheme.colors.onSurface) },
-        text = { Text(description, color = MusicTheme.colors.onSurfaceVariant) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(confirmLabel) } },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
-        },
-    )
-}
 
 private fun SettingsConfirmation.titleRes(): Int =
     when (this) {

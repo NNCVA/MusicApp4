@@ -28,7 +28,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.AlertDialog
+import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -461,35 +461,24 @@ private fun PermissionExplanationDialog(
     onConfirm: () -> Unit,
 ) {
     val isPermanent = state is MediaPermissionState.PermanentlyDenied
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.scan_permission_dialog_title), color = MusicTheme.colors.onSurface) },
-        text = {
-            Text(
-                stringResource(
-                    if (isPermanent) {
-                        R.string.permission_permanently_denied
-                    } else {
-                        R.string.scan_permission_dialog_description
-                    },
-                ),
-                color = MusicTheme.colors.onSurfaceVariant,
-            )
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.scan_permission_decline))
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    stringResource(
-                        if (isPermanent) R.string.permission_open_settings else R.string.scan_permission_agree,
-                    ),
-                )
-            }
-        },
+    ConfirmationDialog(
+        title = stringResource(R.string.scan_permission_dialog_title),
+        text =
+            stringResource(
+                if (isPermanent) {
+                    R.string.permission_permanently_denied
+                } else {
+                    R.string.scan_permission_dialog_description
+                },
+            ),
+        confirmLabel =
+            stringResource(
+                if (isPermanent) R.string.permission_open_settings else R.string.scan_permission_agree,
+            ),
+        cancelLabel = stringResource(R.string.scan_permission_decline),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+        isDestructive = false,
     )
 }
 

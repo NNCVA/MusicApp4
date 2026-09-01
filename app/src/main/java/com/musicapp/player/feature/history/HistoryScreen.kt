@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
+import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -230,20 +231,14 @@ private fun HistoryScreen(
         }
     }
     if (state.clearConfirmationVisible) {
-        AlertDialog(
-            onDismissRequest = onCancelClearHistory,
-            title = { Text(stringResource(R.string.history_clear_confirm_title)) },
-            text = { Text(stringResource(R.string.history_clear_confirm_description)) },
-            confirmButton = {
-                TextButton(onClick = onConfirmClearHistory) {
-                    Text(stringResource(R.string.history_clear_confirm_action))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onCancelClearHistory) {
-                    Text(stringResource(R.string.history_clear_cancel))
-                }
-            },
+        ConfirmationDialog(
+            title = stringResource(R.string.history_clear_confirm_title),
+            text = stringResource(R.string.history_clear_confirm_description),
+            confirmLabel = stringResource(R.string.history_clear_confirm_action),
+            cancelLabel = stringResource(R.string.history_clear_cancel),
+            onConfirm = onConfirmClearHistory,
+            onDismiss = onCancelClearHistory,
+            isDestructive = true,
         )
     }
     val batchResult = state.batchResult
@@ -267,49 +262,54 @@ private fun HistorySelectionActions(
     onClearSelection: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    TextButton(onClick = { menuExpanded = true }, enabled = actionsEnabled) {
-        Text(stringResource(R.string.selection_more_actions))
-    }
-    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.selection_select_all)) },
-            onClick = { menuExpanded = false; onSelectAll() },
-        )
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.selection_add_to_queue)) },
-            enabled = actionsEnabled,
-            onClick = { menuExpanded = false; onAddToQueue() },
-        )
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.selection_play_next)) },
-            enabled = actionsEnabled,
-            onClick = { menuExpanded = false; onPlayNext() },
-        )
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.selection_hide)) },
-            enabled = actionsEnabled,
-            onClick = { menuExpanded = false; onHide() },
-        )
-        if (playlists.isEmpty()) {
+    Box {
+        TextButton(onClick = { menuExpanded = true }, enabled = actionsEnabled) {
+            Text(stringResource(R.string.selection_more_actions))
+        }
+        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.selection_no_playlists)) },
-                onClick = {},
-                enabled = false,
+                text = { Text(stringResource(R.string.selection_select_all)) },
+                onClick = { menuExpanded = false; onSelectAll() },
             )
-        } else {
-            playlists.forEach { playlist ->
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.selection_add_to_queue)) },
+                enabled = actionsEnabled,
+                onClick = { menuExpanded = false; onAddToQueue() },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.selection_play_next)) },
+                enabled = actionsEnabled,
+                onClick = { menuExpanded = false; onPlayNext() },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.selection_hide)) },
+                enabled = actionsEnabled,
+                onClick = { menuExpanded = false; onHide() },
+            )
+            if (playlists.isEmpty()) {
                 DropdownMenuItem(
-                    text = {
-                        Text(
-                            stringResource(
-                                R.string.selection_add_to_playlist_named,
-                                playlist.displayName,
-                            ),
-                        )
-                    },
-                    enabled = actionsEnabled,
-                    onClick = { menuExpanded = false; onAddToPlaylist(playlist.id) },
+                    text = { Text(stringResource(R.string.selection_no_playlists)) },
+                    onClick = {},
+                    enabled = false,
                 )
+            } else {
+                playlists.forEach { playlist ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    R.string.selection_add_to_playlist_named,
+                                    playlist.displayName,
+                                ),
+                            )
+                        },
+                        enabled = actionsEnabled,
+                        onClick = {
+                            menuExpanded = false
+                            onAddToPlaylist(playlist.id)
+                        },
+                    )
+                }
             }
         }
     }
