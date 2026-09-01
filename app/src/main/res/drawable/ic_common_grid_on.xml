@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artwork: Google Material Icons Round (src/image/grid_on/materialiconsround/24px.svg); Apache-2.0. Converted to VectorDrawable, named ic_common_grid_on.xml, neutral #FF000000 for Compose tinting. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M20,2H4C2.9,2 2,2.9 2,4v16c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V4C22,2.9 21.1,2 20,2z M8,20H5c-0.55,0 -1,-0.45 -1,-1v-3h4v4z M8,14H4v-4h4v4z M8,8H4V5c0,-0.55 0.45,-1 1,-1h3v4z M14,20h-4v-4h4v4z M14,14h-4v-4h4v4z M14,8h-4V4h4v4z M19,20h-3v-4h4v3c0,0.55 -0.45,1 -1,1z M20,14h-4v-4h4v4z M20,8h-4V4h3c0.55,0 1,0.45 1,1v3z" />
+</vector>

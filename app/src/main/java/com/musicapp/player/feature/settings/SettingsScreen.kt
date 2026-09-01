@@ -1,18 +1,22 @@
 package com.musicapp.player.feature.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.Dp
@@ -22,6 +26,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
@@ -36,10 +41,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
@@ -170,24 +179,32 @@ private fun AppearanceSettings(
     onThemeModeChange: (ThemeMode) -> Unit,
 ) {
     SettingsSection(stringResource(R.string.settings_appearance)) {
-        ChoiceGroup(
+        ChoiceCardGrid(
             title = stringResource(R.string.settings_color_source),
             values = ColorSource.entries,
             selected = settings.colorSource,
+            columns = 2,
+            iconRes = { it.iconRes() },
             label = { stringResource(it.labelRes()) },
             onSelect = onColorSourceChange,
         )
-        ChoiceGroup(
+        HorizontalDivider()
+        ChoiceCardGrid(
             title = stringResource(R.string.settings_preset_theme),
             values = PresetTheme.entries,
             selected = settings.presetTheme,
+            columns = 2,
+            iconRes = { it.iconRes() },
             label = { stringResource(it.labelRes()) },
             onSelect = onPresetThemeChange,
         )
-        ChoiceGroup(
+        HorizontalDivider()
+        ChoiceCardGrid(
             title = stringResource(R.string.settings_theme_mode),
             values = ThemeMode.entries,
             selected = settings.themeMode,
+            columns = 3,
+            iconRes = { it.iconRes() },
             label = { stringResource(it.labelRes()) },
             onSelect = onThemeModeChange,
         )
@@ -210,10 +227,12 @@ private fun LanguageSettings(selected: AppLanguage, onSelect: (AppLanguage) -> U
 @Composable
 private fun AeroSettings(selected: AeroMode, onSelect: (AeroMode) -> Unit) {
     SettingsSection(stringResource(R.string.settings_aero)) {
-        ChoiceGroup(
+        ChoiceCardGrid(
             title = stringResource(R.string.settings_aero_mode),
             values = AeroMode.entries,
             selected = selected,
+            columns = 3,
+            iconRes = { it.iconRes() },
             label = { stringResource(it.labelRes()) },
             onSelect = onSelect,
         )
@@ -283,6 +302,124 @@ private fun SettingsSection(title: String, content: @Composable ColumnScope.() -
                 color = MusicTheme.colors.onSurface,
             )
             content()
+        }
+    }
+}
+
+@Composable
+internal fun <T> ChoiceCardGrid(
+    title: String,
+    values: List<T>,
+    selected: T,
+    columns: Int,
+    iconRes: (T) -> Int,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    Text(
+        text = title,
+        style = MusicTheme.typography.titleMedium,
+        color = MusicTheme.colors.onSurface,
+    )
+    val rows = values.chunked(columns)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(MusicTheme.dimensions.spaceSmallMedium),
+    ) {
+        rows.forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MusicTheme.dimensions.spaceSmallMedium),
+            ) {
+                rowItems.forEach { value ->
+                    ChoiceCard(
+                        selected = value == selected,
+                        iconRes = iconRes(value),
+                        label = label(value),
+                        onClick = { onSelect(value) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                val emptySlots = columns - rowItems.size
+                repeat(emptySlots) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoiceCard(
+    selected: Boolean,
+    iconRes: Int,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dimensions = MusicTheme.dimensions
+    val shape = MusicTheme.shapes.medium
+    val containerColor = if (selected) {
+        MusicTheme.colors.primary.copy(alpha = 0.08f)
+    } else {
+        Color.Transparent
+    }
+    val borderColor = if (selected) {
+        MusicTheme.colors.primary
+    } else {
+        MusicTheme.colors.outlineVariant
+    }
+    val contentColor = if (selected) {
+        MusicTheme.colors.primary
+    } else {
+        MusicTheme.colors.onSurfaceVariant
+    }
+    val labelColor = if (selected) {
+        MusicTheme.colors.primary
+    } else {
+        MusicTheme.colors.onSurface
+    }
+
+    Surface(
+        modifier = modifier
+            .heightIn(min = 84.dp)
+            .selectable(
+                selected = selected,
+                role = Role.RadioButton,
+                onClick = onClick,
+            ),
+        shape = shape,
+        color = containerColor,
+        border = BorderStroke(
+            width = if (selected) 1.5.dp else 1.dp,
+            color = borderColor,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    vertical = dimensions.spaceMedium,
+                    horizontal = dimensions.spaceExtraSmall,
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = contentColor,
+            )
+            Spacer(modifier = Modifier.height(dimensions.spaceSmallMedium))
+            Text(
+                text = label,
+                style = MusicTheme.typography.bodyMedium,
+                color = labelColor,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -397,6 +534,11 @@ private fun ColorSource.labelRes() = when (this) {
     ColorSource.PRESET -> R.string.settings_color_preset
 }
 
+private fun ColorSource.iconRes() = when (this) {
+    ColorSource.DYNAMIC -> R.drawable.ic_common_auto_awesome
+    ColorSource.PRESET -> R.drawable.ic_common_palette
+}
+
 private fun PresetTheme.labelRes() = when (this) {
     PresetTheme.DEFAULT_BLUE -> R.string.settings_theme_blue
     PresetTheme.EMERALD_GREEN -> R.string.settings_theme_emerald
@@ -404,10 +546,23 @@ private fun PresetTheme.labelRes() = when (this) {
     PresetTheme.VIOLET -> R.string.settings_theme_violet
 }
 
+private fun PresetTheme.iconRes() = when (this) {
+    PresetTheme.DEFAULT_BLUE,
+    PresetTheme.EMERALD_GREEN,
+    PresetTheme.SUNSET_ORANGE,
+    PresetTheme.VIOLET -> R.drawable.ic_common_palette
+}
+
 private fun ThemeMode.labelRes() = when (this) {
     ThemeMode.SYSTEM -> R.string.settings_system
     ThemeMode.LIGHT -> R.string.settings_light
     ThemeMode.DARK -> R.string.settings_dark
+}
+
+private fun ThemeMode.iconRes() = when (this) {
+    ThemeMode.SYSTEM -> R.drawable.ic_common_android
+    ThemeMode.LIGHT -> R.drawable.ic_common_light_mode
+    ThemeMode.DARK -> R.drawable.ic_common_dark_mode
 }
 
 private fun AppLanguage.labelRes() = when (this) {
@@ -420,6 +575,12 @@ private fun AeroMode.labelRes() = when (this) {
     AeroMode.FLUID_MESH -> R.string.settings_aero_fluid_mesh
     AeroMode.GLOW_AURA -> R.string.settings_aero_glow_aura
     AeroMode.SOLID -> R.string.settings_aero_solid
+}
+
+private fun AeroMode.iconRes() = when (this) {
+    AeroMode.FLUID_MESH -> R.drawable.ic_common_grid_on
+    AeroMode.GLOW_AURA -> R.drawable.ic_common_blur_circular
+    AeroMode.SOLID -> R.drawable.ic_common_circle
 }
 
 private const val FADE_SLIDER_STEPS = 7

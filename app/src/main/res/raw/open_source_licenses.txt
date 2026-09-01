@@ -132,6 +132,16 @@ Bundled visual asset notices:
   Modifications: authored as a neutral Android VectorDrawable outline/path and
   tinted by MusicTheme at runtime.
 
+- Google Material Design Icons settings appearance and Aero background resources
+  (`ic_common_auto_awesome.xml`, `ic_common_palette.xml`, `ic_common_android.xml`,
+  `ic_common_light_mode.xml`, `ic_common_dark_mode.xml`, `ic_common_grid_on.xml`,
+  `ic_common_blur_circular.xml`, `ic_common_circle.xml`), source revision
+  50f0603134ce7b70b2d71b686cc13e8b57ccb74c.
+  Source: https://github.com/google/material-design-icons
+  License: Apache License 2.0.
+  Modifications: 24 px rounded SVG paths were converted to Android VectorDrawable XML
+  with neutral fill color for runtime Compose tinting.
+
 The complete common license text follows. Component-specific NOTICE attribution is retained above.
 
 Apache License

@@ -73,6 +73,14 @@
 | `ic_common_sort_alpha.xml` | `src/av/sort_by_alpha/materialiconsround/24px.svg` | 字母排序；排序箭头与字母端点圆角化 |
 | `ic_navigation_back.xml` | `src/navigation/arrow_back/materialiconsround/24px.svg` | 导航返回；返回箭头拐角与端点圆角化 |
 | `ic_navigation_menu.xml` | `src/navigation/menu/materialiconsround/24px.svg` | 侧栏菜单；汉堡三横线端点圆角化 |
+| `ic_common_auto_awesome.xml` | `src/image/auto_awesome/materialiconsround/24px.svg` | 外观设置 Material You 选项；四角星光端点圆角化 |
+| `ic_common_palette.xml` | `src/image/palette/materialiconsround/24px.svg` | 外观设置预设颜色与预设主题选项；调色板端点圆角化 |
+| `ic_common_android.xml` | `src/action/android/materialiconsround/24px.svg` | 外观设置跟随系统选项；机器人轮廓平滑圆角化 |
+| `ic_common_light_mode.xml` | `src/device/light_mode/materialiconsround/24px.svg` | 外观设置浅色模式选项；太阳光芒端点圆角化 |
+| `ic_common_dark_mode.xml` | `src/device/dark_mode/materialiconsround/24px.svg` | 外观设置深色模式选项；月牙轮廓平滑圆角化 |
+| `ic_common_grid_on.xml` | `src/image/grid_on/materialiconsround/24px.svg` | Aero 背景流体网格选项；网格端点平滑圆角化 |
+| `ic_common_blur_circular.xml` | `src/image/blur_circular/materialiconsround/24px.svg` | Aero 背景光晕气场选项；同心圆点阵平滑圆角化 |
+| `ic_common_circle.xml` | `src/image/circle/materialiconsround/24px.svg` | Aero 背景纯色静态选项；正圆几何轮廓 |
 
 ### 侧边栏导航资源
 | MusicApp 资源 | Google 源文件 (Round) | 用途与修改 |
