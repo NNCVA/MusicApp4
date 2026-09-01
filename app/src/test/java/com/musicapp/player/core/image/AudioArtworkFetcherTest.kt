@@ -242,7 +242,7 @@ class AudioArtworkFetcherTest {
 
     @Test
     fun fetch_throttlesConcurrency_underHighLoad() = runTest {
-        val maxConcurrency = 2
+        val maxConcurrency = ArtworkReadLimiter.MAX_CONCURRENT_READS
         val sharedLimiter = ArtworkReadLimiter()
         var activeWorkers = 0
         var peakWorkers = 0

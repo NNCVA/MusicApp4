@@ -39,7 +39,7 @@ class ArtworkReadLimiter @Inject constructor() {
         semaphore.withPermit { block() }
 
     companion object {
-        const val MAX_CONCURRENT_READS = 2
+        const val MAX_CONCURRENT_READS = 4
     }
 }
 
@@ -73,9 +73,23 @@ fun interface ArtworkExtractor {
 }
 
 /**
- * Default [ArtworkExtractor] using Android native [MediaMetadataRetriever] with strict try-finally cleanup.
+ * Default [ArtworkExtractor] prioritizing Android Q+ [android.content.ContentResolver.loadThumbnail]
+ * with fallback to native [MediaMetadataRetriever] with strict try-finally cleanup.
  */
 val DefaultArtworkExtractor = ArtworkExtractor { context, uri ->
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        try {
+            val bitmap = context.contentResolver.loadThumbnail(uri, android.util.Size(256, 256), null)
+            val stream = java.io.ByteArrayOutputStream()
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, stream)
+            val bytes = stream.toByteArray()
+            if (bytes.isNotEmpty()) {
+                return@ArtworkExtractor bytes
+            }
+        } catch (_: Throwable) {
+            // Fall back to MediaMetadataRetriever
+        }
+    }
     val retriever = MediaMetadataRetriever()
     try {
         retriever.setDataSource(context, uri)

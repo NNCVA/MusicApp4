@@ -2,6 +2,7 @@ package com.musicapp.player.di
 
 import android.content.Context
 import coil3.ImageLoader
+import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.request.allowHardware
 import coil3.request.crossfade
@@ -17,6 +18,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import okio.Path.Companion.toOkioPath
 import javax.inject.Singleton
 
 @Module
@@ -53,6 +55,12 @@ object ImageLoaderModule {
                 MemoryCache.Builder()
                     .maxSizePercent(context, 0.25)
                     .strongReferencesEnabled(true)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(context.cacheDir.resolve("artwork_cache").toOkioPath())
+                    .maxSizeBytes(128L * 1024 * 1024)
                     .build()
             }
             .crossfade(true)

@@ -197,7 +197,7 @@ class AdversarialArtworkPipelineStressTest {
         jobs.joinAll()
 
         assertEquals(50, completedCount.get())
-        assertTrue("Peak concurrent executions (${maxPeak.get()}) must not exceed 2", maxPeak.get() <= 2)
+        assertTrue("Peak concurrent executions (${maxPeak.get()}) must not exceed ${ArtworkReadLimiter.MAX_CONCURRENT_READS}", maxPeak.get() <= ArtworkReadLimiter.MAX_CONCURRENT_READS)
     }
 
     @Test
@@ -253,7 +253,7 @@ class AdversarialArtworkPipelineStressTest {
         }
         postJobs.joinAll()
 
-        assertTrue(maxPeak.get() in 1..2)
+        assertTrue(maxPeak.get() in 1..ArtworkReadLimiter.MAX_CONCURRENT_READS)
     }
 
     // ==========================================
