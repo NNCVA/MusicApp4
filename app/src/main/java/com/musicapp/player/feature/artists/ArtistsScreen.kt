@@ -128,23 +128,13 @@ private fun ArtistsScreen(
     val sections = remember(state.artists) { groupArtistsIntoSections(state.artists) }
     val displayArtists = remember(sections) { sections.flatMap(ArtistSection::artists) }
     val sectionPositions = remember(sections) { sectionStartPositions(sections) }
-    val selectedSection by remember(listState, sections) {
-        derivedStateOf {
-            sectionLabelAtPosition(sections, listState.firstVisibleItemIndex)
-        }
-    }
-    val canScroll by remember(listState) {
-        derivedStateOf {
-            listState.canScrollForward || listState.canScrollBackward
-        }
-    }
-    val gutterMode = remember(displayArtists, canScroll, selectedSection, sections, sectionPositions) {
-        if (displayArtists.isEmpty() || !canScroll) {
+    val gutterMode = remember(displayArtists, sections, sectionPositions) {
+        if (displayArtists.isEmpty()) {
             GutterMode.Hidden
         } else {
             GutterMode.Index(
                 sortOrder = SectionSortOrder.ASCENDING,
-                activeSection = selectedSection,
+                activeSectionProvider = { sectionLabelAtPosition(sections, listState.firstVisibleItemIndex) },
                 populatedBuckets = sections.map(ArtistSection::label).toSet(),
                 onSectionSelected = { label ->
                     sectionPositions[label]?.let { position ->

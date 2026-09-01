@@ -18,6 +18,8 @@ import com.musicapp.player.feature.category.sortCategoryTracks
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -53,15 +56,24 @@ data class ArtistDetailUiState(
 )
 
 @HiltViewModel
-class ArtistsViewModel @Inject constructor(
+class ArtistsViewModel internal constructor(
     mediaLibraryRepository: MediaLibraryRepository,
+    private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
+    @Inject
+    constructor(
+        mediaLibraryRepository: MediaLibraryRepository,
+    ) : this(mediaLibraryRepository, Dispatchers.Default)
+
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         artworkRepository: ArtworkRepository,
-    ) : this(mediaLibraryRepository)
+    ) : this(mediaLibraryRepository, Dispatchers.Default)
 
-    private val artists = mediaLibraryRepository.observeTracks().map(ArtistGrouping::group)
+    private val artists =
+        mediaLibraryRepository.observeTracks()
+            .map(ArtistGrouping::group)
+            .flowOn(computationDispatcher)
 
     val uiState: StateFlow<ArtistsUiState> =
         artists.map { ArtistsUiState(artists = it, isLoaded = true) }

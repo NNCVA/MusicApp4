@@ -231,29 +231,19 @@ fun TracksScreen(
             state.sectionPositions
         }
     }
-    val selectedSection by remember(listState, sections) {
-        derivedStateOf {
-            sectionLabelAtPosition(sections, listState.firstVisibleItemIndex)
-        }
-    }
-    val canScroll by remember(listState) {
-        derivedStateOf {
-            listState.canScrollForward || listState.canScrollBackward
-        }
-    }
     val isTextSort = state.sort.field in listOf(
         TrackSortField.TITLE,
         TrackSortField.ARTIST,
         TrackSortField.ALBUM,
     )
-    val gutterMode = remember(state.isLibraryLoaded, state.tracks, filteredTracks, canScroll, isTextSort, state.sort.direction, selectedSection, sections, sectionPositions) {
+    val gutterMode = remember(state.isLibraryLoaded, state.tracks, filteredTracks, isTextSort, state.sort.direction, sections, sectionPositions) {
         when {
-            !state.isLibraryLoaded || state.tracks.isEmpty() || filteredTracks.isEmpty() || !canScroll ->
+            !state.isLibraryLoaded || state.tracks.isEmpty() || filteredTracks.isEmpty() ->
                 GutterMode.Hidden
             isTextSort ->
                 GutterMode.Index(
                     sortOrder = trackSortDirectionToSectionOrder(state.sort.direction),
-                    activeSection = selectedSection,
+                    activeSectionProvider = { sectionLabelAtPosition(sections, listState.firstVisibleItemIndex) },
                     populatedBuckets = sections.map(TrackSection::label).toSet(),
                     onSectionSelected = { label ->
                         sectionPositions[label]?.let { position ->
@@ -270,6 +260,7 @@ fun TracksScreen(
     val hasMiniPlayer = bottomPadding > bottomInset + 1.dp
     val selectionBarHeight = dimensions.minimumTouchTarget
     val dynamicBottomPadding = bottomPadding + if (state.isSelectionMode) selectionBarHeight else 0.dp
+    var activeMenuTrack by remember { mutableStateOf<Track?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -344,11 +335,7 @@ fun TracksScreen(
                     selectedIds = state.selectedTrackIds,
                     selectionMode = state.isSelectionMode,
                     playlists = state.playlists,
-                    onAddToQueue = onTrackAddToQueue,
-                    onPlayNext = onTrackPlayNext,
-                    onHide = onTrackHide,
-                    onAddToPlaylist = onTrackAddToPlaylist,
-                    onShowTrackInfo = onTrackShowInfo,
+                    onTrackMoreClick = { track -> activeMenuTrack = track },
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
                     onFirstTrackLaidOut = onFirstTrackLaidOut,
@@ -393,6 +380,36 @@ fun TracksScreen(
             },
             onDismiss = { showAddToPlaylistDialog = false },
         )
+    }
+
+    activeMenuTrack?.let { targetTrack ->
+        Box {
+            TrackActionsMenu(
+                expanded = true,
+                playlists = state.playlists,
+                onDismissRequest = { activeMenuTrack = null },
+                onAddToQueue = {
+                    onTrackAddToQueue(targetTrack.id)
+                    activeMenuTrack = null
+                },
+                onPlayNext = {
+                    onTrackPlayNext(targetTrack.id)
+                    activeMenuTrack = null
+                },
+                onShowTrackInfo = {
+                    onTrackShowInfo(targetTrack)
+                    activeMenuTrack = null
+                },
+                onHide = {
+                    onTrackHide(targetTrack.id)
+                    activeMenuTrack = null
+                },
+                onAddToPlaylist = { playlistId ->
+                    onTrackAddToPlaylist(targetTrack.id, playlistId)
+                    activeMenuTrack = null
+                },
+            )
+        }
     }
 
     state.batchResult?.let { result ->
@@ -677,11 +694,7 @@ private fun TrackList(
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
     playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onAddToQueue: (TrackId) -> Unit,
-    onPlayNext: (TrackId) -> Unit,
-    onHide: (TrackId) -> Unit,
-    onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
-    onShowTrackInfo: (Track) -> Unit,
+    onTrackMoreClick: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
     onFirstTrackLaidOut: () -> Unit,
@@ -706,9 +719,7 @@ private fun TrackList(
                 .then(scrollbarModifier),
             contentPadding =
                 PaddingValues(
-                    //start = dimensions.spaceSmall,
                     top = dimensions.spaceSmall,
-                    //end = dimensions.spaceSmall,
                     bottom = dimensions.spaceSmall + bottomPadding,
                 ),
         ) {
@@ -718,12 +729,7 @@ private fun TrackList(
                     tracks = tracks,
                     selectedIds = selectedIds,
                     selectionMode = selectionMode,
-                    playlists = playlists,
-                    onAddToQueue = onAddToQueue,
-                    onPlayNext = onPlayNext,
-                    onHide = onHide,
-                    onAddToPlaylist = onAddToPlaylist,
-                    onShowTrackInfo = onShowTrackInfo,
+                    onTrackMoreClick = onTrackMoreClick,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
                     firstTrackId = firstTrackId,
@@ -735,12 +741,7 @@ private fun TrackList(
                         tracks = section.tracks,
                         selectedIds = selectedIds,
                         selectionMode = selectionMode,
-                        playlists = playlists,
-                        onAddToQueue = onAddToQueue,
-                        onPlayNext = onPlayNext,
-                        onHide = onHide,
-                        onAddToPlaylist = onAddToPlaylist,
-                        onShowTrackInfo = onShowTrackInfo,
+                        onTrackMoreClick = onTrackMoreClick,
                         onTrackClick = onTrackClick,
                         onTrackLongClick = onTrackLongClick,
                         firstTrackId = firstTrackId,
@@ -756,12 +757,7 @@ private fun LazyListScope.trackItems(
     tracks: List<Track>,
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
-    playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onAddToQueue: (TrackId) -> Unit,
-    onPlayNext: (TrackId) -> Unit,
-    onHide: (TrackId) -> Unit,
-    onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
-    onShowTrackInfo: (Track) -> Unit,
+    onTrackMoreClick: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
     firstTrackId: TrackId?,
@@ -772,12 +768,7 @@ private fun LazyListScope.trackItems(
             track = track,
             selected = track.id in selectedIds,
             selectionMode = selectionMode,
-            playlists = playlists,
-            onAddToQueue = { onAddToQueue(track.id) },
-            onPlayNext = { onPlayNext(track.id) },
-            onHide = { onHide(track.id) },
-            onAddToPlaylist = { playlistId -> onAddToPlaylist(track.id, playlistId) },
-            onShowTrackInfo = { onShowTrackInfo(track) },
+            onMoreClick = { onTrackMoreClick(track) },
             onClick = { onTrackClick(track) },
             onLongClick = { onTrackLongClick(track) },
             onLaidOut = if (track.id == firstTrackId) onFirstTrackLaidOut else null,
@@ -791,12 +782,7 @@ private fun TrackRow(
     track: Track,
     selected: Boolean,
     selectionMode: Boolean,
-    playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onAddToQueue: () -> Unit,
-    onPlayNext: () -> Unit,
-    onHide: () -> Unit,
-    onAddToPlaylist: (PlaylistId) -> Unit,
-    onShowTrackInfo: () -> Unit,
+    onMoreClick: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onLaidOut: (() -> Unit)?,
@@ -809,7 +795,6 @@ private fun TrackRow(
             ?.takeIf(String::isNotBlank)
             ?.let { stringResource(R.string.track_artist_album, artistName, it) }
             ?: artistName
-    var menuExpanded by remember(track.id) { mutableStateOf(false) }
     Row(
         modifier =
             Modifier.fillMaxWidth()
@@ -881,27 +866,15 @@ private fun TrackRow(
                 )
             }
         } else {
-            Box {
-                BareIconButton(
-                    onClick = { menuExpanded = true },
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_more_vertical),
-                        contentDescription = stringResource(R.string.track_more_actions),
-                        tint = MusicTheme.colors.onSurfaceVariant,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-                TrackActionsMenu(
-                    expanded = menuExpanded,
-                    playlists = playlists,
-                    onDismissRequest = { menuExpanded = false },
-                    onAddToQueue = onAddToQueue,
-                    onPlayNext = onPlayNext,
-                    onShowTrackInfo = onShowTrackInfo,
-                    onHide = onHide,
-                    onAddToPlaylist = onAddToPlaylist,
+            BareIconButton(
+                onClick = onMoreClick,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_more_vertical),
+                    contentDescription = stringResource(R.string.track_more_actions),
+                    tint = MusicTheme.colors.onSurfaceVariant,
+                    modifier = Modifier.size(dimensions.spaceLarge),
                 )
             }
         }

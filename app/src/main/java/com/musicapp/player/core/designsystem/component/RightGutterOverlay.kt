@@ -66,6 +66,7 @@ sealed interface GutterMode {
     data class Index(
         val sortOrder: SectionSortOrder = SectionSortOrder.ASCENDING,
         val activeSection: String? = null,
+        val activeSectionProvider: (() -> String?)? = null,
         val populatedBuckets: Set<String> = emptySet(),
         val onSectionSelected: (String) -> Unit = {},
     ) : GutterMode
@@ -249,8 +250,13 @@ private fun IndexOverlay(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
+                val currentHighlight = if (isInteracting) {
+                    selectedLabel
+                } else {
+                    indexMode.activeSectionProvider?.invoke() ?: indexMode.activeSection ?: selectedLabel
+                }
                 visibleLabels.forEach { label ->
-                    val isCurrent = (label == selectedLabel)
+                    val isCurrent = (label == currentHighlight)
                     Text(
                         text = label,
                         style = MusicTheme.typography.labelSmall.copy(

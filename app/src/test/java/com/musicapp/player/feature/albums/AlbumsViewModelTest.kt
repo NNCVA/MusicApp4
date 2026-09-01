@@ -122,8 +122,8 @@ class AlbumsViewModelTest {
     ) = AlbumsViewModel(
         mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
         savedStateHandle = savedStateHandle,
-        artworkRepository = artworkRepository,
         settingsRepository = settingsRepository,
+        computationDispatcher = dispatcher,
     )
 
     private fun track(id: Long, dateModifiedMs: Long) =

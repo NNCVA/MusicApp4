@@ -147,27 +147,17 @@ private fun AlbumsScreen(
     val sectionPositions = remember(sections, state.sort.direction) {
         sectionStartPositions(sections, state.sort.direction)
     }
-    val selectedSection by remember(gridState, sections) {
-        derivedStateOf {
-            sectionLabelAtPosition(sections, gridState.firstVisibleItemIndex)
-        }
-    }
-    val canScroll by remember(gridState) {
-        derivedStateOf {
-            gridState.canScrollForward || gridState.canScrollBackward
-        }
-    }
     val isTextSort = state.sort.field in listOf(
         AlbumSortField.TITLE,
         AlbumSortField.ARTIST,
     )
-    val gutterMode = remember(state.albums, canScroll, isTextSort, state.sort.direction, selectedSection, sections, sectionPositions) {
+    val gutterMode = remember(state.albums, isTextSort, state.sort.direction, sections, sectionPositions) {
         when {
-            state.albums.isEmpty() || !canScroll -> GutterMode.Hidden
+            state.albums.isEmpty() -> GutterMode.Hidden
             isTextSort ->
                 GutterMode.Index(
                     sortOrder = albumSortDirectionToSectionOrder(state.sort.direction),
-                    activeSection = selectedSection,
+                    activeSectionProvider = { sectionLabelAtPosition(sections, gridState.firstVisibleItemIndex) },
                     populatedBuckets = sections.map(AlbumSection::label).toSet(),
                     onSectionSelected = { label ->
                         sectionPositions[label]?.let { position ->

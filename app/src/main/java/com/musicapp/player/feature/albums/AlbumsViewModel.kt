@@ -20,10 +20,13 @@ import com.musicapp.player.feature.category.sortCategoryTracks
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -54,11 +57,24 @@ data class AlbumArtworkState(
 )
 
 @HiltViewModel
-class AlbumsViewModel @Inject constructor(
+class AlbumsViewModel internal constructor(
     mediaLibraryRepository: MediaLibraryRepository,
     private val savedStateHandle: SavedStateHandle,
     private val settingsRepository: SettingsRepository,
+    private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
+    @Inject
+    constructor(
+        mediaLibraryRepository: MediaLibraryRepository,
+        savedStateHandle: SavedStateHandle,
+        settingsRepository: SettingsRepository,
+    ) : this(
+        mediaLibraryRepository = mediaLibraryRepository,
+        savedStateHandle = savedStateHandle,
+        settingsRepository = settingsRepository,
+        computationDispatcher = Dispatchers.Default,
+    )
+
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         savedStateHandle: SavedStateHandle,
@@ -68,6 +84,7 @@ class AlbumsViewModel @Inject constructor(
         mediaLibraryRepository = mediaLibraryRepository,
         savedStateHandle = savedStateHandle,
         settingsRepository = settingsRepository,
+        computationDispatcher = Dispatchers.Default,
     )
 
     private val sort = MutableStateFlow(restoreAlbumSort(savedStateHandle))
@@ -80,7 +97,9 @@ class AlbumsViewModel @Inject constructor(
                 columnCount = settings.albumGridColumns,
                 isLoaded = true,
             )
-        }.stateIn(
+        }
+        .flowOn(computationDispatcher)
+        .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             AlbumsUiState(sort = sort.value, columnCount = settingsRepository.settings.value.albumGridColumns, isLoaded = false),

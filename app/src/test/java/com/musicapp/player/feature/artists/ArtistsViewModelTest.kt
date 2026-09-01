@@ -44,7 +44,7 @@ class ArtistsViewModelTest {
         val first = track(1, dateModifiedMs = 10, artistName = "Jay Chou")
         val second = track(2, dateModifiedMs = 20, artistName = "Jay Chou")
         val third = track(3, dateModifiedMs = 30, artistName = "Eason Chan")
-        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(first, second, third)))
+        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(first, second, third)), computationDispatcher = dispatcher)
         collectState(viewModel)
         advanceUntilIdle()
 
@@ -61,7 +61,7 @@ class ArtistsViewModelTest {
     @Test
     fun `artists uiState is immediately loaded and exposes stable summaries`() = runTest(dispatcher) {
         val track = track(1, dateModifiedMs = 10, artistName = "Solo Artist")
-        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(track)))
+        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(track)), computationDispatcher = dispatcher)
         collectState(viewModel)
         advanceUntilIdle()
 
@@ -107,7 +107,7 @@ class ArtistsViewModelTest {
         artworkRepository: ArtworkRepository,
     ) = ArtistsViewModel(
         mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
-        artworkRepository = artworkRepository,
+        computationDispatcher = dispatcher,
     )
 
     private fun artist(track: Track) =
