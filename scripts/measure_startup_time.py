@@ -207,23 +207,24 @@ def measure_single_run(
     system_displayed_ms = None
     end_to_end_ms = None
 
-    import select
+    import os
+    os.set_blocking(logcat_proc.stdout.fileno(), False)
 
     start_wait = time.time()
     try:
         while time.time() - start_wait < timeout:
-            r, _, _ = select.select([logcat_proc.stdout], [], [], 0.1)
-            if not r:
-                continue
             line = logcat_proc.stdout.readline()
             if not line:
+                time.sleep(0.01)
                 continue
 
-            # 匹配系统 Displayed: ActivityTaskManager: Displayed com.musicapp.player/.MainActivity: +450ms
+            # 匹配系统 Displayed: ActivityTaskManager: Displayed com.musicapp.player/.MainActivity for user 0: +2s869ms 或 +450ms
             if "Displayed" in line and activity in line:
-                match = re.search(r"\+(\d+(?:\.\d+)?)ms", line)
+                match = re.search(r"\+(?:(\d+)s)?(\d+(?:\.\d+)?)ms", line)
                 if match:
-                    system_displayed_ms = float(match.group(1))
+                    sec = float(match.group(1)) if match.group(1) else 0.0
+                    ms = float(match.group(2))
+                    system_displayed_ms = sec * 1000.0 + ms
 
             # 匹配 BenchmarkTrace: TracksFirstTrackLaidOut duration_ms=123.4 track_count=50 start_ns=... end_ns=...
             if BENCHMARK_TAG in line and "TracksFirstTrackLaidOut" in line:
