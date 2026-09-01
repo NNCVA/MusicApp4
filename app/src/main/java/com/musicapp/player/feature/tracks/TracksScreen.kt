@@ -260,7 +260,6 @@ fun TracksScreen(
     val hasMiniPlayer = bottomPadding > bottomInset + 1.dp
     val selectionBarHeight = dimensions.minimumTouchTarget
     val dynamicBottomPadding = bottomPadding + if (state.isSelectionMode) selectionBarHeight else 0.dp
-    var activeMenuTrack by remember { mutableStateOf<Track?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -335,7 +334,11 @@ fun TracksScreen(
                     selectedIds = state.selectedTrackIds,
                     selectionMode = state.isSelectionMode,
                     playlists = state.playlists,
-                    onTrackMoreClick = { track -> activeMenuTrack = track },
+                    onAddToQueue = onTrackAddToQueue,
+                    onPlayNext = onTrackPlayNext,
+                    onHide = onTrackHide,
+                    onAddToPlaylist = onTrackAddToPlaylist,
+                    onShowTrackInfo = onTrackShowInfo,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
                     onFirstTrackLaidOut = onFirstTrackLaidOut,
@@ -380,36 +383,6 @@ fun TracksScreen(
             },
             onDismiss = { showAddToPlaylistDialog = false },
         )
-    }
-
-    activeMenuTrack?.let { targetTrack ->
-        Box {
-            TrackActionsMenu(
-                expanded = true,
-                playlists = state.playlists,
-                onDismissRequest = { activeMenuTrack = null },
-                onAddToQueue = {
-                    onTrackAddToQueue(targetTrack.id)
-                    activeMenuTrack = null
-                },
-                onPlayNext = {
-                    onTrackPlayNext(targetTrack.id)
-                    activeMenuTrack = null
-                },
-                onShowTrackInfo = {
-                    onTrackShowInfo(targetTrack)
-                    activeMenuTrack = null
-                },
-                onHide = {
-                    onTrackHide(targetTrack.id)
-                    activeMenuTrack = null
-                },
-                onAddToPlaylist = { playlistId ->
-                    onTrackAddToPlaylist(targetTrack.id, playlistId)
-                    activeMenuTrack = null
-                },
-            )
-        }
     }
 
     state.batchResult?.let { result ->
@@ -694,7 +667,11 @@ private fun TrackList(
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
     playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onTrackMoreClick: (Track) -> Unit,
+    onAddToQueue: (TrackId) -> Unit,
+    onPlayNext: (TrackId) -> Unit,
+    onHide: (TrackId) -> Unit,
+    onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
+    onShowTrackInfo: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
     onFirstTrackLaidOut: () -> Unit,
@@ -729,7 +706,12 @@ private fun TrackList(
                     tracks = tracks,
                     selectedIds = selectedIds,
                     selectionMode = selectionMode,
-                    onTrackMoreClick = onTrackMoreClick,
+                    playlists = playlists,
+                    onAddToQueue = onAddToQueue,
+                    onPlayNext = onPlayNext,
+                    onHide = onHide,
+                    onAddToPlaylist = onAddToPlaylist,
+                    onShowTrackInfo = onShowTrackInfo,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
                     firstTrackId = firstTrackId,
@@ -741,7 +723,12 @@ private fun TrackList(
                         tracks = section.tracks,
                         selectedIds = selectedIds,
                         selectionMode = selectionMode,
-                        onTrackMoreClick = onTrackMoreClick,
+                        playlists = playlists,
+                        onAddToQueue = onAddToQueue,
+                        onPlayNext = onPlayNext,
+                        onHide = onHide,
+                        onAddToPlaylist = onAddToPlaylist,
+                        onShowTrackInfo = onShowTrackInfo,
                         onTrackClick = onTrackClick,
                         onTrackLongClick = onTrackLongClick,
                         firstTrackId = firstTrackId,
@@ -757,7 +744,12 @@ private fun LazyListScope.trackItems(
     tracks: List<Track>,
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
-    onTrackMoreClick: (Track) -> Unit,
+    playlists: List<com.musicapp.player.core.domain.model.Playlist>,
+    onAddToQueue: (TrackId) -> Unit,
+    onPlayNext: (TrackId) -> Unit,
+    onHide: (TrackId) -> Unit,
+    onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
+    onShowTrackInfo: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
     firstTrackId: TrackId?,
@@ -768,7 +760,12 @@ private fun LazyListScope.trackItems(
             track = track,
             selected = track.id in selectedIds,
             selectionMode = selectionMode,
-            onMoreClick = { onTrackMoreClick(track) },
+            playlists = playlists,
+            onAddToQueue = { onAddToQueue(track.id) },
+            onPlayNext = { onPlayNext(track.id) },
+            onHide = { onHide(track.id) },
+            onAddToPlaylist = { playlistId -> onAddToPlaylist(track.id, playlistId) },
+            onShowTrackInfo = { onShowTrackInfo(track) },
             onClick = { onTrackClick(track) },
             onLongClick = { onTrackLongClick(track) },
             onLaidOut = if (track.id == firstTrackId) onFirstTrackLaidOut else null,
@@ -782,7 +779,12 @@ private fun TrackRow(
     track: Track,
     selected: Boolean,
     selectionMode: Boolean,
-    onMoreClick: () -> Unit,
+    playlists: List<com.musicapp.player.core.domain.model.Playlist>,
+    onAddToQueue: () -> Unit,
+    onPlayNext: () -> Unit,
+    onHide: () -> Unit,
+    onAddToPlaylist: (PlaylistId) -> Unit,
+    onShowTrackInfo: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onLaidOut: (() -> Unit)?,
@@ -866,15 +868,28 @@ private fun TrackRow(
                 )
             }
         } else {
-            BareIconButton(
-                onClick = onMoreClick,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_common_more_vertical),
-                    contentDescription = stringResource(R.string.track_more_actions),
-                    tint = MusicTheme.colors.onSurfaceVariant,
-                    modifier = Modifier.size(dimensions.spaceLarge),
+            var menuExpanded by remember(track.id) { mutableStateOf(false) }
+            Box {
+                BareIconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_more_vertical),
+                        contentDescription = stringResource(R.string.track_more_actions),
+                        tint = MusicTheme.colors.onSurfaceVariant,
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
+                TrackActionsMenu(
+                    expanded = menuExpanded,
+                    playlists = playlists,
+                    onDismissRequest = { menuExpanded = false },
+                    onAddToQueue = onAddToQueue,
+                    onPlayNext = onPlayNext,
+                    onShowTrackInfo = onShowTrackInfo,
+                    onHide = onHide,
+                    onAddToPlaylist = onAddToPlaylist,
                 )
             }
         }
