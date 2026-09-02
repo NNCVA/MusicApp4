@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artwork: Google Material Icons Round (src/action/view_list/materialiconsround/24px.svg); Apache-2.0. Converted to VectorDrawable, named ic_common_view_list.xml, neutral #FF000000 for Compose tinting. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M4,5h2c0.55,0 1,0.45 1,1v2c0,0.55 -0.45,1 -1,1H4c-0.55,0 -1,-0.45 -1,-1V6c0,-0.55 0.45,-1 1,-1zM10,5h10c0.55,0 1,0.45 1,1v2c0,0.55 -0.45,1 -1,1H10c-0.55,0 -1,-0.45 -1,-1V6c0,-0.55 0.45,-1 1,-1zM4,10h2c0.55,0 1,0.45 1,1v2c0,0.55 -0.45,1 -1,1H4c-0.55,0 -1,-0.45 -1,-1v-2c0,-0.55 0.45,-1 1,-1zM10,10h10c0.55,0 1,0.45 1,1v2c0,0.55 -0.45,1 -1,1H10c-0.55,0 -1,-0.45 -1,-1v-2c0,-0.55 0.45,-1 1,-1zM4,15h2c0.55,0 1,0.45 1,1v2c0,0.55 -0.45,1 -1,1H4c-0.55,0 -1,-0.45 -1,-1v-2c0,-0.55 0.45,-1 1,-1zM10,15h10c0.55,0 1,0.45 1,1v2c0,0.55 -0.45,1 -1,1H10c-0.55,0 -1,-0.45 -1,-1v-2c0,-0.55 0.45,-1 1,-1z" />
+</vector>
