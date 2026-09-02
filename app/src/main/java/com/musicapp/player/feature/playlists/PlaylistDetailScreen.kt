@@ -359,6 +359,12 @@ fun PlaylistDetailScreen(
                         ) {
                             AppDropdownMenuItem(
                                 text = { Text(stringResource(R.string.playlist_rename)) },
+                                trailingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_common_sort_alpha),
+                                        contentDescription = null,
+                                    )
+                                },
                                 onClick = {
                                     pageMenuExpanded = false
                                     showRenameDialog = true
@@ -367,6 +373,12 @@ fun PlaylistDetailScreen(
                             AppDropdownMenuItem(
                                 text = { Text(stringResource(R.string.playlist_delete)) },
                                 isDestructive = true,
+                                trailingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_common_delete),
+                                        contentDescription = null,
+                                    )
+                                },
                                 onClick = {
                                     pageMenuExpanded = false
                                     showDeleteDialog = true
@@ -801,7 +813,7 @@ private fun PlaylistTrackActionsMenu(
     onDismissRequest: () -> Unit,
     onRemoveFromPlaylist: () -> Unit,
     onPlayNext: () -> Unit,
-    onAddToQueue: () -> Unit,
+    onAddToQueue: () -> Unit = {},
     onAddToOtherPlaylist: () -> Unit,
     onShowTrackInfo: () -> Unit,
     modifier: Modifier = Modifier,
@@ -814,6 +826,12 @@ private fun PlaylistTrackActionsMenu(
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.playlist_remove_from_playlist)) },
             isDestructive = true,
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_delete),
+                    contentDescription = null,
+                )
+            },
             onClick = {
                 onDismissRequest()
                 onRemoveFromPlaylist()
@@ -821,20 +839,25 @@ private fun PlaylistTrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_play_next)) },
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_playback_skip_next),
+                    contentDescription = null,
+                )
+            },
             onClick = {
                 onDismissRequest()
                 onPlayNext()
             },
         )
         AppDropdownMenuItem(
-            text = { Text(stringResource(R.string.selection_add_to_queue)) },
-            onClick = {
-                onDismissRequest()
-                onAddToQueue()
-            },
-        )
-        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_add_to_playlist)) },
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_add),
+                    contentDescription = null,
+                )
+            },
             onClick = {
                 onDismissRequest()
                 onAddToOtherPlaylist()
@@ -842,6 +865,12 @@ private fun PlaylistTrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_track_info)) },
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_sidebar_about),
+                    contentDescription = null,
+                )
+            },
             onClick = {
                 onDismissRequest()
                 onShowTrackInfo()

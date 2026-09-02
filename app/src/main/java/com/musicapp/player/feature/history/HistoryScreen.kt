@@ -24,10 +24,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.painterResource
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
@@ -296,7 +298,7 @@ private fun HistoryScreen(
 private fun HistorySelectionActions(
     actionsEnabled: Boolean,
     onSelectAll: () -> Unit,
-    onAddToQueue: () -> Unit,
+    onAddToQueue: () -> Unit = {},
     onPlayNext: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onHide: () -> Unit,
@@ -310,26 +312,45 @@ private fun HistorySelectionActions(
         AppDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
             AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_select_all)) },
+                trailingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_status_check),
+                        contentDescription = null,
+                    )
+                },
                 onClick = { menuExpanded = false; onSelectAll() },
-            )
-            AppDropdownMenuItem(
-                text = { Text(stringResource(R.string.selection_add_to_queue)) },
-                enabled = actionsEnabled,
-                onClick = { menuExpanded = false; onAddToQueue() },
             )
             AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_play_next)) },
                 enabled = actionsEnabled,
+                trailingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_playback_skip_next),
+                        contentDescription = null,
+                    )
+                },
                 onClick = { menuExpanded = false; onPlayNext() },
             )
             AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_add_to_playlist)) },
                 enabled = actionsEnabled,
+                trailingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_add),
+                        contentDescription = null,
+                    )
+                },
                 onClick = { menuExpanded = false; onAddToPlaylist() },
             )
             AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_hide)) },
                 enabled = actionsEnabled,
+                trailingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_close),
+                        contentDescription = null,
+                    )
+                },
                 onClick = { menuExpanded = false; onHide() },
             )
         }

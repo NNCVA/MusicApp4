@@ -1,8 +1,10 @@
 package com.musicapp.player.core.designsystem.component
 
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.musicapp.player.R
@@ -15,7 +17,7 @@ import com.musicapp.player.theme.MusicAppTheme
 fun TrackActionsMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
-    onAddToQueue: () -> Unit,
+    onAddToQueue: () -> Unit = {},
     onPlayNext: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onShowTrackInfo: () -> Unit = {},
@@ -29,14 +31,13 @@ fun TrackActionsMenu(
         modifier = modifier,
     ) {
         AppDropdownMenuItem(
-            text = { Text(stringResource(R.string.selection_add_to_queue)) },
-            onClick = {
-                onDismissRequest()
-                onAddToQueue()
-            },
-        )
-        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_play_next)) },
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_playback_skip_next),
+                    contentDescription = null,
+                )
+            },
             onClick = {
                 onDismissRequest()
                 onPlayNext()
@@ -44,6 +45,12 @@ fun TrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_add_to_playlist)) },
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_add),
+                    contentDescription = null,
+                )
+            },
             onClick = {
                 onDismissRequest()
                 onAddToPlaylist()
@@ -51,6 +58,12 @@ fun TrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_track_info)) },
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_sidebar_about),
+                    contentDescription = null,
+                )
+            },
             onClick = {
                 onDismissRequest()
                 onShowTrackInfo()
@@ -58,6 +71,12 @@ fun TrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_hide)) },
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_close),
+                    contentDescription = null,
+                )
+            },
             onClick = {
                 onDismissRequest()
                 onHide()

@@ -136,6 +136,12 @@ private fun PlaylistsScreen(
                     ) {
                         AppDropdownMenuItem(
                             text = { Text(stringResource(R.string.playlist_create)) },
+                            trailingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_common_add),
+                                    contentDescription = null,
+                                )
+                            },
                             onClick = {
                                 pageMenuExpanded = false
                                 editorPlaylistId = NEW_PLAYLIST_ID
@@ -307,6 +313,12 @@ private fun PlaylistRow(
             ) {
                 AppDropdownMenuItem(
                     text = { Text(stringResource(R.string.playlist_rename)) },
+                    trailingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_common_sort_alpha),
+                            contentDescription = null,
+                        )
+                    },
                     onClick = {
                         menuExpanded = false
                         onRename()
@@ -315,6 +327,12 @@ private fun PlaylistRow(
                 AppDropdownMenuItem(
                     text = { Text(stringResource(R.string.playlist_delete)) },
                     isDestructive = true,
+                    trailingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_common_delete),
+                            contentDescription = null,
+                        )
+                    },
                     onClick = {
                         menuExpanded = false
                         onDelete()

@@ -486,6 +486,12 @@ private fun FolderShortcutCard(
                 ) {
                     AppDropdownMenuItem(
                         text = { Text(stringResource(R.string.category_play_all)) },
+                        trailingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_playback_play),
+                                contentDescription = null,
+                            )
+                        },
                         onClick = {
                             menuExpanded = false
                             onPlayAll()

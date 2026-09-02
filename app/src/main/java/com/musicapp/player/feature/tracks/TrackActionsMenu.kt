@@ -11,7 +11,7 @@ import com.musicapp.player.core.domain.model.PlaylistId
 fun TrackActionsMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
-    onAddToQueue: () -> Unit,
+    onAddToQueue: () -> Unit = {},
     onPlayNext: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onShowTrackInfo: () -> Unit = {},
