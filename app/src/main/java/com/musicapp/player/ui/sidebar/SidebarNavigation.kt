@@ -38,15 +38,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.domain.model.ThemeMode
@@ -147,107 +145,6 @@ internal fun SidebarNavigation(
                 )
             }
         }
-    }
-}
-
-@Composable
-internal fun SidebarExitDialog(
-    onChoice: (SidebarExitChoice) -> Unit,
-) {
-    Dialog(
-        onDismissRequest = {
-            onChoice(SidebarExitChoice.CANCEL)
-        },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            // 标题卡片 + 退出选项
-            Card(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MusicTheme.colors.surfaceContainer),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = stringResource(R.string.sidebar_exit_dialog_title),
-                        modifier = Modifier.padding(
-                            start = 24.dp,
-                            top = 24.dp,
-                            end = 24.dp,
-                            bottom = 16.dp,
-                        ),
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MusicTheme.colors.onSurface,
-                    )
-
-                    HorizontalDivider()
-
-                    DialogOptionRow(
-                        text = stringResource(R.string.sidebar_exit_fully),
-                        onClick = {
-                            onChoice(SidebarExitChoice.FULL_EXIT)
-                        },
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                    )
-
-                    DialogOptionRow(
-                        text = stringResource(R.string.sidebar_return_to_desktop),
-                        onClick = {
-                            onChoice(SidebarExitChoice.RETURN_TO_DESKTOP)
-                        },
-                    )
-                }
-            }
-
-            // 单独的取消卡片
-            Card(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MusicTheme.colors.surfaceContainer),
-            ) {
-                DialogOptionRow(
-                    text = stringResource(R.string.sidebar_cancel),
-                    onClick = {
-                        onChoice(SidebarExitChoice.CANCEL)
-                    },
-                    textStyle = MaterialTheme.typography.titleMedium,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DialogOptionRow(
-    text: String,
-    onClick: () -> Unit,
-    textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(
-                horizontal = 24.dp,
-                vertical = 18.dp,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.weight(1f),
-            style = textStyle,
-            color = MusicTheme.colors.onSurface,
-        )
     }
 }
 

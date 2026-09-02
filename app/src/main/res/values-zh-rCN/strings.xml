@@ -12,6 +12,7 @@
     <string name="playback_forward_10_seconds_short">+10s</string>
     <string name="playback_next">下一首</string>
     <string name="playback_next_short">⏭</string>
+    <string name="playback_queue">播放队列</string>
     <string name="loading">正在加载…</string>
     <string name="empty_state_title">暂无内容</string>
     <string name="error_state_title">出现错误</string>
@@ -67,9 +68,8 @@
     <string name="sidebar_theme_changed_dark">已切换为深色模式</string>
     <string name="sidebar_equalizer_placeholder">均衡器将在后续版本提供</string>
     <string name="sidebar_exit_dialog_title">退出 MusicApp？</string>
-    <string name="sidebar_exit_dialog_description">请选择完全停止 MusicApp，或保留播放并回到桌面。</string>
-    <string name="sidebar_exit_fully">退出（完全）</string>
-    <string name="sidebar_return_to_desktop">回到桌面</string>
+    <string name="sidebar_exit_dialog_description">退出后将停止播放并关闭应用，播放进度与队列将被保存。</string>
+    <string name="sidebar_exit_fully">完全退出</string>
     <string name="sidebar_cancel">取消</string>
     <string name="permission_audio_title">允许访问音乐</string>
     <string name="permission_audio_explanation">MusicApp 需要音频访问权限，以查找并播放此设备中存储的音乐。</string>

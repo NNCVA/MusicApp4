@@ -41,20 +41,4 @@ class SidebarModelsTest {
         assertEquals(ThemeMode.DARK, ThemeMode.LIGHT.nextSidebarMode())
         assertEquals(ThemeMode.SYSTEM, ThemeMode.DARK.nextSidebarMode())
     }
-
-    @Test
-    fun `exit choices dispatch exactly one action`() {
-        SidebarExitChoice.entries.forEach { choice ->
-            val calls = mutableListOf<SidebarExitChoice>()
-
-            dispatchSidebarExitChoice(
-                choice = choice,
-                onFullExit = { calls += SidebarExitChoice.FULL_EXIT },
-                onReturnToDesktop = { calls += SidebarExitChoice.RETURN_TO_DESKTOP },
-                onCancel = { calls += SidebarExitChoice.CANCEL },
-            )
-
-            assertEquals(listOf(choice), calls)
-        }
-    }
 }

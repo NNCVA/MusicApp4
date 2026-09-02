@@ -105,10 +105,8 @@ import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.ui.shell.AppShell
 import com.musicapp.player.ui.shell.LibrarySyncFeedbackDialog
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
-import com.musicapp.player.ui.sidebar.SidebarExitChoice
-import com.musicapp.player.ui.sidebar.SidebarExitDialog
+import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.ui.sidebar.SidebarNavigation
-import com.musicapp.player.ui.sidebar.dispatchSidebarExitChoice
 import com.musicapp.player.ui.sidebar.nextSidebarMode
 import kotlinx.coroutines.launch
 
@@ -468,20 +466,20 @@ fun MainNavigation(
         )
     }
     if (showExitDialog) {
-        SidebarExitDialog { choice ->
-            dispatchSidebarExitChoice(
-                choice = choice,
-                onFullExit = {
-                    showExitDialog = false
-                    onFullExit()
-                },
-                onReturnToDesktop = {
-                    showExitDialog = false
-                    onReturnToDesktop()
-                },
-                onCancel = { showExitDialog = false },
-            )
-        }
+        ConfirmationDialog(
+            title = stringResource(R.string.sidebar_exit_dialog_title),
+            text = stringResource(R.string.sidebar_exit_dialog_description),
+            confirmLabel = stringResource(R.string.sidebar_exit_fully),
+            cancelLabel = stringResource(R.string.sidebar_cancel),
+            isDestructive = true,
+            onConfirm = {
+                showExitDialog = false
+                onFullExit()
+            },
+            onDismiss = {
+                showExitDialog = false
+            },
+        )
     }
 }
 

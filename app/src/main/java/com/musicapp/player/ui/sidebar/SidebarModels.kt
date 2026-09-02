@@ -58,22 +58,3 @@ internal fun ThemeMode.nextSidebarMode(): ThemeMode =
         ThemeMode.LIGHT -> ThemeMode.DARK
         ThemeMode.DARK -> ThemeMode.SYSTEM
     }
-
-internal enum class SidebarExitChoice {
-    FULL_EXIT,
-    RETURN_TO_DESKTOP,
-    CANCEL,
-}
-
-internal inline fun dispatchSidebarExitChoice(
-    choice: SidebarExitChoice,
-    onFullExit: () -> Unit,
-    onReturnToDesktop: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    when (choice) {
-        SidebarExitChoice.FULL_EXIT -> onFullExit()
-        SidebarExitChoice.RETURN_TO_DESKTOP -> onReturnToDesktop()
-        SidebarExitChoice.CANCEL -> onCancel()
-    }
-}
