@@ -89,6 +89,7 @@ import com.musicapp.player.core.designsystem.component.resolveQuality
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
+import com.musicapp.player.core.designsystem.component.TrackRow
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -763,129 +764,6 @@ private fun LazyListScope.trackItems(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun TrackRow(
-    track: Track,
-    selected: Boolean,
-    selectionMode: Boolean,
-    playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onAddToQueue: () -> Unit,
-    onPlayNext: () -> Unit,
-    onHide: () -> Unit,
-    onAddToPlaylist: (PlaylistId) -> Unit,
-    onShowTrackInfo: () -> Unit,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onLaidOut: (() -> Unit)?,
-) {
-    val dimensions = MusicTheme.dimensions
-    val compact = dimensions.windowWidthTier == MusicWindowWidthTier.COMPACT
-    val artistName = track.artistName.localizedArtistName()
-    val subtitle =
-        track.albumTitle
-            ?.takeIf(String::isNotBlank)
-            ?.let { stringResource(R.string.track_artist_album, artistName, it) }
-            ?: artistName
-    Row(
-        modifier =
-            Modifier.fillMaxWidth()
-                .height(dimensions.trackListItemHeight)
-                .then(
-                    if (onLaidOut != null) {
-                        Modifier.onGloballyPositioned { onLaidOut() }
-                    } else {
-                        Modifier
-                    },
-                )
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                .padding(horizontal = dimensions.contentHorizontalPadding),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-    ) {
-        TrackArtwork(
-            track = track,
-            modifier = Modifier.size(dimensions.trackArtworkSize),
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = track.title,
-                style = if (compact) {
-                    MusicTheme.typography.compactTrackTitle
-                } else {
-                    MusicTheme.typography.expandedTrackTitle
-                },
-                color = MusicTheme.colors.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-            ) {
-                track.resolveQuality()?.let { quality ->
-                    QualityBadge(quality = quality)
-                }
-                Text(
-                    text = subtitle,
-                    style = if (compact) MusicTheme.typography.compactTrackArtist else MusicTheme.typography.expandedTrackArtist,
-                    color = MusicTheme.colors.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
-        }
-        if (track.availability == Availability.TEMPORARILY_UNAVAILABLE) {
-            Text(
-                text = stringResource(R.string.track_temporarily_unavailable),
-                style = MusicTheme.typography.labelSmall,
-                color = MusicTheme.colors.onSurfaceVariant,
-            )
-        }
-        if (selectionMode) {
-            BareIconButton(
-                onClick = onClick,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(
-                        if (selected) R.drawable.ic_common_check_circle else R.drawable.ic_common_radio_button_unchecked
-                    ),
-                    contentDescription = stringResource(
-                        if (selected) R.string.selection_deselect_all else R.string.selection_select_all
-                    ),
-                    tint = if (selected) MusicTheme.colors.primary else MusicTheme.colors.onSurfaceVariant,
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
-        } else {
-            var menuExpanded by remember(track.id) { mutableStateOf(false) }
-            Box {
-                BareIconButton(
-                    onClick = { menuExpanded = true },
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_more_vertical),
-                        contentDescription = stringResource(R.string.track_more_actions),
-                        tint = MusicTheme.colors.onSurfaceVariant,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-                TrackActionsMenu(
-                    expanded = menuExpanded,
-                    playlists = playlists,
-                    onDismissRequest = { menuExpanded = false },
-                    onAddToQueue = onAddToQueue,
-                    onPlayNext = onPlayNext,
-                    onShowTrackInfo = onShowTrackInfo,
-                    onHide = onHide,
-                    onAddToPlaylist = onAddToPlaylist,
-                )
-            }
-        }
-    }
-}
-
 @Composable
 private fun SelectionBottomBar(
     selectedCount: Int,
@@ -1048,55 +926,6 @@ private fun AddToPlaylistSelectionDialog(
     )
 }
 
-@Composable
-private fun TrackArtwork(
-    track: Track,
-    modifier: Modifier,
-) {
-    val shape = MusicTheme.shapes.small
-    val artworkDescription = stringResource(R.string.track_artwork_description, track.title)
-    AsyncImage(
-        model = track,
-        contentDescription = artworkDescription,
-        modifier = modifier
-            .clip(shape)
-            .background(MusicTheme.colors.secondaryContainer),
-        contentScale = ContentScale.Crop,
-        error = painterResource(R.drawable.ic_playlist_album),
-        placeholder = painterResource(R.drawable.ic_playlist_album),
-    )
-}
-
-private const val TRACKS_LOAD_LOG_TAG = "TracksLoadPerf"
-
-@Composable
-private fun TrackArtworkPlaceholder(
-    modifier: Modifier,
-    artworkDescription: String,
-) {
-    Box(
-        modifier =
-            modifier
-                .clip(MusicTheme.shapes.small)
-                .background(MusicTheme.colors.secondaryContainer)
-                .semantics {
-                    contentDescription = artworkDescription
-                },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_playlist_album),
-            contentDescription = null,
-            tint = MusicTheme.colors.onSecondaryContainer,
-            modifier = Modifier.fillMaxSize(0.5f),
-        )
-    }
-}
-
-@Composable
-private fun String.localizedArtistName(): String =
-    if (this == UNKNOWN_ARTIST_SENTINEL) stringResource(R.string.unknown_artist) else this
-
 private fun Track.matchesSearch(query: String): Boolean {
     val normalizedQuery = query.trim()
     if (normalizedQuery.isEmpty()) return true
@@ -1119,5 +948,3 @@ private fun TrackSortDirection.labelResId(): Int =
         TrackSortDirection.ASCENDING -> R.string.sort_direction_ascending
         TrackSortDirection.DESCENDING -> R.string.sort_direction_descending
     }
-
-private const val UNKNOWN_ARTIST_SENTINEL = "<unknown>"

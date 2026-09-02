@@ -1,9 +1,9 @@
 # 歌单详情页产品需求文档 (Playlist Detail PRD)
 
-**文档状态**：已冻结核心决策 (Decisions Settled / In Review)  
-**文档版本**：v1.1  
+**文档状态**：已完全冻结并确认 (Decisions Finalized & Approved)  
+**文档版本**：v1.2  
 **适用范围**：MusicApp 歌单详情页面 (`PlaylistDetailScreen`)  
-**对齐基线**：[`docs/design/implementation-spec.md`](implementation-spec.md)、[`docs/CONTEXT.md`](../CONTEXT.md)、[`docs/adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md`](../adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md)
+**对齐基线**：[`docs/design/implementation-spec.md`](implementation-spec.md)、[`docs/CONTEXT.md`](../CONTEXT.md)、[`docs/adr/0005-use-replacing-message-bubble.md`](../adr/0005-use-replacing-message-bubble.md)、[`docs/adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md`](../adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md)、[`docs/adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md`](../adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md)、[`docs/adr/0014-use-unified-app-dropdown-menu.md`](../adr/0014-use-unified-app-dropdown-menu.md)
 
 ---
 
@@ -16,7 +16,8 @@
 1. **视觉与品牌一致性**：引入 130×130dp (r12) 四宫格封面及信息丰富的 Hero 区域，统一 Aero 动态背景与 Material You 设计令牌。
 2. **高效播放与管理**：提供吸顶式 `ResponsiveActionBar`，一键触达“播放全部”、“随机播放”、“排序”和“批量管理”。
 3. **统一列表与索引体验**：复用标准 `TrackRow` 视觉规范，接入全局统一的 `RightGutterOverlay`（文本排序启用固定 28 逻辑桶索引，时间/时长等排序平滑降级为滚动滑块）。
-4. **完善的多选批量体系**：对齐 Tracks 页面的多选手势与底部批量操作栏（加入队列、下一首播放、移出歌单、加入其他歌单），与底部 80dp Mini Player 优雅协同。
+4. **完善的多选批量体系**：对齐 Tracks 页面的多选手势与底部批量操作栏（移出歌单、加入其他歌单、加入队列），与底部 80dp Mini Player 优雅协同。
+5. **高度复用通用组件规范**：全面复用设计系统中的气泡通知（`MessageBubbleHost`）、通用对话框（`TextInputDialog` / `ConfirmationDialog`）、下拉菜单（`AppDropdownMenu`）与阻尼过度滚动（`BounceOverscroll`）。
 
 ---
 
@@ -26,7 +27,7 @@
 AdaptiveMusicScaffold
 ├── TopAppBar（通用顶部导航栏）
 │   ├── NavigationIcon: [←] 返回（多选/搜索优先退出）
-│   ├── Title: 滚动联动标题（初始静止时显示淡色“歌单详情”，Hero 滚出视口后平滑淡入当前“歌单名”）
+│   ├── Title: 滚动联动标题（初始静止时显示淡色“歌单详情”或留空，Hero 滚出视口后平滑淡入当前“歌单名”）
 │   └── Actions: [⋮] 更多菜单（搜索 / 排序 / 重命名 / 删除歌单）
 │
 ├── 内容视口 (LazyColumn / 弹性过度滚动视口)
@@ -40,14 +41,14 @@ AdaptiveMusicScaffold
 │   │
 │   └── ListViewport (曲目列表视口 - TrackRow.PlaylistMember)
 │       ├── TrackRow: 封面 (48dp r8) + 标题 (最多2行) + 音质角标 (SQ/Hi-Res) + 艺术家/专辑名 + 状态标签 + 行尾 [⋮] 或 勾选框
-│       └── 局部空状态 (EmptyState - 当歌单曲目数为 0 时呈现)
+│       └── 局部空状态 (EmptyState - 当歌单曲目数为 0 或搜索无结果时呈现)
 │
 ├── 统一右侧覆盖层 (RightGutterOverlay - ADR-0008)
 │   ├── 文本类排序（标题/艺术家/专辑）：GutterMode.Index (0 → A…Z → # 固定 28 逻辑桶 + 72dp 字母放大气泡)
 │   └── 数值/时间类排序（添加时间/时长/大小）：GutterMode.Scrollbar (滚动滑块模式)
 │
 ├── 底部批量操作栏 (SelectionBottomBar - 仅多选激活时悬浮展开)
-│   └── 位于 Mini Player 上方：[移出歌单] | [加入其他歌单] | [下一首播放] | [加入队列]
+│   └── 位于 Mini Player 上方：[移出歌单] | [加入其他歌单] | [加入队列]
 │
 └── 底部 Mini Player (迷你播放器)
     └── 有播放曲目时常驻占位 80dp（内含 48dp 触控胶囊卡片），无曲目时不占位
@@ -65,8 +66,8 @@ AdaptiveMusicScaffold
 - **右侧菜单 `[⋮]`**：
   - **搜索**：展开页内搜索栏，支持实时过滤。
   - **排序**：唤起排序菜单。
-  - **重命名**：弹出重命名歌单对话框。
-  - **删除歌单**：弹出二次确认危险操作对话框，确认后删除歌单并自动返回上一级。
+  - **重命名**：弹出 `TextInputDialog` 重命名歌单。
+  - **删除歌单**：弹出 `ConfirmationDialog` 二次确认危险操作对话框，确认后删除歌单并自动返回上一级。
 
 ---
 
@@ -133,11 +134,21 @@ AdaptiveMusicScaffold
 
 ### 3.6 底部批量浮栏 (SelectionBottomBar)
 - **呈现位置**：悬浮在底部 Mini Player（80dp）上方；无 Mini Player 时贴底。
-- **批量能力**：
+- **批量能力**（**已决策·剔除下一首播放**）：
   1. **移出歌单 (Remove Selected)**：批量移出选中曲目；
   2. **加入其他歌单 (Add Selected to Playlist)**：弹出歌单选择弹窗；
-  3. **下一首播放 (Play Selected Next)**：批量插入队列下一顺位；
-  4. **加入播放队列 (Add Selected to Queue)**：批量追加至队列尾部。
+  3. **加入播放队列 (Add Selected to Queue)**：批量追加至队列尾部。
+
+---
+
+### 3.7 通用自定义组件复用规范
+- **短时操作气泡**：操作反馈统一走全局覆盖式胶囊气泡（`MessageBubbleHost`，遵循 ADR-0005），展示“已从歌单移出 N 首歌曲”等提示，不遮挡操作。
+- **弹窗组件**：
+  - 重命名歌单复用 `TextInputDialog`；
+  - 删除歌单/清空操作复用 `ConfirmationDialog`（危险操作标记 `isDestructive = true`）；
+  - 添加至其他歌单复用 `AddToPlaylistSelectionDialog`。
+- **下拉菜单**：所有行级与页级菜单统一复用 `AppDropdownMenu` / `AppDropdownMenuItem`（遵循 ADR-0014，内边距归零，圆角联动裁剪，满足 48dp 触控）。
+- **阻尼回弹**：滚动视口统一挂载 `rememberBounceOverscrollEffect`（遵循 ADR-0011 / ADR-0012）。
 
 ---
 
