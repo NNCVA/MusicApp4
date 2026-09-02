@@ -312,18 +312,24 @@ fun PlaylistDetailScreen(
                     Crossfade(
                         targetState = showCollapsedTitle,
                         label = "PlaylistTopBarTitleCrossfade",
+                        modifier = Modifier.fillMaxHeight(),
                     ) { collapsed ->
-                        Text(
-                            text = if (collapsed) {
-                                state.playlist?.displayName ?: stringResource(R.string.playlist_unknown_name)
-                            } else {
-                                stringResource(R.string.playlist_detail_title)
-                            },
-                            style = MusicTheme.typography.titleLarge,
-                            color = if (collapsed) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.7f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxHeight(),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            Text(
+                                text = if (collapsed) {
+                                    state.playlist?.displayName ?: stringResource(R.string.playlist_unknown_name)
+                                } else {
+                                    stringResource(R.string.playlist_detail_title)
+                                },
+                                style = MusicTheme.typography.titleLarge,
+                                color = if (collapsed) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.7f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 },
                 trailingContent = {
