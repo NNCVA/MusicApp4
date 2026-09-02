@@ -84,7 +84,6 @@ import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.LoadingState
-import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.QualityBadge
 import com.musicapp.player.core.designsystem.component.resolveQuality
 import com.musicapp.player.core.designsystem.component.GutterMode
@@ -115,6 +114,7 @@ fun TracksScreenRoute(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
+    onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
 ) {
     val loadStartedNs = remember { SystemClock.elapsedRealtimeNanos() }
@@ -158,6 +158,7 @@ fun TracksScreenRoute(
         onPlayNext = viewModel::playSelectedNext,
         onHideSelected = viewModel::hideSelected,
         onAcknowledgeBatchResult = viewModel::acknowledgeBatchResult,
+        onShowMessage = onShowMessage,
         onPlayAll = viewModel::playAll,
         onFirstTrackLaidOut = {
             if (firstTrackLayoutLogged.compareAndSet(false, true)) {
@@ -199,6 +200,7 @@ fun TracksScreen(
     onPlayNext: () -> Unit,
     onHideSelected: () -> Unit,
     onAcknowledgeBatchResult: () -> Unit,
+    onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     onPlayAll: () -> Unit = {},
     onFirstTrackLaidOut: () -> Unit = {},
 ) {
@@ -208,6 +210,22 @@ fun TracksScreen(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     val isSearching = searchQuery.isNotBlank()
+    LaunchedEffect(state.batchResult) {
+        val result = state.batchResult ?: return@LaunchedEffect
+        when (result) {
+            is BatchTrackActionResult.Completed -> {
+                onShowMessage(
+                    R.string.batch_result_counts,
+                    listOf(result.affectedCount, result.skippedCount),
+                )
+            }
+            is BatchTrackActionResult.Failed -> {
+                onShowMessage(R.string.batch_result_failed, emptyList())
+            }
+            BatchTrackActionResult.EmptySelection -> Unit
+        }
+        onAcknowledgeBatchResult()
+    }
     val filteredTracks =
         remember(state.tracks, searchQuery, isSearching) {
             if (isSearching) {
@@ -383,10 +401,6 @@ fun TracksScreen(
             },
             onDismiss = { showAddToPlaylistDialog = false },
         )
-    }
-
-    state.batchResult?.let { result ->
-        BatchResultDialog(result, onAcknowledgeBatchResult)
     }
 
     state.infoTrack?.let { track ->
@@ -631,30 +645,6 @@ private fun TracksTopBar(
             }
         }
     }
-}
-
-@Composable
-private fun BatchResultDialog(
-    result: BatchTrackActionResult,
-    onDismiss: () -> Unit,
-) {
-    if (result is BatchTrackActionResult.EmptySelection) return
-    val message =
-        when (result) {
-            is BatchTrackActionResult.Completed ->
-                stringResource(
-                    R.string.batch_result_counts,
-                    result.affectedCount,
-                    result.skippedCount,
-                )
-            is BatchTrackActionResult.Failed -> stringResource(R.string.batch_result_failed)
-            BatchTrackActionResult.EmptySelection -> return
-        }
-    MessageDialog(
-        message = message,
-        confirmLabel = stringResource(R.string.selection_close),
-        onDismiss = onDismiss,
-    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

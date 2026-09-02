@@ -237,6 +237,9 @@ fun MainNavigation(
                                 policy = policy,
                                 openDrawer = openDrawer,
                                 onScanMusic = ::navigateToScanMusic,
+                                onShowMessage = { messageResId, formatArgs ->
+                                    messageBubbleQueue.enqueue(messageResId, formatArgs)
+                                },
                                 bottomPadding = bottomPadding,
                             )
                         }
@@ -301,6 +304,9 @@ fun MainNavigation(
                                 contentInsets = contentInsets,
                                 policy = policy,
                                 onBack = ::handleBack,
+                                onShowMessage = { messageResId, formatArgs ->
+                                    messageBubbleQueue.enqueue(messageResId, formatArgs)
+                                },
                                 bottomPadding = bottomPadding,
                             )
                         }

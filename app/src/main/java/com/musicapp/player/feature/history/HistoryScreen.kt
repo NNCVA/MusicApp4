@@ -46,7 +46,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
-import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
@@ -66,6 +65,7 @@ fun HistoryScreenRoute(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     onBack: () -> Unit,
+    onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -105,6 +105,7 @@ fun HistoryScreenRoute(
         onCancelClearHistory = viewModel::cancelClearHistory,
         onConfirmClearHistory = viewModel::confirmClearHistory,
         onAcknowledgeBatchResult = viewModel::acknowledgeBatchResult,
+        onShowMessage = onShowMessage,
     )
 }
 
@@ -127,11 +128,28 @@ private fun HistoryScreen(
     onCancelClearHistory: () -> Unit,
     onConfirmClearHistory: () -> Unit,
     onAcknowledgeBatchResult: () -> Unit,
+    onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
     val listState = rememberLazyListState()
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
+    LaunchedEffect(state.batchResult) {
+        val result = state.batchResult ?: return@LaunchedEffect
+        when (result) {
+            is BatchTrackActionResult.Completed -> {
+                onShowMessage(
+                    R.string.batch_result_counts,
+                    listOf(result.affectedCount, result.skippedCount),
+                )
+            }
+            is BatchTrackActionResult.Failed -> {
+                onShowMessage(R.string.batch_result_failed, emptyList())
+            }
+            BatchTrackActionResult.EmptySelection -> Unit
+        }
+        onAcknowledgeBatchResult()
+    }
     Column(
         modifier =
             Modifier.fillMaxSize()
@@ -241,13 +259,6 @@ private fun HistoryScreen(
             isDestructive = true,
         )
     }
-    val batchResult = state.batchResult
-    LaunchedEffect(batchResult) {
-        if (batchResult is BatchTrackActionResult.EmptySelection) onAcknowledgeBatchResult()
-    }
-    if (batchResult != null && batchResult !is BatchTrackActionResult.EmptySelection) {
-        HistoryBatchResultDialog(batchResult, onAcknowledgeBatchResult)
-    }
 }
 
 @Composable
@@ -314,29 +325,6 @@ private fun HistorySelectionActions(
         }
     }
     TextButton(onClick = onClearSelection) { Text(stringResource(R.string.selection_close)) }
-}
-
-@Composable
-private fun HistoryBatchResultDialog(
-    result: BatchTrackActionResult,
-    onDismiss: () -> Unit,
-) {
-    val message =
-        when (result) {
-            is BatchTrackActionResult.Completed ->
-                stringResource(
-                    R.string.batch_result_counts,
-                    result.affectedCount,
-                    result.skippedCount,
-                )
-            is BatchTrackActionResult.Failed -> stringResource(R.string.batch_result_failed)
-            BatchTrackActionResult.EmptySelection -> return
-        }
-    MessageDialog(
-        message = message,
-        confirmLabel = stringResource(R.string.selection_close),
-        onDismiss = onDismiss,
-    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

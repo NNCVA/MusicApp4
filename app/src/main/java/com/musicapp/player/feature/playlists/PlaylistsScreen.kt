@@ -35,11 +35,11 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
+import com.musicapp.player.core.designsystem.component.TextInputDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -227,10 +227,12 @@ private fun PlaylistsScreen(
 
     if (editorPlaylistId != NO_PLAYLIST_ID) {
         val creating = editorPlaylistId == NEW_PLAYLIST_ID
-        PlaylistNameDialog(
+        TextInputDialog(
             title = stringResource(if (creating) R.string.playlist_create_title else R.string.playlist_rename_title),
-            initialName = editorInitialName,
-            confirmText = stringResource(if (creating) R.string.playlist_create else R.string.playlist_save),
+            initialText = editorInitialName,
+            placeholder = stringResource(R.string.playlist_name_label),
+            confirmLabel = stringResource(if (creating) R.string.playlist_create else R.string.playlist_save),
+            cancelLabel = stringResource(R.string.playlist_cancel),
             onDismiss = { editorPlaylistId = NO_PLAYLIST_ID },
             onConfirm = { name ->
                 if (creating) onCreate(name) else onRename(PlaylistId(editorPlaylistId), name)
@@ -373,34 +375,6 @@ private fun PlaylistArtwork(
     )
 }
 
-@Composable
-private fun PlaylistNameDialog(
-    title: String,
-    initialName: String,
-    confirmText: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-) {
-    var name by rememberSaveable(initialName) { mutableStateOf(initialName) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(R.string.playlist_name_label)) },
-                singleLine = true,
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) { Text(confirmText) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.playlist_cancel)) }
-        },
-    )
-}
 
 @Composable
 private fun PlaylistDetailScreen(

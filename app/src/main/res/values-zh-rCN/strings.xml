@@ -17,6 +17,7 @@
     <string name="error_state_title">出现错误</string>
     <string name="retry">重试</string>
     <string name="dismiss">关闭</string>
+    <string name="clear_input">清空输入</string>
     <string name="navigation_tracks">单曲</string>
     <string name="navigation_albums">专辑</string>
     <string name="navigation_artists">艺术家</string>

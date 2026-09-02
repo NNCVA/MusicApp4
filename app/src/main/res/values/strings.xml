@@ -20,6 +20,7 @@
     <string name="error_state_title">Something went wrong</string>
     <string name="retry">Retry</string>
     <string name="dismiss">Dismiss</string>
+    <string name="clear_input">Clear input</string>
     <string name="navigation_tracks">Tracks</string>
     <string name="navigation_albums">Albums</string>
     <string name="navigation_artists">Artists</string>
