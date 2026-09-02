@@ -61,7 +61,9 @@ import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.data.sync.LibrarySyncState
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.musicapp.player.theme.MusicTheme
+import com.musicapp.player.theme.previewColor
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 import kotlin.math.roundToInt
 
@@ -180,6 +182,12 @@ private fun AppearanceSettings(
     onPresetThemeChange: (PresetTheme) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
 ) {
+    val isPresetThemeEnabled = settings.colorSource != ColorSource.DYNAMIC
+    val isDark = when (settings.themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
     SettingsSection(stringResource(R.string.settings_appearance)) {
         ChoiceCardGrid(
             title = stringResource(R.string.settings_color_source),
@@ -196,6 +204,8 @@ private fun AppearanceSettings(
             values = PresetTheme.entries,
             selected = settings.presetTheme,
             columns = 2,
+            enabled = isPresetThemeEnabled,
+            accentColor = { it.previewColor(isDark) },
             iconRes = { it.iconRes() },
             label = { stringResource(it.labelRes()) },
             onSelect = onPresetThemeChange,
@@ -317,11 +327,13 @@ internal fun <T> ChoiceCardGrid(
     iconRes: (T) -> Int,
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
+    enabled: Boolean = true,
+    accentColor: ((T) -> Color)? = null,
 ) {
     Text(
         text = title,
         style = MusicTheme.typography.titleMedium,
-        color = MusicTheme.colors.onSurface,
+        color = if (enabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = 0.38f),
     )
     val rows = values.chunked(columns)
     Column(
@@ -340,6 +352,8 @@ internal fun <T> ChoiceCardGrid(
                         label = label(value),
                         onClick = { onSelect(value) },
                         modifier = Modifier.weight(1f),
+                        enabled = enabled,
+                        accentColor = accentColor?.invoke(value),
                     )
                 }
                 val emptySlots = columns - rowItems.size
@@ -358,42 +372,39 @@ private fun ChoiceCard(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    accentColor: Color? = null,
 ) {
     val dimensions = MusicTheme.dimensions
     val shape = MusicTheme.shapes.medium
-    val containerColor = if (selected) {
-        MusicTheme.colors.primary.copy(alpha = 0.08f)
-    } else {
-        Color.Transparent
+    val accent = accentColor ?: MusicTheme.colors.primary
+
+    val containerColor = when {
+        !enabled -> if (selected) accent.copy(alpha = 0.04f) else Color.Transparent
+        selected -> accent.copy(alpha = 0.08f)
+        else -> Color.Transparent
     }
-    val borderColor = if (selected) {
-        MusicTheme.colors.primary
-    } else {
-        MusicTheme.colors.outlineVariant
+    val borderColor = when {
+        !enabled -> if (selected) accent.copy(alpha = 0.38f) else MusicTheme.colors.outlineVariant.copy(alpha = 0.38f)
+        selected -> accent
+        else -> MusicTheme.colors.outlineVariant
     }
-    val contentColor = if (selected) {
-        MusicTheme.colors.primary
-    } else {
-        MusicTheme.colors.onSurfaceVariant
-    }
-    val labelColor = if (selected) {
-        MusicTheme.colors.primary
-    } else {
-        MusicTheme.colors.onSurface
-    }
+    val contentColor = if (enabled) accent else accent.copy(alpha = 0.38f)
+    val labelColor = if (enabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = 0.38f)
 
     Surface(
         modifier = modifier
             .heightIn(min = 84.dp)
             .selectable(
                 selected = selected,
+                enabled = enabled,
                 role = Role.RadioButton,
                 onClick = onClick,
             ),
         shape = shape,
         color = containerColor,
         border = BorderStroke(
-            width = if (selected) 1.5.dp else 1.dp,
+            width = if (selected && enabled) 1.5.dp else 1.dp,
             color = borderColor,
         ),
     ) {

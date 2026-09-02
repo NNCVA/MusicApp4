@@ -149,6 +149,14 @@ private val VioletDark =
         onTertiaryContainer = Color(0xFFFFD8E4),
     )
 
+fun PresetTheme.previewColor(darkTheme: Boolean): Color =
+    when (this) {
+        PresetTheme.DEFAULT_BLUE -> if (darkTheme) BlueDark.primary else BlueLight.primary
+        PresetTheme.EMERALD_GREEN -> if (darkTheme) EmeraldDark.primary else EmeraldLight.primary
+        PresetTheme.SUNSET_ORANGE -> if (darkTheme) SunsetDark.primary else SunsetLight.primary
+        PresetTheme.VIOLET -> if (darkTheme) VioletDark.primary else VioletLight.primary
+    }
+
 internal fun presetColorScheme(preset: PresetTheme, darkTheme: Boolean): ColorScheme {
     val palette =
         when (preset) {
