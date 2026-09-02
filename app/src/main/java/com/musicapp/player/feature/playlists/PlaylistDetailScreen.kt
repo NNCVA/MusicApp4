@@ -885,7 +885,7 @@ private fun PlaylistSelectionBottomBar(
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_common_close_circle),
+                        painter = painterResource(R.drawable.ic_common_delete),
                         contentDescription = null,
                         tint = if (isEnabled) MusicTheme.colors.error else contentColor,
                         modifier = Modifier.size(dimensions.spaceLarge),

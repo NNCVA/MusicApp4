@@ -237,7 +237,10 @@ fun PlayerSheet(
                         animateSheetTo(1f, 0f)
                     },
                     onTogglePlayback = onTogglePlayback,
-                    onNext = onNext,
+                    onOpenQueue = {
+                        onPageChanged(FullPlayerPage.QUEUE)
+                        animateSheetTo(1f, 0f)
+                    },
                     modifier = Modifier
                         .graphicsLayer { alpha = PlayerLayerAlpha.mini(progress) }
                         .draggable(
@@ -297,7 +300,7 @@ private fun MiniPlayer(
     track: Track,
     onExpand: () -> Unit,
     onTogglePlayback: () -> Unit,
-    onNext: () -> Unit,
+    onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -342,13 +345,12 @@ private fun MiniPlayer(
             )
         }
         BareIconButton(
-            onClick = onNext,
-            enabled = state.canSkipNext,
+            onClick = onOpenQueue,
             modifier = Modifier.size(dimensions.minimumTouchTarget),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_playback_skip_next),
-                contentDescription = stringResource(R.string.playback_next),
+                painter = painterResource(R.drawable.ic_common_view_list),
+                contentDescription = stringResource(R.string.playback_queue),
                 modifier = Modifier.size(dimensions.spaceLarge),
             )
         }
@@ -395,6 +397,11 @@ private fun FullPlayer(
             deltaY = deltaY,
             dragSheet = onSheetDrag,
         )
+    }
+    LaunchedEffect(initialPage) {
+        if (pager.currentPage != initialPage.ordinal) {
+            pager.scrollToPage(initialPage.ordinal)
+        }
     }
     LaunchedEffect(pager.currentPage) { onPageChanged(FullPlayerPage.entries[pager.currentPage]) }
     Column(
