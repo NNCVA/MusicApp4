@@ -1,20 +1,12 @@
 package com.musicapp.player.feature.playlists
 
-import android.graphics.Bitmap
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
-import coil3.compose.AsyncImage
-import com.musicapp.player.core.image.AudioArtworkRequest
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,24 +16,12 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import com.musicapp.player.core.designsystem.component.AppDropdownMenu
-import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
-import com.musicapp.player.core.designsystem.component.BareIconButton
-import com.musicapp.player.core.designsystem.component.ConfirmationDialog
-import com.musicapp.player.core.designsystem.component.TextInputDialog
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -49,25 +29,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.musicapp.player.R
-import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.AppDropdownMenu
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
+import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.ConfirmationDialog
+import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
-import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
-import com.musicapp.player.core.domain.model.Track
-import com.musicapp.player.core.metadata.ArtworkResult
-import com.musicapp.player.feature.category.CategoryNavigationAction
+import com.musicapp.player.core.image.AudioArtworkRequest
 import com.musicapp.player.feature.category.CategoryHeader
+import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 
@@ -91,39 +75,6 @@ fun PlaylistsScreenRoute(
         onCreate = viewModel::create,
         onRename = viewModel::rename,
         onDelete = viewModel::delete,
-    )
-}
-
-@Composable
-fun PlaylistDetailScreenRoute(
-    playlistId: PlaylistId,
-    viewModel: PlaylistDetailViewModel,
-    contentInsets: WindowInsets,
-    onBack: () -> Unit,
-    bottomPadding: Dp = 0.dp,
-) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    BackHandler(enabled = state.isSelectionMode) { viewModel.clearSelection() }
-    LaunchedEffect(playlistId) { viewModel.open(playlistId) }
-    PlaylistDetailScreen(
-        state = state,
-        contentInsets = contentInsets,
-        bottomPadding = bottomPadding,
-        onBack = onBack,
-        onPlayAll = viewModel::playAll,
-        onTrackClick = {
-            if (state.isSelectionMode) {
-                viewModel.toggleSelection(it.id)
-            } else if (it.availability == Availability.AVAILABLE) {
-                viewModel.playTrack(it.id)
-            }
-        },
-        onTrackLongClick = { viewModel.toggleSelection(it.id) },
-        onSelectAll = viewModel::selectAll,
-        onClearSelection = viewModel::clearSelection,
-        onRemoveSelected = viewModel::removeSelected,
-        onRemoveTrack = { viewModel.removeTrack(it.id) },
-        onAcknowledgePlaybackFeedback = viewModel::acknowledgePlaybackFeedback,
     )
 }
 
@@ -152,8 +103,11 @@ private fun PlaylistsScreen(
     var editorInitialName by rememberSaveable { mutableStateOf("") }
     var deletePlaylistId by rememberSaveable { mutableLongStateOf(NO_PLAYLIST_ID) }
     var pageMenuExpanded by rememberSaveable { mutableStateOf(false) }
+
     Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         CategoryHeader(
             title = stringResource(R.string.navigation_playlists),
@@ -191,7 +145,8 @@ private fun PlaylistsScreen(
         )
         if (state.isLoaded && state.playlists.isEmpty()) {
             PlaylistEmptyState(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
                     .padding(horizontal = dimensions.contentHorizontalPadding)
                     .padding(bottom = bottomPadding),
             )
@@ -199,7 +154,9 @@ private fun PlaylistsScreen(
             LazyColumn(
                 state = listState,
                 overscrollEffect = overscrollEffect,
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
                 contentPadding = PaddingValues(
                     top = dimensions.spaceSmall,
                     bottom = dimensions.spaceSmall + bottomPadding,
@@ -208,11 +165,10 @@ private fun PlaylistsScreen(
                 items(state.playlists, key = { it.id.value }) { playlist ->
                     PlaylistRow(
                         playlist = playlist,
-                        contentPadding =
-                            PaddingValues(
-                                start = playlistListStartPadding,
-                                end = dimensions.topBarHorizontalPadding,
-                            ),
+                        contentPadding = PaddingValues(
+                            start = playlistListStartPadding,
+                            end = dimensions.topBarHorizontalPadding,
+                        ),
                         onClick = { onPlaylistClick(playlist.id) },
                         onRename = {
                             editorPlaylistId = playlist.id.value
@@ -263,7 +219,7 @@ private fun PlaylistEmptyState(modifier: Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_status_empty_playlist),
+            painter = painterResource(R.drawable.ic_playlist_album),
             contentDescription = null,
             tint = MusicTheme.colors.onSurfaceVariant,
             modifier = Modifier.size(MusicTheme.dimensions.playerHeaderHeight),
@@ -281,7 +237,8 @@ private fun PlaylistRow(
 ) {
     val dimensions = MusicTheme.dimensions
     Row(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
             .height(dimensions.trackListItemHeight)
             .clickable(onClick = onClick)
             .padding(contentPadding),
@@ -375,188 +332,6 @@ private fun PlaylistArtwork(
         placeholder = painterResource(R.drawable.ic_playlist_album),
     )
 }
-
-
-@Composable
-private fun PlaylistDetailScreen(
-    state: PlaylistDetailUiState,
-    contentInsets: WindowInsets,
-    onBack: () -> Unit,
-    onPlayAll: () -> Unit,
-    onTrackClick: (Track) -> Unit,
-    onTrackLongClick: (Track) -> Unit,
-    onSelectAll: () -> Unit,
-    onClearSelection: () -> Unit,
-    onRemoveSelected: () -> Unit,
-    onRemoveTrack: (Track) -> Unit,
-    onAcknowledgePlaybackFeedback: () -> Unit,
-    bottomPadding: Dp = 0.dp,
-) {
-    val dimensions = MusicTheme.dimensions
-    val listState = rememberLazyListState()
-    val overscrollEffect = rememberBounceOverscrollEffect(listState)
-    Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
-    ) {
-        CategoryHeader(
-            title =
-                if (state.isSelectionMode) {
-                    pluralStringResource(
-                        R.plurals.selection_count,
-                        state.selectedTrackIds.size,
-                        state.selectedTrackIds.size,
-                    )
-                } else {
-                    state.playlist?.displayName ?: stringResource(R.string.playlist_unknown_name)
-                },
-            onBack = onBack,
-            trailingContent = {
-                if (state.isSelectionMode) {
-                    TextButton(onClick = onSelectAll) {
-                        Text(stringResource(R.string.selection_select_all))
-                    }
-                    TextButton(onClick = onRemoveSelected) {
-                        Text(stringResource(R.string.playlist_remove_track))
-                    }
-                    TextButton(onClick = onClearSelection) {
-                        Text(stringResource(R.string.selection_close))
-                    }
-                } else {
-                    TextButton(
-                        onClick = onPlayAll,
-                        enabled = state.tracks.any { it.availability == Availability.AVAILABLE },
-                    ) { Text(stringResource(R.string.category_play_all)) }
-                }
-            },
-        )
-        state.lastRemovalResult?.let { result ->
-            Text(
-                text = stringResource(R.string.playlist_remove_result, result.changedCount, result.skippedCount),
-                style = MusicTheme.typography.bodyMedium,
-                color = MusicTheme.colors.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
-            )
-        } ?: state.operationMessage?.let { message ->
-            Text(
-                text = stringResource(message.labelRes()),
-                style = MusicTheme.typography.bodyMedium,
-                color = MusicTheme.colors.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
-            )
-        }
-        if (state.tracks.isEmpty()) {
-            EmptyState(
-                modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding)
-                    .padding(bottom = bottomPadding),
-                title = stringResource(R.string.playlist_empty_title),
-                description = stringResource(R.string.playlist_empty_description),
-            )
-        } else {
-            LazyColumn(
-                state = listState,
-                overscrollEffect = overscrollEffect,
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentPadding = PaddingValues(
-                    top = dimensions.spaceSmall,
-                    bottom = dimensions.spaceSmall + bottomPadding,
-                ),
-            ) {
-                items(state.tracks, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { track ->
-                    PlaylistTrackRow(
-                        track = track,
-                        selected = track.id in state.selectedTrackIds,
-                        selectionMode = state.isSelectionMode,
-                        onClick = onTrackClick,
-                        onLongClick = onTrackLongClick,
-                        onRemove = onRemoveTrack,
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
-                    )
-                }
-            }
-        }
-    }
-    state.playbackFeedback?.let { feedback ->
-        AlertDialog(
-            onDismissRequest = onAcknowledgePlaybackFeedback,
-            title = { Text(stringResource(R.string.playlist_playback_result_title)) },
-            text = {
-                Text(
-                    pluralStringResource(
-                        R.plurals.playlist_playback_result,
-                        feedback.playedCount,
-                        feedback.playedCount,
-                        feedback.skippedCount,
-                    ),
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = onAcknowledgePlaybackFeedback) {
-                    Text(stringResource(R.string.selection_close))
-                }
-            },
-        )
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun PlaylistTrackRow(
-    track: Track,
-    selected: Boolean,
-    selectionMode: Boolean,
-    onClick: (Track) -> Unit,
-    onLongClick: (Track) -> Unit,
-    onRemove: (Track) -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    Row(
-        modifier = Modifier.fillMaxWidth().height(dimensions.trackListItemHeight)
-            .combinedClickable(
-                onClick = { onClick(track) },
-                onLongClick = { onLongClick(track) },
-            )
-            .padding(
-                horizontal = dimensions.contentHorizontalPadding + dimensions.spaceSmall,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-    ) {
-        if (selectionMode) {
-            Checkbox(checked = selected, onCheckedChange = { onClick(track) })
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                track.title,
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-                maxLines = 1,
-            )
-            Text(
-                track.artistName,
-                style = MusicTheme.typography.bodySmall,
-                color = MusicTheme.colors.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-        if (!selectionMode) {
-            TextButton(onClick = { onRemove(track) }) {
-                Text(stringResource(R.string.playlist_remove_track))
-            }
-        }
-    }
-}
-
-private fun PlaylistOperationMessage.labelRes(): Int =
-    when (this) {
-        PlaylistOperationMessage.CREATED -> R.string.playlist_created
-        PlaylistOperationMessage.RENAMED -> R.string.playlist_renamed
-        PlaylistOperationMessage.DELETED -> R.string.playlist_deleted
-        PlaylistOperationMessage.TRACKS_REMOVED -> R.string.playlist_tracks_removed
-        PlaylistOperationMessage.FAILED -> R.string.playlist_operation_failed
-    }
 
 private const val NO_PLAYLIST_ID = -1L
 private const val NEW_PLAYLIST_ID = 0L
