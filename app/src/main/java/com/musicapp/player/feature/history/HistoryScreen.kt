@@ -24,12 +24,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.musicapp.player.core.designsystem.component.AppDropdownMenu
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -277,35 +277,35 @@ private fun HistorySelectionActions(
         TextButton(onClick = { menuExpanded = true }, enabled = actionsEnabled) {
             Text(stringResource(R.string.selection_more_actions))
         }
-        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-            DropdownMenuItem(
+        AppDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+            AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_select_all)) },
                 onClick = { menuExpanded = false; onSelectAll() },
             )
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_add_to_queue)) },
                 enabled = actionsEnabled,
                 onClick = { menuExpanded = false; onAddToQueue() },
             )
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_play_next)) },
                 enabled = actionsEnabled,
                 onClick = { menuExpanded = false; onPlayNext() },
             )
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_hide)) },
                 enabled = actionsEnabled,
                 onClick = { menuExpanded = false; onHide() },
             )
             if (playlists.isEmpty()) {
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(stringResource(R.string.selection_no_playlists)) },
                     onClick = {},
                     enabled = false,
                 )
             } else {
                 playlists.forEach { playlist ->
-                    DropdownMenuItem(
+                    AppDropdownMenuItem(
                         text = {
                             Text(
                                 stringResource(

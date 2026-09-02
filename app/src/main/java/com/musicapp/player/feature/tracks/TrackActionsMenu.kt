@@ -1,13 +1,13 @@
 package com.musicapp.player.feature.tracks
 
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.AppDropdownMenu
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.theme.MusicAppTheme
@@ -25,33 +25,33 @@ internal fun TrackActionsMenu(
     onAddToPlaylist: (PlaylistId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    DropdownMenu(
+    AppDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         modifier = modifier,
     ) {
-        DropdownMenuItem(
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_add_to_queue)) },
             onClick = {
                 onDismissRequest()
                 onAddToQueue()
             },
         )
-        DropdownMenuItem(
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_play_next)) },
             onClick = {
                 onDismissRequest()
                 onPlayNext()
             },
         )
-        DropdownMenuItem(
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_track_info)) },
             onClick = {
                 onDismissRequest()
                 onShowTrackInfo()
             },
         )
-        DropdownMenuItem(
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_hide)) },
             onClick = {
                 onDismissRequest()
@@ -59,14 +59,14 @@ internal fun TrackActionsMenu(
             },
         )
         if (playlists.isEmpty()) {
-            DropdownMenuItem(
+            AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_no_playlists)) },
                 onClick = {},
                 enabled = false,
             )
         } else {
             playlists.forEach { playlist ->
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = {
                         Text(
                             stringResource(

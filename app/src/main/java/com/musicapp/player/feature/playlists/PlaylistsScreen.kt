@@ -31,12 +31,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.musicapp.player.core.designsystem.component.AppDropdownMenu
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.core.designsystem.component.TextInputDialog
@@ -173,11 +173,11 @@ private fun PlaylistsScreen(
                             modifier = Modifier.size(dimensions.spaceLarge),
                         )
                     }
-                    DropdownMenu(
+                    AppDropdownMenu(
                         expanded = pageMenuExpanded,
                         onDismissRequest = { pageMenuExpanded = false },
                     ) {
-                        DropdownMenuItem(
+                        AppDropdownMenuItem(
                             text = { Text(stringResource(R.string.playlist_create)) },
                             onClick = {
                                 pageMenuExpanded = false
@@ -327,19 +327,20 @@ private fun PlaylistRow(
                     modifier = Modifier.size(dimensions.spaceLarge),
                 )
             }
-            DropdownMenu(
+            AppDropdownMenu(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
             ) {
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(stringResource(R.string.playlist_rename)) },
                     onClick = {
                         menuExpanded = false
                         onRename()
                     },
                 )
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(stringResource(R.string.playlist_delete)) },
+                    isDestructive = true,
                     onClick = {
                         menuExpanded = false
                         onDelete()

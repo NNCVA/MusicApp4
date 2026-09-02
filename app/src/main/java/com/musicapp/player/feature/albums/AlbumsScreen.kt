@@ -30,13 +30,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.nonInteractiveScrollbar
+import com.musicapp.player.core.designsystem.component.AppDropdownMenu
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuDivider
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -412,10 +413,10 @@ private fun AlbumOptionsMenu(
                 modifier = Modifier.size(dimensions.spaceLarge),
             )
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AppDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             AlbumSortField.entries.forEach { field ->
                 val isSelected = sort.field == field
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = {
                         Text(
                             text = stringResource(field.labelRes()),
@@ -435,17 +436,14 @@ private fun AlbumOptionsMenu(
                     onClick = { onSortSelected(field); expanded = false },
                 )
             }
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = dimensions.spaceExtraSmall),
-                color = MusicTheme.colors.outlineVariant,
-            )
+            AppDropdownMenuDivider()
             listOf(
                 2 to R.string.albums_column_2,
                 3 to R.string.albums_column_3,
                 4 to R.string.albums_column_4,
             ).forEach { (count, labelRes) ->
                 val isSelected = columnCount == count
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = {
                         Text(
                             text = stringResource(labelRes),

@@ -18,8 +18,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import com.musicapp.player.core.designsystem.component.AppDropdownMenu
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -162,9 +162,9 @@ fun CategoryTrackSortMenu(
         TextButton(onClick = { expanded = true }) {
             Text(stringResource(sort.field.labelRes()) + stringResource(sort.direction.labelRes()))
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AppDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             fields.forEach { field ->
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(stringResource(field.labelRes())) },
                     onClick = { onSelected(field); expanded = false },
                 )

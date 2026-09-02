@@ -25,12 +25,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.musicapp.player.core.designsystem.component.AppDropdownMenu
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -480,11 +480,11 @@ private fun FolderShortcutCard(
                         modifier = Modifier.size(dimensions.spaceLarge),
                     )
                 }
-                DropdownMenu(
+                AppDropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
                 ) {
-                    DropdownMenuItem(
+                    AppDropdownMenuItem(
                         text = { Text(stringResource(R.string.category_play_all)) },
                         onClick = {
                             menuExpanded = false
@@ -753,9 +753,9 @@ private fun FolderSortMenu(sort: FolderSort, onSelected: (FolderSortField) -> Un
         TextButton(onClick = { expanded = true }) {
             Text(stringResource(sort.field.labelRes()) + stringResource(sort.direction.labelRes()))
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AppDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             FolderSortField.entries.forEach { field ->
-                DropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(stringResource(field.labelRes())) },
                     onClick = { onSelected(field); expanded = false },
                 )
