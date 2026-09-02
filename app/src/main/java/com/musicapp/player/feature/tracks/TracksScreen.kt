@@ -12,11 +12,13 @@ import androidx.compose.foundation.gestures.Orientation
 import coil3.compose.AsyncImage
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,10 +86,12 @@ import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.LoadingState
+import com.musicapp.player.core.designsystem.component.ListActionBar
 import com.musicapp.player.core.designsystem.component.QualityBadge
 import com.musicapp.player.core.designsystem.component.resolveQuality
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
+import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.TrackRow
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
@@ -243,12 +247,8 @@ fun TracksScreen(
             state.sections
         }
     }
-    val sectionPositions = remember(sections, state.sectionPositions, isSearching, state.sort.direction) {
-        if (isSearching) {
-            sectionStartPositions(sections, state.sort.direction)
-        } else {
-            state.sectionPositions
-        }
+    val sectionPositions = remember(sections, state.sort.direction) {
+        sectionStartPositions(sections, state.sort.direction)
     }
     val isTextSort = state.sort.field in listOf(
         TrackSortField.TITLE,
@@ -280,51 +280,105 @@ fun TracksScreen(
     val selectionBarHeight = dimensions.minimumTouchTarget
     val dynamicBottomPadding = bottomPadding + if (state.isSelectionMode) selectionBarHeight else 0.dp
 
+    val onToggleSelectAllResolved = {
+        if (searchActive && searchQuery.isNotBlank()) {
+            val visibleIds = filteredTracks.map(Track::id).toSet()
+            if (visibleIds.isNotEmpty() && state.selectedTrackIds.containsAll(visibleIds)) {
+                onClearSelection()
+            } else {
+                onSelectTracks(visibleIds)
+            }
+        } else {
+            onToggleSelectAll()
+        }
+    }
+
+    val onPlayAllResolved = {
+        val targetTracks = if (searchActive && searchQuery.isNotBlank()) filteredTracks else state.tracks
+        val firstAvailable = targetTracks.firstOrNull { it.availability == Availability.AVAILABLE }
+        if (firstAvailable != null) {
+            if (searchActive && searchQuery.isNotBlank()) {
+                onTrackClick(firstAvailable)
+            } else {
+                onPlayAll()
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier =
                 Modifier.fillMaxSize()
                     .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
-            TracksTopBar(
-                state = state,
-                policy = policy,
-                openDrawer = openDrawer,
-                onSortSelected = onSortSelected,
-                searchActive = searchActive,
-                searchQuery = searchQuery,
-                filteredTracks = filteredTracks,
-                onOpenSearch = { searchActive = true },
-                onCloseSearch = {
-                    searchActive = false
-                    searchQuery = ""
-                },
-                onSearchQueryChange = { searchQuery = it },
-                onToggleSelectAll = {
-                    if (searchActive && searchQuery.isNotBlank()) {
-                        val visibleIds = filteredTracks.map(Track::id).toSet()
-                        if (visibleIds.isNotEmpty() && state.selectedTrackIds.containsAll(visibleIds)) {
-                            onClearSelection()
-                        } else {
-                            onSelectTracks(visibleIds)
-                        }
-                    } else {
-                        onToggleSelectAll()
-                    }
-                },
-                onClearSelection = onClearSelection,
-                onPlayAll = {
-                    val targetTracks = if (searchActive && searchQuery.isNotBlank()) filteredTracks else state.tracks
-                    val firstAvailable = targetTracks.firstOrNull { it.availability == Availability.AVAILABLE }
-                    if (firstAvailable != null) {
-                        if (searchActive && searchQuery.isNotBlank()) {
-                            onTrackClick(firstAvailable)
-                        } else {
-                            onPlayAll()
-                        }
-                    }
-                },
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SearchableTopBar(
+                    title = stringResource(R.string.tracks_page_title),
+                    navigationAction = if (policy == WindowLayoutPolicy.COMPACT_DRAWER) CategoryNavigationAction.DRAWER else null,
+                    onNavigationClick = openDrawer,
+                    searchActive = searchActive,
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
+                    onOpenSearch = { searchActive = true },
+                    onCloseSearch = {
+                        searchActive = false
+                        searchQuery = ""
+                    },
+                )
+                if (state.isLibraryLoaded && filteredTracks.isNotEmpty()) {
+                    var sortMenuExpanded by remember { mutableStateOf(false) }
+                    ListActionBar(
+                        isSelectionMode = state.isSelectionMode,
+                        itemCount = filteredTracks.size,
+                        showPlayAll = true,
+                        hasPlayableItems = filteredTracks.any { it.availability == Availability.AVAILABLE },
+                        onPlayAll = onPlayAllResolved,
+                        trailingContent = {
+                            Box {
+                                BareIconButton(
+                                    onClick = { sortMenuExpanded = true },
+                                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_common_sort),
+                                        contentDescription = stringResource(R.string.tracks_sort_label),
+                                        tint = MusicTheme.colors.onSurface,
+                                        modifier = Modifier.size(dimensions.spaceLarge),
+                                    )
+                                }
+                                AppDropdownMenu(
+                                    expanded = sortMenuExpanded,
+                                    onDismissRequest = { sortMenuExpanded = false },
+                                ) {
+                                    TrackSortField.entries.forEach { field ->
+                                        AppDropdownMenuItem(
+                                            text = {
+                                                val suffix =
+                                                    if (field == state.sort.field) {
+                                                        stringResource(state.sort.direction.labelResId())
+                                                    } else {
+                                                        ""
+                                                    }
+                                                Text(stringResource(field.labelResId()) + suffix)
+                                            },
+                                            onClick = {
+                                                onSortSelected(field)
+                                                sortMenuExpanded = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        selectedCount = state.selectedTrackIds.size,
+                        isAllSelected = filteredTracks.isNotEmpty() && state.selectedTrackIds.size >= filteredTracks.size,
+                        onClearSelection = onClearSelection,
+                        onToggleSelectAll = onToggleSelectAllResolved,
+                    )
+                }
+            }
             if (state.isLibraryLoaded && state.tracks.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
@@ -411,240 +465,6 @@ fun TracksScreen(
             loading = state.isInfoLoading,
             onDismiss = onDismissTrackInfo,
         )
-    }
-}
-
-@Composable
-private fun TracksTopBar(
-    state: TracksUiState,
-    policy: WindowLayoutPolicy,
-    openDrawer: () -> Unit,
-    onSortSelected: (TrackSortField) -> Unit,
-    searchActive: Boolean,
-    searchQuery: String,
-    filteredTracks: List<Track>,
-    onOpenSearch: () -> Unit,
-    onCloseSearch: () -> Unit,
-    onSearchQueryChange: (String) -> Unit,
-    onToggleSelectAll: () -> Unit,
-    onClearSelection: () -> Unit,
-    onPlayAll: () -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    var sortMenuExpanded by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = dimensions.topBarHorizontalPadding,
-                end = dimensions.contentHorizontalPadding,
-            ),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(dimensions.playerHeaderHeight),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-        ) {
-            if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
-                CategoryNavigationIconButton(CategoryNavigationAction.DRAWER, openDrawer)
-            }
-            if (searchActive) {
-                BasicTextField(
-                    value = searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    textStyle = MusicTheme.typography.titleLarge.copy(color = MusicTheme.colors.onSurface),
-                    decorationBox = { innerTextField ->
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.CenterStart,
-                        ) {
-                            if (searchQuery.isBlank()) {
-                                Text(
-                                    text = stringResource(R.string.tracks_search_placeholder),
-                                    style = MusicTheme.typography.titleMedium,
-                                    color = MusicTheme.colors.onSurfaceVariant,
-                                )
-                            }
-                            innerTextField()
-                        }
-                    },
-                )
-                BareIconButton(
-                    onClick = onCloseSearch,
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_close),
-                        contentDescription = stringResource(R.string.tracks_search_close),
-                        tint = MusicTheme.colors.onSurface,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-            } else {
-                Text(
-                    text = stringResource(R.string.tracks_page_title),
-                    style = MusicTheme.typography.titleLarge,
-                    color = MusicTheme.colors.onSurface,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                )
-                BareIconButton(
-                    onClick = onOpenSearch,
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_search),
-                        contentDescription = stringResource(R.string.tracks_search_label),
-                        tint = MusicTheme.colors.onSurface,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-            }
-        }
-        Crossfade(
-            targetState = state.isSelectionMode,
-            label = "TracksSecondRowCrossfade",
-            modifier = Modifier.fillMaxWidth().height(dimensions.minimumTouchTarget),
-        ) { isSelection ->
-            if (isSelection) {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-                ) {
-                    BareIconButton(
-                        onClick = onClearSelection,
-                        modifier = Modifier.size(dimensions.minimumTouchTarget),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_common_close_circle),
-                            contentDescription = stringResource(R.string.selection_cancel),
-                            tint = MusicTheme.colors.onSurface,
-                            modifier = Modifier.size(dimensions.spaceLarge),
-                        )
-                    }
-                    val selectedCount = state.selectedTrackIds.size
-                    Text(
-                        text = pluralStringResource(
-                            R.plurals.selection_count,
-                            selectedCount,
-                            selectedCount,
-                        ),
-                        style = MusicTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MusicTheme.colors.onSurface,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    val targetCount = if (searchActive && searchQuery.isNotBlank()) filteredTracks.size else state.tracks.size
-                    val isAllSelected = targetCount > 0 && selectedCount >= targetCount
-                    val hasSelection = selectedCount > 0
-                    val selectAllIcon = if (hasSelection) {
-                        R.drawable.ic_common_radio_button_checked
-                    } else {
-                        R.drawable.ic_common_radio_button_unchecked
-                    }
-                    val selectAllDesc = if (isAllSelected) {
-                        stringResource(R.string.selection_deselect_all)
-                    } else {
-                        stringResource(R.string.selection_select_all)
-                    }
-                    BareIconButton(
-                        onClick = onToggleSelectAll,
-                        modifier = Modifier.size(dimensions.minimumTouchTarget),
-                    ) {
-                        Icon(
-                            painter = painterResource(selectAllIcon),
-                            contentDescription = selectAllDesc,
-                            tint = MusicTheme.colors.onSurface,
-                            modifier = Modifier.size(dimensions.spaceLarge),
-                        )
-                    }
-                }
-            } else {
-                if (state.tracks.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-                    ) {
-                        val targetTracks = if (searchActive && searchQuery.isNotBlank()) filteredTracks else state.tracks
-                        val hasAvailableTracks = targetTracks.any { it.availability == Availability.AVAILABLE }
-                        BareIconButton(
-                            onClick = onPlayAll,
-                            enabled = hasAvailableTracks,
-                            modifier = Modifier.size(dimensions.minimumTouchTarget),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_playback_play_circle),
-                                contentDescription = stringResource(R.string.category_play_all),
-                                tint = if (hasAvailableTracks) {
-                                    MusicTheme.colors.onSurface
-                                } else {
-                                    MusicTheme.colors.onSurface.copy(alpha = 0.38f)
-                                },
-                                modifier = Modifier.size(dimensions.spaceLarge),
-                            )
-                        }
-                        val trackCountDescription = pluralStringResource(
-                            R.plurals.category_track_count,
-                            targetTracks.size,
-                            targetTracks.size,
-                        )
-                        Text(
-                            text = "${targetTracks.size}",
-                            style = MusicTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MusicTheme.colors.onSurface,
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics {
-                                    contentDescription = trackCountDescription
-                                },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Box {
-                            BareIconButton(
-                                onClick = { sortMenuExpanded = true },
-                                modifier = Modifier.size(dimensions.minimumTouchTarget),
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_common_sort),
-                                    contentDescription = stringResource(R.string.tracks_sort_label),
-                                    tint = MusicTheme.colors.onSurface,
-                                    modifier = Modifier.size(dimensions.spaceLarge),
-                                )
-                            }
-                            AppDropdownMenu(
-                                expanded = sortMenuExpanded,
-                                onDismissRequest = { sortMenuExpanded = false },
-                            ) {
-                                TrackSortField.entries.forEach { field ->
-                                    AppDropdownMenuItem(
-                                        text = {
-                                            val suffix =
-                                                if (field == state.sort.field) {
-                                                    stringResource(state.sort.direction.labelResId())
-                                                } else {
-                                                    ""
-                                                }
-                                            Text(stringResource(field.labelResId()) + suffix)
-                                        },
-                                        onClick = {
-                                            onSortSelected(field)
-                                            sortMenuExpanded = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

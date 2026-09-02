@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,7 +55,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -65,6 +70,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
@@ -74,7 +80,9 @@ import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
+import com.musicapp.player.core.designsystem.component.ListActionBar
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
+import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
@@ -93,6 +101,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun PlaylistDetailScreenRoute(
@@ -276,25 +285,85 @@ fun PlaylistDetailScreen(
             Modifier
         }
 
+    var pageMenuExpanded by remember { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
-            PlaylistDetailTopBar(
-                playlist = state.playlist,
-                showCollapsedTitle = showCollapsedTitle,
-                isSearching = state.isSearching,
+            SearchableTopBar(
+                navigationAction = CategoryNavigationAction.BACK,
+                onNavigationClick = {
+                    if (state.isSearching) {
+                        onCloseSearch()
+                    } else {
+                        onBack()
+                    }
+                },
+                searchActive = state.isSearching,
                 searchQuery = state.searchQuery,
-                onBack = onBack,
+                onSearchQueryChange = onSearchQueryChange,
                 onOpenSearch = onOpenSearch,
                 onCloseSearch = onCloseSearch,
-                onSearchQueryChange = onSearchQueryChange,
-                onRenameClick = { showRenameDialog = true },
-                onDeleteClick = { showDeleteDialog = true },
-                onSortSelected = onSortSelected,
-                currentSort = state.sort,
+                searchPlaceholder = stringResource(R.string.playlist_search_placeholder),
+                titleContent = {
+                    Crossfade(
+                        targetState = showCollapsedTitle,
+                        label = "PlaylistTopBarTitleCrossfade",
+                    ) { collapsed ->
+                        Text(
+                            text = if (collapsed) {
+                                state.playlist?.displayName ?: stringResource(R.string.playlist_unknown_name)
+                            } else {
+                                stringResource(R.string.playlist_detail_title)
+                            },
+                            style = MusicTheme.typography.titleLarge,
+                            color = if (collapsed) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                },
+                trailingContent = {
+                    Box {
+                        BareIconButton(
+                            onClick = { pageMenuExpanded = true },
+                            modifier = Modifier.size(dimensions.minimumTouchTarget),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_common_more_vertical),
+                                contentDescription = stringResource(R.string.selection_more_actions),
+                                tint = MusicTheme.colors.onSurface,
+                                modifier = Modifier.size(dimensions.spaceLarge),
+                            )
+                        }
+
+                        AppDropdownMenu(
+                            expanded = pageMenuExpanded,
+                            onDismissRequest = {
+                                pageMenuExpanded = false
+                            },
+                        ) {
+                            AppDropdownMenuItem(
+                                text = { Text(stringResource(R.string.playlist_rename)) },
+                                onClick = {
+                                    pageMenuExpanded = false
+                                    showRenameDialog = true
+                                },
+                            )
+                            AppDropdownMenuItem(
+                                text = { Text(stringResource(R.string.playlist_delete)) },
+                                isDestructive = true,
+                                onClick = {
+                                    pageMenuExpanded = false
+                                    showDeleteDialog = true
+                                },
+                            )
+                        }
+                    }
+                },
             )
 
             LazyColumn(
@@ -303,7 +372,10 @@ fun PlaylistDetailScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .then(scrollbarModifier),
+                    .then(scrollbarModifier)
+                    .graphicsLayer {
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    },
                 contentPadding = PaddingValues(
                     top = dimensions.spaceSmall,
                     bottom = dimensions.spaceSmall + dynamicBottomPadding,
@@ -317,10 +389,73 @@ fun PlaylistDetailScreen(
                 }
 
                 stickyHeader(key = "playlist_responsive_action_bar") {
-                    PlaylistResponsiveActionBar(
-                        state = state,
+                    val isPinned by remember {
+                        derivedStateOf { listState.firstVisibleItemIndex >= 1 }
+                    }
+                    var sortMenuExpanded by remember { mutableStateOf(false) }
+                    ListActionBar(
+                        modifier = Modifier
+                            .offset {
+                                IntOffset(
+                                    x = 0,
+                                    y = if (isPinned && overscrollEffect.currentOffsetPx < 0f) {
+                                        (-overscrollEffect.currentOffsetPx).roundToInt()
+                                    } else {
+                                        0
+                                    },
+                                )
+                            }
+                            .drawWithContent {
+                                drawRect(
+                                    color = Color.Transparent,
+                                    blendMode = BlendMode.Clear,
+                                )
+                                drawContent()
+                            },
+                        isSelectionMode = state.isSelectionMode,
+                        itemCount = state.displayTracks.size,
+                        showPlayAll = true,
+                        hasPlayableItems = state.displayTracks.any { it.availability == Availability.AVAILABLE },
                         onPlayAll = onPlayAll,
-                        onSortSelected = onSortSelected,
+                        trailingContent = {
+                            Box {
+                                BareIconButton(
+                                    onClick = { sortMenuExpanded = true },
+                                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_common_sort),
+                                        contentDescription = stringResource(R.string.tracks_sort_label),
+                                        tint = MusicTheme.colors.onSurface,
+                                        modifier = Modifier.size(dimensions.spaceLarge),
+                                    )
+                                }
+
+                                AppDropdownMenu(
+                                    expanded = sortMenuExpanded,
+                                    onDismissRequest = { sortMenuExpanded = false },
+                                ) {
+                                    PlaylistTrackSortField.entries.forEach { field ->
+                                        AppDropdownMenuItem(
+                                            text = {
+                                                val suffix = if (field == state.sort.field && field != PlaylistTrackSortField.DEFAULT) {
+                                                    stringResource(state.sort.direction.labelResId())
+                                                } else {
+                                                    ""
+                                                }
+                                                Text(stringResource(field.labelResId()) + suffix)
+                                            },
+                                            onClick = {
+                                                onSortSelected(field)
+                                                sortMenuExpanded = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        selectedCount = state.selectedTrackIds.size,
+                        isAllSelected = state.displayTracks.isNotEmpty() && state.selectedTrackIds.size >= state.displayTracks.size,
                         onClearSelection = onClearSelection,
                         onToggleSelectAll = onToggleSelectAll,
                     )
@@ -508,152 +643,7 @@ fun PlaylistDetailScreen(
     }
 }
 
-@Composable
-private fun PlaylistDetailTopBar(
-    playlist: Playlist?,
-    showCollapsedTitle: Boolean,
-    isSearching: Boolean,
-    searchQuery: String,
-    onBack: () -> Unit,
-    onOpenSearch: () -> Unit,
-    onCloseSearch: () -> Unit,
-    onSearchQueryChange: (String) -> Unit,
-    onRenameClick: () -> Unit,
-    onDeleteClick: () -> Unit,
-    onSortSelected: (PlaylistTrackSortField) -> Unit,
-    currentSort: PlaylistTrackSort,
-) {
-    val dimensions = MusicTheme.dimensions
-    var pageMenuExpanded by remember { mutableStateOf(false) }
-    var sortSubmenuExpanded by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(dimensions.playerHeaderHeight)
-            .padding(
-                start = dimensions.topBarHorizontalPadding,
-                end = dimensions.contentHorizontalPadding,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-    ) {
-        CategoryNavigationIconButton(
-            action = CategoryNavigationAction.BACK,
-            onClick = {
-                if (isSearching) {
-                    onCloseSearch()
-                } else {
-                    onBack()
-                }
-            },
-        )
-
-        if (isSearching) {
-            BasicTextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                textStyle = MusicTheme.typography.titleLarge.copy(color = MusicTheme.colors.onSurface),
-                decorationBox = { innerTextField ->
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        if (searchQuery.isBlank()) {
-                            Text(
-                                text = stringResource(R.string.playlist_search_placeholder),
-                                style = MusicTheme.typography.titleMedium,
-                                color = MusicTheme.colors.onSurfaceVariant,
-                            )
-                        }
-                        innerTextField()
-                    }
-                },
-            )
-            BareIconButton(
-                onClick = onCloseSearch,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_common_close),
-                    contentDescription = stringResource(R.string.tracks_search_close),
-                    tint = MusicTheme.colors.onSurface,
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
-        } else {
-            Crossfade(
-                targetState = showCollapsedTitle,
-                label = "PlaylistTopBarTitleCrossfade",
-                modifier = Modifier.weight(1f),
-            ) { collapsed ->
-                Text(
-                    text = if (collapsed) {
-                        playlist?.displayName ?: stringResource(R.string.playlist_unknown_name)
-                    } else {
-                        stringResource(R.string.playlist_detail_title)
-                    },
-                    style = MusicTheme.typography.titleLarge,
-                    color = if (collapsed) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            BareIconButton(
-                onClick = onOpenSearch,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_common_search),
-                    contentDescription = stringResource(R.string.tracks_search_label),
-                    tint = MusicTheme.colors.onSurface,
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
-
-            Box {
-                BareIconButton(
-                    onClick = { pageMenuExpanded = true },
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_more_vertical),
-                        contentDescription = stringResource(R.string.selection_more_actions),
-                        tint = MusicTheme.colors.onSurface,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-
-                AppDropdownMenu(
-                    expanded = pageMenuExpanded,
-                    onDismissRequest = {
-                        pageMenuExpanded = false
-                        sortSubmenuExpanded = false
-                    },
-                ) {
-                    AppDropdownMenuItem(
-                        text = { Text(stringResource(R.string.playlist_rename)) },
-                        onClick = {
-                            pageMenuExpanded = false
-                            onRenameClick()
-                        },
-                    )
-                    AppDropdownMenuItem(
-                        text = { Text(stringResource(R.string.playlist_delete)) },
-                        isDestructive = true,
-                        onClick = {
-                            pageMenuExpanded = false
-                            onDeleteClick()
-                        },
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun PlaylistHeroHeader(
@@ -733,153 +723,7 @@ private fun PlaylistHeroHeader(
     }
 }
 
-@Composable
-private fun PlaylistResponsiveActionBar(
-    state: PlaylistDetailUiState,
-    onPlayAll: () -> Unit,
-    onSortSelected: (PlaylistTrackSortField) -> Unit,
-    onClearSelection: () -> Unit,
-    onToggleSelectAll: () -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    var sortMenuExpanded by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.Transparent),
-    ) {
-        Crossfade(
-            targetState = state.isSelectionMode,
-            label = "PlaylistActionBarCrossfade",
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(dimensions.minimumTouchTarget)
-                .padding(
-                    start = dimensions.topBarHorizontalPadding,
-                    end = dimensions.contentHorizontalPadding,
-                ),
-        ) { isSelection ->
-            if (isSelection) {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-                ) {
-                    BareIconButton(
-                        onClick = onClearSelection,
-                        modifier = Modifier.size(dimensions.minimumTouchTarget),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_common_close_circle),
-                            contentDescription = stringResource(R.string.selection_cancel),
-                            tint = MusicTheme.colors.onSurface,
-                            modifier = Modifier.size(dimensions.spaceLarge),
-                        )
-                    }
-
-                    val selectedCount = state.selectedTrackIds.size
-                    Text(
-                        text = pluralStringResource(
-                            R.plurals.selection_count,
-                            selectedCount,
-                            selectedCount,
-                        ),
-                        style = MusicTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MusicTheme.colors.onSurface,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-
-                    val targetCount = state.displayTracks.size
-                    val isAllSelected = targetCount > 0 && selectedCount >= targetCount
-                    val hasSelection = selectedCount > 0
-                    val selectAllIcon = if (hasSelection) {
-                        R.drawable.ic_common_radio_button_checked
-                    } else {
-                        R.drawable.ic_common_radio_button_unchecked
-                    }
-                    val selectAllDesc = if (isAllSelected) {
-                        stringResource(R.string.selection_deselect_all)
-                    } else {
-                        stringResource(R.string.selection_select_all)
-                    }
-
-                    BareIconButton(
-                        onClick = onToggleSelectAll,
-                        modifier = Modifier.size(dimensions.minimumTouchTarget),
-                    ) {
-                        Icon(
-                            painter = painterResource(selectAllIcon),
-                            contentDescription = selectAllDesc,
-                            tint = MusicTheme.colors.onSurface,
-                            modifier = Modifier.size(dimensions.spaceLarge),
-                        )
-                    }
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val hasAvailableTracks = state.displayTracks.any { it.availability == Availability.AVAILABLE }
-
-                    BareIconButton(
-                        onClick = onPlayAll,
-                        enabled = hasAvailableTracks,
-                        modifier = Modifier.size(dimensions.minimumTouchTarget),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_playback_play_circle),
-                            contentDescription = stringResource(R.string.category_play_all),
-                            tint = if (hasAvailableTracks) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = 0.38f),
-                            modifier = Modifier.size(dimensions.spaceLarge),
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    Box {
-                        BareIconButton(
-                            onClick = { sortMenuExpanded = true },
-                            modifier = Modifier.size(dimensions.minimumTouchTarget),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_common_sort),
-                                contentDescription = stringResource(R.string.tracks_sort_label),
-                                tint = MusicTheme.colors.onSurface,
-                                modifier = Modifier.size(dimensions.spaceLarge),
-                            )
-                        }
-
-                        AppDropdownMenu(
-                            expanded = sortMenuExpanded,
-                            onDismissRequest = { sortMenuExpanded = false },
-                        ) {
-                            PlaylistTrackSortField.entries.forEach { field ->
-                                AppDropdownMenuItem(
-                                    text = {
-                                        val suffix = if (field == state.sort.field && field != PlaylistTrackSortField.DEFAULT) {
-                                            stringResource(state.sort.direction.labelResId())
-                                        } else {
-                                            ""
-                                        }
-                                        Text(stringResource(field.labelResId()) + suffix)
-                                    },
-                                    onClick = {
-                                        onSortSelected(field)
-                                        sortMenuExpanded = false
-                                    },
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun PlaylistTrackRowItem(

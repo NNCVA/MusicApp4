@@ -134,6 +134,30 @@ class TrackSectionIndexTest {
         assertEquals("#", sectionLabelAtPosition(sections, 3))
     }
 
+    @Test
+    fun `leadingItemCount offsets section positions and active section calculations accurately`() {
+        val tracks = listOf(
+            track(1, "123 title"),
+            track(2, "Alpha"),
+            track(3, "Another"),
+            track(4, "Bravo"),
+        )
+
+        val sections = groupTracksIntoSections(tracks, TrackSortField.TITLE)
+        val positions = sectionStartPositions(sections, leadingItemCount = 1)
+
+        assertEquals(1, positions.getValue("0"))
+        assertEquals(2, positions.getValue("A"))
+        assertEquals(4, positions.getValue("B"))
+
+        // Position 0 is leading item (e.g. sticky header), maps to first section label
+        assertEquals("0", sectionLabelAtPosition(sections, 0, leadingItemCount = 1))
+        assertEquals("0", sectionLabelAtPosition(sections, 1, leadingItemCount = 1))
+        assertEquals("A", sectionLabelAtPosition(sections, 2, leadingItemCount = 1))
+        assertEquals("A", sectionLabelAtPosition(sections, 3, leadingItemCount = 1))
+        assertEquals("B", sectionLabelAtPosition(sections, 4, leadingItemCount = 1))
+    }
+
     private fun track(
         id: Long = 1,
         title: String,

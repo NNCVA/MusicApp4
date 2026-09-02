@@ -58,15 +58,17 @@ internal fun sectionIndexLabels(
 internal fun sectionStartPositions(
     sections: List<TrackSection>,
     direction: TrackSortDirection = TrackSortDirection.ASCENDING,
+    leadingItemCount: Int = 0,
 ): Map<String, Int> {
     val labels = sectionIndexLabels(direction)
     val starts = linkedMapOf<String, Int>()
-    var itemPosition = 0
+    var itemPosition = leadingItemCount.coerceAtLeast(0)
     sections.forEach { section ->
         starts.putIfAbsent(section.label, itemPosition)
         itemPosition += section.tracks.size
     }
-    val lastPosition = (itemPosition - 1).coerceAtLeast(0)
+    val itemCount = itemPosition
+    val lastPosition = (itemCount - 1).coerceAtLeast(0)
 
     val populatedIndices = sections.mapNotNull { section ->
         val idx = labels.indexOf(section.label)
@@ -93,15 +95,20 @@ internal fun sectionStartPositions(
 internal fun sectionLabelAtPosition(
     sections: List<TrackSection>,
     itemPosition: Int,
+    leadingItemCount: Int = 0,
 ): String? {
-    if (sections.isEmpty()) return null
-    val totalTracks = sections.sumOf { it.tracks.size }
-    val safePosition = itemPosition.coerceIn(0, (totalTracks - 1).coerceAtLeast(0))
+    val nonEmpty = sections.filter { it.tracks.isNotEmpty() }
+    if (nonEmpty.isEmpty()) return null
+    val safeLeading = leadingItemCount.coerceAtLeast(0)
+    if (itemPosition < safeLeading) return nonEmpty.first().label
+    val trackPosition = itemPosition - safeLeading
+    val totalTracks = nonEmpty.sumOf { it.tracks.size }
+    val safePosition = trackPosition.coerceIn(0, (totalTracks - 1).coerceAtLeast(0))
     var sectionStart = 0
-    sections.forEach { section ->
+    nonEmpty.forEach { section ->
         val sectionEnd = sectionStart + section.tracks.size
         if (safePosition < sectionEnd) return section.label
         sectionStart = sectionEnd
     }
-    return sections.last().label
+    return nonEmpty.last().label
 }
