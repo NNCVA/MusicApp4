@@ -9,6 +9,7 @@ import com.musicapp.player.core.domain.model.PlaybackContextSource
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.feature.playlists.PlaylistUseCase
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.HistoryRepository
 import com.musicapp.player.data.repository.MediaLibraryRepository
@@ -19,6 +20,7 @@ import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.Locale
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +37,7 @@ data class HistoryEntry(
         get() = history.trackId
 
     val isActionable: Boolean
-        get() = track != null
+        get() = track != null && track.availability == Availability.AVAILABLE
 }
 
 data class HistoryUiState(
@@ -64,9 +66,24 @@ class HistoryViewModel @Inject constructor(
     private val historyRepository: HistoryRepository,
     mediaLibraryRepository: MediaLibraryRepository,
     playlistRepository: PlaylistRepository,
+    private val playlistUseCase: PlaylistUseCase,
     private val playbackController: PlaybackControllerFacade,
     private val batchTrackActionExecutor: BatchTrackActionExecutor,
 ) : ViewModel() {
+    internal constructor(
+        historyRepository: HistoryRepository,
+        mediaLibraryRepository: MediaLibraryRepository,
+        playlistRepository: PlaylistRepository,
+        playbackController: PlaybackControllerFacade,
+        batchTrackActionExecutor: BatchTrackActionExecutor,
+    ) : this(
+        historyRepository = historyRepository,
+        mediaLibraryRepository = mediaLibraryRepository,
+        playlistRepository = playlistRepository,
+        playlistUseCase = PlaylistUseCase(playlistRepository, com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() }),
+        playbackController = playbackController,
+        batchTrackActionExecutor = batchTrackActionExecutor,
+    )
     private val query = MutableStateFlow("")
     private val selectedTrackIds = MutableStateFlow<Set<TrackId>>(emptySet())
     private val clearConfirmationRequested = MutableStateFlow(false)
@@ -247,6 +264,18 @@ class HistoryViewModel @Inject constructor(
 
     fun acknowledgeBatchResult() {
         batchResult.value = null
+    }
+
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            try {
+                playlistUseCase.create(name)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                // Handled gracefully
+            }
+        }
     }
 
     private fun currentVisibleSelectionInOrder(): List<TrackId> {

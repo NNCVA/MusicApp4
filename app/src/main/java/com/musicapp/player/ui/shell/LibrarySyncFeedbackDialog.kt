@@ -8,14 +8,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.media.MediaAudioCandidate
 import com.musicapp.player.data.sync.LibrarySyncEvent
 import com.musicapp.player.data.sync.MediaLibraryScanSummary
@@ -34,15 +33,11 @@ fun LibrarySyncFeedbackDialog(
             ScanResultDialog(summary = summary, onDismiss = { onAcknowledge(feedback.eventId) })
         }
         is LibrarySyncEvent.Failed ->
-            AlertDialog(
-                onDismissRequest = { onAcknowledge(feedback.eventId) },
-                title = { Text(stringResource(R.string.scan_result_failed_title)) },
-                text = { Text(stringResource(R.string.scan_error_description)) },
-                confirmButton = {
-                    TextButton(onClick = { onAcknowledge(feedback.eventId) }) {
-                        Text(stringResource(R.string.dismiss))
-                    }
-                },
+            MessageDialog(
+                title = stringResource(R.string.scan_result_failed_title),
+                message = stringResource(R.string.scan_error_description),
+                confirmLabel = stringResource(R.string.dismiss),
+                onDismiss = { onAcknowledge(feedback.eventId) },
             )
     }
 }
@@ -58,32 +53,35 @@ private fun ScanResultDialog(
             summary.acceptedCandidates.map(MediaAudioCandidate::scanResultTitle)
                 .sortedWith(String.CASE_INSENSITIVE_ORDER)
         }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.scan_result_title)) },
-        text = {
-            Column {
-                Spacer(modifier = Modifier.height(dimensions.spaceSmall))
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = dimensions.dialogListMaxHeight),
-                    verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-                ) {
-                    if (successfulTitles.isNotEmpty()) {
-                        item {
-                            Text(
-                                stringResource(R.string.scan_result_added),
-                                style = MusicTheme.typography.titleSmall,
-                            )
-                        }
-                        items(successfulTitles) { title ->
-                            Text(title, style = MusicTheme.typography.bodyMedium)
-                        }
+    MessageDialog(
+        title = stringResource(R.string.scan_result_title),
+        confirmLabel = stringResource(R.string.dismiss),
+        onDismiss = onDismiss,
+    ) {
+        Column {
+            Spacer(modifier = Modifier.height(dimensions.spaceSmall))
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = dimensions.dialogListMaxHeight),
+                verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
+            ) {
+                if (successfulTitles.isNotEmpty()) {
+                    item {
+                        Text(
+                            stringResource(R.string.scan_result_added),
+                            style = MusicTheme.typography.titleSmall,
+                            color = MusicTheme.colors.onSurface,
+                        )
+                    }
+                    items(successfulTitles) { title ->
+                        Text(
+                            title,
+                            style = MusicTheme.typography.bodyMedium,
+                            color = MusicTheme.colors.onSurfaceVariant,
+                        )
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dismiss)) }
-        },
-    )
+        }
+    }
 }
+

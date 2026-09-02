@@ -45,6 +45,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
+import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.Playlist
@@ -75,6 +76,7 @@ fun PlaylistsScreenRoute(
         onCreate = viewModel::create,
         onRename = viewModel::rename,
         onDelete = viewModel::delete,
+        onClearMessage = viewModel::clearMessage,
     )
 }
 
@@ -88,6 +90,7 @@ private fun PlaylistsScreen(
     onCreate: (String) -> Unit,
     onRename: (PlaylistId, String) -> Unit,
     onDelete: (PlaylistId) -> Unit,
+    onClearMessage: () -> Unit,
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -208,6 +211,20 @@ private fun PlaylistsScreen(
             },
             onDismiss = { deletePlaylistId = NO_PLAYLIST_ID },
             isDestructive = true,
+        )
+    }
+    state.operationMessage?.let { message ->
+        val messageRes = when (message) {
+            PlaylistOperationMessage.CREATED -> R.string.playlist_created
+            PlaylistOperationMessage.RENAMED -> R.string.playlist_renamed
+            PlaylistOperationMessage.DELETED -> R.string.playlist_deleted
+            PlaylistOperationMessage.TRACKS_REMOVED -> R.string.playlist_tracks_removed
+            PlaylistOperationMessage.FAILED -> R.string.playlist_operation_failed
+        }
+        MessageDialog(
+            message = stringResource(messageRes),
+            confirmLabel = stringResource(R.string.dismiss),
+            onDismiss = onClearMessage,
         )
     }
 }

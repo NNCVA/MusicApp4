@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
@@ -81,6 +82,7 @@ import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.ListActionBar
+import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
@@ -186,6 +188,7 @@ fun PlaylistDetailScreenRoute(
         onDeletePlaylist = {
             viewModel.deletePlaylist(onDeleted = onBack)
         },
+        onCreatePlaylist = viewModel::createPlaylist,
         onAcknowledgePlaybackFeedback = viewModel::acknowledgePlaybackFeedback,
     )
 }
@@ -221,6 +224,7 @@ fun PlaylistDetailScreen(
     onDismissTrackInfo: () -> Unit,
     onRenamePlaylist: (String) -> Unit,
     onDeletePlaylist: () -> Unit,
+    onCreatePlaylist: (String) -> Unit = {},
     onAcknowledgePlaybackFeedback: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -231,6 +235,7 @@ fun PlaylistDetailScreen(
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
+    var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var singleTrackAddToPlaylistTarget by remember { mutableStateOf<TrackId?>(null) }
 
     val isTextSort = state.sort.field in listOf(
@@ -599,7 +604,7 @@ fun PlaylistDetailScreen(
         val otherPlaylists = remember(state.allPlaylists, state.playlist?.id) {
             state.allPlaylists.filter { it.id != state.playlist?.id }
         }
-        AddToPlaylistSelectionDialog(
+        AddToPlaylistDialog(
             playlists = otherPlaylists,
             onSelectPlaylist = { targetPlaylistId ->
                 if (targetTrackId != null) {
@@ -610,6 +615,7 @@ fun PlaylistDetailScreen(
                 showAddToPlaylistDialog = false
                 singleTrackAddToPlaylistTarget = null
             },
+            onCreatePlaylist = { showCreatePlaylistDialog = true },
             onDismiss = {
                 showAddToPlaylistDialog = false
                 singleTrackAddToPlaylistTarget = null
@@ -617,25 +623,31 @@ fun PlaylistDetailScreen(
         )
     }
 
+    if (showCreatePlaylistDialog) {
+        TextInputDialog(
+            title = stringResource(R.string.playlist_create_title),
+            confirmLabel = stringResource(R.string.playlist_create),
+            placeholder = stringResource(R.string.playlist_name_label),
+            onDismiss = { showCreatePlaylistDialog = false },
+            onConfirm = { name ->
+                onCreatePlaylist(name)
+                showCreatePlaylistDialog = false
+            },
+        )
+    }
+
     state.playbackFeedback?.let { feedback ->
-        AlertDialog(
-            onDismissRequest = onAcknowledgePlaybackFeedback,
-            title = { Text(stringResource(R.string.playlist_playback_result_title)) },
-            text = {
-                Text(
-                    pluralStringResource(
-                        R.plurals.playlist_playback_result,
-                        feedback.playedCount,
-                        feedback.playedCount,
-                        feedback.skippedCount,
-                    ),
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = onAcknowledgePlaybackFeedback) {
-                    Text(stringResource(R.string.selection_close))
-                }
-            },
+        MessageDialog(
+            title = stringResource(R.string.playlist_playback_result_title),
+            message =
+                pluralStringResource(
+                    R.plurals.playlist_playback_result,
+                    feedback.playedCount,
+                    feedback.playedCount,
+                    feedback.skippedCount,
+                ),
+            confirmLabel = stringResource(R.string.selection_close),
+            onDismiss = onAcknowledgePlaybackFeedback,
         )
     }
 
@@ -960,66 +972,4 @@ private fun PlaylistSelectionBottomBar(
             }
         }
     }
-}
-
-@Composable
-private fun AddToPlaylistSelectionDialog(
-    playlists: List<Playlist>,
-    onSelectPlaylist: (PlaylistId) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = stringResource(R.string.selection_add_to_playlist_dialog_title),
-                style = MusicTheme.typography.titleLarge,
-            )
-        },
-        text = {
-            if (playlists.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.selection_no_playlists),
-                    style = MusicTheme.typography.bodyMedium,
-                    color = MusicTheme.colors.onSurfaceVariant,
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 300.dp),
-                ) {
-                    items(playlists, key = { it.id.value }) { playlist ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(dimensions.minimumTouchTarget)
-                                .clickable { onSelectPlaylist(playlist.id) }
-                                .padding(horizontal = dimensions.spaceSmall),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_sidebar_playlists),
-                                contentDescription = null,
-                                tint = MusicTheme.colors.onSurfaceVariant,
-                                modifier = Modifier.size(dimensions.spaceLarge),
-                            )
-                            Spacer(modifier = Modifier.width(dimensions.spaceMedium))
-                            Text(
-                                text = playlist.displayName,
-                                style = MusicTheme.typography.bodyLarge,
-                                color = MusicTheme.colors.onSurface,
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.playlist_cancel))
-            }
-        },
-    )
 }

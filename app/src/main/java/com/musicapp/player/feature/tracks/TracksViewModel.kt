@@ -23,6 +23,7 @@ import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
 import com.musicapp.player.core.designsystem.component.createSectionTextComparator
 import com.musicapp.player.core.designsystem.component.sortedBySectionText
+import com.musicapp.player.feature.playlists.PlaylistUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import java.util.Locale
@@ -100,6 +101,7 @@ data class TracksUiState(
 class TracksViewModel internal constructor(
     private val mediaLibraryRepository: MediaLibraryRepository,
     playlistRepository: PlaylistRepository,
+    private val playlistUseCase: PlaylistUseCase,
     private val savedStateHandle: SavedStateHandle,
     private val playbackController: PlaybackControllerFacade,
     private val batchActionExecutor: BatchTrackActionExecutor,
@@ -111,6 +113,7 @@ class TracksViewModel internal constructor(
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         playlistRepository: PlaylistRepository,
+        playlistUseCase: PlaylistUseCase,
         savedStateHandle: SavedStateHandle,
         playbackController: PlaybackControllerFacade,
         batchActionExecutor: BatchTrackActionExecutor,
@@ -119,12 +122,34 @@ class TracksViewModel internal constructor(
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playlistRepository = playlistRepository,
+        playlistUseCase = playlistUseCase,
         savedStateHandle = savedStateHandle,
         playbackController = playbackController,
         batchActionExecutor = batchActionExecutor,
         artworkRepository = artworkRepository,
         trackMetadataRepository = trackMetadataRepository,
         computationDispatcher = Dispatchers.Default,
+    )
+
+    internal constructor(
+        mediaLibraryRepository: MediaLibraryRepository,
+        playlistRepository: PlaylistRepository,
+        savedStateHandle: SavedStateHandle,
+        playbackController: PlaybackControllerFacade,
+        batchActionExecutor: BatchTrackActionExecutor,
+        artworkRepository: ArtworkRepository,
+        trackMetadataRepository: TrackMetadataRepository,
+        computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    ) : this(
+        mediaLibraryRepository = mediaLibraryRepository,
+        playlistRepository = playlistRepository,
+        playlistUseCase = PlaylistUseCase(playlistRepository, com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() }),
+        savedStateHandle = savedStateHandle,
+        playbackController = playbackController,
+        batchActionExecutor = batchActionExecutor,
+        artworkRepository = artworkRepository,
+        trackMetadataRepository = trackMetadataRepository,
+        computationDispatcher = computationDispatcher,
     )
 
     private val sort = MutableStateFlow(restoreSort(savedStateHandle))
@@ -356,6 +381,18 @@ class TracksViewModel internal constructor(
 
     fun addTrackToPlaylist(trackId: TrackId, playlistId: PlaylistId) {
         executeBatch(BatchTrackAction.AddToPlaylist(playlistId), listOf(trackId))
+    }
+
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            try {
+                playlistUseCase.create(name)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                // Failure handled gracefully
+            }
+        }
     }
 
     fun playSelectedNext() {

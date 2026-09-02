@@ -476,6 +476,18 @@ class PlaylistDetailViewModel internal constructor(
         isInfoLoading.value = false
     }
 
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            try {
+                useCase.create(name)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                // Failure handled gracefully
+            }
+        }
+    }
+
     fun renamePlaylist(newName: String) {
         val playlistId = selectedPlaylistId.value ?: return
         viewModelScope.launch {

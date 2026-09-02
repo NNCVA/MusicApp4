@@ -106,7 +106,7 @@ fun TrackRow(
     onAddToQueue: () -> Unit = {},
     onPlayNext: () -> Unit = {},
     onHide: () -> Unit = {},
-    onAddToPlaylist: (PlaylistId) -> Unit = {},
+    onAddToPlaylist: () -> Unit = {},
     onShowTrackInfo: () -> Unit = {},
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,

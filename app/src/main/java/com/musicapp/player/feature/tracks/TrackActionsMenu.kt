@@ -10,14 +10,14 @@ import com.musicapp.player.core.domain.model.PlaylistId
 @Composable
 fun TrackActionsMenu(
     expanded: Boolean,
-    playlists: List<Playlist>,
     onDismissRequest: () -> Unit,
     onAddToQueue: () -> Unit,
     onPlayNext: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     onShowTrackInfo: () -> Unit = {},
     onHide: () -> Unit,
-    onAddToPlaylist: (PlaylistId) -> Unit,
     modifier: Modifier = Modifier,
+    playlists: List<Playlist> = emptyList(),
 ) {
     CoreTrackActionsMenu(
         expanded = expanded,
@@ -25,9 +25,10 @@ fun TrackActionsMenu(
         onDismissRequest = onDismissRequest,
         onAddToQueue = onAddToQueue,
         onPlayNext = onPlayNext,
+        onAddToPlaylist = onAddToPlaylist,
         onShowTrackInfo = onShowTrackInfo,
         onHide = onHide,
-        onAddToPlaylist = onAddToPlaylist,
         modifier = modifier,
     )
 }
+

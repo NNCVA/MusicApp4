@@ -51,10 +51,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
+import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
+import com.musicapp.player.core.designsystem.component.TextInputDialog
 import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -159,6 +160,7 @@ fun TracksScreenRoute(
         onToggleSelectAll = viewModel::toggleSelectAll,
         onClearSelection = viewModel::exitSelection,
         onAddToPlaylist = viewModel::addSelectedToPlaylist,
+        onCreatePlaylist = viewModel::createPlaylist,
         onAddToQueue = viewModel::addSelectedToQueue,
         onPlayNext = viewModel::playSelectedNext,
         onHideSelected = viewModel::hideSelected,
@@ -201,6 +203,7 @@ fun TracksScreen(
     onToggleSelectAll: () -> Unit = onSelectAll,
     onClearSelection: () -> Unit,
     onAddToPlaylist: (PlaylistId) -> Unit,
+    onCreatePlaylist: (String) -> Unit = {},
     onAddToQueue: () -> Unit,
     onPlayNext: () -> Unit,
     onHideSelected: () -> Unit,
@@ -214,6 +217,8 @@ fun TracksScreen(
     var searchActive by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
+    var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
+    var singleTrackAddToPlaylistTarget by remember { mutableStateOf<TrackId?>(null) }
     val isSearching = searchQuery.isNotBlank()
     LaunchedEffect(state.batchResult) {
         val result = state.batchResult ?: return@LaunchedEffect
@@ -410,7 +415,10 @@ fun TracksScreen(
                     onAddToQueue = onTrackAddToQueue,
                     onPlayNext = onTrackPlayNext,
                     onHide = onTrackHide,
-                    onAddToPlaylist = onTrackAddToPlaylist,
+                    onAddToPlaylist = { trackId ->
+                        singleTrackAddToPlaylistTarget = trackId
+                        showAddToPlaylistDialog = true
+                    },
                     onShowTrackInfo = onTrackShowInfo,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
@@ -434,7 +442,10 @@ fun TracksScreen(
                 selectedCount = state.selectedTrackIds.size,
                 contentInsets = contentInsets,
                 applyBottomInset = !hasMiniPlayer,
-                onAddToPlaylistClick = { showAddToPlaylistDialog = true },
+                onAddToPlaylistClick = {
+                    singleTrackAddToPlaylistTarget = null
+                    showAddToPlaylistDialog = true
+                },
                 onAddToQueueClick = onAddToQueue,
             )
         }
@@ -448,13 +459,36 @@ fun TracksScreen(
     }
 
     if (showAddToPlaylistDialog) {
-        AddToPlaylistSelectionDialog(
+        val targetTrackId = singleTrackAddToPlaylistTarget
+        AddToPlaylistDialog(
             playlists = state.playlists,
             onSelectPlaylist = { playlistId ->
-                onAddToPlaylist(playlistId)
+                if (targetTrackId != null) {
+                    onTrackAddToPlaylist(targetTrackId, playlistId)
+                } else {
+                    onAddToPlaylist(playlistId)
+                }
                 showAddToPlaylistDialog = false
+                singleTrackAddToPlaylistTarget = null
             },
-            onDismiss = { showAddToPlaylistDialog = false },
+            onCreatePlaylist = { showCreatePlaylistDialog = true },
+            onDismiss = {
+                showAddToPlaylistDialog = false
+                singleTrackAddToPlaylistTarget = null
+            },
+        )
+    }
+
+    if (showCreatePlaylistDialog) {
+        TextInputDialog(
+            title = stringResource(R.string.playlist_create_title),
+            confirmLabel = stringResource(R.string.playlist_create),
+            placeholder = stringResource(R.string.playlist_name_label),
+            onDismiss = { showCreatePlaylistDialog = false },
+            onConfirm = { name ->
+                onCreatePlaylist(name)
+                showCreatePlaylistDialog = false
+            },
         )
     }
 
@@ -481,7 +515,7 @@ private fun TrackList(
     onAddToQueue: (TrackId) -> Unit,
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
-    onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
+    onAddToPlaylist: (TrackId) -> Unit,
     onShowTrackInfo: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
@@ -559,7 +593,7 @@ private fun LazyListScope.trackItems(
     onAddToQueue: (TrackId) -> Unit,
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
-    onAddToPlaylist: (TrackId, PlaylistId) -> Unit,
+    onAddToPlaylist: (TrackId) -> Unit,
     onShowTrackInfo: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
@@ -575,7 +609,7 @@ private fun LazyListScope.trackItems(
             onAddToQueue = { onAddToQueue(track.id) },
             onPlayNext = { onPlayNext(track.id) },
             onHide = { onHide(track.id) },
-            onAddToPlaylist = { playlistId -> onAddToPlaylist(track.id, playlistId) },
+            onAddToPlaylist = { onAddToPlaylist(track.id) },
             onShowTrackInfo = { onShowTrackInfo(track) },
             onClick = { onTrackClick(track) },
             onLongClick = { onTrackLongClick(track) },
@@ -678,72 +712,6 @@ private fun SelectionBottomBar(
             }
         }
     }
-}
-
-@Composable
-private fun AddToPlaylistSelectionDialog(
-    playlists: List<com.musicapp.player.core.domain.model.Playlist>,
-    onSelectPlaylist: (PlaylistId) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = stringResource(R.string.selection_add_to_playlist_dialog_title),
-                style = MusicTheme.typography.titleLarge,
-            )
-        },
-        text = {
-            if (playlists.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.selection_no_playlists),
-                    style = MusicTheme.typography.bodyMedium,
-                    color = MusicTheme.colors.onSurfaceVariant,
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
-                ) {
-                    items(playlists, key = { it.id.value }) { playlist ->
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(dimensions.minimumTouchTarget)
-                                    .clickable { onSelectPlaylist(playlist.id) }
-                                    .padding(horizontal = dimensions.spaceSmall),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_sidebar_playlists),
-                                contentDescription = null,
-                                tint = MusicTheme.colors.onSurfaceVariant,
-                                modifier = Modifier.size(dimensions.spaceLarge),
-                            )
-                            Spacer(modifier = Modifier.width(dimensions.spaceMedium))
-                            Text(
-                                text = playlist.displayName,
-                                style = MusicTheme.typography.bodyLarge,
-                                color = MusicTheme.colors.onSurface,
-                                modifier = Modifier.weight(1f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss, shape = MusicTheme.shapes.small) {
-                Text(stringResource(R.string.playlist_cancel))
-            }
-        },
-        shape = MusicTheme.shapes.extraLarge,
-    )
 }
 
 private fun Track.matchesSearch(query: String): Boolean {

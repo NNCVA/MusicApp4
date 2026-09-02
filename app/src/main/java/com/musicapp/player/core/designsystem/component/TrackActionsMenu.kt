@@ -14,14 +14,14 @@ import com.musicapp.player.theme.MusicAppTheme
 @Composable
 fun TrackActionsMenu(
     expanded: Boolean,
-    playlists: List<Playlist>,
     onDismissRequest: () -> Unit,
     onAddToQueue: () -> Unit,
     onPlayNext: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     onShowTrackInfo: () -> Unit = {},
     onHide: () -> Unit,
-    onAddToPlaylist: (PlaylistId) -> Unit,
     modifier: Modifier = Modifier,
+    playlists: List<Playlist> = emptyList(),
 ) {
     AppDropdownMenu(
         expanded = expanded,
@@ -43,6 +43,13 @@ fun TrackActionsMenu(
             },
         )
         AppDropdownMenuItem(
+            text = { Text(stringResource(R.string.selection_add_to_playlist)) },
+            onClick = {
+                onDismissRequest()
+                onAddToPlaylist()
+            },
+        )
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_track_info)) },
             onClick = {
                 onDismissRequest()
@@ -56,30 +63,6 @@ fun TrackActionsMenu(
                 onHide()
             },
         )
-        if (playlists.isEmpty()) {
-            AppDropdownMenuItem(
-                text = { Text(stringResource(R.string.selection_no_playlists)) },
-                onClick = {},
-                enabled = false,
-            )
-        } else {
-            playlists.forEach { playlist ->
-                AppDropdownMenuItem(
-                    text = {
-                        Text(
-                            stringResource(
-                                R.string.selection_add_to_playlist_named,
-                                playlist.displayName,
-                            ),
-                        )
-                    },
-                    onClick = {
-                        onDismissRequest()
-                        onAddToPlaylist(playlist.id)
-                    },
-                )
-            }
-        }
     }
 }
 
@@ -89,13 +72,13 @@ private fun TrackActionsMenuPreview() {
     MusicAppTheme {
         TrackActionsMenu(
             expanded = true,
-            playlists = emptyList(),
             onDismissRequest = {},
             onAddToQueue = {},
             onPlayNext = {},
+            onAddToPlaylist = {},
             onShowTrackInfo = {},
             onHide = {},
-            onAddToPlaylist = {},
         )
     }
 }
+

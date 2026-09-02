@@ -28,13 +28,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
+import com.musicapp.player.core.designsystem.component.TextInputDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -101,6 +104,7 @@ fun HistoryScreenRoute(
         onAddToPlaylist = { playlistId ->
             viewModel.executeSelected(BatchTrackAction.AddToPlaylist(playlistId))
         },
+        onCreatePlaylist = viewModel::createPlaylist,
         onRequestClearHistory = viewModel::requestClearHistory,
         onCancelClearHistory = viewModel::cancelClearHistory,
         onConfirmClearHistory = viewModel::confirmClearHistory,
@@ -124,6 +128,7 @@ private fun HistoryScreen(
     onPlayNext: () -> Unit,
     onHide: () -> Unit,
     onAddToPlaylist: (PlaylistId) -> Unit,
+    onCreatePlaylist: (String) -> Unit = {},
     onRequestClearHistory: () -> Unit,
     onCancelClearHistory: () -> Unit,
     onConfirmClearHistory: () -> Unit,
@@ -134,6 +139,8 @@ private fun HistoryScreen(
     val dimensions = MusicTheme.dimensions
     val listState = rememberLazyListState()
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
+    var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
+    var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.batchResult) {
         val result = state.batchResult ?: return@LaunchedEffect
         when (result) {
@@ -174,12 +181,11 @@ private fun HistoryScreen(
                     HistorySelectionActions(
                         actionsEnabled =
                             state.selectedTrackIdsInVisibleOrder.isNotEmpty() && !state.isBatchActionRunning,
-                        playlists = state.playlists,
                         onSelectAll = onSelectAll,
                         onAddToQueue = onAddToQueue,
                         onPlayNext = onPlayNext,
+                        onAddToPlaylist = { showAddToPlaylistDialog = true },
                         onHide = onHide,
-                        onAddToPlaylist = onAddToPlaylist,
                         onClearSelection = onClearSelection,
                     )
                 } else {
@@ -259,17 +265,41 @@ private fun HistoryScreen(
             isDestructive = true,
         )
     }
+
+    if (showAddToPlaylistDialog) {
+        AddToPlaylistDialog(
+            playlists = state.playlists,
+            onSelectPlaylist = { playlistId ->
+                onAddToPlaylist(playlistId)
+                showAddToPlaylistDialog = false
+            },
+            onCreatePlaylist = { showCreatePlaylistDialog = true },
+            onDismiss = { showAddToPlaylistDialog = false },
+        )
+    }
+
+    if (showCreatePlaylistDialog) {
+        TextInputDialog(
+            title = stringResource(R.string.playlist_create_title),
+            confirmLabel = stringResource(R.string.playlist_create),
+            placeholder = stringResource(R.string.playlist_name_label),
+            onDismiss = { showCreatePlaylistDialog = false },
+            onConfirm = { name ->
+                onCreatePlaylist(name)
+                showCreatePlaylistDialog = false
+            },
+        )
+    }
 }
 
 @Composable
 private fun HistorySelectionActions(
     actionsEnabled: Boolean,
-    playlists: List<Playlist>,
     onSelectAll: () -> Unit,
     onAddToQueue: () -> Unit,
     onPlayNext: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     onHide: () -> Unit,
-    onAddToPlaylist: (PlaylistId) -> Unit,
     onClearSelection: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -293,35 +323,15 @@ private fun HistorySelectionActions(
                 onClick = { menuExpanded = false; onPlayNext() },
             )
             AppDropdownMenuItem(
+                text = { Text(stringResource(R.string.selection_add_to_playlist)) },
+                enabled = actionsEnabled,
+                onClick = { menuExpanded = false; onAddToPlaylist() },
+            )
+            AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_hide)) },
                 enabled = actionsEnabled,
                 onClick = { menuExpanded = false; onHide() },
             )
-            if (playlists.isEmpty()) {
-                AppDropdownMenuItem(
-                    text = { Text(stringResource(R.string.selection_no_playlists)) },
-                    onClick = {},
-                    enabled = false,
-                )
-            } else {
-                playlists.forEach { playlist ->
-                    AppDropdownMenuItem(
-                        text = {
-                            Text(
-                                stringResource(
-                                    R.string.selection_add_to_playlist_named,
-                                    playlist.displayName,
-                                ),
-                            )
-                        },
-                        enabled = actionsEnabled,
-                        onClick = {
-                            menuExpanded = false
-                            onAddToPlaylist(playlist.id)
-                        },
-                    )
-                }
-            }
         }
     }
     TextButton(onClick = onClearSelection) { Text(stringResource(R.string.selection_close)) }
