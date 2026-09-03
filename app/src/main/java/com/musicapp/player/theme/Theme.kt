@@ -43,6 +43,11 @@ object MusicTheme {
         @ReadOnlyComposable
         get() = LocalMusicTypography.current
 
+    val accentPalette: AppAccentPalette
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalAppAccentPalette.current
+
     /** Container color for persistent page cards that intentionally reveal the active Aero background. */
     val aeroCardContainerColor: Color
         @Composable
@@ -92,6 +97,7 @@ fun MusicAppTheme(
         LocalMusicDimensions provides dimensions,
         LocalMusicShapes provides shapes,
         LocalMusicTypography provides typography,
+        LocalAppAccentPalette provides DefaultAppAccentPalette,
     ) {
         MaterialTheme(
             colorScheme = baseColorScheme,

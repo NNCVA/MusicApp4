@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -68,8 +69,8 @@ fun MessageBubbleHost(
     it?.let { bubble ->
       Surface(
         shape = MusicTheme.shapes.pill,
-        color = Color.White,
-        contentColor = Color.Black,
+        color = MaterialTheme.colorScheme.inverseSurface,
+        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
         shadowElevation = dimensions.messageBubbleElevation,
       ) {
         Column(

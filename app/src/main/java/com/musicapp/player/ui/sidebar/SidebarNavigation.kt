@@ -49,6 +49,7 @@ import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.navigation.TopLevelNavKey
+import com.musicapp.player.theme.MusicAlpha
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 import kotlinx.coroutines.launch
@@ -65,6 +66,7 @@ internal fun SidebarNavigation(
     onEqualizer: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
+    val accent = MusicTheme.accentPalette
     val outerPadding =
         if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
             dimensions.spaceSmall
@@ -96,7 +98,7 @@ internal fun SidebarNavigation(
                 SidebarQuickAction(
                     iconResId = R.drawable.ic_sidebar_exit,
                     label = stringResource(R.string.sidebar_exit),
-                    tint = SidebarIconPalette.Exit,
+                    tint = accent.exit,
                     onClick = onRequestExit,
                 )
                 SidebarQuickAction(
@@ -109,14 +111,14 @@ internal fun SidebarNavigation(
                                 ThemeMode.DARK -> R.string.sidebar_theme_dark
                             },
                         ),
-                    tint = SidebarIconPalette.Theme,
+                    tint = accent.theme,
                     onClick = onCycleTheme,
                     rotateOnClick = true,
                 )
                 SidebarQuickAction(
                     iconResId = R.drawable.ic_sidebar_equalizer,
                     label = stringResource(R.string.sidebar_equalizer),
-                    tint = SidebarIconPalette.Equalizer,
+                    tint = accent.equalizer,
                     onClick = onEqualizer,
                 )
             }
@@ -128,7 +130,7 @@ internal fun SidebarNavigation(
                     selected = entry.route == selectedRoute,
                     isFirst = index == 0,
                     isLast = index == SidebarGroups.mediaBrowse.lastIndex,
-                    tint = SidebarIconPalette.media[index],
+                    tint = accent.mediaIconColors[index],
                     onClick = { onSelect(entry.route) },
                 )
             }
@@ -140,7 +142,7 @@ internal fun SidebarNavigation(
                     selected = entry.route == selectedRoute,
                     isFirst = index == 0,
                     isLast = index == SidebarGroups.appOperations.lastIndex,
-                    tint = SidebarIconPalette.operations[index],
+                    tint = accent.operationIconColors[index],
                     onClick = { onSelect(entry.route) },
                 )
             }
@@ -257,7 +259,7 @@ private fun SidebarEntryRow(
         Icon(
             painter = painterResource(entry.iconResId),
             contentDescription = null,
-            tint = if (enabled) tint else MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.38f),
+            tint = if (enabled) tint else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
             modifier = Modifier.size(dimensions.spaceLarge),
         )
         Spacer(modifier = Modifier.width(dimensions.spaceSmall))
@@ -266,28 +268,8 @@ private fun SidebarEntryRow(
             style = MusicTheme.typography.bodyLarge,
             color =
                 if (enabled) MusicTheme.colors.onSurface
-                else MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.38f),
+                else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
         )
     }
 }
 
-private object SidebarIconPalette {
-    val Exit = Color(0xFFE25555)
-    val Theme = Color(0xFFF2A93B)
-    val Equalizer = Color(0xFF9B6BE8)
-    val media =
-        listOf(
-            Color(0xFF4E8EE8),
-            Color(0xFF9B6BE8),
-            Color(0xFFE45F91),
-            Color(0xFFF2A93B),
-            Color(0xFF31A985),
-        )
-    val operations =
-        listOf(
-            Color(0xFF33A6B8),
-            Color(0xFF6D7FE8),
-            Color(0xFF7D8795),
-            Color(0xFF4E8EE8),
-        )
-}

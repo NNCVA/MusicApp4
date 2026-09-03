@@ -71,7 +71,7 @@ fun AddToPlaylistDialog(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 300.dp),
+                        .heightIn(max = MusicTheme.dimensions.dialogListMaxHeight),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmallMedium),
             ) {
                 items(playlists, key = { it.id.value }) { playlist ->

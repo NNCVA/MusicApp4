@@ -47,6 +47,8 @@ data class MusicTypography(val material: Typography = MaterialTypography) {
     val compactTrackArtist: TextStyle get() = material.bodySmall.copy(fontSize = 12.sp, lineHeight = 16.sp)
     val expandedTrackTitle: TextStyle get() = material.titleMedium.copy(fontSize = 18.sp, lineHeight = 22.sp)
     val expandedTrackArtist: TextStyle get() = material.bodyMedium.copy(fontSize = 14.sp, lineHeight = 18.sp)
+    /** 极小标签，用于索引栏字母等超紧凑场景（9sp / 11sp）。 */
+    val labelMicro: TextStyle get() = material.labelSmall.copy(fontSize = 9.sp, lineHeight = 11.sp)
 }
 
 internal val DefaultMusicTypography = MusicTypography()

@@ -99,6 +99,7 @@ import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryNavigationIconButton
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
+import com.musicapp.player.theme.MusicAlpha
 import com.musicapp.player.theme.MusicTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -331,7 +332,7 @@ fun PlaylistDetailScreen(
                                     stringResource(R.string.playlist_detail_title)
                                 },
                                 style = MusicTheme.typography.titleLarge,
-                                color = if (collapsed) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.7f),
+                                color = if (collapsed) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Hint),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -748,7 +749,7 @@ private fun PlaylistHeroHeader(
                 Text(
                     text = stringResource(R.string.playlist_created_at, createdAtDate),
                     style = MusicTheme.typography.labelMedium,
-                    color = MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Hint),
                     maxLines = 1,
                 )
             }
@@ -899,7 +900,7 @@ private fun PlaylistSelectionBottomBar(
     val dimensions = MusicTheme.dimensions
     val isEnabled = selectedCount > 0
     val contentColor =
-        if (isEnabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = 0.38f)
+        if (isEnabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = MusicAlpha.Disabled)
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -914,7 +915,7 @@ private fun PlaylistSelectionBottomBar(
             },
         ) {
             HorizontalDivider(
-                color = MusicTheme.colors.outlineVariant.copy(alpha = 0.5f),
+                color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
                 thickness = 1.dp,
             )
             Row(
@@ -950,7 +951,7 @@ private fun PlaylistSelectionBottomBar(
                     modifier = Modifier
                         .height(dimensions.spaceLarge)
                         .width(1.dp),
-                    color = MusicTheme.colors.outlineVariant.copy(alpha = 0.5f),
+                    color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
                 )
 
                 // 2. Add to other playlist
@@ -980,7 +981,7 @@ private fun PlaylistSelectionBottomBar(
                     modifier = Modifier
                         .height(dimensions.spaceLarge)
                         .width(1.dp),
-                    color = MusicTheme.colors.outlineVariant.copy(alpha = 0.5f),
+                    color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
                 )
 
                 // 3. Add to queue

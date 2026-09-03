@@ -104,6 +104,7 @@ import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryNavigationIconButton
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
+import com.musicapp.player.theme.MusicAlpha
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
@@ -630,7 +631,7 @@ private fun SelectionBottomBar(
     val dimensions = MusicTheme.dimensions
     val isEnabled = selectedCount > 0
     val contentColor =
-        if (isEnabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = 0.38f)
+        if (isEnabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = MusicAlpha.Disabled)
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -646,7 +647,7 @@ private fun SelectionBottomBar(
                 },
         ) {
             HorizontalDivider(
-                color = MusicTheme.colors.outlineVariant.copy(alpha = 0.5f),
+                color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
                 thickness = 1.dp,
             )
             Row(
@@ -684,7 +685,7 @@ private fun SelectionBottomBar(
                         Modifier
                             .height(dimensions.spaceLarge)
                             .width(1.dp),
-                    color = MusicTheme.colors.outlineVariant.copy(alpha = 0.5f),
+                    color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
                 )
 
                 Row(

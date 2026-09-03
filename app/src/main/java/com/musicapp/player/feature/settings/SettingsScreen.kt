@@ -64,6 +64,7 @@ import com.musicapp.player.data.sync.LibrarySyncState
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import androidx.compose.foundation.isSystemInDarkTheme
+import com.musicapp.player.theme.MusicAlpha
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.previewColor
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
@@ -347,7 +348,7 @@ internal fun <T> ChoiceCardGrid(
     Text(
         text = title,
         style = MusicTheme.typography.titleMedium,
-        color = if (enabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = 0.38f),
+        color = if (enabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = MusicAlpha.Disabled),
     )
     val rows = values.chunked(columns)
     Column(
@@ -394,21 +395,21 @@ private fun ChoiceCard(
     val accent = accentColor ?: MusicTheme.colors.primary
 
     val containerColor = when {
-        !enabled -> if (selected) accent.copy(alpha = 0.04f) else Color.Transparent
-        selected -> accent.copy(alpha = 0.08f)
+        !enabled -> if (selected) accent.copy(alpha = MusicAlpha.Pressed) else Color.Transparent
+        selected -> accent.copy(alpha = MusicAlpha.Selected)
         else -> Color.Transparent
     }
     val borderColor = when {
-        !enabled -> if (selected) accent.copy(alpha = 0.38f) else MusicTheme.colors.outlineVariant.copy(alpha = 0.38f)
+        !enabled -> if (selected) accent.copy(alpha = MusicAlpha.Disabled) else MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Disabled)
         selected -> accent
         else -> MusicTheme.colors.outlineVariant
     }
-    val contentColor = if (enabled) accent else accent.copy(alpha = 0.38f)
-    val labelColor = if (enabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = 0.38f)
+    val contentColor = if (enabled) accent else accent.copy(alpha = MusicAlpha.Disabled)
+    val labelColor = if (enabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = MusicAlpha.Disabled)
 
     Surface(
         modifier = modifier
-            .heightIn(min = 84.dp)
+            .heightIn(min = MusicTheme.dimensions.settingsOptionMinHeight)
             .selectable(
                 selected = selected,
                 enabled = enabled,
@@ -435,7 +436,7 @@ private fun ChoiceCard(
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(MusicTheme.dimensions.settingsOptionIconSize),
                 tint = contentColor,
             )
             Spacer(modifier = Modifier.height(dimensions.spaceSmallMedium))

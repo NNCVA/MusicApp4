@@ -1,6 +1,5 @@
 package com.musicapp.player.core.designsystem.component
 
-import androidx.compose.ui.graphics.Color
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
@@ -124,30 +123,34 @@ class TrackQualityTest {
         assertNull(nullMimeAndExtension.resolveQuality())
     }
 
+    /**
+     * QualityBadge 颜色现由 MaterialTheme.colorScheme 提供（@Composable），
+     * 此处改为验证 resolveQuality() 返回正确的枚举值，
+     * 徽章颜色的主题适配性已由 [QualityBadge] Composable 自身的快照测试覆盖。
+     */
     @Test
-    fun goldSilverBronzeColorSchemesResolution() {
-        // HR (Gold)
-        val goldLight = qualityBadgeColors(TrackQuality.HI_RES, darkTheme = false)
-        val goldDark = qualityBadgeColors(TrackQuality.HI_RES, darkTheme = true)
-        assertEquals(Color(0xFFFFF0C2), goldLight.containerColor)
-        assertEquals(Color(0xFF745B00), goldLight.contentColor)
-        assertEquals(Color(0xFF534100), goldDark.containerColor)
-        assertEquals(Color(0xFFFFDF9E), goldDark.contentColor)
+    fun qualityResolvedToCorrectTier() {
+        val hiRes = createTrack(
+            displayName = "master.flac",
+            mimeType = "audio/flac",
+            durationMs = 180_000L,
+            sizeBytes = 56_250_000L,
+        )
+        val high = createTrack(
+            displayName = "album_track.flac",
+            mimeType = "audio/flac",
+            durationMs = 180_000L,
+            sizeBytes = 19_125_000L,
+        )
+        val standard = createTrack(
+            displayName = "song_128k.mp3",
+            mimeType = "audio/mpeg",
+            durationMs = 180_000L,
+            sizeBytes = 2_880_000L,
+        )
 
-        // HQ (Silver)
-        val silverLight = qualityBadgeColors(TrackQuality.HIGH, darkTheme = false)
-        val silverDark = qualityBadgeColors(TrackQuality.HIGH, darkTheme = true)
-        assertEquals(Color(0xFFE2E2E6), silverLight.containerColor)
-        assertEquals(Color(0xFF44474E), silverLight.contentColor)
-        assertEquals(Color(0xFF43474E), silverDark.containerColor)
-        assertEquals(Color(0xFFE1E2E8), silverDark.contentColor)
-
-        // SQ (Bronze)
-        val bronzeLight = qualityBadgeColors(TrackQuality.STANDARD, darkTheme = false)
-        val bronzeDark = qualityBadgeColors(TrackQuality.STANDARD, darkTheme = true)
-        assertEquals(Color(0xFFFFDBCF), bronzeLight.containerColor)
-        assertEquals(Color(0xFF814D3C), bronzeLight.contentColor)
-        assertEquals(Color(0xFF563428), bronzeDark.containerColor)
-        assertEquals(Color(0xFFFFB59D), bronzeDark.contentColor)
+        assertEquals(TrackQuality.HI_RES,  hiRes.resolveQuality())
+        assertEquals(TrackQuality.HIGH,    high.resolveQuality())
+        assertEquals(TrackQuality.STANDARD, standard.resolveQuality())
     }
 }

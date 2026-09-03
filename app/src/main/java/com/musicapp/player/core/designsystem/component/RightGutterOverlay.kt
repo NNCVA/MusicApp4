@@ -259,10 +259,7 @@ private fun IndexOverlay(
                     val isCurrent = (label == currentHighlight)
                     Text(
                         text = label,
-                        style = MusicTheme.typography.labelSmall.copy(
-                            fontSize = 9.sp,
-                            lineHeight = 11.sp,
-                        ),
+                        style = MusicTheme.typography.labelMicro,
                         color = if (isCurrent) {
                             MusicTheme.colors.primary
                         } else {
@@ -289,7 +286,7 @@ private fun IndexOverlay(
                 .align(Alignment.TopEnd)
                 .offset {
                     IntOffset(
-                        x = -with(density) { (dimensions.sectionIndexTouchTargetWidth + 16.dp).roundToPx() },
+                        x = -with(density) { (dimensions.sectionIndexTouchTargetWidth + dimensions.sectionIndexBubbleOffsetExtra).roundToPx() },
                         y = clampedBubbleY,
                     )
                 },
@@ -297,7 +294,7 @@ private fun IndexOverlay(
             Box(
                 modifier = Modifier
                     .size(dimensions.sectionIndexBubbleSize)
-                    .shadow(elevation = 8.dp, shape = CircleShape)
+                    .shadow(elevation = dimensions.sectionIndexBubbleShadowElevation, shape = CircleShape)
                     .background(
                         color = MusicTheme.colors.primary,
                         shape = CircleShape,

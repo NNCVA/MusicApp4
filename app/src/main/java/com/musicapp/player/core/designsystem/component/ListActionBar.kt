@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.musicapp.player.R
+import com.musicapp.player.theme.MusicAlpha
 import com.musicapp.player.theme.MusicTheme
 
 /**
@@ -138,7 +139,7 @@ fun ListActionBar(
                             tint = if (hasPlayableItems) {
                                 MusicTheme.colors.onSurface
                             } else {
-                                MusicTheme.colors.onSurface.copy(alpha = 0.38f)
+                                MusicTheme.colors.onSurface.copy(alpha = MusicAlpha.Disabled)
                             },
                             modifier = Modifier.size(dimensions.spaceLarge),
                         )

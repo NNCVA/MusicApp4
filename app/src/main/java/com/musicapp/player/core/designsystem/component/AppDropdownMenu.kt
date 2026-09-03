@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import com.musicapp.player.theme.MusicAlpha
 import com.musicapp.player.theme.MusicTheme
 
 /**
@@ -90,7 +91,7 @@ fun AppDropdownMenu(
                 border = border,
                 modifier =
                     modifier
-                        .widthIn(min = 128.dp, max = 280.dp)
+                        .widthIn(min = MusicTheme.dimensions.dropdownMenuMinWidth, max = MusicTheme.dimensions.dropdownMenuMaxWidth)
                         .width(IntrinsicSize.Max)
                         .clip(shape),
             ) {
@@ -109,16 +110,25 @@ fun AppDropdownMenu(
 
 /**
  * 菜单项语义图标调色板。
- * 参考侧边栏多样化配色，提供鲜明统一的操作语义着色。
+ *
+ * 颜色值统一由 [com.musicapp.player.theme.AppAccentPalette] 管理，
+ * 此对象通过 Composable 属性转发，保持调用方兼容性。
  */
 object MenuIconPalette {
-    val Play = Color(0xFF4E8EE8)
-    val Add = Color(0xFF31A985)
-    val Rename = Color(0xFFF2A93B)
-    val Info = Color(0xFF33A6B8)
-    val SelectAll = Color(0xFF6D7FE8)
-    val Hide = Color(0xFFF2A93B)
-    val Delete = Color(0xFFE25555)
+    val Play: androidx.compose.ui.graphics.Color
+        @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.play
+    val Add: androidx.compose.ui.graphics.Color
+        @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.add
+    val Rename: androidx.compose.ui.graphics.Color
+        @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.rename
+    val Info: androidx.compose.ui.graphics.Color
+        @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.info
+    val SelectAll: androidx.compose.ui.graphics.Color
+        @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.selectAll
+    val Hide: androidx.compose.ui.graphics.Color
+        @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.hide
+    val Delete: androidx.compose.ui.graphics.Color
+        @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.delete
 }
 
 /**
@@ -139,13 +149,13 @@ fun AppDropdownMenuItem(
     val dimensions = MusicTheme.dimensions
     val contentColor =
         when {
-            !enabled -> MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.38f)
+            !enabled -> MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled)
             isDestructive -> MusicTheme.colors.error
             else -> MusicTheme.colors.onSurface
         }
     val iconColor =
         when {
-            !enabled -> MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.38f)
+            !enabled -> MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled)
             isDestructive -> MusicTheme.colors.error
             iconTint != null -> iconTint
             else -> MusicTheme.colors.onSurfaceVariant
@@ -210,7 +220,7 @@ fun AppDropdownMenuItem(
 @Composable
 fun AppDropdownMenuDivider(
     modifier: Modifier = Modifier,
-    color: Color = MusicTheme.colors.outlineVariant.copy(alpha = 0.5f),
+    color: Color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
     thickness: Dp = 1.dp,
 ) {
     HorizontalDivider(

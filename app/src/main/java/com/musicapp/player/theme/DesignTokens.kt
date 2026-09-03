@@ -62,6 +62,12 @@ data class MusicDimensions(
     val spaceExtraLarge: Dp = 32.dp,
     val topBarHorizontalPadding: Dp = 16.dp,
     val topBarNavigationVisualStartPadding: Dp = 31.dp,
+    val dropdownMenuMinWidth: Dp = 128.dp,
+    val dropdownMenuMaxWidth: Dp = 280.dp,
+    val settingsOptionMinHeight: Dp = 84.dp,
+    val settingsOptionIconSize: Dp = 28.dp,
+    val sectionIndexBubbleShadowElevation: Dp = 8.dp,
+    val sectionIndexBubbleOffsetExtra: Dp = 16.dp,
     val contentHorizontalPadding: Dp,
 ) {
     companion object {
@@ -118,3 +124,21 @@ data class MusicShapes(
 }
 
 internal val DefaultMusicShapes = MusicShapes()
+
+/**
+ * 应用统一 alpha 常量。
+ *
+ * 使用这些常量替代各处散落的 alpha 字面量，确保 disabled/hint/divider 等状态视觉一致。
+ */
+object MusicAlpha {
+    /** Material 3 规范 disabled 状态透明度 */
+    const val Disabled = 0.38f
+    /** hint / placeholder 文字透明度 */
+    const val Hint = 0.70f
+    /** 分隔线透明度 */
+    const val Divider = 0.50f
+    /** 按压态容器背景透明度 */
+    const val Pressed = 0.04f
+    /** 选中态容器背景透明度 */
+    const val Selected = 0.08f
+}

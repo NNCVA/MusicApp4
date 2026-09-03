@@ -43,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.musicapp.player.R
 import com.musicapp.player.theme.MusicAppTheme
+import com.musicapp.player.theme.MusicAlpha
 import com.musicapp.player.theme.MusicTheme
 import kotlinx.coroutines.delay
 
@@ -167,7 +168,7 @@ fun TextInputDialog(
                                         Text(
                                             text = placeholder,
                                             style = MusicTheme.typography.bodyLarge,
-                                            color = MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.7f),
+                                            color = MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Hint),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )

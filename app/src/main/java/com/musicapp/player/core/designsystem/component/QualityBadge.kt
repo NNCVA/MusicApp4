@@ -1,7 +1,6 @@
 package com.musicapp.player.core.designsystem.component
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,45 +35,27 @@ data class QualityBadgeColors(
 /**
  * Resolves the gold (HR), silver (HQ), or bronze (SQ) badge colors for the given quality tier.
  */
-fun qualityBadgeColors(quality: TrackQuality, darkTheme: Boolean): QualityBadgeColors =
-    when (quality) {
+@Composable
+fun qualityBadgeColors(quality: TrackQuality): QualityBadgeColors {
+    val colors = MusicTheme.colors
+    return when (quality) {
         TrackQuality.HI_RES ->
-            if (darkTheme) {
-                QualityBadgeColors(
-                    containerColor = Color(0xFF534100),
-                    contentColor = Color(0xFFFFDF9E),
-                )
-            } else {
-                QualityBadgeColors(
-                    containerColor = Color(0xFFFFF0C2),
-                    contentColor = Color(0xFF745B00),
-                )
-            }
+            QualityBadgeColors(
+                containerColor = colors.tertiaryContainer,
+                contentColor = colors.onTertiaryContainer,
+            )
         TrackQuality.HIGH ->
-            if (darkTheme) {
-                QualityBadgeColors(
-                    containerColor = Color(0xFF43474E),
-                    contentColor = Color(0xFFE1E2E8),
-                )
-            } else {
-                QualityBadgeColors(
-                    containerColor = Color(0xFFE2E2E6),
-                    contentColor = Color(0xFF44474E),
-                )
-            }
+            QualityBadgeColors(
+                containerColor = colors.surfaceVariant,
+                contentColor = colors.onSurfaceVariant,
+            )
         TrackQuality.STANDARD ->
-            if (darkTheme) {
-                QualityBadgeColors(
-                    containerColor = Color(0xFF563428),
-                    contentColor = Color(0xFFFFB59D),
-                )
-            } else {
-                QualityBadgeColors(
-                    containerColor = Color(0xFFFFDBCF),
-                    contentColor = Color(0xFF814D3C),
-                )
-            }
+            QualityBadgeColors(
+                containerColor = colors.secondaryContainer,
+                contentColor = colors.onSecondaryContainer,
+            )
     }
+}
 
 /**
  * Resolves the quality badge tier from the track's MIME type, display name, and estimated bitrate.
@@ -137,8 +118,7 @@ fun QualityBadge(
     quality: TrackQuality,
     modifier: Modifier = Modifier,
 ) {
-    val isDark = isSystemInDarkTheme()
-    val badgeColors = qualityBadgeColors(quality, isDark)
+    val badgeColors = qualityBadgeColors(quality)
     Surface(
         color = badgeColors.containerColor,
         shape = MusicTheme.shapes.extraSmall,
