@@ -7,6 +7,8 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,12 +18,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
@@ -181,11 +185,23 @@ private fun ScanMusicScreen(
                 navigationAction = CategoryNavigationAction.BACK,
                 onNavigationClick = onBack,
             )
-            if (state.isScanning) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
-                )
+            val scanningProgressAlpha by animateFloatAsState(
+                targetValue = if (state.isScanning) 1f else 0f,
+                label = "scan-progress-alpha",
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(dimensions.spaceExtraSmall)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
+            ) {
+                if (scanningProgressAlpha > 0f) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = scanningProgressAlpha },
+                        trackColor = Color.Transparent,
+                        color = MusicTheme.colors.primary,
+                    )
+                }
             }
             LazyColumn(
                 state = listState,
@@ -194,14 +210,14 @@ private fun ScanMusicScreen(
                 contentPadding = PaddingValues(
                     start = dimensions.contentHorizontalPadding,
                     end = dimensions.contentHorizontalPadding,
-                    top = dimensions.spaceSmall,
+                    top = dimensions.spaceSmallMedium,
                     bottom = dimensions.spaceSmall + bottomPadding,
                 ),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
             ) {
                 item {
                     ScanActionCard(
-                        enabled = state.canScan && !state.isScanning,
+                        enabled = state.canScan,
                         onClick = onStartScan,
                     )
                 }
@@ -273,7 +289,11 @@ private fun ScanActionCard(enabled: Boolean, onClick: () -> Unit) {
         enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MusicTheme.aeroCardContainerColor,
+                disabledContainerColor = MusicTheme.aeroCardContainerColor,
+            ),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)

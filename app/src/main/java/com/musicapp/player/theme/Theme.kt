@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -74,12 +75,14 @@ fun MusicAppTheme(
             presetTheme = presetTheme,
             supportsDynamicColor = supportsDynamicColor,
         )
+    val context = LocalContext.current
     val baseColorScheme =
-        if (colorSource == ColorSource.DYNAMIC && supportsDynamicColor) {
-            val context = LocalContext.current
-            if (useDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        } else {
-            presetColorScheme(checkNotNull(resolvedPreset), useDarkTheme)
+        remember(colorSource, resolvedPreset, useDarkTheme, supportsDynamicColor) {
+            if (colorSource == ColorSource.DYNAMIC && supportsDynamicColor) {
+                if (useDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            } else {
+                presetColorScheme(checkNotNull(resolvedPreset), useDarkTheme)
+            }
         }
     val dimensions = MusicDimensions.forTier(windowWidthTier)
     val shapes = DefaultMusicShapes

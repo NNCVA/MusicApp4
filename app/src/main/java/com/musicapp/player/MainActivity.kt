@@ -15,6 +15,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import com.musicapp.player.core.aero.platform.AeroSignalSource
 import com.musicapp.player.core.domain.model.AppLanguage
 import com.musicapp.player.feature.permission.AndroidPermissionGateway
@@ -79,7 +82,9 @@ class MainActivity : AppCompatActivity() {
     setContent {
       val permissionState by mediaPermissionCoordinator.state.collectAsStateWithLifecycle()
       val appSettings by settingsRepository.settings.collectAsStateWithLifecycle()
-      val librarySyncState by tracksSyncController.state.collectAsStateWithLifecycle()
+      val pendingSyncFeedback by remember {
+        tracksSyncController.state.map { it.pendingFeedback }.distinctUntilChanged()
+      }.collectAsStateWithLifecycle(null)
       val aeroSignals by aeroSignalSource.signals.collectAsStateWithLifecycle()
       LaunchedEffect(appSettings.appLanguage) {
         applyAppLanguage(appSettings.appLanguage)
@@ -97,7 +102,7 @@ class MainActivity : AppCompatActivity() {
             aeroMode = appSettings.aeroMode,
             aeroSignals = aeroSignals,
             themeMode = appSettings.themeMode,
-            librarySyncState = librarySyncState,
+            pendingFeedback = pendingSyncFeedback,
             onFullExit = ::fullyExitApplication,
             onReturnToDesktop = { moveTaskToBack(true) },
             onThemeModeChange = { mode ->

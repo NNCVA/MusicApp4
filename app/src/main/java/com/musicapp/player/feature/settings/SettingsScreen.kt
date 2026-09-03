@@ -1,5 +1,7 @@
 package com.musicapp.player.feature.settings
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -137,11 +139,23 @@ private fun SettingsScreen(
                 navigationAction = CategoryNavigationAction.BACK,
                 onNavigationClick = onBack,
             )
-            if (state.isWorking || state.syncState is LibrarySyncState.Syncing) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
-                )
+            val workingProgressAlpha by animateFloatAsState(
+                targetValue = if (state.isWorking || state.syncState is LibrarySyncState.Syncing) 1f else 0f,
+                label = "settings-progress-alpha",
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(dimensions.spaceExtraSmall)
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
+            ) {
+                if (workingProgressAlpha > 0f) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = workingProgressAlpha },
+                        trackColor = Color.Transparent,
+                        color = MusicTheme.colors.primary,
+                    )
+                }
             }
             LazyColumn(
                 state = listState,
@@ -149,7 +163,7 @@ private fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth().weight(1f)
                     .padding(horizontal = dimensions.contentHorizontalPadding),
                 contentPadding = PaddingValues(
-                    top = dimensions.spaceSmall,
+                    top = dimensions.spaceSmallMedium,
                     bottom = dimensions.spaceSmall + bottomPadding,
                 ),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),

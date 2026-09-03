@@ -66,7 +66,7 @@ import com.musicapp.player.core.designsystem.snackbar.MessageBubbleHost
 import com.musicapp.player.core.designsystem.snackbar.MessageBubbleQueue
 import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.ThemeMode
-import com.musicapp.player.data.sync.LibrarySyncState
+import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
 import com.musicapp.player.feature.about.AboutScreenRoute
 import com.musicapp.player.feature.about.AboutViewModel
 import com.musicapp.player.feature.aero.AeroBackground
@@ -116,7 +116,7 @@ fun MainNavigation(
     aeroMode: AeroMode,
     aeroSignals: AeroRuntimeSignals,
     themeMode: ThemeMode,
-    librarySyncState: LibrarySyncState,
+    pendingFeedback: PendingLibrarySyncFeedback? = null,
     onFullExit: () -> Unit,
     onReturnToDesktop: () -> Unit,
     onThemeModeChange: suspend (ThemeMode) -> Boolean,
@@ -459,7 +459,7 @@ fun MainNavigation(
                     ),
         )
     }
-    librarySyncState.pendingFeedback?.let { feedback ->
+    pendingFeedback?.let { feedback ->
         LibrarySyncFeedbackDialog(
             feedback = feedback,
             onAcknowledge = onAcknowledgeSyncFeedback,
