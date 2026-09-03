@@ -148,6 +148,71 @@ class FolderDetailViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `subfolders are always sorted by name in ascending order`() = runTest(dispatcher) {
+        val tracks = listOf(
+            track(1, title = "Z", artist = "A", dateAddedMs = 1, durationMs = 1_000).copy(relativePath = "Root/Zeta"),
+            track(2, title = "A", artist = "A", dateAddedMs = 2, durationMs = 1_000).copy(relativePath = "Root/Alpha"),
+            track(3, title = "M", artist = "A", dateAddedMs = 3, durationMs = 1_000).copy(relativePath = "Root/Beta"),
+        )
+        val viewModel = FolderDetailViewModel(
+            mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
+            playbackController = NoOpPlaybackController(),
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Root"))
+        advanceUntilIdle()
+
+        assertEquals(listOf("Alpha", "Beta", "Zeta"), viewModel.uiState.value.childFolders.map { it.displayName })
+        collection.cancel()
+    }
+
+    @Test
+    fun `single track actions delegate to playback controller`() = runTest(dispatcher) {
+        val targetTrack = track(10, title = "Single", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
+        val controller = RecordingDetailPlaybackController()
+        val viewModel = FolderDetailViewModel(
+            mediaLibraryRepository = FakeMediaLibraryRepository(listOf(targetTrack)),
+            playbackController = controller,
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Music"))
+        advanceUntilIdle()
+
+        viewModel.playTrackNext(targetTrack.id)
+        assertEquals(listOf(targetTrack.id), controller.nextTracks)
+
+        viewModel.addTrackToQueue(targetTrack.id)
+        assertEquals(listOf(targetTrack.id), controller.enqueuedTracks)
+        collection.cancel()
+    }
+
+    @Test
+    fun `showTrackInfo and dismissTrackInfo update metadata state`() = runTest(dispatcher) {
+        val targetTrack = track(10, title = "Single", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
+        val viewModel = FolderDetailViewModel(
+            mediaLibraryRepository = FakeMediaLibraryRepository(listOf(targetTrack)),
+            playbackController = NoOpPlaybackController(),
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Music"))
+        advanceUntilIdle()
+
+        viewModel.showTrackInfo(targetTrack)
+        advanceUntilIdle()
+
+        assertEquals(targetTrack, viewModel.uiState.value.infoTrack)
+        assertFalse(viewModel.uiState.value.isInfoLoading)
+        assertEquals("FLAC", viewModel.uiState.value.infoMetadata?.encoding)
+
+        viewModel.dismissTrackInfo()
+        advanceUntilIdle()
+
+        org.junit.Assert.assertNull(viewModel.uiState.value.infoTrack)
+        org.junit.Assert.assertNull(viewModel.uiState.value.infoMetadata)
+        collection.cancel()
+    }
+
     private fun assertSort(
         viewModel: FolderDetailViewModel,
         field: CategoryTrackSortField,
@@ -188,4 +253,25 @@ private class NoOpPlaybackController : PlaybackControllerFacade {
     override fun skipToPrevious() = Unit
     override fun skipToNext() = Unit
     override fun seekTo(positionMs: Long) = Unit
+}
+
+private class RecordingDetailPlaybackController : PlaybackControllerFacade {
+    override val state: StateFlow<PlaybackControllerState> = MutableStateFlow(PlaybackControllerState())
+    var enqueuedTracks: List<TrackId>? = null
+    var nextTracks: List<TrackId>? = null
+
+    override fun connect() = Unit
+    override fun disconnect() = Unit
+    override fun play(context: PlaybackContext) = Unit
+    override fun play() = Unit
+    override fun pause() = Unit
+    override fun skipToPrevious() = Unit
+    override fun skipToNext() = Unit
+    override fun seekTo(positionMs: Long) = Unit
+    override fun addToQueue(trackIds: List<TrackId>) {
+        enqueuedTracks = trackIds
+    }
+    override fun playNext(trackIds: List<TrackId>) {
+        nextTracks = trackIds
+    }
 }

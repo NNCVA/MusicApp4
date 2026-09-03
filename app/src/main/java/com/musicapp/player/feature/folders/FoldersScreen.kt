@@ -54,16 +54,9 @@ import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
-import com.musicapp.player.core.designsystem.component.TrackSummaryRow
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
-import com.musicapp.player.core.domain.model.Availability
-import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryNavigationIconButton
-import com.musicapp.player.feature.category.CategoryHeader
-import com.musicapp.player.feature.category.CategoryTrackSortField
-import com.musicapp.player.feature.category.CategoryTrackSortMenu
-import com.musicapp.player.feature.category.labelRes
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 import java.math.RoundingMode
@@ -90,30 +83,6 @@ fun FoldersScreenRoute(
         onScanMusic = onScanMusic,
         onFolderClick = onFolderClick,
         onPlayFolder = viewModel::playFolder,
-        bottomPadding = bottomPadding,
-    )
-}
-
-@Composable
-fun FolderDetailScreenRoute(
-    folderId: FolderId,
-    viewModel: FolderDetailViewModel,
-    contentInsets: WindowInsets,
-    onBack: () -> Unit,
-    onFolderClick: (FolderId) -> Unit,
-    bottomPadding: Dp = 0.dp,
-) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(folderId) { viewModel.open(folderId) }
-    FolderDetailScreen(
-        state = state,
-        contentInsets = contentInsets,
-        onBack = onBack,
-        onPlayAll = viewModel::playAll,
-        onFolderSortSelected = viewModel::selectFolderSort,
-        onTrackSortSelected = viewModel::selectTrackSort,
-        onFolderClick = onFolderClick,
-        onTrackClick = { viewModel.playTrack(it.id) },
         bottomPadding = bottomPadding,
     )
 }
@@ -461,8 +430,8 @@ private fun FolderShortcutCard(
                 Text(
                     text = pluralStringResource(
                         R.plurals.folder_track_count,
-                        folder.recursiveTrackCount,
-                        folder.recursiveTrackCount,
+                        folder.directTracks.size,
+                        folder.directTracks.size,
                     ),
                     style = MusicTheme.typography.bodySmall,
                     color = MusicTheme.colors.onSurfaceVariant,
@@ -505,284 +474,6 @@ private fun FolderShortcutCard(
     }
 }
 
-@Composable
-private fun FolderDetailScreen(
-    state: FolderDetailUiState,
-    contentInsets: WindowInsets,
-    onBack: () -> Unit,
-    onPlayAll: () -> Unit,
-    onFolderSortSelected: (FolderSortField) -> Unit,
-    onTrackSortSelected: (CategoryTrackSortField) -> Unit,
-    onFolderClick: (FolderId) -> Unit,
-    onTrackClick: (Track) -> Unit,
-    bottomPadding: Dp = 0.dp,
-) {
-    if (state.isBrowserOnly) {
-        FolderBrowserScreen(
-            state = state,
-            contentInsets = contentInsets,
-            onBack = onBack,
-            onFolderClick = onFolderClick,
-            bottomPadding = bottomPadding,
-        )
-        return
-    }
-    val dimensions = MusicTheme.dimensions
-    val listState = rememberLazyListState()
-    val overscrollEffect = rememberBounceOverscrollEffect(listState)
-    Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
-    ) {
-        CategoryHeader(
-            title = folderDetailTitle(state),
-            onBack = onBack,
-            trailingContent = {
-                TextButton(
-                    onClick = onPlayAll,
-                    enabled = state.recursiveTracks.any { it.availability == Availability.AVAILABLE },
-                ) { Text(stringResource(R.string.category_play_all)) }
-                FolderSortMenu(state.folderSort, onFolderSortSelected)
-                CategoryTrackSortMenu(
-                    sort = state.trackSort,
-                    fields = listOf(
-                        CategoryTrackSortField.TITLE,
-                        CategoryTrackSortField.ARTIST,
-                        CategoryTrackSortField.DATE_ADDED,
-                        CategoryTrackSortField.DURATION,
-                    ),
-                    onSelected = onTrackSortSelected,
-                )
-            },
-        )
-        if (state.childFolders.isEmpty() && state.directTracks.isEmpty()) {
-            EmptyState(
-                modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding)
-                    .padding(bottom = bottomPadding),
-                title = stringResource(R.string.folder_empty_title),
-                description = stringResource(R.string.folder_empty_description),
-            )
-        } else {
-            LazyColumn(
-                state = listState,
-                overscrollEffect = overscrollEffect,
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentPadding = PaddingValues(
-                    top = dimensions.spaceSmall,
-                    bottom = dimensions.spaceSmall + bottomPadding,
-                ),
-            ) {
-                if (state.childFolders.isNotEmpty()) {
-                    item {
-                        Text(
-                            stringResource(R.string.folder_subfolders_section),
-                            style = MusicTheme.typography.titleMedium,
-                            color = MusicTheme.colors.onSurface,
-                            modifier =
-                                Modifier.padding(
-                                    horizontal = dimensions.contentHorizontalPadding + dimensions.spaceSmall,
-                                    vertical = dimensions.spaceSmall,
-                                ),
-                        )
-                    }
-                    items(state.childFolders, key = { it.id.sourceId }) { folder ->
-                        FolderRow(folder, onFolderClick)
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
-                        )
-                    }
-                }
-                if (state.directTracks.isNotEmpty()) {
-                    item {
-                        Text(
-                            stringResource(R.string.folder_tracks_section),
-                            style = MusicTheme.typography.titleMedium,
-                            color = MusicTheme.colors.onSurface,
-                            modifier =
-                                Modifier.padding(
-                                    horizontal = dimensions.contentHorizontalPadding + dimensions.spaceSmall,
-                                    vertical = dimensions.spaceSmall,
-                                ),
-                        )
-                    }
-                    items(
-                        state.directTracks,
-                        key = { "${it.id.volumeName}:${it.id.mediaStoreId}" },
-                    ) { track ->
-                        TrackSummaryRow(
-                            title = track.title,
-                            artist = track.artistName,
-                            duration = formatDuration(track.durationMs),
-                            enabled = track.availability == Availability.AVAILABLE,
-                            statusLabel =
-                                if (track.availability == Availability.TEMPORARILY_UNAVAILABLE) {
-                                    stringResource(R.string.track_temporarily_unavailable)
-                                } else {
-                                    null
-                                },
-                            outerHorizontalPadding = dimensions.contentHorizontalPadding,
-                            onClick = { onTrackClick(track) },
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FolderBrowserScreen(
-    state: FolderDetailUiState,
-    contentInsets: WindowInsets,
-    onBack: () -> Unit,
-    onFolderClick: (FolderId) -> Unit,
-    bottomPadding: Dp = 0.dp,
-) {
-    val dimensions = MusicTheme.dimensions
-    val listState = rememberLazyListState()
-    val overscrollEffect = rememberBounceOverscrollEffect(listState)
-    Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
-    ) {
-        CategoryHeader(
-            title = folderDetailTitle(state),
-            onBack = onBack,
-        )
-        if (state.childFolders.isEmpty()) {
-            EmptyState(
-                modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding)
-                    .padding(bottom = bottomPadding),
-                title = stringResource(R.string.folder_empty_title),
-                description = stringResource(R.string.folder_empty_description),
-            )
-        } else {
-            LazyColumn(
-                state = listState,
-                overscrollEffect = overscrollEffect,
-                modifier = Modifier.fillMaxWidth().weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
-                contentPadding = PaddingValues(
-                    top = dimensions.spaceSmall,
-                    bottom = dimensions.spaceSmall + bottomPadding,
-                ),
-                verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
-            ) {
-                items(state.childFolders, key = { it.id.sourceId }) { folder ->
-                    BrowserFolderRow(folder = folder, onClick = { onFolderClick(folder.id) })
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BrowserFolderRow(
-    folder: FolderNode,
-    onClick: () -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MusicTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth()
-                .heightIn(min = dimensions.minimumTouchTarget)
-                .padding(horizontal = dimensions.spaceMedium),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_common_folder),
-                contentDescription = null,
-                tint = MusicTheme.colors.onSurfaceVariant,
-                modifier = Modifier.size(dimensions.spaceLarge),
-            )
-            Text(
-                text = folder.displayName,
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-private fun FolderRow(folder: FolderNode, onClick: (FolderId) -> Unit) {
-    val dimensions = MusicTheme.dimensions
-    Row(
-        modifier = Modifier.fillMaxWidth().height(dimensions.folderListItemHeight)
-            .clickable { onClick(folder.id) }
-            .padding(
-                horizontal = dimensions.contentHorizontalPadding + dimensions.spaceSmall,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                folder.displayName,
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-                maxLines = 1,
-            )
-            Text(
-                if (folder.id.relativePath.isEmpty()) {
-                    stringResource(R.string.folder_volume_root)
-                } else {
-                    folder.id.relativePath
-                },
-                style = MusicTheme.typography.bodySmall,
-                color = MusicTheme.colors.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-        Text(
-            pluralStringResource(
-                R.plurals.category_track_count,
-                folder.recursiveTrackCount,
-                folder.recursiveTrackCount,
-            ),
-            style = MusicTheme.typography.labelMedium,
-            color = MusicTheme.colors.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun FolderSortMenu(sort: FolderSort, onSelected: (FolderSortField) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Column {
-        TextButton(onClick = { expanded = true }) {
-            Text(stringResource(sort.field.labelRes()) + stringResource(sort.direction.labelRes()))
-        }
-        AppDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            FolderSortField.entries.forEach { field ->
-                AppDropdownMenuItem(
-                    text = { Text(stringResource(field.labelRes())) },
-                    onClick = { onSelected(field); expanded = false },
-                )
-            }
-        }
-    }
-}
-
-@StringRes
-private fun FolderSortField.labelRes(): Int =
-    when (this) {
-        FolderSortField.NAME -> R.string.sort_name
-        FolderSortField.TRACK_COUNT -> R.string.sort_track_count
-    }
-
-private fun formatDuration(durationMs: Long): String {
-    val totalSeconds = durationMs / 1_000
-    return String.format(Locale.ROOT, "%d:%02d", totalSeconds / 60, totalSeconds % 60)
-}
 
 private fun FolderNode.matchesFolderSearch(query: String): Boolean {
     val normalizedQuery = query.trim()
@@ -826,11 +517,3 @@ private fun formatStorageValue(bytes: Long, unit: StorageUnit): String =
         roundingMode = RoundingMode.DOWN
     }.format(bytes.toDouble() / unit.divisor)
 
-@Composable
-private fun folderDetailTitle(state: FolderDetailUiState): String =
-    if (state.isVolumeRoot && state.volumeIsPrimary) {
-        stringResource(R.string.folder_internal_storage)
-    } else {
-        state.displayName?.takeIf(String::isNotBlank)
-            ?: stringResource(R.string.folder_unknown_name)
-    }
