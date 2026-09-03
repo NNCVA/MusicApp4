@@ -108,6 +108,20 @@ fun AppDropdownMenu(
 }
 
 /**
+ * 菜单项语义图标调色板。
+ * 参考侧边栏多样化配色，提供鲜明统一的操作语义着色。
+ */
+object MenuIconPalette {
+    val Play = Color(0xFF4E8EE8)
+    val Add = Color(0xFF31A985)
+    val Rename = Color(0xFFF2A93B)
+    val Info = Color(0xFF33A6B8)
+    val SelectAll = Color(0xFF6D7FE8)
+    val Hide = Color(0xFFF2A93B)
+    val Delete = Color(0xFFE25555)
+}
+
+/**
  * 下拉菜单项组件。
  */
 @Composable
@@ -119,6 +133,7 @@ fun AppDropdownMenuItem(
     trailingIcon: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
     isDestructive: Boolean = false,
+    iconTint: Color? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = MusicTheme.dimensions.spaceMedium),
 ) {
     val dimensions = MusicTheme.dimensions
@@ -132,6 +147,7 @@ fun AppDropdownMenuItem(
         when {
             !enabled -> MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.38f)
             isDestructive -> MusicTheme.colors.error
+            iconTint != null -> iconTint
             else -> MusicTheme.colors.onSurfaceVariant
         }
 

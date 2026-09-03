@@ -82,6 +82,7 @@ import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.ListActionBar
+import com.musicapp.player.core.designsystem.component.MenuIconPalette
 import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SearchableTopBar
@@ -359,9 +360,10 @@ fun PlaylistDetailScreen(
                         ) {
                             AppDropdownMenuItem(
                                 text = { Text(stringResource(R.string.playlist_rename)) },
+                                iconTint = MenuIconPalette.Rename,
                                 trailingIcon = {
                                     Icon(
-                                        painter = painterResource(R.drawable.ic_common_sort_alpha),
+                                        painter = painterResource(R.drawable.ic_common_edit),
                                         contentDescription = null,
                                     )
                                 },
@@ -373,6 +375,7 @@ fun PlaylistDetailScreen(
                             AppDropdownMenuItem(
                                 text = { Text(stringResource(R.string.playlist_delete)) },
                                 isDestructive = true,
+                                iconTint = MenuIconPalette.Delete,
                                 trailingIcon = {
                                     Icon(
                                         painter = painterResource(R.drawable.ic_common_delete),
@@ -826,6 +829,7 @@ private fun PlaylistTrackActionsMenu(
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.playlist_remove_from_playlist)) },
             isDestructive = true,
+            iconTint = MenuIconPalette.Delete,
             trailingIcon = {
                 Icon(
                     painter = painterResource(R.drawable.ic_common_delete),
@@ -839,6 +843,7 @@ private fun PlaylistTrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_play_next)) },
+            iconTint = MenuIconPalette.Play,
             trailingIcon = {
                 Icon(
                     painter = painterResource(R.drawable.ic_playback_skip_next),
@@ -852,6 +857,7 @@ private fun PlaylistTrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_add_to_playlist)) },
+            iconTint = MenuIconPalette.Add,
             trailingIcon = {
                 Icon(
                     painter = painterResource(R.drawable.ic_common_add),
@@ -865,6 +871,7 @@ private fun PlaylistTrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_track_info)) },
+            iconTint = MenuIconPalette.Info,
             trailingIcon = {
                 Icon(
                     painter = painterResource(R.drawable.ic_sidebar_about),

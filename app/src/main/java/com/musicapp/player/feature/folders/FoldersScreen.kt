@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.MenuIconPalette
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -486,6 +487,7 @@ private fun FolderShortcutCard(
                 ) {
                     AppDropdownMenuItem(
                         text = { Text(stringResource(R.string.category_play_all)) },
+                        iconTint = MenuIconPalette.Play,
                         trailingIcon = {
                             Icon(
                                 painter = painterResource(R.drawable.ic_playback_play),

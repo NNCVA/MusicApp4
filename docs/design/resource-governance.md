@@ -75,6 +75,7 @@
 | `ic_common_view_list.xml` | `src/action/view_list/materialiconsround/24px.svg` | 列表视图与迷你播放器播放队列直达；圆角列表块与横线条目 |
 | `ic_common_list.xml` | `src/editor/format_list_bulleted/materialiconsround/24px.svg` | 通用列表项；圆点与横线条目圆角化 |
 | `ic_common_sort_alpha.xml` | `src/av/sort_by_alpha/materialiconsround/24px.svg` | 字母排序；排序箭头与字母端点圆角化 |
+| `ic_common_edit.xml` | `src/image/edit/materialiconsround/24px.svg` | 重命名与编辑操作；铅笔轮廓与笔尖平滑圆角化 |
 | `ic_navigation_back.xml` | `src/navigation/arrow_back/materialiconsround/24px.svg` | 导航返回；返回箭头拐角与端点圆角化 |
 | `ic_navigation_menu.xml` | `src/navigation/menu/materialiconsround/24px.svg` | 侧栏菜单；汉堡三横线端点圆角化 |
 | `ic_common_auto_awesome.xml` | `src/image/auto_awesome/materialiconsround/24px.svg` | 外观设置 Material You 选项；四角星光端点圆角化 |

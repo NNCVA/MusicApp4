@@ -32,6 +32,7 @@ fun TrackActionsMenu(
     ) {
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_play_next)) },
+            iconTint = MenuIconPalette.Play,
             trailingIcon = {
                 Icon(
                     painter = painterResource(R.drawable.ic_playback_skip_next),
@@ -45,6 +46,7 @@ fun TrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_add_to_playlist)) },
+            iconTint = MenuIconPalette.Add,
             trailingIcon = {
                 Icon(
                     painter = painterResource(R.drawable.ic_common_add),
@@ -58,6 +60,7 @@ fun TrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_track_info)) },
+            iconTint = MenuIconPalette.Info,
             trailingIcon = {
                 Icon(
                     painter = painterResource(R.drawable.ic_sidebar_about),
@@ -71,6 +74,7 @@ fun TrackActionsMenu(
         )
         AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_hide)) },
+            iconTint = MenuIconPalette.Hide,
             trailingIcon = {
                 Icon(
                     painter = painterResource(R.drawable.ic_common_close),

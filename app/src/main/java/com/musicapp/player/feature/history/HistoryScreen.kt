@@ -33,6 +33,7 @@ import androidx.compose.ui.res.painterResource
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
+import com.musicapp.player.core.designsystem.component.MenuIconPalette
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -312,6 +313,7 @@ private fun HistorySelectionActions(
         AppDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
             AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_select_all)) },
+                iconTint = MenuIconPalette.SelectAll,
                 trailingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_status_check),
@@ -323,6 +325,7 @@ private fun HistorySelectionActions(
             AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_play_next)) },
                 enabled = actionsEnabled,
+                iconTint = MenuIconPalette.Play,
                 trailingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_playback_skip_next),
@@ -334,6 +337,7 @@ private fun HistorySelectionActions(
             AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_add_to_playlist)) },
                 enabled = actionsEnabled,
+                iconTint = MenuIconPalette.Add,
                 trailingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_common_add),
@@ -345,6 +349,7 @@ private fun HistorySelectionActions(
             AppDropdownMenuItem(
                 text = { Text(stringResource(R.string.selection_hide)) },
                 enabled = actionsEnabled,
+                iconTint = MenuIconPalette.Hide,
                 trailingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_common_close),
