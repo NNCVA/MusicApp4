@@ -1,29 +1,35 @@
 package com.musicapp.player.core.designsystem.component
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
+import com.musicapp.player.core.image.AudioArtworkRequest
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicTheme
 
@@ -35,7 +41,8 @@ import com.musicapp.player.theme.MusicTheme
  * - 标题为“添加到歌单”；
  * - 内容区域展示当前所有歌单列表（最大高度 300dp，支持滚动）；列表为空时展示友好空状态提示；
  * - 底部单个主色全宽胶囊按钮为“创建歌单”，点击触发 [onCreatePlaylist]；
- * - 每行歌单项具备 48dp 最小触控区域与水波纹点击反馈。
+ * - 每行歌单项使用圆角不透明容器，整行具备至少 48dp 触控区域与一致的水波纹点击反馈；
+ * - 歌单项缩略图复用歌单页的请求与样式，无封面或加载失败时回退到 [R.drawable.ic_playlist_album]。
  */
 @Composable
 fun AddToPlaylistDialog(
@@ -65,37 +72,72 @@ fun AddToPlaylistDialog(
                     Modifier
                         .fillMaxWidth()
                         .heightIn(max = 300.dp),
+                verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmallMedium),
             ) {
                 items(playlists, key = { it.id.value }) { playlist ->
-                    Row(
+                    val rowShape = MusicTheme.shapes.medium
+                    Surface(
+                        onClick = { onSelectPlaylist(playlist.id) },
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(dimensions.minimumTouchTarget)
-                                .clickable { onSelectPlaylist(playlist.id) }
-                                .padding(horizontal = dimensions.spaceSmall),
-                        verticalAlignment = Alignment.CenterVertically,
+                                .heightIn(min = dimensions.trackListItemHeight)
+                                .clip(rowShape)
+                                .semantics(mergeDescendants = true) {},
+                        shape = rowShape,
+                        color = MusicTheme.colors.surfaceContainer,
+                        contentColor = MusicTheme.colors.onSurface,
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_sidebar_playlists),
-                            contentDescription = null,
-                            tint = MusicTheme.colors.onSurfaceVariant,
-                            modifier = Modifier.size(dimensions.spaceLarge),
-                        )
-                        Spacer(modifier = Modifier.width(dimensions.spaceMedium))
-                        Text(
-                            text = playlist.displayName,
-                            style = MusicTheme.typography.bodyLarge,
-                            color = MusicTheme.colors.onSurface,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = dimensions.spaceSmall),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            PlaylistThumbnail(
+                                playlist = playlist,
+                                modifier = Modifier.size(dimensions.trackArtworkSize),
+                            )
+                            Spacer(modifier = Modifier.width(dimensions.spaceMedium))
+                            Text(
+                                text = playlist.displayName,
+                                style = MusicTheme.typography.bodyLarge,
+                                color = MusicTheme.colors.onSurface,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun PlaylistThumbnail(
+    playlist: Playlist,
+    modifier: Modifier = Modifier,
+) {
+    val firstTrackId = remember(playlist.id, playlist.trackIds) { playlist.trackIds.firstOrNull() }
+    val request = remember(playlist.id, firstTrackId) {
+        AudioArtworkRequest.PlaylistArtworkRequest(
+            playlistId = playlist.id,
+            representativeTrackId = firstTrackId,
+            dateModifiedMs = 0L,
+        )
+    }
+    AsyncImage(
+        model = request,
+        contentDescription = null,
+        modifier = modifier
+            .clip(MusicTheme.shapes.small)
+            .background(MusicTheme.colors.secondaryContainer),
+        contentScale = ContentScale.Crop,
+        error = painterResource(R.drawable.ic_playlist_album),
+        placeholder = painterResource(R.drawable.ic_playlist_album),
+    )
 }
 
 @Preview(name = "AddToPlaylistDialog with Playlists", showBackground = true)
