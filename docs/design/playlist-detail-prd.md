@@ -1,7 +1,7 @@
 # 歌单详情页产品需求文档 (Playlist Detail PRD)
 
 **文档状态**：已完全冻结并确认 (Decisions Finalized & Approved)  
-**文档版本**：v1.2  
+**文档版本**：v1.3
 **适用范围**：MusicApp 歌单详情页面 (`PlaylistDetailScreen`)  
 **对齐基线**：[`docs/design/implementation-spec.md`](implementation-spec.md)、[`docs/CONTEXT.md`](../CONTEXT.md)、[`docs/adr/0005-use-replacing-message-bubble.md`](../adr/0005-use-replacing-message-bubble.md)、[`docs/adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md`](../adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md)、[`docs/adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md`](../adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md)、[`docs/adr/0014-use-unified-app-dropdown-menu.md`](../adr/0014-use-unified-app-dropdown-menu.md)
 
@@ -13,7 +13,7 @@
 歌单是用户组织管理个人音频资源的核心资产载体。原歌单详情页仅具备基础的列表展示与简易移除功能，缺少封面视觉感知、头部元信息汇总、快捷批量操作以及与全局一致的索引/滑块交互。
 
 ### 1.2 设计目标
-1. **视觉与品牌一致性**：引入 130×130dp (r12) 四宫格封面及信息丰富的 Hero 区域，统一 Aero 动态背景与 Material You 设计令牌。
+1. **视觉与品牌一致性**：引入 130×130dp (r8) 四宫格封面及信息丰富的 Hero 区域，统一 Aero 动态背景与 Material You 设计令牌。
 2. **高效播放与管理**：提供吸顶式 `ResponsiveActionBar`，一键触达“播放全部”、“随机播放”、“排序”和“批量管理”。
 3. **统一列表与索引体验**：复用标准 `TrackRow` 视觉规范，接入全局统一的 `RightGutterOverlay`（文本排序启用固定 28 逻辑桶索引，时间/时长等排序平滑降级为滚动滑块）。
 4. **完善的多选批量体系**：对齐 Tracks 页面的多选手势与底部批量操作栏（移出歌单、加入其他歌单、加入队列），与底部 80dp Mini Player 优雅协同。
@@ -32,7 +32,7 @@ AdaptiveMusicScaffold
 │
 ├── 内容视口 (LazyColumn / 弹性过度滚动视口)
 │   ├── Hero Header（歌单头部信息）
-│   │   ├── Cover: 130×130dp 四宫格封面 (r12，可用封面≥4张为2×2网格；1~3张单图全铺；0张默认占位)
+│   │   ├── Cover: 130×130dp 四宫格封面 (r8，可用封面≥4张为2×2网格；1~3张单图全铺；0张默认占位)
 │   │   └── Meta: 歌单名、共 N 首、总时长 (X小时Y分)、创建于 yyyy-MM-dd
 │   │
 │   ├── 吸顶操作栏 (ResponsiveActionBar - stickyHeader, 高48dp)
@@ -40,7 +40,7 @@ AdaptiveMusicScaffold
 │   │   └── 多选态 (Crossfade 原地切换): [✕ 取消] + 已选 N 首 + [☑ 全选/反选]
 │   │
 │   └── ListViewport (曲目列表视口 - TrackRow.PlaylistMember)
-│       ├── TrackRow: 封面 (48dp r8) + 标题 (最多2行) + 音质角标 (SQ/Hi-Res) + 艺术家/专辑名 + 状态标签 + 行尾 [⋮] 或 勾选框
+│       ├── TrackRow: 封面 (48dp r4) + 标题 (最多2行) + 音质角标 (SQ/Hi-Res) + 艺术家/专辑名 + 状态标签 + 行尾 [⋮] 或 勾选框
 │       └── 局部空状态 (EmptyState - 当歌单曲目数为 0 或搜索无结果时呈现)
 │
 ├── 统一右侧覆盖层 (RightGutterOverlay - ADR-0008)
@@ -74,7 +74,7 @@ AdaptiveMusicScaffold
 ### 3.2 Hero 头部区域
 - **尺寸与排版**：水平 Row 布局，左侧为 130×130dp 封面，右侧为元信息列，垂直居中对齐，左右留白符合 `dimensions.contentHorizontalPadding`。
 - **四宫格封面 (Quad Cover Artwork)**（**已决策·选项A**）：
-  - **尺寸与圆角**：`130×130dp`，圆角 `12dp`（`MusicShapes.medium`）。
+  - **尺寸与圆角**：`130×130dp`，圆角 `8dp`（`MusicShapes.small`）。
   - **拼图算法**：
     - 当歌单可用封面数 $\ge 4$：取前 4 张可用内嵌封面组成 $2 \times 2$ 宫格（每个子格 $63 \times 63dp$，间隙 $4dp$）；
     - 当歌单可用封面数为 $1 \sim 3$：使用第 1 张有效封面**全尺寸单图铺满 (130×130dp)**，保证视觉饱满，不出现不对称网格；
@@ -106,7 +106,7 @@ AdaptiveMusicScaffold
 
 ### 3.4 列表视口与列表项 (ListViewport & TrackRow)
 - **列表项规范**：高度 `72dp`，严格复用 `TrackRow` 统一设计：
-  - **左侧**：48×48dp 方形圆角封面（`r8`）。
+  - **左侧**：48×48dp 方形圆角封面（`r4`）。
   - **中间信息**：
     - 第一行：曲目标题（最多 2 行，超长省略）。
     - 第二行：音质角标（`SQ` / `Hi-Res` 等） + 艺术家名 + 专辑名。

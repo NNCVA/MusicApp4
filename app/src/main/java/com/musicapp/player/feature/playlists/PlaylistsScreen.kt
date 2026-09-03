@@ -364,7 +364,7 @@ private fun PlaylistArtwork(
         model = request,
         contentDescription = null,
         modifier = modifier
-            .clip(MusicTheme.shapes.small)
+            .clip(MusicTheme.shapes.extraSmall)
             .background(MusicTheme.colors.secondaryContainer),
         contentScale = ContentScale.Crop,
         error = painterResource(R.drawable.ic_playlist_album),

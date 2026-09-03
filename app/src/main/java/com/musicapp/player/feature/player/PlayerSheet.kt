@@ -313,7 +313,7 @@ private fun MiniPlayer(
     ) {
         PlayerArtwork(
             track = track,
-            shape = MusicTheme.shapes.small,
+            shape = RoundedCornerShape(dimensions.miniArtworkCornerRadius),
             modifier = Modifier.size(dimensions.trackArtworkSize),
         )
         Column(modifier = Modifier.weight(1f)) {

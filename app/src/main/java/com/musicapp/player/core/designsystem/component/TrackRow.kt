@@ -68,7 +68,7 @@ fun TrackArtwork(
     track: Track,
     modifier: Modifier = Modifier,
 ) {
-    val shape = MusicTheme.shapes.small
+    val shape = MusicTheme.shapes.extraSmall
     val artworkDescription = stringResource(R.string.track_artwork_description, track.title)
     AsyncImage(
         model = track,

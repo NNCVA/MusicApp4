@@ -28,6 +28,8 @@ data class MusicDimensions(
     val trackListItemHeight: Dp = 72.dp,
     val folderListItemHeight: Dp = 80.dp,
     val trackArtworkSize: Dp = 48.dp,
+    val playlistHeroArtworkSize: Dp = 130.dp,
+    val playlistQuadSubArtworkSize: Dp = 63.dp,
     val sectionIndexItemSize: Dp = 12.dp,
     val sectionIndexItemGap: Dp = 3.dp,
     val sectionIndexTouchTargetWidth: Dp = 20.dp,
@@ -65,17 +67,17 @@ data class MusicDimensions(
     companion object {
         val Compact = MusicDimensions(
             windowWidthTier = MusicWindowWidthTier.COMPACT,
-            miniArtworkCornerRadius = 16.dp,
+            miniArtworkCornerRadius = 12.dp,
             contentHorizontalPadding = 24.dp,
         )
         val Medium = MusicDimensions(
             windowWidthTier = MusicWindowWidthTier.MEDIUM,
-            miniArtworkCornerRadius = 20.dp,
+            miniArtworkCornerRadius = 16.dp,
             contentHorizontalPadding = 24.dp,
         )
         val Expanded = MusicDimensions(
             windowWidthTier = MusicWindowWidthTier.EXPANDED,
-            miniArtworkCornerRadius = 20.dp,
+            miniArtworkCornerRadius = 16.dp,
             contentHorizontalPadding = 24.dp,
         )
 

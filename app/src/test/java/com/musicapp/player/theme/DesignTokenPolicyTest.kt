@@ -35,6 +35,8 @@ class DesignTokenPolicyTest {
             assertEquals(8.dp, dimensions.sidebarCardContentPadding)
             assertEquals(72.dp, dimensions.trackListItemHeight)
             assertEquals(80.dp, dimensions.folderListItemHeight)
+            assertEquals(130.dp, dimensions.playlistHeroArtworkSize)
+            assertEquals(63.dp, dimensions.playlistQuadSubArtworkSize)
             assertEquals(80.dp, dimensions.miniPlayerHeight)
             assertEquals(160.dp, dimensions.adaptiveGridMinimumCellWidth)
             assertEquals(48.dp, dimensions.categoryCardInfoHeight)
@@ -63,9 +65,9 @@ class DesignTokenPolicyTest {
 
     @Test
     fun `mini artwork corner follows the window width tier`() {
-        assertEquals(16.dp, MusicDimensions.Compact.miniArtworkCornerRadius)
-        assertEquals(20.dp, MusicDimensions.Medium.miniArtworkCornerRadius)
-        assertEquals(20.dp, MusicDimensions.Expanded.miniArtworkCornerRadius)
+        assertEquals(12.dp, MusicDimensions.Compact.miniArtworkCornerRadius)
+        assertEquals(16.dp, MusicDimensions.Medium.miniArtworkCornerRadius)
+        assertEquals(16.dp, MusicDimensions.Expanded.miniArtworkCornerRadius)
     }
 
     @Test

@@ -7,8 +7,8 @@
 
 ## 1. 方案目标与架构概述
 
-依据已冻结的 PRD 规范 v1.2 以及已抽取的通用组件基线（`TrackRow` & `TrackActionsMenu` in `core/designsystem`），重构并全面升级歌单详情页（`PlaylistDetailScreen`），使其具备：
-1. **统一视口与层级架构**：自适应脚手架、滚动折叠联动 TopAppBar、Hero 头部（130×130dp r12 四宫格封面 + 丰富元信息）。
+依据已冻结的 PRD 规范 v1.3 以及已抽取的通用组件基线（`TrackRow` & `TrackActionsMenu` in `core/designsystem`），重构并全面升级歌单详情页（`PlaylistDetailScreen`），使其具备：
+1. **统一视口与层级架构**：自适应脚手架、滚动折叠联动 TopAppBar、Hero 头部（130×130dp r8 四宫格封面 + 丰富元信息）。
 2. **吸顶操作栏与多选体系**：48dp `ResponsiveActionBar` 吸顶联动，常规态（播放全部/随机/排序/批量管理）与多选态（取消/计数/全选反选）`Crossfade` 原地切换；底部 `SelectionBottomBar` 悬浮于 80dp Mini Player 上方（移出歌单/加入其他歌单/加入队列）。
 3. **全局索引与列表规范**：直接复用通用 72dp `TrackRow` 并挂载歌单专属行级菜单；严格落实 ADR-0008 统一 `RightGutterOverlay`（文本排序固定 28 逻辑桶 + 72dp 放大气泡，数值/时间排序平滑降级为滚动滑块）。
 4. **组件治理与复用**：全量复用 `MessageBubbleHost`、`AppDropdownMenu`、`TextInputDialog`、`ConfirmationDialog`、`TrackInfoViewer` 与 `BounceOverscroll`。
@@ -23,7 +23,7 @@ Step 1: 领域与数据层契约完善 (PlaylistModels / Sorting / UseCase)
   ↓
 Step 2: ViewModel 状态流重构 (PlaylistDetailViewModel: 搜索/排序/多选/批量/歌曲信息)
   ↓
-Step 3: 四宫格封面组件落地 (QuadPlaylistArtwork - 130×130dp r12 自适应拼图与缓存)
+Step 3: 四宫格封面组件落地 (QuadPlaylistArtwork - 130×130dp r8 自适应拼图与缓存)
   ↓
 Step 4: PlaylistDetailScreen UI 全面重构 (TopAppBar联动 / Hero / 吸顶操作栏 / 复用TrackRow / 覆盖层 / 底部浮栏)
   ↓
@@ -55,7 +55,7 @@ Step 6: 完整门禁与自动化验证 (testDebugUnitTest + lintDebug + assemble
 ### 3.3 Step 3: 四宫格封面组件 (`QuadPlaylistArtwork`)
 - **文件**：[`QuadPlaylistArtwork.kt`](file:///Users/a1/develop/repo/MusicApp4/app/src/main/java/com/musicapp/player/feature/playlists/QuadPlaylistArtwork.kt) [NEW]
 - **改动**：
-  - 尺寸固定 `130×130dp`，圆角 `12dp`（`MusicShapes.medium`）；
+  - 尺寸固定 `130×130dp`，圆角 `8dp`（`MusicShapes.small`）；
   - 封面解析算法：
     - 可用封面 $\ge 4$：渲染 $2 \times 2$ 宫格（子格 $63 \times 63\text{dp}$，间隙 $4\text{dp}$）；
     - 可用封面 $1 \sim 3$：单图全尺寸铺满（$130 \times 130\text{dp}$）；

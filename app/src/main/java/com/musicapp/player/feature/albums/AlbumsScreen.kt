@@ -78,6 +78,7 @@ import com.musicapp.player.feature.category.CategoryTrackSortMenu
 import com.musicapp.player.feature.category.CategoryTrackSortField
 import com.musicapp.player.feature.category.labelRes
 import com.musicapp.player.theme.MusicTheme
+import com.musicapp.player.theme.MusicWindowWidthTier
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 import kotlinx.coroutines.launch
 
@@ -277,8 +278,14 @@ private fun AlbumCard(
     onClick: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
+    val cardShape = when (dimensions.windowWidthTier) {
+        MusicWindowWidthTier.COMPACT -> MusicTheme.shapes.medium
+        MusicWindowWidthTier.MEDIUM,
+        MusicWindowWidthTier.EXPANDED,
+        -> MusicTheme.shapes.large
+    }
     Column(
-        modifier = Modifier.fillMaxWidth().clip(MusicTheme.shapes.medium).clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clip(cardShape).clickable(onClick = onClick),
     ) {
         AlbumArtwork(
             album = album,
@@ -317,7 +324,12 @@ private fun AlbumArtwork(
     album: AlbumSummary,
     modifier: Modifier,
 ) {
-    val shape = MusicTheme.shapes.large
+    val shape = when (MusicTheme.dimensions.windowWidthTier) {
+        MusicWindowWidthTier.COMPACT -> MusicTheme.shapes.medium
+        MusicWindowWidthTier.MEDIUM,
+        MusicWindowWidthTier.EXPANDED,
+        -> MusicTheme.shapes.large
+    }
     val artworkDescription = stringResource(R.string.album_artwork_description, album.title)
     val request = remember(album.id, album.representativeTrack.id, album.representativeTrack.dateModifiedMs) {
         AudioArtworkRequest.AlbumArtworkRequest(
