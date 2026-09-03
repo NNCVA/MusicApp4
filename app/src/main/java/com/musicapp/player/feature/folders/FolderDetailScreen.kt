@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -113,8 +115,7 @@ private fun FolderDetailScreen(
     var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var singleTrackAddToPlaylistTarget by remember { mutableStateOf<TrackId?>(null) }
 
-    val hasPlayableTracks = state.recursiveTracks.any { it.availability == Availability.AVAILABLE }
-    val itemCount = if (state.directTracks.isNotEmpty()) state.directTracks.size else state.recursiveTracks.size
+    val hasPlayableTracks = state.directTracks.any { it.availability == Availability.AVAILABLE }
     val hasItems = state.childFolders.isNotEmpty() || state.directTracks.isNotEmpty()
 
     Column(
@@ -129,16 +130,16 @@ private fun FolderDetailScreen(
             onOpenSearch = null,
         )
 
-        if (hasItems && (state.directTracks.isNotEmpty() || state.recursiveTracks.isNotEmpty())) {
-            var sortMenuExpanded by remember { mutableStateOf(false) }
-            ListActionBar(
-                isSelectionMode = false,
-                itemCount = itemCount,
-                showPlayAll = true,
-                hasPlayableItems = hasPlayableTracks,
-                onPlayAll = onPlayAll,
-                trailingContent = {
-                    if (state.directTracks.isNotEmpty()) {
+        if (hasItems) {
+            if (state.directTracks.isNotEmpty()) {
+                var sortMenuExpanded by remember { mutableStateOf(false) }
+                ListActionBar(
+                    isSelectionMode = false,
+                    itemCount = state.directTracks.size,
+                    showPlayAll = true,
+                    hasPlayableItems = hasPlayableTracks,
+                    onPlayAll = onPlayAll,
+                    trailingContent = {
                         Box {
                             BareIconButton(
                                 onClick = { sortMenuExpanded = true },
@@ -179,9 +180,11 @@ private fun FolderDetailScreen(
                                 }
                             }
                         }
-                    }
-                },
-            )
+                    },
+                )
+            } else {
+                Spacer(modifier = Modifier.fillMaxWidth().height(dimensions.minimumTouchTarget))
+            }
         }
 
         if (!hasItems) {
