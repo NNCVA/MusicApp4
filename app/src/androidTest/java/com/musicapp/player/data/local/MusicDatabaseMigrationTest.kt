@@ -22,17 +22,20 @@ class MusicDatabaseMigrationTest {
         createV1Database(context, databaseName).close()
 
         val migratedDatabase = Room.databaseBuilder(context, MusicDatabase::class.java, databaseName)
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
         val migrated = migratedDatabase.openHelper.writableDatabase
 
         migrated.query(
-            "SELECT title, last_seen_sync_generation FROM tracks " +
+            "SELECT title, last_seen_sync_generation, track_number, disc_number, release_year FROM tracks " +
                 "WHERE volume_name = 'external_primary' AND media_store_id = 42",
         ).use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals("Migration track", cursor.getString(0))
             assertEquals(0L, cursor.getLong(1))
+            assertTrue(cursor.isNull(2))
+            assertTrue(cursor.isNull(3))
+            assertTrue(cursor.isNull(4))
         }
         migrated.query("SELECT display_name FROM playlists WHERE playlist_id = 7").use { cursor ->
             assertTrue(cursor.moveToFirst())

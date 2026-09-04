@@ -107,27 +107,6 @@ fun AlbumsScreenRoute(
 }
 
 @Composable
-fun AlbumDetailScreenRoute(
-    albumId: AlbumId,
-    viewModel: AlbumDetailViewModel,
-    contentInsets: WindowInsets,
-    onBack: () -> Unit,
-    bottomPadding: Dp = 0.dp,
-) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(albumId) { viewModel.open(albumId) }
-    AlbumDetailScreen(
-        state = state,
-        contentInsets = contentInsets,
-        bottomPadding = bottomPadding,
-        onBack = onBack,
-        onPlayAll = viewModel::playAll,
-        onSortSelected = viewModel::selectSort,
-        onTrackClick = { viewModel.playTrack(it.id) },
-    )
-}
-
-@Composable
 private fun AlbumsScreen(
     state: AlbumsUiState,
     contentInsets: WindowInsets,
@@ -348,59 +327,6 @@ private fun AlbumArtwork(
         error = painterResource(R.drawable.ic_playlist_album),
         placeholder = painterResource(R.drawable.ic_playlist_album),
     )
-}
-
-@Composable
-private fun AlbumDetailScreen(
-    state: AlbumDetailUiState,
-    contentInsets: WindowInsets,
-    onBack: () -> Unit,
-    onPlayAll: () -> Unit,
-    onSortSelected: (CategoryTrackSortField) -> Unit,
-    onTrackClick: (com.musicapp.player.core.domain.model.Track) -> Unit,
-    bottomPadding: Dp = 0.dp,
-) {
-    val dimensions = MusicTheme.dimensions
-    Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
-    ) {
-        CategoryHeader(
-            title = state.title ?: stringResource(R.string.album_unknown_title),
-            onBack = onBack,
-            trailingContent = {
-                TextButton(
-                    onClick = onPlayAll,
-                    enabled = state.tracks.any { it.availability == Availability.AVAILABLE },
-                ) { Text(stringResource(R.string.category_play_all)) }
-                CategoryTrackSortMenu(
-                    sort = state.sort,
-                    fields = listOf(
-                        CategoryTrackSortField.TITLE,
-                        CategoryTrackSortField.ARTIST,
-                        CategoryTrackSortField.DATE_ADDED,
-                        CategoryTrackSortField.DURATION,
-                    ),
-                    onSelected = onSortSelected,
-                )
-            },
-        )
-        if (state.tracks.isEmpty()) {
-            EmptyState(
-                modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding)
-                    .padding(bottom = bottomPadding),
-                title = stringResource(R.string.album_empty_title),
-                description = stringResource(R.string.album_empty_description),
-            )
-        } else {
-            CategoryTrackList(
-                tracks = state.tracks,
-                onTrackClick = onTrackClick,
-                bottomPadding = bottomPadding,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
 }
 
 @Composable

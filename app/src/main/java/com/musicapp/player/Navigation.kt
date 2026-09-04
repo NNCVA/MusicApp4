@@ -353,6 +353,11 @@ fun MainNavigation(
                                 ),
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,
+                                onArtistClick = { artistName ->
+                                    commitNavigation {
+                                        navigate(ArtistDetailRoute(artistName))
+                                    }
+                                },
                                 bottomPadding = bottomPadding,
                             )
                         }

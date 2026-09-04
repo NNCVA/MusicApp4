@@ -22,14 +22,21 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 const val DEFAULT_ALBUM_GRID_COLUMNS = 2
 
@@ -46,8 +53,19 @@ data class AlbumsUiState(
 data class AlbumDetailUiState(
     val albumId: AlbumId? = null,
     val title: String? = null,
-    val tracks: List<Track> = emptyList(),
-    val sort: CategoryTrackSort = CategoryTrackSort(),
+    val artistName: String? = null,
+    val representativeTrack: Track? = null,
+    val tracks: List<AlbumTrackPresentation> = emptyList(),
+    val rawTracks: List<Track> = emptyList(),
+    val stats: AlbumStats = AlbumStats(0, 0L, null),
+    val technicalSummary: AlbumTechnicalSummary = AlbumTechnicalSummary(null, null),
+    val artists: List<AlbumArtistCredit> = emptyList(),
+    val playlists: List<com.musicapp.player.core.domain.model.Playlist> = emptyList(),
+    val currentPlayingTrackId: TrackId? = null,
+    val isLoaded: Boolean = false,
+    val isUnavailable: Boolean = false,
+    val infoTrack: Track? = null,
+    val infoMetadata: com.musicapp.player.core.metadata.AdvancedTrackMetadata? = null,
 )
 
 data class AlbumArtworkState(
@@ -58,15 +76,16 @@ data class AlbumArtworkState(
 
 @HiltViewModel
 class AlbumsViewModel internal constructor(
-    mediaLibraryRepository: MediaLibraryRepository,
+    private val mediaLibraryRepository: MediaLibraryRepository,
     private val savedStateHandle: SavedStateHandle,
     private val settingsRepository: SettingsRepository,
-    private val computationDispatcher: CoroutineDispatcher,
+    private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     @Inject
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         savedStateHandle: SavedStateHandle,
+        artworkRepository: ArtworkRepository,
         settingsRepository: SettingsRepository,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
@@ -80,11 +99,12 @@ class AlbumsViewModel internal constructor(
         savedStateHandle: SavedStateHandle,
         artworkRepository: ArtworkRepository,
         settingsRepository: SettingsRepository,
+        computationDispatcher: CoroutineDispatcher,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         savedStateHandle = savedStateHandle,
         settingsRepository = settingsRepository,
-        computationDispatcher = Dispatchers.Default,
+        computationDispatcher = computationDispatcher,
     )
 
     private val sort = MutableStateFlow(restoreAlbumSort(savedStateHandle))
@@ -127,44 +147,186 @@ class AlbumsViewModel internal constructor(
 
 @HiltViewModel
 class AlbumDetailViewModel @Inject constructor(
-    mediaLibraryRepository: MediaLibraryRepository,
+    private val mediaLibraryRepository: MediaLibraryRepository,
     private val playbackController: PlaybackControllerFacade,
+    private val trackMetadataRepository: com.musicapp.player.core.metadata.TrackMetadataRepository,
+    private val playlistRepository: com.musicapp.player.data.repository.PlaylistRepository,
+    private val batchActionExecutor: com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor,
+    private val playlistUseCase: com.musicapp.player.feature.playlists.PlaylistUseCase,
 ) : ViewModel() {
     private val selectedAlbumId = MutableStateFlow<AlbumId?>(null)
-    private val sort = MutableStateFlow(CategoryTrackSort())
+    private val metadataMap = MutableStateFlow<Map<TrackId, com.musicapp.player.core.metadata.AdvancedTrackMetadata?>>(emptyMap())
+    private val infoTrack = MutableStateFlow<Track?>(null)
+    private val infoMetadata = MutableStateFlow<com.musicapp.player.core.metadata.AdvancedTrackMetadata?>(null)
+    private var metadataJob: Job? = null
+    private var infoJob: Job? = null
+
+    private val currentPlayingTrackId =
+        playbackController.state
+            .map { it.currentTrackId }
+            .distinctUntilChanged()
 
     val uiState: StateFlow<AlbumDetailUiState> =
-        combine(mediaLibraryRepository.observeTracks(), selectedAlbumId, sort) { tracks, albumId, currentSort ->
-            val matching = albumId?.let { selected -> tracks.filter { it.albumId == selected } }.orEmpty()
+        combine(
+            mediaLibraryRepository.observeTracks(),
+            selectedAlbumId,
+            currentPlayingTrackId,
+            metadataMap,
+            playlistRepository.observePlaylists(),
+            infoTrack,
+            infoMetadata,
+        ) { args ->
+            @Suppress("UNCHECKED_CAST")
+            val tracks = args[0] as List<Track>
+            val albumId = args[1] as? AlbumId
+            val playingId = args[2] as? TrackId
+            @Suppress("UNCHECKED_CAST")
+            val metaMap = args[3] as Map<TrackId, com.musicapp.player.core.metadata.AdvancedTrackMetadata?>
+            @Suppress("UNCHECKED_CAST")
+            val playlists = args[4] as List<com.musicapp.player.core.domain.model.Playlist>
+            val iTrack = args[5] as? Track
+            val iMeta = args[6] as? com.musicapp.player.core.metadata.AdvancedTrackMetadata
+
+            if (albumId == null) {
+                return@combine AlbumDetailUiState()
+            }
+
+            val matching = tracks.filter { it.albumId == albumId }
+            if (matching.isEmpty()) {
+                return@combine AlbumDetailUiState(
+                    albumId = albumId,
+                    isLoaded = true,
+                    isUnavailable = true,
+                    playlists = playlists,
+                )
+            }
+
+            val orderedPresentations = AlbumTrackOrdering.resolveOrder(matching, playingId)
+            val orderedTracks = orderedPresentations.map { it.track }
+            val representative = orderedTracks.firstOrNull()
+            val albumTitle = orderedTracks.firstNotNullOfOrNull(Track::albumTitle) ?: representative?.title
+            val artistName = orderedTracks.firstOrNull()?.artistName
+            val stats = AlbumDetailAggregator.aggregateStats(matching)
+            val techSummary = AlbumDetailAggregator.aggregateTechnicalSummary(matching, metaMap)
+            val artists = AlbumDetailAggregator.aggregateArtists(orderedTracks)
+
             AlbumDetailUiState(
                 albumId = albumId,
-                title = matching.firstNotNullOfOrNull(Track::albumTitle),
-                tracks = sortCategoryTracks(matching, currentSort),
-                sort = currentSort,
+                title = albumTitle,
+                artistName = artistName,
+                representativeTrack = representative,
+                tracks = orderedPresentations,
+                rawTracks = orderedTracks,
+                stats = stats,
+                technicalSummary = techSummary,
+                artists = artists,
+                playlists = playlists,
+                currentPlayingTrackId = playingId,
+                isLoaded = true,
+                isUnavailable = false,
+                infoTrack = iTrack,
+                infoMetadata = iMeta,
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), AlbumDetailUiState())
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            AlbumDetailUiState(),
+        )
 
     fun open(albumId: AlbumId) {
+        if (selectedAlbumId.value == albumId) return
         selectedAlbumId.value = albumId
+        loadMetadataForAlbum(albumId)
     }
 
-    fun selectSort(field: CategoryTrackSortField) {
-        sort.value = sort.value.next(field)
+    private fun loadMetadataForAlbum(albumId: AlbumId) {
+        metadataJob?.cancel()
+        metadataMap.value = emptyMap()
+        metadataJob = viewModelScope.launch(Dispatchers.IO) {
+            val tracks: List<Track> = mediaLibraryRepository.observeTracks().first().filter { it.albumId == albumId }
+            val semaphore = Semaphore(2)
+            coroutineScope {
+                tracks.forEach { track ->
+                    launch {
+                        semaphore.withPermit {
+                            try {
+                                val meta = trackMetadataRepository.read(track)
+                                metadataMap.update { current -> current + (track.id to meta) }
+                            } catch (_: Exception) {
+                                // Gracefully ignore as per PRD
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    fun playAll() = play(selectedTrackId = null)
-
-    fun playTrack(trackId: TrackId) = play(selectedTrackId = trackId)
-
-    private fun play(selectedTrackId: TrackId?) {
+    fun playTrack(trackId: TrackId) {
         val state = uiState.value
         val albumId = state.albumId ?: return
         CategoryPlaybackContextFactory.create(
             source = PlaybackContextSource.ALBUM,
             sourceId = "${albumId.volumeName}|${albumId.mediaStoreId}",
-            tracks = state.tracks,
-            selectedTrackId = selectedTrackId,
+            tracks = state.rawTracks,
+            selectedTrackId = trackId,
         )?.let(playbackController::play)
+    }
+
+    fun addToQueue(trackId: TrackId) {
+        viewModelScope.launch {
+            batchActionExecutor.execute(com.musicapp.player.feature.tracks.batch.BatchTrackAction.AddToQueue, listOf(trackId))
+        }
+    }
+
+    fun playNext(trackId: TrackId) {
+        viewModelScope.launch {
+            batchActionExecutor.execute(com.musicapp.player.feature.tracks.batch.BatchTrackAction.PlayNext, listOf(trackId))
+        }
+    }
+
+    fun hideTrack(trackId: TrackId) {
+        viewModelScope.launch {
+            batchActionExecutor.execute(com.musicapp.player.feature.tracks.batch.BatchTrackAction.Hide, listOf(trackId))
+        }
+    }
+
+    fun addToPlaylist(trackId: TrackId, playlistId: com.musicapp.player.core.domain.model.PlaylistId) {
+        viewModelScope.launch {
+            batchActionExecutor.execute(com.musicapp.player.feature.tracks.batch.BatchTrackAction.AddToPlaylist(playlistId), listOf(trackId))
+        }
+    }
+
+    fun showTrackInfo(track: Track) {
+        infoTrack.value = track
+        infoMetadata.value = null
+        infoJob?.cancel()
+        infoJob = viewModelScope.launch {
+            try {
+                infoMetadata.value = trackMetadataRepository.read(track)
+            } catch (_: Exception) {
+                // Keep null on error
+            }
+        }
+    }
+
+    fun dismissTrackInfo() {
+        infoTrack.value = null
+        infoMetadata.value = null
+        infoJob?.cancel()
+    }
+
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            try {
+                playlistUseCase.create(name)
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (_: Exception) {
+            }
+        }
     }
 }
 

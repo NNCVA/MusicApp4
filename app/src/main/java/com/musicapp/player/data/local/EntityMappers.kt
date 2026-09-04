@@ -35,6 +35,9 @@ internal fun Track.toEntity() = TrackEntity(
     sizeBytes = sizeBytes,
     availability = availability.name,
     lastSeenSyncGeneration = 0,
+    trackNumber = trackNumber,
+    discNumber = discNumber,
+    releaseYear = releaseYear,
 )
 
 internal fun TrackEntity.toDomain() = Track(
@@ -52,6 +55,9 @@ internal fun TrackEntity.toDomain() = Track(
     mimeType = mimeType,
     sizeBytes = sizeBytes,
     availability = Availability.valueOf(availability),
+    trackNumber = trackNumber,
+    discNumber = discNumber,
+    releaseYear = releaseYear,
 )
 
 internal fun PathRuleEntity.toDomain() = PathRule(

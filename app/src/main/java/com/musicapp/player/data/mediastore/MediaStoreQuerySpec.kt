@@ -43,6 +43,8 @@ data class MediaStoreQuerySpec(
                 MediaStore.Audio.Media.IS_RINGTONE,
                 MediaStore.Audio.Media.IS_ALARM,
                 MediaStore.Audio.Media.IS_NOTIFICATION,
+                MediaStore.Audio.Media.TRACK,
+                MediaStore.Audio.Media.YEAR,
             )
     }
 }

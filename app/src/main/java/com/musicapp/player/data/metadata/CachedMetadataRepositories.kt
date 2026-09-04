@@ -22,6 +22,7 @@ internal class CachedTrackMetadataRepository @Inject constructor(
                     sampleRateHz = result.value.sampleRateHz,
                     fileSizeBytes = track.sizeBytes,
                     isReadable = true,
+                    bitDepth = result.value.bitDepth,
                 )
             MetadataLoadResult.Unavailable ->
                 AdvancedTrackMetadata(

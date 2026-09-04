@@ -36,6 +36,9 @@ data class TrackEntity(
     @ColumnInfo(name = "availability") val availability: String,
     @ColumnInfo(name = "last_seen_sync_generation", defaultValue = "0")
     val lastSeenSyncGeneration: Long = 0,
+    @ColumnInfo(name = "track_number") val trackNumber: Int? = null,
+    @ColumnInfo(name = "disc_number") val discNumber: Int? = null,
+    @ColumnInfo(name = "release_year") val releaseYear: Int? = null,
 )
 
 @Entity(tableName = "media_sync_state")

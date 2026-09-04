@@ -17,12 +17,14 @@ data class AdvancedTrackMetadata(
     val sampleRateHz: Int?,
     val fileSizeBytes: Long,
     val isReadable: Boolean,
+    val bitDepth: Int? = null,
 ) {
     init {
         require(encoding == null || encoding.isNotBlank()) { "encoding must be null or non-blank" }
         require(bitrateBps == null || bitrateBps > 0) { "bitrateBps must be null or positive" }
         require(sampleRateHz == null || sampleRateHz > 0) { "sampleRateHz must be null or positive" }
         require(fileSizeBytes >= 0) { "fileSizeBytes must not be negative" }
+        require(bitDepth == null || bitDepth > 0) { "bitDepth must be null or positive" }
     }
 }
 

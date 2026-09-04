@@ -203,6 +203,9 @@ private fun MediaAudioCandidate.toEntity(generation: Long): TrackEntity {
         sizeBytes = sizeBytes,
         availability = Availability.AVAILABLE.name,
         lastSeenSyncGeneration = generation,
+        trackNumber = trackNumber,
+        discNumber = discNumber,
+        releaseYear = releaseYear,
     )
 }
 

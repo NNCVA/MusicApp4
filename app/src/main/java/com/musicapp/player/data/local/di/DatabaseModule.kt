@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.musicapp.player.data.local.MusicDatabase
 import com.musicapp.player.data.local.MIGRATION_1_2
+import com.musicapp.player.data.local.MIGRATION_2_3
 import com.musicapp.player.data.repository.HistoryRepository
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaybackSnapshotRepository
@@ -27,7 +28,7 @@ object DatabaseModule {
     @Singleton
     fun provideMusicDatabase(@ApplicationContext context: Context): MusicDatabase =
         Room.databaseBuilder(context, MusicDatabase::class.java, "music.db")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 }
 

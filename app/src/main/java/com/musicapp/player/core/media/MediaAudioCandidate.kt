@@ -23,6 +23,9 @@ data class MediaAudioCandidate(
     val isRecording: Boolean = false,
     val isPodcast: Boolean = false,
     val isAudiobook: Boolean = false,
+    val trackNumber: Int? = null,
+    val discNumber: Int? = null,
+    val releaseYear: Int? = null,
 ) {
     val id: TrackId = TrackId(volumeName = volumeName, mediaStoreId = mediaStoreId)
 }

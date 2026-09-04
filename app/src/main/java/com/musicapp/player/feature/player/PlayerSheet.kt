@@ -313,7 +313,7 @@ private fun MiniPlayer(
     ) {
         PlayerArtwork(
             track = track,
-            shape = RoundedCornerShape(dimensions.miniArtworkCornerRadius),
+            shape = RoundedCornerShape(dimensions.spaceExtraSmall),
             modifier = Modifier.size(dimensions.trackArtworkSize),
         )
         Column(modifier = Modifier.weight(1f)) {

@@ -47,6 +47,9 @@ data class Track(
     val mimeType: String? = null,
     val sizeBytes: Long = 0,
     val availability: Availability = Availability.AVAILABLE,
+    val trackNumber: Int? = null,
+    val discNumber: Int? = null,
+    val releaseYear: Int? = null,
 ) {
     init {
         require(title.isNotBlank()) { "title must not be blank" }
@@ -58,6 +61,9 @@ data class Track(
         require(displayName.isNotBlank()) { "displayName must not be blank" }
         require(sizeBytes >= 0) { "sizeBytes must not be negative" }
         require(mimeType == null || mimeType.isNotBlank()) { "mimeType must be null or non-blank" }
+        require(trackNumber == null || trackNumber > 0) { "trackNumber must be null or positive" }
+        require(discNumber == null || discNumber > 0) { "discNumber must be null or positive" }
+        require(releaseYear == null || releaseYear > 0) { "releaseYear must be null or positive" }
         require(albumId == null || albumId.volumeName == id.volumeName) {
             "albumId and track id must belong to the same volume"
         }

@@ -364,4 +364,18 @@
     <string name="scan_permission_dialog_description">MusicApp needs access to audio files so it can find and play music on this device.</string>
     <string name="scan_permission_decline">Decline</string>
     <string name="scan_permission_agree">Agree</string>
+    <string name="album_detail_nav_title">Album details</string>
+    <string name="album_detail_stat_songs">Songs</string>
+    <string name="album_detail_stat_duration">Duration</string>
+    <string name="album_detail_stat_year">Year</string>
+    <string name="album_detail_artists_section_title">Artists</string>
+    <string name="album_detail_artist_songs_format">%1$d songs</string>
+    <string name="album_detail_bit_depth_format">%1$d bits</string>
+    <string name="album_detail_sample_rate_format">%1$d Hz</string>
+    <string name="album_detail_unavailable_title">Album unavailable</string>
+    <string name="album_detail_unavailable_description">This album is no longer available in your library.</string>
+    <string name="album_detail_meta_na_desc">Not available</string>
+    <string name="album_detail_meta_multiple_desc">Multiple values in album</string>
+    <string name="album_detail_track_number_desc">Track %1$s</string>
+    <string name="album_detail_track_no_number_desc">No track number</string>
 </resources>

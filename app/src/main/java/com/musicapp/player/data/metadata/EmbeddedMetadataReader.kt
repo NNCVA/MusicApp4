@@ -23,6 +23,7 @@ internal data class EmbeddedMetadataPayload(
     val encoding: String?,
     val bitrateBps: Long?,
     val sampleRateHz: Int?,
+    val bitDepth: Int? = null,
 )
 
 internal sealed interface PlatformArtworkResult {
@@ -72,6 +73,7 @@ internal class AndroidEmbeddedMetadataReader @Inject constructor(
                 encoding = extractorValues.encoding ?: retrieverValues.encoding,
                 bitrateBps = extractorValues.bitrateBps ?: retrieverValues.bitrateBps,
                 sampleRateHz = extractorValues.sampleRateHz,
+                bitDepth = extractorValues.bitDepth ?: retrieverValues.bitDepth,
             )
         }
 
@@ -101,6 +103,14 @@ internal class AndroidEmbeddedMetadataReader @Inject constructor(
                     retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
                         ?.toLongOrNull()
                         ?.takeIf { it > 0 },
+                bitDepth =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE)
+                            ?.toIntOrNull()
+                            ?.takeIf { it > 0 }
+                    } else {
+                        null
+                    },
             )
         } catch (exception: CancellationException) {
             throw exception
@@ -121,6 +131,12 @@ internal class AndroidEmbeddedMetadataReader @Inject constructor(
                 encoding = audioFormat?.optionalString(MediaFormat.KEY_MIME),
                 bitrateBps = audioFormat?.optionalLong(MediaFormat.KEY_BIT_RATE),
                 sampleRateHz = audioFormat?.optionalInt(MediaFormat.KEY_SAMPLE_RATE),
+                bitDepth =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        audioFormat?.optionalInt("bits-per-sample")
+                    } else {
+                        null
+                    },
             )
         } catch (exception: CancellationException) {
             throw exception
@@ -188,6 +204,7 @@ internal class AndroidEmbeddedMetadataReader @Inject constructor(
         val opened: Boolean,
         val encoding: String? = null,
         val bitrateBps: Long? = null,
+        val bitDepth: Int? = null,
         val failure: Exception? = null,
     )
 
@@ -196,6 +213,7 @@ internal class AndroidEmbeddedMetadataReader @Inject constructor(
         val encoding: String? = null,
         val bitrateBps: Long? = null,
         val sampleRateHz: Int? = null,
+        val bitDepth: Int? = null,
         val failure: Exception? = null,
     )
 

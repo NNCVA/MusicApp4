@@ -180,6 +180,33 @@ class MediaStoreQuerySpecTest {
         )
     }
 
+    @Test
+    fun `parseTrackAndDiscNumber correctly handles single and multi-disc formats`() {
+        assertEquals(Pair(1, 2), parseTrackAndDiscNumber(1002))
+        assertEquals(Pair(2, 15), parseTrackAndDiscNumber(2015))
+        assertEquals(Pair(null, 5), parseTrackAndDiscNumber(5))
+        assertEquals(Pair(null, null), parseTrackAndDiscNumber(null))
+        assertEquals(Pair(null, null), parseTrackAndDiscNumber(0))
+        assertEquals(Pair(null, null), parseTrackAndDiscNumber(-1))
+    }
+
+    @Test
+    fun `queryAudio parses trackNumber discNumber and releaseYear into candidate`() {
+        val provider = RecordingMediaProvider { _, projection ->
+            audioCursor(
+                projection = projection,
+                mediaStoreId = 99,
+                path = "Music/song.flac",
+            )
+        }
+        val adapter = adapter(provider, apiLevel = 29)
+        val candidate = adapter.queryAudio().single()
+
+        assertEquals(1, candidate.discNumber)
+        assertEquals(2, candidate.trackNumber)
+        assertEquals(2002, candidate.releaseYear)
+    }
+
     private fun adapter(
         provider: RecordingMediaProvider,
         apiLevel: Int,
@@ -274,6 +301,8 @@ class MediaStoreQuerySpecTest {
                     MediaStore.Audio.Media.IS_ALARM,
                     MediaStore.Audio.Media.IS_NOTIFICATION,
                     -> 0
+                    MediaStore.Audio.Media.TRACK -> 1002
+                    MediaStore.Audio.Media.YEAR -> 2002
                     MediaStore.MediaColumns.RELATIVE_PATH,
                     MediaStore.MediaColumns.DATA,
                     -> path

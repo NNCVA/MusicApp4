@@ -129,6 +129,8 @@ class AndroidMediaStoreQueryAdapter internal constructor(
                         storageRoots = legacyStorageRoots,
                     )
                 }
+            val (discNumber, trackNumber) = parseTrackAndDiscNumber(columns.track?.intOrNull())
+            val releaseYear = columns.year?.intOrNull()?.takeIf { it in 1000..9999 }
             MediaAudioCandidate(
                 volumeName = volumeName,
                 mediaStoreId = columns.id.long(),
@@ -147,6 +149,9 @@ class AndroidMediaStoreQueryAdapter internal constructor(
                 isRingtone = columns.isRingtone.boolean(),
                 isAlarm = columns.isAlarm.boolean(),
                 isNotification = columns.isNotification.boolean(),
+                trackNumber = trackNumber,
+                discNumber = discNumber,
+                releaseYear = releaseYear,
             )
         } catch (_: IllegalArgumentException) {
             null
@@ -181,6 +186,8 @@ class AndroidMediaStoreQueryAdapter internal constructor(
         val isRingtone = cursor.column(MediaStore.Audio.Media.IS_RINGTONE)
         val isAlarm = cursor.column(MediaStore.Audio.Media.IS_ALARM)
         val isNotification = cursor.column(MediaStore.Audio.Media.IS_NOTIFICATION)
+        val track = cursor.columnOrNull(MediaStore.Audio.Media.TRACK)
+        val year = cursor.columnOrNull(MediaStore.Audio.Media.YEAR)
     }
 }
 
@@ -192,6 +199,8 @@ private data class CursorColumn(
 
     fun longOrNull(): Long? = if (cursor.isNull(index)) null else cursor.getLong(index)
 
+    fun intOrNull(): Int? = if (cursor.isNull(index)) null else cursor.getInt(index)
+
     fun stringOrNull(): String? = if (cursor.isNull(index)) null else cursor.getString(index)
 
     fun boolean(): Boolean = cursor.getInt(index) != 0
@@ -199,6 +208,22 @@ private data class CursorColumn(
 
 private fun Cursor.column(name: String): CursorColumn =
     CursorColumn(this, getColumnIndexOrThrow(name))
+
+private fun Cursor.columnOrNull(name: String): CursorColumn? {
+    val index = getColumnIndex(name)
+    return if (index >= 0) CursorColumn(this, index) else null
+}
+
+internal fun parseTrackAndDiscNumber(rawTrack: Int?): Pair<Int?, Int?> {
+    if (rawTrack == null || rawTrack <= 0) return Pair(null, null)
+    return if (rawTrack >= 1000) {
+        val disc = rawTrack / 1000
+        val track = rawTrack % 1000
+        Pair(disc.takeIf { it > 0 }, track.takeIf { it > 0 })
+    } else {
+        Pair(null, rawTrack)
+    }
+}
 
 private fun secondsToMilliseconds(seconds: Long): Long =
     try {

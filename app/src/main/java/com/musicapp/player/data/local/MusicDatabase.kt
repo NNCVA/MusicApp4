@@ -32,7 +32,7 @@ import com.musicapp.player.data.local.entity.TrackEntity
         MediaSyncStateEntity::class,
         MediaVolumeSyncStateEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class MusicDatabase : RoomDatabase() {

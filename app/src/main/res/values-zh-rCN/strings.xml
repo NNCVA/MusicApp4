@@ -355,4 +355,18 @@
     <string name="scan_permission_dialog_description">MusicApp 需要读取此设备中存储的音频文件，以查找并播放音乐。</string>
     <string name="scan_permission_decline">拒绝</string>
     <string name="scan_permission_agree">同意</string>
+    <string name="album_detail_nav_title">专辑详情</string>
+    <string name="album_detail_stat_songs">歌曲</string>
+    <string name="album_detail_stat_duration">时长</string>
+    <string name="album_detail_stat_year">年份</string>
+    <string name="album_detail_artists_section_title">参与创作的艺术家</string>
+    <string name="album_detail_artist_songs_format">%1$d 首</string>
+    <string name="album_detail_bit_depth_format">%1$d bits</string>
+    <string name="album_detail_sample_rate_format">%1$d Hz</string>
+    <string name="album_detail_unavailable_title">专辑不可用</string>
+    <string name="album_detail_unavailable_description">该专辑已无法在媒体库中找到。</string>
+    <string name="album_detail_meta_na_desc">未提供</string>
+    <string name="album_detail_meta_multiple_desc">专辑内存在多个值</string>
+    <string name="album_detail_track_number_desc">曲序号 %1$s</string>
+    <string name="album_detail_track_no_number_desc">无曲序号</string>
 </resources>
