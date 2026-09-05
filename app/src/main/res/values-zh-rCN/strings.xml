@@ -171,6 +171,10 @@
     <plurals name="artist_track_count">
         <item quantity="other">%1$d 首</item>
     </plurals>
+    <string name="artist_albums_section_title">专辑</string>
+    <plurals name="artist_album_track_count">
+        <item quantity="other">%1$d 首</item>
+    </plurals>
     <plurals name="album_track_count">
         <item quantity="other">%1$d 首</item>
     </plurals>

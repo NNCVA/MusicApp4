@@ -48,8 +48,7 @@ class FakeMediaLibraryRepository(
         combine(tracks, hiddenIds) { values, hidden ->
             values.values.filter { track ->
                 track.id !in hidden &&
-                    com.musicapp.player.feature.artists.ArtistGrouping.splitArtistNames(track.artistName)
-                        .any { it.equals(artistId.name, ignoreCase = true) }
+                    com.musicapp.player.feature.artists.ArtistGrouping.matches(track.artistName, artistId)
             }.sortedWith(trackComparator)
         }
 

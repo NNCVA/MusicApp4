@@ -1,17 +1,12 @@
 package com.musicapp.player.feature.artists
 
-import android.graphics.Bitmap
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import coil3.compose.AsyncImage
-import com.musicapp.player.core.image.AudioArtworkRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,51 +16,39 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.musicapp.player.R
-import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
+import com.musicapp.player.core.designsystem.component.LoadingState
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
-import com.musicapp.player.core.designsystem.component.UNKNOWN_ARTIST_SENTINEL
 import com.musicapp.player.core.designsystem.component.localizedArtistName
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.ArtistId
-import com.musicapp.player.core.domain.model.Availability
-import com.musicapp.player.core.domain.model.Track
-import com.musicapp.player.core.metadata.ArtworkResult
+import com.musicapp.player.core.image.AudioArtworkRequest
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryNavigationIconButton
-import com.musicapp.player.feature.category.CategoryHeader
-import com.musicapp.player.feature.category.CategoryTrackList
-import com.musicapp.player.feature.category.CategoryTrackSortField
-import com.musicapp.player.feature.category.CategoryTrackSortMenu
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 import kotlinx.coroutines.launch
@@ -93,27 +76,6 @@ fun ArtistsScreenRoute(
 }
 
 @Composable
-fun ArtistDetailScreenRoute(
-    artistId: ArtistId,
-    viewModel: ArtistDetailViewModel,
-    contentInsets: WindowInsets,
-    onBack: () -> Unit,
-    bottomPadding: Dp = 0.dp,
-) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(artistId) { viewModel.open(artistId) }
-    ArtistDetailScreen(
-        state = state,
-        contentInsets = contentInsets,
-        bottomPadding = bottomPadding,
-        onBack = onBack,
-        onPlayAll = viewModel::playAll,
-        onSortSelected = viewModel::selectSort,
-        onTrackClick = { viewModel.playTrack(it.id) },
-    )
-}
-
-@Composable
 private fun ArtistsScreen(
     state: ArtistsUiState,
     contentInsets: WindowInsets,
@@ -127,30 +89,16 @@ private fun ArtistsScreen(
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
-    val unknownArtist = remember(state.artists) {
-        state.artists.firstOrNull { it.id.name.equals(UNKNOWN_ARTIST_SENTINEL, ignoreCase = true) }
-    }
-    val targetArtistsForSections = remember(state.artists, unknownArtist) {
-        if (unknownArtist != null) {
-            state.artists.filterNot { it.id.name.equals(UNKNOWN_ARTIST_SENTINEL, ignoreCase = true) }
-        } else {
-            state.artists
-        }
-    }
-    val sections = remember(targetArtistsForSections) { groupArtistsIntoSections(targetArtistsForSections) }
-    val normalDisplayArtists = remember(sections) { sections.flatMap(ArtistSection::artists) }
-    val displayArtists = remember(unknownArtist, normalDisplayArtists) {
-        if (unknownArtist != null) listOf(unknownArtist) + normalDisplayArtists else normalDisplayArtists
-    }
-    val initialOffset = if (unknownArtist != null) 1 else 0
-    val sectionPositions = remember(sections, initialOffset) { sectionStartPositions(sections, initialOffset) }
-    val gutterMode = remember(displayArtists, sections, sectionPositions, initialOffset) {
-        if (displayArtists.isEmpty()) {
+    val sections = remember(state.artists) { groupArtistsIntoSections(state.artists) }
+    val displayArtists = remember(sections) { sections.flatMap(ArtistSection::artists) }
+    val sectionPositions = remember(sections) { sectionStartPositions(sections) }
+    val gutterMode = remember(state.isLoaded, displayArtists, sections, sectionPositions) {
+        if (!state.isLoaded || displayArtists.isEmpty()) {
             GutterMode.Hidden
         } else {
             GutterMode.Index(
                 sortOrder = SectionSortOrder.ASCENDING,
-                activeSectionProvider = { sectionLabelAtPosition(sections, listState.firstVisibleItemIndex, initialOffset) },
+                activeSectionProvider = { sectionLabelAtPosition(sections, listState.firstVisibleItemIndex) },
                 populatedBuckets = sections.map(ArtistSection::label).toSet(),
                 onSectionSelected = { label ->
                     sectionPositions[label]?.let { position ->
@@ -168,7 +116,9 @@ private fun ArtistsScreen(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
             ArtistsHeader(policy = policy, openDrawer = openDrawer)
-            if (state.isLoaded && state.artists.isEmpty()) {
+            if (!state.isLoaded) {
+                LoadingState(modifier = Modifier.weight(1f))
+            } else if (state.artists.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)
@@ -213,10 +163,18 @@ private fun ArtistsHeader(
     openDrawer: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
+    val iconVisualOffset = dimensions.minimumTouchTarget - dimensions.spaceLarge
+    val headerStartPadding =
+        if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
+            dimensions.contentHorizontalPadding - iconVisualOffset
+        } else {
+            dimensions.contentHorizontalPadding
+        }
+    val headerEndPadding = dimensions.contentHorizontalPadding - iconVisualOffset
     Row(
         modifier = Modifier.fillMaxWidth()
             .heightIn(min = dimensions.playerHeaderHeight)
-            .padding(horizontal = dimensions.topBarHorizontalPadding),
+            .padding(start = headerStartPadding, end = headerEndPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
     ) {
@@ -245,6 +203,7 @@ private fun ArtistRow(
     Row(
         modifier = Modifier.fillMaxWidth()
             .heightIn(min = dimensions.minimumTouchTarget)
+            .clip(MusicTheme.shapes.small)
             .clickable(onClick = onClick)
             .padding(
                 horizontal = dimensions.contentHorizontalPadding,
@@ -287,7 +246,6 @@ private fun ArtistArtwork(
     artist: ArtistSummary,
     modifier: Modifier,
 ) {
-    val artworkDescription = stringResource(R.string.artist_artwork_description, artist.displayName.localizedArtistName())
     val repTrack = remember(artist.id) { artist.sortedArtworkCandidates().firstOrNull() }
     val request = remember(artist.id, repTrack?.id, repTrack?.dateModifiedMs) {
         AudioArtworkRequest.ArtistArtworkRequest(
@@ -298,65 +256,10 @@ private fun ArtistArtwork(
     }
     AsyncImage(
         model = request,
-        contentDescription = artworkDescription,
-        modifier = modifier
-            .clip(CircleShape)
-            .background(MusicTheme.colors.secondaryContainer),
+        contentDescription = stringResource(R.string.artist_artwork_description, artist.displayName.localizedArtistName()),
+        modifier = modifier.clip(CircleShape).background(MusicTheme.colors.secondaryContainer),
         contentScale = ContentScale.Crop,
         error = painterResource(R.drawable.ic_playlist_album),
         placeholder = painterResource(R.drawable.ic_playlist_album),
     )
-}
-
-@Composable
-private fun ArtistDetailScreen(
-    state: ArtistDetailUiState,
-    contentInsets: WindowInsets,
-    onBack: () -> Unit,
-    onPlayAll: () -> Unit,
-    onSortSelected: (CategoryTrackSortField) -> Unit,
-    onTrackClick: (Track) -> Unit,
-    bottomPadding: Dp = 0.dp,
-) {
-    val dimensions = MusicTheme.dimensions
-    Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
-    ) {
-        CategoryHeader(
-            title = (state.displayName ?: stringResource(R.string.artist_unknown_name)).localizedArtistName(),
-            onBack = onBack,
-            trailingContent = {
-                TextButton(
-                    onClick = onPlayAll,
-                    enabled = state.tracks.any { it.availability == Availability.AVAILABLE },
-                ) { Text(stringResource(R.string.category_play_all)) }
-                CategoryTrackSortMenu(
-                    sort = state.sort,
-                    fields = listOf(
-                        CategoryTrackSortField.ALBUM,
-                        CategoryTrackSortField.TITLE,
-                        CategoryTrackSortField.DATE_ADDED,
-                        CategoryTrackSortField.DURATION,
-                    ),
-                    onSelected = onSortSelected,
-                )
-            },
-        )
-        if (state.tracks.isEmpty()) {
-            EmptyState(
-                modifier = Modifier.weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding)
-                    .padding(bottom = bottomPadding),
-                title = stringResource(R.string.artist_empty_title),
-                description = stringResource(R.string.artist_empty_description),
-            )
-        } else {
-            CategoryTrackList(
-                tracks = state.tracks,
-                onTrackClick = onTrackClick,
-                bottomPadding = bottomPadding,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
 }

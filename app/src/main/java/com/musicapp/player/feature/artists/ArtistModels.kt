@@ -1,9 +1,14 @@
 package com.musicapp.player.feature.artists
 
+import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.feature.albums.AlbumGroupKey
+import com.musicapp.player.feature.albums.AlbumGrouping
 
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.Locale
 
 data class ArtistSummary(
@@ -13,19 +18,72 @@ data class ArtistSummary(
     val artworkCandidates: List<Track>,
 )
 
-/**
- * Splits tracks with multiple artists across common delimiters and groups them
- * into distinct artist summaries normalized by case-insensitive name.
- */
-object ArtistGrouping {
-    private val DELIMITER_REGEX = Regex("[/、,;&]+")
+data class ArtistAlbumSummary(
+    val albumId: AlbumId,
+    val title: String,
+    val artistName: String,
+    val artistTrackCount: Int,
+    val representativeTrack: Track,
+    val groupKey: AlbumGroupKey,
+)
 
+/** Stable, URL-safe route token for a complete artist label. */
+object ArtistRouteKey {
+    private const val PREFIX = "a_"
+
+    fun encode(artistName: String): String {
+        val normalized = artistName.trim()
+        require(normalized.isNotEmpty()) { "artistName must not be blank" }
+        return PREFIX + Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(normalized.toByteArray(StandardCharsets.UTF_8))
+    }
+
+    fun decode(routeKey: String): String? {
+        if (!routeKey.startsWith(PREFIX)) return null
+        return runCatching {
+            Base64.getUrlDecoder().decode(routeKey.removePrefix(PREFIX))
+                .toString(StandardCharsets.UTF_8)
+                .trim()
+                .takeIf(String::isNotEmpty)
+        }.getOrNull()
+    }
+}
+
+/** Groups complete, trimmed artist labels by a case-insensitive stable key. */
+object ArtistGrouping {
     fun splitArtistNames(artistName: String?): List<String> {
-        if (artistName.isNullOrBlank()) return emptyList()
-        return artistName.split(DELIMITER_REGEX)
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .ifEmpty { listOf(artistName.trim()) }
+        val trimmed = artistName?.trim().orEmpty()
+        return trimmed.takeIf(String::isNotEmpty)?.let(::listOf).orEmpty()
+    }
+
+    fun normalizedKey(artistName: String?): String? =
+        artistName?.trim()?.takeIf(String::isNotEmpty)?.lowercase(Locale.ROOT)
+
+    fun matches(artistName: String?, artistId: ArtistId): Boolean =
+        normalizedKey(artistName) == normalizedKey(artistId.name)
+
+    fun groupAlbumsForArtist(
+        allTracks: List<Track>,
+        artistTracks: List<Track>,
+    ): List<ArtistAlbumSummary> {
+        if (artistTracks.isEmpty()) return emptyList()
+        val artistTrackIds = artistTracks.mapTo(hashSetOf(), Track::id)
+        return AlbumGrouping.group(allTracks)
+            .mapNotNull { album ->
+                val matchingIds = album.trackIds.intersect(artistTrackIds)
+                if (matchingIds.isEmpty()) {
+                    null
+                } else {
+                    ArtistAlbumSummary(
+                        albumId = album.id,
+                        title = album.title,
+                        artistName = album.artistName,
+                        artistTrackCount = matchingIds.size,
+                        representativeTrack = album.representativeTrack,
+                        groupKey = album.groupKey,
+                    )
+                }
+            }
     }
 
     fun group(tracks: List<Track>): List<ArtistSummary> {
@@ -35,7 +93,7 @@ object ArtistGrouping {
         for (track in tracks) {
             val names = splitArtistNames(track.artistName)
             for (name in names) {
-                val normalized = name.lowercase(Locale.ROOT)
+                val normalized = normalizedKey(name) ?: continue
                 tracksByNormalizedArtist.getOrPut(normalized) { mutableListOf() }.add(track)
                 displayNamesByNormalized.putIfAbsent(normalized, name)
             }

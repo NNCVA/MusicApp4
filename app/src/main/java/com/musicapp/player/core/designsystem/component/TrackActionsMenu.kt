@@ -31,6 +31,20 @@ fun TrackActionsMenu(
         modifier = modifier,
     ) {
         AppDropdownMenuItem(
+            text = { Text(stringResource(R.string.selection_add_to_queue)) },
+            iconTint = MenuIconPalette.Add,
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_queue_add),
+                    contentDescription = null,
+                )
+            },
+            onClick = {
+                onDismissRequest()
+                onAddToQueue()
+            },
+        )
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.selection_play_next)) },
             iconTint = MenuIconPalette.Play,
             trailingIcon = {
@@ -49,7 +63,7 @@ fun TrackActionsMenu(
             iconTint = MenuIconPalette.Add,
             trailingIcon = {
                 Icon(
-                    painter = painterResource(R.drawable.ic_common_add),
+                    painter = painterResource(R.drawable.ic_common_playlist_add),
                     contentDescription = null,
                 )
             },
@@ -104,4 +118,3 @@ private fun TrackActionsMenuPreview() {
         )
     }
 }
-

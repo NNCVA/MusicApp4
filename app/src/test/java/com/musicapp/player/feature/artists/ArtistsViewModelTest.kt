@@ -72,7 +72,7 @@ class ArtistsViewModelTest {
     }
 
     @Test
-    fun `artist detail filters tracks including collaboration songs and matches display name`() =
+    fun `artist detail filters complete artist labels and matches display name`() =
         runTest(dispatcher) {
             val t1 = track(1, dateModifiedMs = 10, artistName = "周杰伦")
             val t2 = track(2, dateModifiedMs = 20, artistName = "周杰伦/王力宏")
@@ -88,13 +88,13 @@ class ArtistsViewModelTest {
 
             val state = detailVm.uiState.value
             assertEquals("周杰伦", state.displayName)
-            assertEquals(listOf(t1.id, t2.id), state.tracks.map { it.id })
+            assertEquals(listOf(t1.id), state.tracks.map { it.id })
 
             detailVm.open(ArtistId("王力宏"))
             advanceUntilIdle()
             val leehomState = detailVm.uiState.value
             assertEquals("王力宏", leehomState.displayName)
-            assertEquals(listOf(t2.id, t3.id), leehomState.tracks.map { it.id })
+            assertEquals(listOf(t3.id), leehomState.tracks.map { it.id })
         }
 
     private fun kotlinx.coroutines.test.TestScope.collectState(viewModel: ArtistsViewModel) {

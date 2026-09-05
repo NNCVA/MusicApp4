@@ -176,6 +176,11 @@
         <item quantity="one">%1$d track</item>
         <item quantity="other">%1$d tracks</item>
     </plurals>
+    <string name="artist_albums_section_title">Albums</string>
+    <plurals name="artist_album_track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
     <plurals name="album_track_count">
         <item quantity="one">%1$d track</item>
         <item quantity="other">%1$d tracks</item>

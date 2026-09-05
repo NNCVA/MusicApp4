@@ -78,6 +78,7 @@ import com.musicapp.player.feature.albums.AlbumsScreenRoute
 import com.musicapp.player.feature.albums.AlbumsViewModel
 import com.musicapp.player.feature.artists.ArtistDetailScreenRoute
 import com.musicapp.player.feature.artists.ArtistDetailViewModel
+import com.musicapp.player.feature.artists.ArtistRouteKey
 import com.musicapp.player.feature.artists.ArtistsScreenRoute
 import com.musicapp.player.feature.artists.ArtistsViewModel
 import com.musicapp.player.feature.folders.FolderDetailScreenRoute
@@ -286,7 +287,7 @@ fun MainNavigation(
                                 openDrawer = openDrawer,
                                 onScanMusic = ::navigateToScanMusic,
                                 onArtistClick = { artistId ->
-                                    commitNavigation { navigate(ArtistDetailRoute(artistId.name)) }
+                                    commitNavigation { navigate(ArtistDetailRoute(ArtistRouteKey.encode(artistId.name))) }
                                 },
                                 bottomPadding = bottomPadding,
                             )
@@ -364,20 +365,33 @@ fun MainNavigation(
                                 onBack = ::handleBack,
                                 onArtistClick = { artistName ->
                                     commitNavigation {
-                                        navigate(ArtistDetailRoute(artistName))
+                                        navigate(ArtistDetailRoute(ArtistRouteKey.encode(artistName)))
                                     }
                                 },
                                 bottomPadding = bottomPadding,
                             )
                         }
                         entry<ArtistDetailRoute> { key ->
+                            val artistName = ArtistRouteKey.decode(key.artistName) ?: key.artistName
                             ArtistDetailScreenRoute(
-                                artistId = ArtistId(key.artistName),
+                                artistId = ArtistId(artistName),
                                 viewModel = viewModel<ArtistDetailViewModel>(
                                     key = "artist:${key.artistName}",
                                 ),
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,
+                                onScanMusic = ::navigateToScanMusic,
+                                onAlbumClick = { album ->
+                                    commitNavigation {
+                                        navigate(
+                                            AlbumDetailRoute(
+                                                volumeName = album.albumId.volumeName,
+                                                mediaStoreId = album.albumId.mediaStoreId,
+                                                groupKey = album.groupKey.encode(),
+                                            ),
+                                        )
+                                    }
+                                },
                                 bottomPadding = bottomPadding,
                             )
                         }

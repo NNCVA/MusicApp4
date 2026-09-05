@@ -4,13 +4,15 @@ import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.feature.albums.AlbumGrouping
+import com.musicapp.player.feature.albums.UNKNOWN_ALBUM_SENTINEL
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ArtistGroupingTest {
     @Test
-    fun `collaboration label is split into separate artist summaries across common delimiters`() {
+    fun `artist labels remain complete identities`() {
         val tracks =
             listOf(
                 track(1, "周杰伦", AlbumId("external", 1)),
@@ -22,28 +24,11 @@ class ArtistGroupingTest {
         val grouped = ArtistGrouping.group(tracks)
         val byName = grouped.associateBy { it.displayName }
 
-        assertEquals(5, grouped.size)
-        assertTrue(byName.containsKey("周杰伦"))
-        assertTrue(byName.containsKey("王力宏"))
-        assertTrue(byName.containsKey("林俊杰"))
-        assertTrue(byName.containsKey("陶喆"))
-        assertTrue(byName.containsKey("方大同"))
-
-        val jay = byName.getValue("周杰伦")
-        assertEquals(3, jay.trackCount)
-        assertEquals(listOf(1L, 2L, 4L), jay.artworkCandidates.map { it.id.mediaStoreId })
-
-        val leehom = byName.getValue("王力宏")
-        assertEquals(2, leehom.trackCount)
-        assertEquals(listOf(2L, 3L), leehom.artworkCandidates.map { it.id.mediaStoreId })
-
-        val jj = byName.getValue("林俊杰")
-        assertEquals(1, jj.trackCount)
-        assertEquals(listOf(3L), jj.artworkCandidates.map { it.id.mediaStoreId })
-
-        val david = byName.getValue("陶喆")
-        assertEquals(1, david.trackCount)
-        assertEquals(listOf(4L), david.artworkCandidates.map { it.id.mediaStoreId })
+        assertEquals(4, grouped.size)
+        assertEquals(setOf("周杰伦", "周杰伦/王力宏", "王力宏 & 林俊杰", "陶喆、周杰伦, 陶喆; 方大同"), byName.keys)
+        assertEquals(1, byName.getValue("周杰伦/王力宏").trackCount)
+        assertEquals(1, byName.getValue("王力宏 & 林俊杰").trackCount)
+        assertEquals(1, byName.getValue("陶喆、周杰伦, 陶喆; 方大同").trackCount)
     }
 
     @Test
@@ -64,15 +49,46 @@ class ArtistGroupingTest {
     }
 
     @Test
-    fun `splitArtistNames returns correct tokens`() {
-        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha / Beta"))
-        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha、Beta"))
-        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha, Beta"))
-        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha; Beta"))
-        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha & Beta"))
-        assertEquals(listOf("Alpha", "Beta", "Gamma"), ArtistGrouping.splitArtistNames("Alpha / Beta & Gamma; ,"))
+    fun `splitArtistNames trims without splitting complete labels`() {
+        assertEquals(listOf("Alpha / Beta"), ArtistGrouping.splitArtistNames(" Alpha / Beta "))
+        assertEquals(listOf("Alpha、Beta"), ArtistGrouping.splitArtistNames("Alpha、Beta"))
+        assertEquals(listOf("Alpha, Beta"), ArtistGrouping.splitArtistNames("Alpha, Beta"))
+        assertEquals(listOf("Alpha; Beta"), ArtistGrouping.splitArtistNames("Alpha; Beta"))
+        assertEquals(listOf("Alpha & Beta"), ArtistGrouping.splitArtistNames("Alpha & Beta"))
         assertEquals(emptyList<String>(), ArtistGrouping.splitArtistNames("   "))
         assertEquals(emptyList<String>(), ArtistGrouping.splitArtistNames(null))
+    }
+
+    @Test
+    fun `artist album summaries preserve album group key and intersect artist tracks`() {
+        val artistTrack = track(1, "Artist", AlbumId("external", 10))
+        val otherTrack = track(2, "Other", AlbumId("external", 10))
+        val unknownTrack = track(3, "Artist", AlbumId("external", 11)).copy(albumId = null, albumTitle = null)
+
+        val albums = ArtistGrouping.groupAlbumsForArtist(
+            allTracks = listOf(artistTrack, otherTrack, unknownTrack),
+            artistTracks = listOf(artistTrack, unknownTrack),
+        )
+
+        assertEquals(2, albums.size)
+        assertEquals(UNKNOWN_ALBUM_SENTINEL, albums.first().title)
+        assertEquals(1, albums.first().artistTrackCount)
+        assertEquals(1, albums.last().artistTrackCount)
+        assertEquals(
+            AlbumGrouping.group(listOf(artistTrack, otherTrack)).first().groupKey,
+            albums.last().groupKey,
+        )
+    }
+
+    @Test
+    fun `artist route key round trips complete unicode label`() {
+        val label = "周杰伦 / 王力宏"
+        val routeKey = ArtistRouteKey.encode(label)
+
+        assertTrue(routeKey.startsWith("a_"))
+        assertTrue('/' !in routeKey)
+        assertTrue('+' !in routeKey)
+        assertEquals(label, ArtistRouteKey.decode(routeKey))
     }
 
     @Test

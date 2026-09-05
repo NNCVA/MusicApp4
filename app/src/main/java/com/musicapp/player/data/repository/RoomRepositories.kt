@@ -51,8 +51,7 @@ class RoomMediaLibraryRepository @Inject constructor(
     override fun observeArtistTracks(artistId: ArtistId): Flow<List<Track>> =
         observeTracks(includeHidden = false).map { tracks ->
             tracks.filter { track ->
-                ArtistGrouping.splitArtistNames(track.artistName)
-                    .any { it.equals(artistId.name, ignoreCase = true) }
+                ArtistGrouping.matches(track.artistName, artistId)
             }
         }
 
