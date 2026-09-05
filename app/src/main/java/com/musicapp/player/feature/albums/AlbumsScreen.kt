@@ -196,7 +196,7 @@ private fun AlbumsScreen(
                     horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                     verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                 ) {
-                    items(state.albums, key = { it.groupKey }) { album ->
+                    items(state.albums, key = { it.key }) { album ->
                         AlbumCard(
                             album = album,
                             onClick = { onAlbumClick(album) },

@@ -120,7 +120,7 @@ data class AlbumSummary(
     val trackIds: Set<com.musicapp.player.core.domain.model.TrackId> = emptySet(),
     val groupKey: AlbumGroupKey = AlbumGroupKey.legacy(id, title, artistName),
 ) {
-    val key: String get() = groupKey.encode()
+    val key: String = groupKey.encode()
 }
 
 object AlbumGrouping {
