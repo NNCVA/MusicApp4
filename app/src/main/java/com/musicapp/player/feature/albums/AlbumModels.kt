@@ -17,8 +17,8 @@ import java.text.Normalizer
 import java.util.Base64
 import java.util.Locale
 
-val UNKNOWN_ALBUM_ID = AlbumId(volumeName = "virtual", mediaStoreId = Long.MAX_VALUE)
-const val UNKNOWN_ALBUM_SENTINEL = "<unknown_album>"
+val UNKNOWN_ALBUM_ID = AlbumGroupingRules.UNKNOWN_ALBUM_ID
+const val UNKNOWN_ALBUM_SENTINEL = AlbumGroupingRules.UNKNOWN_ALBUM_SENTINEL
 
 private val ALBUM_WHITESPACE_REGEX = Regex("\\s+")
 
@@ -124,7 +124,7 @@ data class AlbumSummary(
 }
 
 object AlbumGrouping {
-    private val VERSION_KEYWORD_REGEX = Regex("(?i)\\b(live|remix|deluxe|acoustic|instrumental|bonus|edition|version|remaster|remastered)\\b")
+    private val VERSION_KEYWORD_REGEX = AlbumGroupingRules.VERSION_KEYWORD_REGEX
 
     fun normalizeAlbumTitle(rawTitle: String?): String {
         return normalizeAlbumTitleValue(rawTitle)
@@ -569,7 +569,7 @@ data class AlbumArtistCredit(
     val representativeTrack: Track,
 )
 
-const val ALBUM_TRACK_NO_NUMBER_PLACEHOLDER = "–"
+const val ALBUM_TRACK_NO_NUMBER_PLACEHOLDER = AlbumGroupingRules.TRACK_NO_NUMBER_PLACEHOLDER
 
 object AlbumTrackOrdering {
     val defaultSongComparator: Comparator<Track> =

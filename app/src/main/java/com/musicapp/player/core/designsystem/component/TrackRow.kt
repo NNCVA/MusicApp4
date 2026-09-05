@@ -41,7 +41,7 @@ import android.content.Context
 import com.musicapp.player.theme.MusicWindowWidthTier
 
 const val UNKNOWN_ARTIST_SENTINEL = "<unknown>"
-const val VARIOUS_ARTISTS_SENTINEL = "<various_artists>"
+const val VARIOUS_ARTISTS_SENTINEL = com.musicapp.player.feature.albums.AlbumGroupingRules.VARIOUS_ARTISTS_SENTINEL
 
 /**
  * 转换未知艺术家或各种艺术家占位符为本地化文案。
