@@ -204,7 +204,7 @@ class NavigationState private constructor(
     }
 
     internal fun push(route: MusicNavKey) {
-        stack(route.owner()).add(route)
+        stack(currentTopLevelRoute).add(route)
     }
 
     internal fun popCurrent() {
@@ -251,9 +251,9 @@ class NavigationState private constructor(
                     "stack must start with its root"
                 }
                 require(stack.routes.withIndex().all { (index, route) ->
-                    route.owner() == root && (index == 0 || route !is TopLevelNavKey)
+                    if (index == 0) route == root else route !is TopLevelNavKey
                 }) {
-                    "stack contains a route owned by another top-level route"
+                    "stack root must match its top-level key and subsequent entries must be detail routes"
                 }
             }
 
@@ -281,9 +281,7 @@ class Navigator(private val state: NavigationState) {
             return
         }
 
-        val owner = route.owner()
-        state.select(owner)
-        if (state.backStack(owner).lastOrNull() != route) {
+        if (state.currentBackStack.lastOrNull() != route) {
             state.push(route)
         }
     }

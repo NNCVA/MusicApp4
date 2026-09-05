@@ -38,7 +38,9 @@ class NavigationStateTest {
         val albumDetail = AlbumDetailRoute(volumeName = "external", mediaStoreId = 11)
         val playlistDetail = PlaylistDetailRoute(playlistId = 7)
 
+        navigator.navigate(AlbumsRoute)
         navigator.navigate(albumDetail)
+        navigator.navigate(PlaylistsRoute)
         navigator.navigate(playlistDetail)
         navigator.navigate(AlbumsRoute)
 
@@ -68,6 +70,7 @@ class NavigationStateTest {
         val navigator = Navigator(state)
         val albumDetail = AlbumDetailRoute(volumeName = "external", mediaStoreId = 11)
 
+        navigator.navigate(AlbumsRoute)
         navigator.navigate(albumDetail)
         navigator.navigate(albumDetail)
         navigator.navigate(albumDetail)
@@ -83,6 +86,7 @@ class NavigationStateTest {
         val folder1 = FolderDetailRoute(volumeName = "primary", relativePath = "Music")
         val folder2 = FolderDetailRoute(volumeName = "primary", relativePath = "Music/Rock")
 
+        navigator.navigate(FoldersRoute)
         navigator.navigate(folder1)
         navigator.navigate(folder2)
 
@@ -94,6 +98,7 @@ class NavigationStateTest {
         val state = NavigationState.initial()
         val navigator = Navigator(state)
 
+        navigator.navigate(ArtistsRoute)
         navigator.navigate(ArtistDetailRoute(artistName = "Artist 9"))
         navigator.navigate(ArtistsRoute)
 
@@ -118,6 +123,7 @@ class NavigationStateTest {
     fun backPopsDetailBeforeReturningToHomeRoot() {
         val state = NavigationState.initial()
         val navigator = Navigator(state)
+        navigator.navigate(AlbumsRoute)
         navigator.navigate(AlbumDetailRoute(volumeName = "external", mediaStoreId = 12))
 
         assertEquals(BackNavigationResult.CONSUMED, navigator.goBack())
@@ -178,17 +184,46 @@ class NavigationStateTest {
     }
 
     @Test
-    fun detailNavigationUsesItsOwningStack() {
+    fun detailNavigationPushesOntoCurrentTopLevelStack() {
         val state = NavigationState.initial()
         val navigator = Navigator(state)
         val folderDetail = FolderDetailRoute(volumeName = "sdcard", relativePath = "Music/Live")
 
-        navigator.navigate(AboutRoute)
+        navigator.navigate(FoldersRoute)
         navigator.navigate(folderDetail)
 
         assertEquals(FoldersRoute, state.currentTopLevelRoute)
-        assertEquals(listOf(FoldersRoute, folderDetail), state.backStack(FoldersRoute))
-        assertEquals(listOf(AboutRoute), state.backStack(AboutRoute))
+        assertEquals(listOf(FoldersRoute, folderDetail), state.currentBackStack)
+    }
+
+    @Test
+    fun crossEntityDetailNavigationPushesOntoCurrentStackAndPopsSequentially() {
+        val state = NavigationState.initial()
+        val navigator = Navigator(state)
+        val artistDetail = ArtistDetailRoute(artistName = "Artist 9")
+        val albumDetail = AlbumDetailRoute(volumeName = "external", mediaStoreId = 12, groupKey = "group-1")
+
+        // 1. 从艺术家列表进入艺术家详情
+        navigator.navigate(ArtistsRoute)
+        navigator.navigate(artistDetail)
+        assertEquals(ArtistsRoute, state.currentTopLevelRoute)
+        assertEquals(listOf(ArtistsRoute, artistDetail), state.currentBackStack)
+
+        // 2. 跨实体进入专辑详情，保持当前宿主栈为 ArtistsRoute，顺序压入
+        navigator.navigate(albumDetail)
+        assertEquals(ArtistsRoute, state.currentTopLevelRoute)
+        assertEquals(listOf(ArtistsRoute, artistDetail, albumDetail), state.currentBackStack)
+
+        // 3. 第一次返回：弹出专辑详情，回到艺术家详情
+        assertEquals(BackNavigationResult.CONSUMED, navigator.goBack())
+        assertEquals(listOf(ArtistsRoute, artistDetail), state.currentBackStack)
+
+        // 4. 第二次返回：弹出艺术家详情，回到艺术家列表根页面
+        assertEquals(BackNavigationResult.CONSUMED, navigator.goBack())
+        assertEquals(listOf(ArtistsRoute), state.currentBackStack)
+
+        // 5. 第三次返回：根页面返回桌面
+        assertEquals(BackNavigationResult.REQUEST_RETURN_TO_DESKTOP, navigator.goBack())
     }
 
     @Test
@@ -306,6 +341,26 @@ class NavigationStateTest {
 
         assertEquals(TracksRoute, restored.currentTopLevelRoute)
         assertEquals(NavigationState.initial().snapshot(), restored.snapshot())
+    }
+
+    @Test
+    fun crossEntityDetailNavigationPreservesMixedStackInSnapshot() {
+        val state = NavigationState.initial()
+        val navigator = Navigator(state)
+        val artistDetail = ArtistDetailRoute(artistName = "Artist 9")
+        val albumDetail = AlbumDetailRoute(volumeName = "external", mediaStoreId = 12, groupKey = "group-1")
+
+        navigator.navigate(ArtistsRoute)
+        navigator.navigate(artistDetail)
+        navigator.navigate(albumDetail)
+
+        val encoded = state.snapshot().encode()
+        val restored = NavigationState.restore(NavigationSnapshot.decode(encoded))
+
+        assertEquals(ArtistsRoute, restored.currentTopLevelRoute)
+        assertEquals(ArtistsRoute, restored.homeTopLevelRoute)
+        assertEquals(listOf(ArtistsRoute, artistDetail, albumDetail), restored.backStack(ArtistsRoute))
+        assertEquals(state.snapshot(), restored.snapshot())
     }
 
     private fun legacySnapshot(
