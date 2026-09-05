@@ -1,5 +1,6 @@
 package com.musicapp.player.feature.artists
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicapp.player.core.common.time.Clock
@@ -17,6 +18,7 @@ import com.musicapp.player.data.repository.FakePlaylistRepository
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
 import com.musicapp.player.feature.category.CategoryPlaybackContextFactory
+import com.musicapp.player.feature.category.CategorySortDirection
 import com.musicapp.player.feature.category.CategoryTrackSort
 import com.musicapp.player.feature.category.CategoryTrackSortField
 import com.musicapp.player.feature.category.next
@@ -41,6 +43,7 @@ import kotlinx.coroutines.launch
 
 data class ArtistsUiState(
     val artists: List<ArtistSummary> = emptyList(),
+    val sort: ArtistSort = ArtistSort(),
     val isLoaded: Boolean = false,
 ) {
     @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
@@ -72,17 +75,27 @@ data class ArtistDetailUiState(
 @HiltViewModel
 class ArtistsViewModel internal constructor(
     mediaLibraryRepository: MediaLibraryRepository,
+    private val savedStateHandle: SavedStateHandle,
     private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
     @Inject
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
-    ) : this(mediaLibraryRepository, Dispatchers.Default)
+        savedStateHandle: SavedStateHandle,
+    ) : this(mediaLibraryRepository, savedStateHandle, Dispatchers.Default)
 
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
+        savedStateHandle: SavedStateHandle,
         artworkRepository: ArtworkRepository,
-    ) : this(mediaLibraryRepository, Dispatchers.Default)
+    ) : this(mediaLibraryRepository, savedStateHandle, Dispatchers.Default)
+
+    internal constructor(
+        mediaLibraryRepository: MediaLibraryRepository,
+        computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    ) : this(mediaLibraryRepository, SavedStateHandle(), computationDispatcher)
+
+    private val sort = MutableStateFlow(restoreArtistSort(savedStateHandle))
 
     private val artists =
         mediaLibraryRepository.observeTracks()
@@ -90,12 +103,25 @@ class ArtistsViewModel internal constructor(
             .flowOn(computationDispatcher)
 
     val uiState: StateFlow<ArtistsUiState> =
-        artists.map { ArtistsUiState(artists = it, isLoaded = true) }
-            .stateIn(
-                viewModelScope,
-                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-                ArtistsUiState(isLoaded = false),
+        combine(artists, sort) { rawArtists, currentSort ->
+            ArtistsUiState(
+                artists = sortArtists(rawArtists, currentSort),
+                sort = currentSort,
+                isLoaded = true,
             )
+        }
+        .flowOn(computationDispatcher)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            ArtistsUiState(sort = sort.value, isLoaded = false),
+        )
+
+    fun selectSort(field: ArtistSortField) {
+        sort.value = sort.value.next(field)
+        savedStateHandle[ARTIST_SORT_FIELD_KEY] = sort.value.field.name
+        savedStateHandle[ARTIST_SORT_DIRECTION_KEY] = sort.value.direction.name
+    }
 
     @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in Composable")
     fun requestArtwork(artist: ArtistSummary) {
@@ -315,3 +341,15 @@ private val trackIdentityComparator =
     compareBy<Track>({ it.id.volumeName }, { it.id.mediaStoreId })
 
 private const val STOP_TIMEOUT_MS = 5_000L
+private const val ARTIST_SORT_FIELD_KEY = "artists.sort.field"
+private const val ARTIST_SORT_DIRECTION_KEY = "artists.sort.direction"
+
+private fun restoreArtistSort(handle: SavedStateHandle): ArtistSort {
+    val field = handle.get<String>(ARTIST_SORT_FIELD_KEY)?.let { stored ->
+        ArtistSortField.entries.firstOrNull { it.name == stored }
+    } ?: ArtistSortField.NAME
+    val direction = handle.get<String>(ARTIST_SORT_DIRECTION_KEY)?.let { stored ->
+        CategorySortDirection.entries.firstOrNull { it.name == stored }
+    } ?: ArtistSort().next(field).let { if (field == ArtistSortField.NAME) ArtistSort().direction else it.direction }
+    return ArtistSort(field, direction)
+}

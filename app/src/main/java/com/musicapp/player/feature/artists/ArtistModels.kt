@@ -4,12 +4,84 @@ import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.designsystem.component.SectionSortOrder
+import com.musicapp.player.core.designsystem.component.createSectionTextComparator
+import com.musicapp.player.core.designsystem.component.sortedBySectionText
 import com.musicapp.player.feature.albums.AlbumGroupKey
 import com.musicapp.player.feature.albums.AlbumGrouping
+import com.musicapp.player.feature.category.CategorySortDirection
 
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.Locale
+
+enum class ArtistSortField {
+    NAME,
+    TRACK_COUNT,
+}
+
+data class ArtistSort(
+    val field: ArtistSortField = ArtistSortField.NAME,
+    val direction: CategorySortDirection = CategorySortDirection.ASCENDING,
+)
+
+fun ArtistSort.next(field: ArtistSortField): ArtistSort =
+    if (this.field == field) {
+        copy(
+            direction =
+                if (direction == CategorySortDirection.ASCENDING) {
+                    CategorySortDirection.DESCENDING
+                } else {
+                    CategorySortDirection.ASCENDING
+                },
+        )
+    } else {
+        ArtistSort(
+            field = field,
+            direction =
+                if (field == ArtistSortField.TRACK_COUNT) {
+                    CategorySortDirection.DESCENDING
+                } else {
+                    CategorySortDirection.ASCENDING
+                },
+        )
+    }
+
+fun sortArtists(artists: List<ArtistSummary>, sort: ArtistSort): List<ArtistSummary> {
+    val textTieBreaker =
+        compareBy<ArtistSummary>(
+            { it.displayName.lowercase(Locale.ROOT) },
+            { it.id.name.lowercase(Locale.ROOT) },
+        )
+    val sectionOrder =
+        when (sort.direction) {
+            CategorySortDirection.ASCENDING -> SectionSortOrder.ASCENDING
+            CategorySortDirection.DESCENDING -> SectionSortOrder.DESCENDING
+        }
+    return when (sort.field) {
+        ArtistSortField.NAME ->
+            artists.sortedBySectionText(
+                order = sectionOrder,
+                textSelector = ArtistSummary::displayName,
+                tieBreaker = textTieBreaker,
+            )
+        ArtistSortField.TRACK_COUNT -> {
+            val countComparator = compareBy(ArtistSummary::trackCount)
+            val directedCountComparator =
+                if (sort.direction == CategorySortDirection.ASCENDING) {
+                    countComparator
+                } else {
+                    countComparator.reversed()
+                }
+            val nameComparator = createSectionTextComparator(
+                order = SectionSortOrder.ASCENDING,
+                textSelector = ArtistSummary::displayName,
+                tieBreaker = textTieBreaker,
+            )
+            artists.sortedWith(directedCountComparator.then(nameComparator))
+        }
+    }
+}
 
 data class ArtistSummary(
     val id: ArtistId,

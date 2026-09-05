@@ -1,5 +1,6 @@
 package com.musicapp.player.feature.artists
 
+import androidx.lifecycle.SavedStateHandle
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
@@ -7,6 +8,7 @@ import com.musicapp.player.core.metadata.ArtworkImage
 import com.musicapp.player.core.metadata.ArtworkRepository
 import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.data.repository.FakeMediaLibraryRepository
+import com.musicapp.player.feature.category.CategorySortDirection
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -69,6 +71,93 @@ class ArtistsViewModelTest {
         assertEquals(ArtistId("solo artist"), artist.id)
         assertEquals("Solo Artist", artist.displayName)
         assertEquals(1, artist.trackCount)
+    }
+
+    @Test
+    fun `artists default sort is name ascending`() = runTest(dispatcher) {
+        val t1 = track(1, dateModifiedMs = 10, artistName = "Zulu")
+        val t2 = track(2, dateModifiedMs = 20, artistName = "Alpha")
+        val t3 = track(3, dateModifiedMs = 30, artistName = "Beta")
+        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(t1, t2, t3)), computationDispatcher = dispatcher)
+        collectState(viewModel)
+        advanceUntilIdle()
+
+        assertEquals(ArtistSort(ArtistSortField.NAME, CategorySortDirection.ASCENDING), viewModel.uiState.value.sort)
+        assertEquals(listOf("Alpha", "Beta", "Zulu"), viewModel.uiState.value.artists.map { it.displayName })
+    }
+
+    @Test
+    fun `selectSort with TRACK_COUNT sorts by track count descending with name ascending tie breaker`() = runTest(dispatcher) {
+        val a1 = track(1, dateModifiedMs = 10, artistName = "Zulu")
+        val a2 = track(2, dateModifiedMs = 20, artistName = "Zulu")
+        val b1 = track(3, dateModifiedMs = 30, artistName = "Alpha")
+        val c1 = track(4, dateModifiedMs = 40, artistName = "Beta")
+        val c2 = track(5, dateModifiedMs = 50, artistName = "Beta")
+        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(a1, a2, b1, c1, c2)), computationDispatcher = dispatcher)
+        collectState(viewModel)
+        advanceUntilIdle()
+
+        viewModel.selectSort(ArtistSortField.TRACK_COUNT)
+        advanceUntilIdle()
+
+        assertEquals(ArtistSort(ArtistSortField.TRACK_COUNT, CategorySortDirection.DESCENDING), viewModel.uiState.value.sort)
+        assertEquals(listOf("Beta", "Zulu", "Alpha"), viewModel.uiState.value.artists.map { it.displayName })
+    }
+
+    @Test
+    fun `selectSort with TRACK_COUNT twice toggles to ascending`() = runTest(dispatcher) {
+        val a1 = track(1, dateModifiedMs = 10, artistName = "Zulu")
+        val a2 = track(2, dateModifiedMs = 20, artistName = "Zulu")
+        val b1 = track(3, dateModifiedMs = 30, artistName = "Alpha")
+        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(a1, a2, b1)), computationDispatcher = dispatcher)
+        collectState(viewModel)
+        advanceUntilIdle()
+
+        viewModel.selectSort(ArtistSortField.TRACK_COUNT)
+        advanceUntilIdle()
+        viewModel.selectSort(ArtistSortField.TRACK_COUNT)
+        advanceUntilIdle()
+
+        assertEquals(ArtistSort(ArtistSortField.TRACK_COUNT, CategorySortDirection.ASCENDING), viewModel.uiState.value.sort)
+        assertEquals(listOf("Alpha", "Zulu"), viewModel.uiState.value.artists.map { it.displayName })
+    }
+
+    @Test
+    fun `selectSort with NAME toggles between ascending and descending`() = runTest(dispatcher) {
+        val t1 = track(1, dateModifiedMs = 10, artistName = "Alpha")
+        val t2 = track(2, dateModifiedMs = 20, artistName = "Beta")
+        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(t1, t2)), computationDispatcher = dispatcher)
+        collectState(viewModel)
+        advanceUntilIdle()
+
+        viewModel.selectSort(ArtistSortField.NAME)
+        advanceUntilIdle()
+
+        assertEquals(ArtistSort(ArtistSortField.NAME, CategorySortDirection.DESCENDING), viewModel.uiState.value.sort)
+        assertEquals(listOf("Beta", "Alpha"), viewModel.uiState.value.artists.map { it.displayName })
+    }
+
+    @Test
+    fun `artists sort restored from savedStateHandle correctly`() = runTest(dispatcher) {
+        val handle = SavedStateHandle(
+            mapOf(
+                "artists.sort.field" to ArtistSortField.TRACK_COUNT.name,
+                "artists.sort.direction" to CategorySortDirection.ASCENDING.name,
+            )
+        )
+        val t1 = track(1, dateModifiedMs = 10, artistName = "Zulu")
+        val t2 = track(2, dateModifiedMs = 20, artistName = "Zulu")
+        val t3 = track(3, dateModifiedMs = 30, artistName = "Alpha")
+        val viewModel = ArtistsViewModel(
+            mediaLibraryRepository = FakeMediaLibraryRepository(listOf(t1, t2, t3)),
+            savedStateHandle = handle,
+            computationDispatcher = dispatcher,
+        )
+        collectState(viewModel)
+        advanceUntilIdle()
+
+        assertEquals(ArtistSort(ArtistSortField.TRACK_COUNT, CategorySortDirection.ASCENDING), viewModel.uiState.value.sort)
+        assertEquals(listOf("Alpha", "Zulu"), viewModel.uiState.value.artists.map { it.displayName })
     }
 
     @Test

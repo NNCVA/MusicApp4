@@ -52,6 +52,7 @@
     <string name="section_index_action_next">跳转到下一非空字母</string>
     <string name="albums_sort_label">排序专辑，当前按%1$s%2$s</string>
     <string name="albums_options_label">专辑选项</string>
+    <string name="artists_options_label">艺术家选项</string>
     <string name="albums_column_2">2 列</string>
     <string name="albums_column_3">3 列</string>
     <string name="albums_column_4">4 列</string>

@@ -55,6 +55,7 @@
     <string name="section_index_action_next">Jump to next non-empty section</string>
     <string name="albums_sort_label">Sort albums, currently %1$s %2$s</string>
     <string name="albums_options_label">Album options</string>
+    <string name="artists_options_label">Artist options</string>
     <string name="albums_column_2">2 columns</string>
     <string name="albums_column_3">3 columns</string>
     <string name="albums_column_4">4 columns</string>

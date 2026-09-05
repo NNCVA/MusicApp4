@@ -1,7 +1,9 @@
 package com.musicapp.player.feature.artists
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,11 +22,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,12 +38,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.AppDropdownMenu
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
+import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.LoadingState
@@ -49,6 +59,7 @@ import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.image.AudioArtworkRequest
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryNavigationIconButton
+import com.musicapp.player.feature.category.labelRes
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 import kotlinx.coroutines.launch
@@ -71,6 +82,7 @@ fun ArtistsScreenRoute(
         openDrawer = openDrawer,
         onScanMusic = onScanMusic,
         bottomPadding = bottomPadding,
+        onSortSelected = viewModel::selectSort,
         onArtistClick = onArtistClick,
     )
 }
@@ -84,38 +96,71 @@ private fun ArtistsScreen(
     onScanMusic: () -> Unit,
     onArtistClick: (ArtistId) -> Unit,
     bottomPadding: Dp = 0.dp,
+    onSortSelected: (ArtistSortField) -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
-    val sections = remember(state.artists) { groupArtistsIntoSections(state.artists) }
-    val displayArtists = remember(sections) { sections.flatMap(ArtistSection::artists) }
-    val sectionPositions = remember(sections) { sectionStartPositions(sections) }
-    val gutterMode = remember(state.isLoaded, displayArtists, sections, sectionPositions) {
-        if (!state.isLoaded || displayArtists.isEmpty()) {
-            GutterMode.Hidden
+    val isTextSort = state.sort.field == ArtistSortField.NAME
+    val sections = remember(state.artists, isTextSort, state.sort.direction) {
+        if (isTextSort) {
+            groupArtistsIntoSections(state.artists, state.sort.direction)
         } else {
-            GutterMode.Index(
-                sortOrder = SectionSortOrder.ASCENDING,
-                activeSectionProvider = { sectionLabelAtPosition(sections, listState.firstVisibleItemIndex) },
-                populatedBuckets = sections.map(ArtistSection::label).toSet(),
-                onSectionSelected = { label ->
-                    sectionPositions[label]?.let { position ->
-                        coroutineScope.launch {
-                            listState.scrollToItem(position.coerceIn(0, displayArtists.lastIndex))
-                        }
-                    }
-                },
-            )
+            emptyList()
         }
     }
+    val displayArtists = state.artists
+    val sectionPositions = remember(sections, isTextSort, state.sort.direction) {
+        if (isTextSort) {
+            sectionStartPositions(sections, state.sort.direction)
+        } else {
+            emptyMap()
+        }
+    }
+    val gutterMode = remember(state.isLoaded, displayArtists, isTextSort, state.sort.direction, sections, sectionPositions) {
+        when {
+            !state.isLoaded || displayArtists.isEmpty() -> GutterMode.Hidden
+            isTextSort ->
+                GutterMode.Index(
+                    sortOrder = artistSortDirectionToSectionOrder(state.sort.direction),
+                    activeSectionProvider = { sectionLabelAtPosition(sections, listState.firstVisibleItemIndex) },
+                    populatedBuckets = sections.map(ArtistSection::label).toSet(),
+                    onSectionSelected = { label ->
+                        sectionPositions[label]?.let { position ->
+                            coroutineScope.launch {
+                                listState.scrollToItem(position.coerceIn(0, displayArtists.lastIndex))
+                            }
+                        }
+                    },
+                )
+            else -> GutterMode.Scrollbar
+        }
+    }
+
+    val scrollbarModifier =
+        if (gutterMode !is GutterMode.Index) {
+            listState.scrollIndicatorState?.let { scrollIndicatorState ->
+                Modifier.nonInteractiveScrollbar(scrollIndicatorState, Orientation.Vertical)
+            } ?: Modifier
+        } else {
+            Modifier
+        }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
-            ArtistsHeader(policy = policy, openDrawer = openDrawer)
+            ArtistsHeader(
+                policy = policy,
+                openDrawer = openDrawer,
+                trailingContent = {
+                    ArtistOptionsMenu(
+                        sort = state.sort,
+                        onSortSelected = onSortSelected,
+                    )
+                },
+            )
             if (!state.isLoaded) {
                 LoadingState(modifier = Modifier.weight(1f))
             } else if (state.artists.isEmpty()) {
@@ -133,7 +178,7 @@ private fun ArtistsScreen(
                 LazyColumn(
                     state = listState,
                     overscrollEffect = overscrollEffect,
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f).then(scrollbarModifier),
                     contentPadding = PaddingValues(
                         top = dimensions.spaceExtraSmall,
                         bottom = dimensions.spaceSmall + bottomPadding,
@@ -161,6 +206,7 @@ private fun ArtistsScreen(
 private fun ArtistsHeader(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
+    trailingContent: @Composable () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
     val iconVisualOffset = (dimensions.minimumTouchTarget - dimensions.spaceLarge)/2
@@ -191,8 +237,71 @@ private fun ArtistsHeader(
             modifier = Modifier.weight(1f),
             maxLines = 1,
         )
+        trailingContent()
     }
 }
+
+@Composable
+private fun ArtistOptionsMenu(
+    sort: ArtistSort,
+    onSortSelected: (ArtistSortField) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val dimensions = MusicTheme.dimensions
+    val optionsDescription = stringResource(R.string.artists_options_label)
+    Box {
+        BareIconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(dimensions.minimumTouchTarget),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_common_more_vertical),
+                contentDescription = optionsDescription,
+                tint = MusicTheme.colors.onSurface,
+                modifier = Modifier.size(dimensions.spaceLarge),
+            )
+        }
+        AppDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            ArtistSortField.entries.forEach { field ->
+                val isSelected = sort.field == field
+                val suffix = if (isSelected) {
+                    stringResource(sort.direction.labelRes())
+                } else {
+                    ""
+                }
+                AppDropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(field.labelRes()) + suffix,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    },
+                    trailingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_status_check),
+                                contentDescription = null,
+                                tint = MusicTheme.colors.primary,
+                                modifier = Modifier.size(dimensions.spaceMedium),
+                            )
+                        }
+                    } else null,
+                    onClick = {
+                        onSortSelected(field)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@StringRes
+private fun ArtistSortField.labelRes(): Int =
+    when (this) {
+        ArtistSortField.NAME -> R.string.sort_name
+        ArtistSortField.TRACK_COUNT -> R.string.sort_track_count
+    }
 
 @Composable
 private fun ArtistRow(
