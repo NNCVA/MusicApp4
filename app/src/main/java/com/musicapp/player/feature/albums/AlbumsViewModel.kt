@@ -17,6 +17,7 @@ import com.musicapp.player.feature.category.CategoryTrackSort
 import com.musicapp.player.feature.category.CategoryTrackSortField
 import com.musicapp.player.feature.category.next
 import com.musicapp.player.feature.category.sortCategoryTracks
+import com.musicapp.player.core.designsystem.component.VARIOUS_ARTISTS_SENTINEL
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -191,7 +192,11 @@ class AlbumDetailViewModel @Inject constructor(
                 return@combine AlbumDetailUiState()
             }
 
-            val matching = tracks.filter { it.albumId == albumId }
+            val matching = if (albumId == UNKNOWN_ALBUM_ID) {
+                tracks.filter { it.albumId == null || it.albumTitle.isNullOrBlank() }
+            } else {
+                tracks.filter { it.albumId == albumId }
+            }
             if (matching.isEmpty()) {
                 return@combine AlbumDetailUiState(
                     albumId = albumId,
@@ -204,8 +209,17 @@ class AlbumDetailViewModel @Inject constructor(
             val orderedPresentations = AlbumTrackOrdering.resolveOrder(matching, playingId)
             val orderedTracks = orderedPresentations.map { it.track }
             val representative = orderedTracks.firstOrNull()
-            val albumTitle = orderedTracks.firstNotNullOfOrNull(Track::albumTitle) ?: representative?.title
-            val artistName = orderedTracks.firstOrNull()?.artistName
+            val albumTitle = if (albumId == UNKNOWN_ALBUM_ID) {
+                UNKNOWN_ALBUM_SENTINEL
+            } else {
+                orderedTracks.firstNotNullOfOrNull(Track::albumTitle) ?: representative?.title
+            }
+            val artistName = if (albumId == UNKNOWN_ALBUM_ID) {
+                val distinctArtists = matching.map { it.artistName }.distinct()
+                if (distinctArtists.size == 1) distinctArtists.first() else VARIOUS_ARTISTS_SENTINEL
+            } else {
+                orderedTracks.firstOrNull()?.artistName
+            }
             val stats = AlbumDetailAggregator.aggregateStats(matching)
             val techSummary = AlbumDetailAggregator.aggregateTechnicalSummary(matching, metaMap)
             val artists = AlbumDetailAggregator.aggregateArtists(orderedTracks)
@@ -245,7 +259,12 @@ class AlbumDetailViewModel @Inject constructor(
         metadataJob?.cancel()
         metadataMap.value = emptyMap()
         metadataJob = viewModelScope.launch(Dispatchers.IO) {
-            val tracks: List<Track> = mediaLibraryRepository.observeTracks().first().filter { it.albumId == albumId }
+            val allTracks = mediaLibraryRepository.observeTracks().first()
+            val tracks: List<Track> = if (albumId == UNKNOWN_ALBUM_ID) {
+                allTracks.filter { it.albumId == null || it.albumTitle.isNullOrBlank() }
+            } else {
+                allTracks.filter { it.albumId == albumId }
+            }
             val semaphore = Semaphore(2)
             coroutineScope {
                 tracks.forEach { track ->

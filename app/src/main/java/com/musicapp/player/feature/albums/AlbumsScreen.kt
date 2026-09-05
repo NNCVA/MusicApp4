@@ -122,11 +122,14 @@ private fun AlbumsScreen(
     val coroutineScope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
     val overscrollEffect = rememberBounceOverscrollEffect(gridState)
-    val sections = remember(state.albums, state.sort.field, state.sort.direction) {
-        groupAlbumsIntoSections(state.albums, state.sort.field, state.sort.direction)
+    val hasUnknownTop = state.albums.firstOrNull()?.id == UNKNOWN_ALBUM_ID
+    val targetAlbumsForSections = if (hasUnknownTop) state.albums.drop(1) else state.albums
+    val sections = remember(targetAlbumsForSections, state.sort.field, state.sort.direction) {
+        groupAlbumsIntoSections(targetAlbumsForSections, state.sort.field, state.sort.direction)
     }
-    val sectionPositions = remember(sections, state.sort.direction) {
-        sectionStartPositions(sections, state.sort.direction)
+    val initialOffset = if (hasUnknownTop) 1 else 0
+    val sectionPositions = remember(sections, state.sort.direction, initialOffset) {
+        sectionStartPositions(sections, state.sort.direction, initialOffset)
     }
     val isTextSort = state.sort.field in listOf(
         AlbumSortField.TITLE,
@@ -138,7 +141,7 @@ private fun AlbumsScreen(
             isTextSort ->
                 GutterMode.Index(
                     sortOrder = albumSortDirectionToSectionOrder(state.sort.direction),
-                    activeSectionProvider = { sectionLabelAtPosition(sections, gridState.firstVisibleItemIndex) },
+                    activeSectionProvider = { sectionLabelAtPosition(sections, gridState.firstVisibleItemIndex, initialOffset) },
                     populatedBuckets = sections.map(AlbumSection::label).toSet(),
                     onSectionSelected = { label ->
                         sectionPositions[label]?.let { position ->
@@ -277,7 +280,7 @@ private fun AlbumCard(
             verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
         ) {
             Text(
-                text = album.title,
+                text = album.title.localizedAlbumTitle(),
                 style = MusicTheme.typography.titleMedium,
                 color = MusicTheme.colors.onSurface,
                 maxLines = 1,
@@ -309,7 +312,7 @@ private fun AlbumArtwork(
         MusicWindowWidthTier.EXPANDED,
         -> MusicTheme.shapes.large
     }
-    val artworkDescription = stringResource(R.string.album_artwork_description, album.title)
+    val artworkDescription = stringResource(R.string.album_artwork_description, album.title.localizedAlbumTitle())
     val request = remember(album.id, album.representativeTrack.id, album.representativeTrack.dateModifiedMs) {
         AudioArtworkRequest.AlbumArtworkRequest(
             albumId = album.id,

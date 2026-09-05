@@ -81,6 +81,7 @@
     <string name="permission_requesting">正在请求音频访问权限…</string>
     <string name="permission_waiting_for_settings">从系统设置返回后正在检查音频访问权限…</string>
     <string name="unknown_artist">未知艺术家</string>
+    <string name="various_artists">各种艺术家</string>
     <string name="scan_now">开始扫描</string>
     <string name="scan_refreshing">正在更新音乐库</string>
     <string name="scan_first_library">正在扫描音乐</string>

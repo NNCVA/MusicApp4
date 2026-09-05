@@ -6,6 +6,8 @@ import android.provider.MediaStore
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import android.content.Context
+import com.musicapp.player.core.designsystem.component.resolveLocalizedArtistName
 import com.musicapp.player.core.common.random.RandomSource
 import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.PlaybackSnapshot
@@ -20,6 +22,7 @@ import com.musicapp.player.media.playback.QueueMediaIdCodec
 
 internal class PlaybackQueueCoordinator(
     private val player: QueuePlayer,
+    private val context: Context? = null,
     randomSource: RandomSource,
 ) {
     private val reducer = PlaybackQueueReducer(randomSource)
@@ -57,7 +60,7 @@ internal class PlaybackQueueCoordinator(
         mediaItemsById.clear()
         val items = tracks.map { track ->
             QueueItem(QueueItemId(nextQueueItemId++), track.trackId).also { queueItem ->
-                mediaItemsById[queueItem.id] = track.toMediaItem(queueItem.id)
+                mediaItemsById[queueItem.id] = track.toMediaItem(queueItem.id, context)
             }
         }
         state = reducer.replaceQueue(items, items[startIndex].id, state.mode)
@@ -76,7 +79,7 @@ internal class PlaybackQueueCoordinator(
         playbackFailure = null
         mediaItemsById.clear()
         snapshot.queue.originalQueue.forEach { queueItem ->
-            mediaItemsById[queueItem.id] = tracksByQueueItemId.getValue(queueItem.id).toMediaItem(queueItem.id)
+            mediaItemsById[queueItem.id] = tracksByQueueItemId.getValue(queueItem.id).toMediaItem(queueItem.id, context)
         }
         nextQueueItemId = (snapshot.queue.originalQueue.maxOfOrNull { it.id.value } ?: 0L) + 1
         state = PlaybackQueueState(snapshot.queue, snapshot.playbackMode)
@@ -240,7 +243,7 @@ internal class PlaybackQueueCoordinator(
     private fun createQueueItems(tracks: List<PlaybackTrackPayload>): List<QueueItem> =
         tracks.map { track ->
             QueueItem(QueueItemId(nextQueueItemId++), track.trackId).also { queueItem ->
-                mediaItemsById[queueItem.id] = track.toMediaItem(queueItem.id)
+                mediaItemsById[queueItem.id] = track.toMediaItem(queueItem.id, context)
             }
         }
 
@@ -330,7 +333,10 @@ internal class Media3QueuePlayer(private val player: Player) : QueuePlayer {
     override fun clearMediaItems() = player.clearMediaItems()
 }
 
-internal fun PlaybackTrackPayload.toMediaItem(queueItemId: QueueItemId): MediaItem =
+internal fun PlaybackTrackPayload.toMediaItem(
+    queueItemId: QueueItemId,
+    context: Context? = null,
+): MediaItem =
     MediaItem.Builder()
         .setMediaId(QueueMediaIdCodec.encode(queueItemId, trackId))
         .setUri(
@@ -346,7 +352,7 @@ internal fun PlaybackTrackPayload.toMediaItem(queueItemId: QueueItemId): MediaIt
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(title)
-                .setArtist(artistName)
+                .setArtist(context?.let { artistName.resolveLocalizedArtistName(it) } ?: artistName)
                 .setAlbumTitle(albumTitle)
                 .setDurationMs(durationMs)
                 .build(),

@@ -54,6 +54,8 @@ import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
+import com.musicapp.player.core.designsystem.component.UNKNOWN_ARTIST_SENTINEL
+import com.musicapp.player.core.designsystem.component.localizedArtistName
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Track
@@ -125,16 +127,30 @@ private fun ArtistsScreen(
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
-    val sections = remember(state.artists) { groupArtistsIntoSections(state.artists) }
-    val displayArtists = remember(sections) { sections.flatMap(ArtistSection::artists) }
-    val sectionPositions = remember(sections) { sectionStartPositions(sections) }
-    val gutterMode = remember(displayArtists, sections, sectionPositions) {
+    val unknownArtist = remember(state.artists) {
+        state.artists.firstOrNull { it.id.name.equals(UNKNOWN_ARTIST_SENTINEL, ignoreCase = true) }
+    }
+    val targetArtistsForSections = remember(state.artists, unknownArtist) {
+        if (unknownArtist != null) {
+            state.artists.filterNot { it.id.name.equals(UNKNOWN_ARTIST_SENTINEL, ignoreCase = true) }
+        } else {
+            state.artists
+        }
+    }
+    val sections = remember(targetArtistsForSections) { groupArtistsIntoSections(targetArtistsForSections) }
+    val normalDisplayArtists = remember(sections) { sections.flatMap(ArtistSection::artists) }
+    val displayArtists = remember(unknownArtist, normalDisplayArtists) {
+        if (unknownArtist != null) listOf(unknownArtist) + normalDisplayArtists else normalDisplayArtists
+    }
+    val initialOffset = if (unknownArtist != null) 1 else 0
+    val sectionPositions = remember(sections, initialOffset) { sectionStartPositions(sections, initialOffset) }
+    val gutterMode = remember(displayArtists, sections, sectionPositions, initialOffset) {
         if (displayArtists.isEmpty()) {
             GutterMode.Hidden
         } else {
             GutterMode.Index(
                 sortOrder = SectionSortOrder.ASCENDING,
-                activeSectionProvider = { sectionLabelAtPosition(sections, listState.firstVisibleItemIndex) },
+                activeSectionProvider = { sectionLabelAtPosition(sections, listState.firstVisibleItemIndex, initialOffset) },
                 populatedBuckets = sections.map(ArtistSection::label).toSet(),
                 onSectionSelected = { label ->
                     sectionPositions[label]?.let { position ->
@@ -245,7 +261,7 @@ private fun ArtistRow(
             verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
         ) {
             Text(
-                text = artist.displayName,
+                text = artist.displayName.localizedArtistName(),
                 style = MusicTheme.typography.titleMedium,
                 color = MusicTheme.colors.onSurface,
                 maxLines = 1,
@@ -271,7 +287,7 @@ private fun ArtistArtwork(
     artist: ArtistSummary,
     modifier: Modifier,
 ) {
-    val artworkDescription = stringResource(R.string.artist_artwork_description, artist.displayName)
+    val artworkDescription = stringResource(R.string.artist_artwork_description, artist.displayName.localizedArtistName())
     val repTrack = remember(artist.id) { artist.sortedArtworkCandidates().firstOrNull() }
     val request = remember(artist.id, repTrack?.id, repTrack?.dateModifiedMs) {
         AudioArtworkRequest.ArtistArtworkRequest(
@@ -307,7 +323,7 @@ private fun ArtistDetailScreen(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         CategoryHeader(
-            title = state.displayName ?: stringResource(R.string.artist_unknown_name),
+            title = (state.displayName ?: stringResource(R.string.artist_unknown_name)).localizedArtistName(),
             onBack = onBack,
             trailingContent = {
                 TextButton(

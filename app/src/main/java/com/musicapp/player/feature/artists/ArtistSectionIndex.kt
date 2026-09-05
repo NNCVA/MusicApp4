@@ -37,16 +37,18 @@ internal fun sectionIndexLabels(): List<String> = ARTIST_SECTION_INDEX_LABELS
 internal fun sectionIndexLabels(@Suppress("UNUSED_PARAMETER") sections: List<ArtistSection>): List<String> =
     ARTIST_SECTION_INDEX_LABELS
 
-internal fun sectionStartPositions(sections: List<ArtistSection>): Map<String, Int> {
+internal fun sectionStartPositions(
+    sections: List<ArtistSection>,
+    initialOffset: Int = 0,
+): Map<String, Int> {
     val ordered = orderedSections(sections)
     val starts = linkedMapOf<String, Int>()
-    var itemPosition = 0
+    var itemPosition = initialOffset
     ordered.forEach { section ->
         starts.putIfAbsent(section.label, itemPosition)
         itemPosition += section.artists.size
     }
-    val itemCount = itemPosition
-    val lastPosition = (itemCount - 1).coerceAtLeast(0)
+    val lastPosition = (itemPosition - 1).coerceAtLeast(0)
 
     val populatedIndices = ordered.mapNotNull { section ->
         val idx = ARTIST_SECTION_INDEX_LABELS.indexOf(section.label)
@@ -73,11 +75,13 @@ internal fun sectionStartPositions(sections: List<ArtistSection>): Map<String, I
 internal fun sectionLabelAtPosition(
     sections: List<ArtistSection>,
     itemPosition: Int,
+    initialOffset: Int = 0,
 ): String? {
     val ordered = orderedSections(sections).filter { it.artists.isNotEmpty() }
     if (ordered.isEmpty()) return null
+    if (itemPosition < initialOffset) return ordered.first().label
     val itemCount = ordered.sumOf { it.artists.size }
-    val safePosition = itemPosition.coerceIn(0, itemCount - 1)
+    val safePosition = (itemPosition - initialOffset).coerceIn(0, itemCount - 1)
     var sectionStart = 0
     ordered.forEach { section ->
         val sectionEnd = sectionStart + section.artists.size

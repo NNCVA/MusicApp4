@@ -58,6 +58,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import com.musicapp.player.core.designsystem.component.localizedArtistName
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -274,7 +275,7 @@ fun AlbumDetailScreen(
 
         // Fixed Top Navigation Bar
         AlbumDetailTopBar(
-            title = state.title ?: stringResource(R.string.album_unknown_title),
+            title = (state.title ?: stringResource(R.string.album_unknown_title)).localizedAlbumTitle(),
             showTitle = showTopBarTitle,
             onBack = onBack,
             contentInsets = contentInsets,
@@ -416,14 +417,14 @@ private fun AlbumHeroSection(
             verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
         ) {
             Text(
-                text = state.title ?: stringResource(R.string.album_unknown_title),
+                text = (state.title ?: stringResource(R.string.album_unknown_title)).localizedAlbumTitle(),
                 style = MusicTheme.typography.headlineSmall,
                 color = MusicTheme.colors.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = state.artistName ?: stringResource(R.string.unknown_artist),
+                text = (state.artistName ?: stringResource(R.string.unknown_artist)).localizedArtistName(),
                 style = MusicTheme.typography.bodyMedium,
                 color = MusicTheme.colors.onSurfaceVariant,
                 maxLines = 1,
@@ -714,7 +715,7 @@ private fun AlbumArtistsSection(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = credit.artistName,
+                        text = credit.artistName.localizedArtistName(),
                         style = MusicTheme.typography.titleMedium,
                         color = MusicTheme.colors.onSurface,
                         maxLines = 1,

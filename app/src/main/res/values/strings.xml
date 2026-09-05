@@ -84,6 +84,7 @@
     <string name="permission_requesting">Requesting audio access…</string>
     <string name="permission_waiting_for_settings">Checking audio access after returning from settings…</string>
     <string name="unknown_artist">Unknown artist</string>
+    <string name="various_artists">Various Artists</string>
     <string name="scan_now">Start scan</string>
     <string name="scan_refreshing">Updating the music library</string>
     <string name="scan_first_library">Scanning your music</string>

@@ -1,11 +1,13 @@
 package com.musicapp.player.feature.albums
 
+import com.musicapp.player.core.designsystem.component.VARIOUS_ARTISTS_SENTINEL
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.feature.category.CategorySortDirection
 import org.junit.Assert.assertEquals
 import org.junit.Test
+
 
 class AlbumGroupingTest {
     @Test
@@ -91,11 +93,78 @@ class AlbumGroupingTest {
         assertEquals(listOf(1L, 4L, 3L, 2L), descending.map { it.id.mediaStoreId })
     }
 
-    private fun track(value: Long, albumId: AlbumId, albumTitle: String) =
+    @Test
+    fun `tracks without album metadata are grouped into UNKNOWN_ALBUM_ID`() {
+        val tracks = listOf(
+            track(1, null, null, artist = "Artist A"),
+            track(2, null, "Orphan Title", artist = "Artist A"),
+            track(3, AlbumId("external", 10), null, artist = "Artist A"),
+            track(4, AlbumId("external", 11), "Known Album", artist = "Artist B"),
+        )
+
+        val grouped = AlbumGrouping.group(tracks)
+
+        assertEquals(2, grouped.size)
+        val unknownAlbum = grouped.first { it.id == UNKNOWN_ALBUM_ID }
+        assertEquals(UNKNOWN_ALBUM_SENTINEL, unknownAlbum.title)
+        assertEquals("Artist A", unknownAlbum.artistName)
+        assertEquals(3, unknownAlbum.trackCount)
+        assertEquals(1L, unknownAlbum.representativeTrack.id.mediaStoreId)
+
+        val normalAlbum = grouped.first { it.id == AlbumId("external", 11) }
+        assertEquals("Known Album", normalAlbum.title)
+        assertEquals(1, normalAlbum.trackCount)
+    }
+
+
+    @Test
+    fun `unknown album displays artist name when single artist, and various artists sentinel when multiple artists`() {
+        val singleArtistTracks = listOf(
+            track(1, null, null, artist = "Solo Singer"),
+            track(2, null, null, artist = "Solo Singer"),
+        )
+        val singleGrouped = AlbumGrouping.group(singleArtistTracks)
+        assertEquals("Solo Singer", singleGrouped.single().artistName)
+
+        val multiArtistTracks = listOf(
+            track(1, null, null, artist = "Singer A"),
+            track(2, null, null, artist = "Singer B"),
+        )
+        val multiGrouped = AlbumGrouping.group(multiArtistTracks)
+        assertEquals(VARIOUS_ARTISTS_SENTINEL, multiGrouped.single().artistName)
+    }
+
+    @Test
+    fun `unknown album is always pinned to the top regardless of sort field and direction`() {
+        val tracks = listOf(
+            track(1, null, null, artist = "Artist Z"),
+            track(2, AlbumId("external", 10), "Alpha Album", artist = "Artist A"),
+            track(3, AlbumId("external", 11), "Beta Album", artist = "Artist B"),
+        )
+        val albums = AlbumGrouping.group(tracks)
+
+        for (field in AlbumSortField.entries) {
+            for (direction in CategorySortDirection.entries) {
+                val sorted = AlbumGrouping.sorted(albums, AlbumSort(field, direction))
+                assertEquals(
+                    "Failed for field $field and direction $direction",
+                    UNKNOWN_ALBUM_ID,
+                    sorted.first().id,
+                )
+            }
+        }
+    }
+
+    private fun track(
+        value: Long,
+        albumId: AlbumId?,
+        albumTitle: String?,
+        artist: String = "Artist",
+    ) =
         Track(
-            id = TrackId(albumId.volumeName, value),
+            id = TrackId(albumId?.volumeName ?: "external", value),
             title = "Track $value",
-            artistName = "Artist",
+            artistName = artist,
             albumTitle = albumTitle,
             albumId = albumId,
             durationMs = 1_000,

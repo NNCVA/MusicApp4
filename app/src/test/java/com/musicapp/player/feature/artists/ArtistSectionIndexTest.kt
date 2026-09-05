@@ -60,6 +60,24 @@ class ArtistSectionIndexTest {
         assertNull(sectionLabelAtPosition(emptyList(), 0))
     }
 
+    @Test
+    fun `initialOffset shifts start positions and preserves head label for pinned items`() {
+        val sections = listOf(
+            ArtistSection("A", listOf(artist(1, "Alpha"))),
+            ArtistSection("B", listOf(artist(2, "Beta"))),
+        )
+
+        val positionsWithOffset = sectionStartPositions(sections, initialOffset = 1)
+        assertEquals(1, positionsWithOffset.getValue("A"))
+        assertEquals(2, positionsWithOffset.getValue("B"))
+
+        // Pinned header position (0) falls before offset, resolves to first section label
+        assertEquals("A", sectionLabelAtPosition(sections, itemPosition = 0, initialOffset = 1))
+        assertEquals("A", sectionLabelAtPosition(sections, itemPosition = 1, initialOffset = 1))
+        assertEquals("B", sectionLabelAtPosition(sections, itemPosition = 2, initialOffset = 1))
+    }
+
+
     private fun artist(id: Long, name: String): ArtistSummary =
         ArtistSummary(
             id = ArtistId(name.lowercase()),

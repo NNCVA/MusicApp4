@@ -56,10 +56,11 @@ internal fun sectionIndexLabels(
 internal fun sectionStartPositions(
     sections: List<AlbumSection>,
     direction: CategorySortDirection = CategorySortDirection.ASCENDING,
+    initialOffset: Int = 0,
 ): Map<String, Int> {
     val labels = sectionIndexLabels(direction)
     val starts = linkedMapOf<String, Int>()
-    var itemPosition = 0
+    var itemPosition = initialOffset
     sections.forEach { section ->
         starts.putIfAbsent(section.label, itemPosition)
         itemPosition += section.albums.size
@@ -91,10 +92,12 @@ internal fun sectionStartPositions(
 internal fun sectionLabelAtPosition(
     sections: List<AlbumSection>,
     itemPosition: Int,
+    initialOffset: Int = 0,
 ): String? {
     if (sections.isEmpty()) return null
+    if (itemPosition < initialOffset) return sections.first().label
     val totalAlbums = sections.sumOf { it.albums.size }
-    val safePosition = itemPosition.coerceIn(0, (totalAlbums - 1).coerceAtLeast(0))
+    val safePosition = (itemPosition - initialOffset).coerceIn(0, (totalAlbums - 1).coerceAtLeast(0))
     var sectionStart = 0
     sections.forEach { section ->
         val sectionEnd = sectionStart + section.albums.size

@@ -50,6 +50,25 @@ class AlbumSectionIndexTest {
         assertEquals(listOf("B", "A", "0"), titleSections.map(AlbumSection::label))
     }
 
+    @Test
+    fun `initialOffset shifts start positions and preserves head label for pinned items`() {
+        val albums = listOf(
+            album(1, "Alpha", "Artist"),
+            album(2, "Beta", "Artist"),
+        )
+        val sections = groupAlbumsIntoSections(albums, AlbumSortField.TITLE)
+
+        val positionsWithOffset = sectionStartPositions(sections, initialOffset = 1)
+        assertEquals(1, positionsWithOffset.getValue("A"))
+        assertEquals(2, positionsWithOffset.getValue("B"))
+
+        // Pinned header position (0) falls before offset, resolves to first section label
+        assertEquals("A", sectionLabelAtPosition(sections, itemPosition = 0, initialOffset = 1))
+        assertEquals("A", sectionLabelAtPosition(sections, itemPosition = 1, initialOffset = 1))
+        assertEquals("B", sectionLabelAtPosition(sections, itemPosition = 2, initialOffset = 1))
+    }
+
+
     private fun album(id: Long, title: String, artistName: String): AlbumSummary =
         AlbumSummary(
             id = AlbumId(volumeName = "external", mediaStoreId = id),

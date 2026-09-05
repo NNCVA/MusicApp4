@@ -1,11 +1,22 @@
 package com.musicapp.player.feature.albums
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
+import com.musicapp.player.core.designsystem.component.VARIOUS_ARTISTS_SENTINEL
 import com.musicapp.player.core.designsystem.component.sortedBySectionText
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.feature.category.CategorySortDirection
 import java.util.Locale
+
+val UNKNOWN_ALBUM_ID = AlbumId(volumeName = "virtual", mediaStoreId = Long.MAX_VALUE)
+const val UNKNOWN_ALBUM_SENTINEL = "<unknown_album>"
+
+@Composable
+fun String.localizedAlbumTitle(): String =
+    if (this == UNKNOWN_ALBUM_SENTINEL) stringResource(R.string.album_unknown_title) else this
 
 enum class AlbumSortField { TITLE, ARTIST, TRACK_COUNT, DATE_ADDED }
 
@@ -24,8 +35,12 @@ data class AlbumSummary(
 )
 
 object AlbumGrouping {
-    fun group(tracks: List<Track>): List<AlbumSummary> =
-        tracks.asSequence()
+    fun group(tracks: List<Track>): List<AlbumSummary> {
+        val (noAlbumTracks, hasAlbumTracks) = tracks.partition {
+            it.albumId == null || it.albumTitle.isNullOrBlank()
+        }
+
+        val normalAlbums = hasAlbumTracks.asSequence()
             .filter { it.albumId != null }
             .groupBy { checkNotNull(it.albumId) }
             .map { (id, albumTracks) ->
@@ -39,8 +54,39 @@ object AlbumGrouping {
                     representativeTrack = stableTracks.first(),
                 )
             }
+            .toList()
+
+        val unknownAlbum = if (noAlbumTracks.isNotEmpty()) {
+            val stableNoAlbumTracks = noAlbumTracks.sortedWith(trackIdentityComparator)
+            val distinctArtists = stableNoAlbumTracks.map { it.artistName }.distinct()
+            val artistName = if (distinctArtists.size == 1) {
+                distinctArtists.first()
+            } else {
+                VARIOUS_ARTISTS_SENTINEL
+            }
+            AlbumSummary(
+                id = UNKNOWN_ALBUM_ID,
+                title = UNKNOWN_ALBUM_SENTINEL,
+                artistName = artistName,
+                trackCount = stableNoAlbumTracks.size,
+                latestDateAddedMs = stableNoAlbumTracks.maxOf(Track::dateAddedMs),
+                representativeTrack = stableNoAlbumTracks.first(),
+            )
+        } else {
+            null
+        }
+
+        return if (unknownAlbum != null) {
+            listOf(unknownAlbum) + normalAlbums
+        } else {
+            normalAlbums
+        }
+    }
 
     fun sorted(albums: List<AlbumSummary>, sort: AlbumSort): List<AlbumSummary> {
+        val unknownAlbum = albums.firstOrNull { it.id == UNKNOWN_ALBUM_ID }
+        val targetAlbums = if (unknownAlbum != null) albums.filterNot { it.id == UNKNOWN_ALBUM_ID } else albums
+
         val textTieBreaker =
             compareBy<AlbumSummary>(
                 { it.title.lowercase(Locale.ROOT) },
@@ -52,33 +98,39 @@ object AlbumGrouping {
                 CategorySortDirection.ASCENDING -> SectionSortOrder.ASCENDING
                 CategorySortDirection.DESCENDING -> SectionSortOrder.DESCENDING
             }
-        return when (sort.field) {
+        val sortedNormal = when (sort.field) {
             AlbumSortField.TITLE ->
-                albums.sortedBySectionText(
+                targetAlbums.sortedBySectionText(
                     order = sectionOrder,
                     textSelector = AlbumSummary::title,
                     tieBreaker = textTieBreaker,
                 )
             AlbumSortField.ARTIST ->
-                albums.sortedBySectionText(
+                targetAlbums.sortedBySectionText(
                     order = sectionOrder,
                     textSelector = AlbumSummary::artistName,
                     tieBreaker = textTieBreaker,
                 )
             AlbumSortField.TRACK_COUNT -> {
                 val primary = compareBy(AlbumSummary::trackCount)
-                albums.sortedWith(
+                targetAlbums.sortedWith(
                     (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
                         .then(textTieBreaker),
                 )
             }
             AlbumSortField.DATE_ADDED -> {
                 val primary = compareBy(AlbumSummary::latestDateAddedMs)
-                albums.sortedWith(
+                targetAlbums.sortedWith(
                     (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
                         .then(textTieBreaker),
                 )
             }
+        }
+
+        return if (unknownAlbum != null) {
+            listOf(unknownAlbum) + sortedNormal
+        } else {
+            sortedNormal
         }
     }
 

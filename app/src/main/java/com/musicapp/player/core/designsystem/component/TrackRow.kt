@@ -37,16 +37,32 @@ import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicTheme
+import android.content.Context
 import com.musicapp.player.theme.MusicWindowWidthTier
 
 const val UNKNOWN_ARTIST_SENTINEL = "<unknown>"
+const val VARIOUS_ARTISTS_SENTINEL = "<various_artists>"
 
 /**
- * 转换未知艺术家占位符为本地化文案。
+ * 转换未知艺术家或各种艺术家占位符为本地化文案。
  */
 @Composable
 fun String.localizedArtistName(): String =
-    if (this == UNKNOWN_ARTIST_SENTINEL) stringResource(R.string.unknown_artist) else this
+    when (this) {
+        UNKNOWN_ARTIST_SENTINEL -> stringResource(R.string.unknown_artist)
+        VARIOUS_ARTISTS_SENTINEL -> stringResource(R.string.various_artists)
+        else -> this
+    }
+
+/**
+ * 在非 Composable 环境下解析本地化艺术家名称。
+ */
+fun String.resolveLocalizedArtistName(context: Context): String =
+    when (this) {
+        UNKNOWN_ARTIST_SENTINEL -> context.getString(R.string.unknown_artist)
+        VARIOUS_ARTISTS_SENTINEL -> context.getString(R.string.various_artists)
+        else -> this
+    }
 
 /**
  * 格式化单曲副标题（艺术家 · 专辑）。

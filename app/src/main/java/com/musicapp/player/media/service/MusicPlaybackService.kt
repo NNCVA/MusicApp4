@@ -115,7 +115,7 @@ class MusicPlaybackService : MediaLibraryService() {
                 )
                 .setHandleAudioBecomingNoisy(true)
                 .build()
-        val coordinator = PlaybackQueueCoordinator(Media3QueuePlayer(servicePlayer), randomSource)
+        val coordinator = PlaybackQueueCoordinator(Media3QueuePlayer(servicePlayer), context = this, randomSource = randomSource)
         val fade = FadeThroughCoordinator(
             scope = serviceScope,
             output = object : FadeThroughOutput<FadeNavigationRequest> {

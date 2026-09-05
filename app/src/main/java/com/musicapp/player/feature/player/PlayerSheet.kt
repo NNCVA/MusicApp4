@@ -47,6 +47,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
+import com.musicapp.player.core.designsystem.component.localizedArtistName
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
@@ -325,7 +326,7 @@ private fun MiniPlayer(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = track.artistName,
+                text = track.artistName.localizedArtistName(),
                 style = if (compact) MusicTheme.typography.compactTrackArtist else MusicTheme.typography.expandedTrackArtist,
                 color = MusicTheme.colors.onSurfaceVariant,
                 maxLines = 1,
@@ -566,7 +567,7 @@ private fun ArtworkPage(state: PlayerUiState, track: Track) {
             modifier = Modifier.size(dimensions.fullPlayerArtworkSize),
         )
         Text(track.title, style = MusicTheme.typography.headlineMedium, color = MusicTheme.colors.onSurface, maxLines = 2)
-        Text(track.artistName, style = MusicTheme.typography.titleMedium, color = MusicTheme.colors.onSurfaceVariant)
+        Text(track.artistName.localizedArtistName(), style = MusicTheme.typography.titleMedium, color = MusicTheme.colors.onSurfaceVariant)
     }
 }
 
