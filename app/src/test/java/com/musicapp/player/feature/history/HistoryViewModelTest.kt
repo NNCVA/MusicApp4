@@ -8,6 +8,8 @@ import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.metadata.AdvancedTrackMetadata
+import com.musicapp.player.core.metadata.TrackMetadataRepository
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.data.repository.FakeMediaLibraryRepository
@@ -33,6 +35,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -53,7 +56,7 @@ class HistoryViewModelTest {
     }
 
     @Test
-    fun `initial state loads history newest first and retains a recognizable missing entry`() = runTest(dispatcher) {
+    fun `initial state loads history newest first and retains a recognizable missing entry which is selectable for deletion`() = runTest(dispatcher) {
         val newest = track(1, "Newest")
         val older = track(2, "Older")
         val missingId = TrackId("card", 99)
@@ -72,9 +75,11 @@ class HistoryViewModelTest {
         assertFalse(viewModel.uiState.value.isLoading)
         assertEquals(listOf(newest.id, missingId, older.id), viewModel.uiState.value.entries.map(HistoryEntry::trackId))
         assertNull(viewModel.uiState.value.entries[1].track)
+
         viewModel.toggleSelection(missingId)
         testScheduler.runCurrent()
-        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(setOf(missingId), viewModel.uiState.value.selectedTrackIds)
     }
 
     @Test
@@ -92,7 +97,38 @@ class HistoryViewModelTest {
     }
 
     @Test
-    fun `selection and select all are scoped to the current filter in visible order`() = runTest(dispatcher) {
+    fun `explicit selection mode supports 0 items and select all includes unavailable entries`() = runTest(dispatcher) {
+        val available = track(1, "Available")
+        val unavailable = track(2, "Unavailable", availability = Availability.TEMPORARILY_UNAVAILABLE)
+        val repository = RecordingHistoryRepository(
+            listOf(
+                PlayHistory(available.id, 20, 1),
+                PlayHistory(unavailable.id, 10, 1),
+            ),
+        )
+        val viewModel = subject(repository, listOf(available, unavailable))
+        collectState(viewModel)
+
+        viewModel.enterSelectionMode()
+        testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(0, viewModel.uiState.value.selectedTrackIds.size)
+        assertFalse(viewModel.uiState.value.hasPlayableSelection)
+
+        viewModel.selectAllVisible()
+        testScheduler.runCurrent()
+        assertEquals(setOf(available.id, unavailable.id), viewModel.uiState.value.selectedTrackIds)
+        assertTrue(viewModel.uiState.value.hasPlayableSelection)
+        assertTrue(viewModel.uiState.value.isAllSelected)
+
+        viewModel.toggleSelectAll()
+        testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+    }
+
+    @Test
+    fun `selection and select all are scoped to current filter and query change clears selection`() = runTest(dispatcher) {
         val alpha = track(1, "Alpha", artist = "First")
         val beta = track(2, "Beta", artist = "Second")
         val alphabet = track(3, "Alphabet", artist = "Third")
@@ -118,8 +154,10 @@ class HistoryViewModelTest {
         viewModel.setQuery("second")
         testScheduler.runCurrent()
         assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+
         viewModel.toggleSelection(beta.id)
         testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
         assertTrue(viewModel.onBack())
         testScheduler.runCurrent()
         assertFalse(viewModel.uiState.value.isSelectionMode)
@@ -127,34 +165,75 @@ class HistoryViewModelTest {
     }
 
     @Test
-    fun `batch actions receive selected ids in current visible history order`() = runTest(dispatcher) {
+    fun `temporary search and selection mode are mutually exclusive and onBack exits search first`() = runTest(dispatcher) {
         val first = track(1, "First")
         val second = track(2, "Second")
-        val executor = RecordingBatchTrackActionExecutor()
         val repository = RecordingHistoryRepository(
-            listOf(PlayHistory(second.id, 20, 1), PlayHistory(first.id, 30, 1)),
+            listOf(PlayHistory(first.id, 20, 1), PlayHistory(second.id, 10, 1)),
         )
-        val viewModel = subject(repository, listOf(first, second), executor)
+        val viewModel = subject(repository, listOf(first, second))
         collectState(viewModel)
-        viewModel.toggleSelection(second.id)
-        viewModel.toggleSelection(first.id)
-        testScheduler.runCurrent()
-        assertEquals(setOf(first.id, second.id), viewModel.uiState.value.selectedTrackIds)
 
-        viewModel.executeSelected(BatchTrackAction.AddToQueue)
-        testScheduler.advanceUntilIdle()
-
-        assertEquals(BatchTrackAction.AddToQueue, executor.action)
-        assertEquals(listOf(first.id, second.id), executor.trackIds)
-        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
-        assertTrue(viewModel.uiState.value.batchResult is BatchTrackActionResult.Completed)
-        viewModel.acknowledgeBatchResult()
+        viewModel.openSearch()
+        viewModel.setQuery("fir")
         testScheduler.runCurrent()
-        assertNull(viewModel.uiState.value.batchResult)
+        assertTrue(viewModel.uiState.value.isSearchActive)
+        assertEquals("fir", viewModel.uiState.value.query)
+
+        // 长按或进入多选：关闭搜索并清空 query，进入多选
+        viewModel.enterSelectionMode(second.id)
+        testScheduler.runCurrent()
+        assertFalse(viewModel.uiState.value.isSearchActive)
+        assertEquals("", viewModel.uiState.value.query)
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(setOf(second.id), viewModel.uiState.value.selectedTrackIds)
+
+        // 多选时返回退出多选
+        assertTrue(viewModel.onBack())
+        testScheduler.runCurrent()
+        assertFalse(viewModel.uiState.value.isSelectionMode)
     }
 
     @Test
-    fun `track click plays current visible available history in newest first order`() = runTest(dispatcher) {
+    fun `single and batch delete requires confirmation and notifies user message`() = runTest(dispatcher) {
+        val first = track(1, "First")
+        val second = track(2, "Second")
+        val repository = RecordingHistoryRepository(
+            listOf(PlayHistory(first.id, 20, 1), PlayHistory(second.id, 10, 1)),
+        )
+        val viewModel = subject(repository, listOf(first, second))
+        collectState(viewModel)
+
+        // 单条删除
+        viewModel.requestDeleteTrack(first.id)
+        testScheduler.runCurrent()
+        assertEquals(setOf(first.id), viewModel.uiState.value.deleteConfirmationTrackIds)
+
+        viewModel.confirmDelete()
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(setOf(first.id)), repository.deleteCalls)
+        assertNull(viewModel.uiState.value.deleteConfirmationTrackIds)
+        assertEquals(HistoryUserMessage.DeleteSuccess(1), viewModel.uiState.value.userMessage)
+        viewModel.acknowledgeUserMessage()
+        testScheduler.runCurrent()
+        assertNull(viewModel.uiState.value.userMessage)
+
+        // 批量删除
+        viewModel.enterSelectionMode(second.id)
+        testScheduler.runCurrent()
+        viewModel.requestDeleteSelected()
+        testScheduler.runCurrent()
+        assertEquals(setOf(second.id), viewModel.uiState.value.deleteConfirmationTrackIds)
+
+        viewModel.confirmDelete()
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(setOf(first.id), setOf(second.id)), repository.deleteCalls)
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertEquals(HistoryUserMessage.DeleteSuccess(1), viewModel.uiState.value.userMessage)
+    }
+
+    @Test
+    fun `play all and track click plays current visible available history in newest first order`() = runTest(dispatcher) {
         val newest = track(1, "Newest")
         val unavailable = track(2, "Unavailable", availability = Availability.TEMPORARILY_UNAVAILABLE)
         val oldest = track(3, "Oldest")
@@ -175,70 +254,44 @@ class HistoryViewModelTest {
         )
         collectState(viewModel)
 
-        viewModel.playTrack(oldest.id)
-
+        // 播放全部
+        viewModel.playAll()
         assertEquals(PlaybackContextSource.HISTORY, playbackController.contexts.single().source)
         assertEquals(listOf(newest.id, oldest.id), playbackController.contexts.single().orderedTrackIds)
-        assertEquals(oldest.id, playbackController.contexts.single().selectedTrackId)
+        assertEquals(newest.id, playbackController.contexts.single().selectedTrackId)
 
+        // 单曲点击
+        viewModel.playTrack(oldest.id)
+        assertEquals(2, playbackController.contexts.size)
+        assertEquals(oldest.id, playbackController.contexts.last().selectedTrackId)
+
+        // 不可用曲目与缺失项不触发播放
         viewModel.playTrack(unavailable.id)
         viewModel.playTrack(missingId)
-        assertEquals(1, playbackController.contexts.size)
+        assertEquals(2, playbackController.contexts.size)
     }
 
     @Test
-    fun `playlist observation exposes choices and add to playlist keeps visible order`() = runTest(dispatcher) {
-        val first = track(1, "First")
-        val second = track(2, "Second")
-        val playlist = Playlist(PlaylistId(7), "Road trip", "road trip", createdAtMs = 1)
-        val executor = RecordingBatchTrackActionExecutor()
-        val repository = RecordingHistoryRepository(
-            listOf(PlayHistory(second.id, 10, 1), PlayHistory(first.id, 20, 1)),
-        )
-        val viewModel = subject(
-            historyRepository = repository,
-            tracks = listOf(first, second),
-            batchTrackActionExecutor = executor,
-            playlistRepository = FakePlaylistRepository(listOf(playlist)),
-        )
-        collectState(viewModel)
-        viewModel.selectAllVisible()
-        testScheduler.runCurrent()
-
-        viewModel.executeSelected(BatchTrackAction.AddToPlaylist(playlist.id))
-        testScheduler.advanceUntilIdle()
-
-        assertEquals(listOf(playlist), viewModel.uiState.value.playlists)
-        assertEquals(BatchTrackAction.AddToPlaylist(playlist.id), executor.action)
-        assertEquals(listOf(first.id, second.id), executor.trackIds)
-    }
-
-    @Test
-    fun `batch execution is mutually exclusive and result remains until acknowledged`() = runTest(dispatcher) {
-        val item = track(1, "One")
-        val executor = BlockingBatchTrackActionExecutor()
+    fun `showTrackInfo loads metadata and dismissTrackInfo clears it`() = runTest(dispatcher) {
+        val item = track(1, "Track with info")
+        val metadataRepo = FakeTrackMetadataRepo()
         val viewModel = subject(
             historyRepository = RecordingHistoryRepository(listOf(PlayHistory(item.id, 10, 1))),
             tracks = listOf(item),
-            batchTrackActionExecutor = executor,
+            trackMetadataRepository = metadataRepo,
         )
         collectState(viewModel)
-        viewModel.toggleSelection(item.id)
-        testScheduler.runCurrent()
 
-        viewModel.executeSelected(BatchTrackAction.AddToQueue)
-        testScheduler.runCurrent()
-        assertTrue(viewModel.uiState.value.isBatchActionRunning)
-        viewModel.executeSelected(BatchTrackAction.PlayNext)
-        executor.release.complete(Unit)
+        viewModel.showTrackInfo(item)
         testScheduler.advanceUntilIdle()
+        assertEquals(item, viewModel.uiState.value.infoTrack)
+        assertNotNull(viewModel.uiState.value.infoMetadata)
+        assertFalse(viewModel.uiState.value.isInfoLoading)
 
-        assertEquals(listOf(BatchTrackAction.AddToQueue), executor.actions)
-        assertFalse(viewModel.uiState.value.isBatchActionRunning)
-        assertTrue(viewModel.uiState.value.batchResult is BatchTrackActionResult.Completed)
-        viewModel.acknowledgeBatchResult()
+        assertTrue(viewModel.onBack())
         testScheduler.runCurrent()
-        assertNull(viewModel.uiState.value.batchResult)
+        assertNull(viewModel.uiState.value.infoTrack)
+        assertNull(viewModel.uiState.value.infoMetadata)
     }
 
     @Test
@@ -283,12 +336,14 @@ class HistoryViewModelTest {
         batchTrackActionExecutor: BatchTrackActionExecutor = RecordingBatchTrackActionExecutor(),
         playlistRepository: PlaylistRepository = FakePlaylistRepository(),
         playbackController: PlaybackControllerFacade = RecordingPlaybackControllerFacade(),
+        trackMetadataRepository: TrackMetadataRepository = FakeTrackMetadataRepo(),
     ) = HistoryViewModel(
         historyRepository = historyRepository,
         mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
         playlistRepository = playlistRepository,
         playbackController = playbackController,
         batchTrackActionExecutor = batchTrackActionExecutor,
+        trackMetadataRepository = trackMetadataRepository,
     )
 
     private fun track(
@@ -307,6 +362,17 @@ class HistoryViewModelTest {
             relativePath = "Music/",
             displayName = "$title.mp3",
             availability = availability,
+        )
+}
+
+private class FakeTrackMetadataRepo : TrackMetadataRepository {
+    override suspend fun read(track: Track): AdvancedTrackMetadata =
+        AdvancedTrackMetadata(
+            encoding = "flac",
+            bitrateBps = 900_000L,
+            sampleRateHz = 48_000,
+            fileSizeBytes = 25_000_000L,
+            isReadable = true,
         )
 }
 
@@ -348,35 +414,22 @@ private class RecordingBatchTrackActionExecutor : BatchTrackActionExecutor {
     }
 }
 
-private class BlockingBatchTrackActionExecutor : BatchTrackActionExecutor {
-    val actions = mutableListOf<BatchTrackAction>()
-    val release = CompletableDeferred<Unit>()
-
-    override suspend fun execute(
-        action: BatchTrackAction,
-        orderedTrackIds: List<TrackId>,
-    ): BatchTrackActionResult {
-        actions += action
-        release.await()
-        return BatchTrackActionResult.Completed(
-            action = action,
-            selectedCount = orderedTrackIds.size,
-            affectedCount = orderedTrackIds.size,
-            skippedCount = 0,
-        )
-    }
-}
-
 private class RecordingHistoryRepository(
     initialHistory: List<PlayHistory> = emptyList(),
 ) : HistoryRepository {
     private val history = MutableStateFlow(initialHistory)
     var clearCalls: Int = 0
         private set
+    val deleteCalls = mutableListOf<Set<TrackId>>()
 
     override fun observeHistory(): Flow<List<PlayHistory>> = history
 
     override suspend fun recordPlayback(trackId: TrackId, playedAtMs: Long) = Unit
+
+    override suspend fun deleteHistory(trackIds: Set<TrackId>) {
+        deleteCalls += trackIds
+        history.value = history.value.filterNot { it.trackId in trackIds }
+    }
 
     override suspend fun clearHistory() {
         clearCalls++

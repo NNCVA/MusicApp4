@@ -75,4 +75,28 @@ class HistoryRepositoryTest {
             assertTrue(subject.observeHistory().first().isEmpty())
         }
     }
+
+    @Test
+    fun deleteHistoryRemovesSpecifiedRecordsInRoomAndFake() = runTest {
+        val first = track(mediaStoreId = 1)
+        val second = track(mediaStoreId = 2)
+        val third = track(mediaStoreId = 3)
+        mediaRepository.mergeTracks(listOf(first, second, third))
+
+        val room = repository
+        val fake = FakeHistoryRepository(existingTrackIds = setOf(first.id, second.id, third.id))
+
+        listOf(room, fake).forEach { subject ->
+            subject.recordPlayback(first.id, 10)
+            subject.recordPlayback(second.id, 20)
+            subject.recordPlayback(third.id, 30)
+
+            subject.deleteHistory(setOf(second.id))
+            val remaining = subject.observeHistory().first()
+            assertEquals(listOf(third.id, first.id), remaining.map { it.trackId })
+
+            subject.deleteHistory(setOf(first.id, third.id))
+            assertTrue(subject.observeHistory().first().isEmpty())
+        }
+    }
 }

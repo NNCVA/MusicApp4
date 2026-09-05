@@ -44,6 +44,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.nonInteractiveScrollbar
+import com.musicapp.player.core.designsystem.component.SelectionBarAction
+import com.musicapp.player.core.designsystem.component.SelectionBottomBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -563,16 +565,34 @@ fun PlaylistDetailScreen(
                 .padding(bottom = if (hasMiniPlayer) bottomPadding else 0.dp)
                 .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Horizontal)),
         ) {
-            PlaylistSelectionBottomBar(
-                selectedCount = state.selectedTrackIds.size,
+            val isSelectionEnabled = state.selectedTrackIds.isNotEmpty()
+            SelectionBottomBar(
+                actions = listOf(
+                    SelectionBarAction(
+                        label = stringResource(R.string.playlist_remove_from_playlist),
+                        iconRes = R.drawable.ic_common_delete,
+                        enabled = isSelectionEnabled,
+                        isDestructive = true,
+                        onClick = onRemoveSelected,
+                    ),
+                    SelectionBarAction(
+                        label = stringResource(R.string.selection_add_to_playlist),
+                        iconRes = R.drawable.ic_common_add,
+                        enabled = isSelectionEnabled,
+                        onClick = {
+                            singleTrackAddToPlaylistTarget = null
+                            showAddToPlaylistDialog = true
+                        },
+                    ),
+                    SelectionBarAction(
+                        label = stringResource(R.string.selection_add_to_queue),
+                        iconRes = R.drawable.ic_common_queue_add,
+                        enabled = isSelectionEnabled,
+                        onClick = onAddSelectedToQueue,
+                    ),
+                ),
                 contentInsets = contentInsets,
                 applyBottomInset = !hasMiniPlayer,
-                onRemoveFromPlaylistClick = onRemoveSelected,
-                onAddToPlaylistClick = {
-                    singleTrackAddToPlaylistTarget = null
-                    showAddToPlaylistDialog = true
-                },
-                onAddToQueueClick = onAddSelectedToQueue,
             )
         }
 
@@ -884,129 +904,5 @@ private fun PlaylistTrackActionsMenu(
                 onShowTrackInfo()
             },
         )
-    }
-}
-
-@Composable
-private fun PlaylistSelectionBottomBar(
-    selectedCount: Int,
-    contentInsets: WindowInsets,
-    applyBottomInset: Boolean,
-    onRemoveFromPlaylistClick: () -> Unit,
-    onAddToPlaylistClick: () -> Unit,
-    onAddToQueueClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val dimensions = MusicTheme.dimensions
-    val isEnabled = selectedCount > 0
-    val contentColor =
-        if (isEnabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = MusicAlpha.Disabled)
-
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MusicTheme.colors.surface,
-        tonalElevation = dimensions.spaceExtraSmall,
-    ) {
-        Column(
-            modifier = if (applyBottomInset) {
-                Modifier.windowInsetsPadding(contentInsets.only(WindowInsetsSides.Bottom))
-            } else {
-                Modifier
-            },
-        ) {
-            HorizontalDivider(
-                color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
-                thickness = 1.dp,
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(dimensions.minimumTouchTarget),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // 1. Remove from playlist
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable(enabled = isEnabled, onClick = onRemoveFromPlaylistClick),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_delete),
-                        contentDescription = null,
-                        tint = if (isEnabled) MusicTheme.colors.error else contentColor,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                    Spacer(modifier = Modifier.width(dimensions.spaceSmall))
-                    Text(
-                        text = stringResource(R.string.playlist_remove_from_playlist),
-                        style = MusicTheme.typography.titleMedium,
-                        color = if (isEnabled) MusicTheme.colors.error else contentColor,
-                    )
-                }
-
-                VerticalDivider(
-                    modifier = Modifier
-                        .height(dimensions.spaceLarge)
-                        .width(1.dp),
-                    color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
-                )
-
-                // 2. Add to other playlist
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable(enabled = isEnabled, onClick = onAddToPlaylistClick),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_add),
-                        contentDescription = null,
-                        tint = contentColor,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                    Spacer(modifier = Modifier.width(dimensions.spaceSmall))
-                    Text(
-                        text = stringResource(R.string.selection_add_to_playlist),
-                        style = MusicTheme.typography.titleMedium,
-                        color = contentColor,
-                    )
-                }
-
-                VerticalDivider(
-                    modifier = Modifier
-                        .height(dimensions.spaceLarge)
-                        .width(1.dp),
-                    color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
-                )
-
-                // 3. Add to queue
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable(enabled = isEnabled, onClick = onAddToQueueClick),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_queue_add),
-                        contentDescription = null,
-                        tint = contentColor,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                    Spacer(modifier = Modifier.width(dimensions.spaceSmall))
-                    Text(
-                        text = stringResource(R.string.selection_add_to_queue),
-                        style = MusicTheme.typography.titleMedium,
-                        color = contentColor,
-                    )
-                }
-            }
-        }
     }
 }

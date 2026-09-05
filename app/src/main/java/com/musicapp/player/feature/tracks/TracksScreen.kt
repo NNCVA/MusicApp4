@@ -55,6 +55,8 @@ import androidx.compose.material3.VerticalDivider
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
+import com.musicapp.player.core.designsystem.component.SelectionBarAction
+import com.musicapp.player.core.designsystem.component.SelectionBottomBar
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.runtime.Composable
@@ -439,15 +441,27 @@ fun TracksScreen(
                 .padding(bottom = if (hasMiniPlayer) bottomPadding else 0.dp)
                 .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Horizontal)),
         ) {
+            val isSelectionEnabled = state.selectedTrackIds.isNotEmpty()
             SelectionBottomBar(
-                selectedCount = state.selectedTrackIds.size,
+                actions = listOf(
+                    SelectionBarAction(
+                        label = stringResource(R.string.selection_add_to_playlist),
+                        iconRes = R.drawable.ic_common_add,
+                        enabled = isSelectionEnabled,
+                        onClick = {
+                            singleTrackAddToPlaylistTarget = null
+                            showAddToPlaylistDialog = true
+                        },
+                    ),
+                    SelectionBarAction(
+                        label = stringResource(R.string.selection_add_to_queue),
+                        iconRes = R.drawable.ic_common_queue_add,
+                        enabled = isSelectionEnabled,
+                        onClick = onAddToQueue,
+                    ),
+                ),
                 contentInsets = contentInsets,
                 applyBottomInset = !hasMiniPlayer,
-                onAddToPlaylistClick = {
-                    singleTrackAddToPlaylistTarget = null
-                    showAddToPlaylistDialog = true
-                },
-                onAddToQueueClick = onAddToQueue,
             )
         }
 
@@ -619,101 +633,6 @@ private fun LazyListScope.trackItems(
     }
 }
 
-@Composable
-private fun SelectionBottomBar(
-    selectedCount: Int,
-    contentInsets: WindowInsets,
-    applyBottomInset: Boolean,
-    onAddToPlaylistClick: () -> Unit,
-    onAddToQueueClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val dimensions = MusicTheme.dimensions
-    val isEnabled = selectedCount > 0
-    val contentColor =
-        if (isEnabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurface.copy(alpha = MusicAlpha.Disabled)
-
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MusicTheme.colors.surface,
-        tonalElevation = dimensions.spaceExtraSmall,
-    ) {
-        Column(
-            modifier =
-                if (applyBottomInset) {
-                    Modifier.windowInsetsPadding(contentInsets.only(WindowInsetsSides.Bottom))
-                } else {
-                    Modifier
-                },
-        ) {
-            HorizontalDivider(
-                color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
-                thickness = 1.dp,
-            )
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(dimensions.minimumTouchTarget),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable(enabled = isEnabled, onClick = onAddToPlaylistClick),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_add),
-                        contentDescription = null,
-                        tint = contentColor,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                    Spacer(modifier = Modifier.width(dimensions.spaceSmall))
-                    Text(
-                        text = stringResource(R.string.selection_add_to_playlist),
-                        style = MusicTheme.typography.titleMedium,
-                        color = contentColor,
-                    )
-                }
-
-                VerticalDivider(
-                    modifier =
-                        Modifier
-                            .height(dimensions.spaceLarge)
-                            .width(1.dp),
-                    color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
-                )
-
-                Row(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable(enabled = isEnabled, onClick = onAddToQueueClick),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_queue_add),
-                        contentDescription = null,
-                        tint = contentColor,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                    Spacer(modifier = Modifier.width(dimensions.spaceSmall))
-                    Text(
-                        text = stringResource(R.string.selection_add_to_queue),
-                        style = MusicTheme.typography.titleMedium,
-                        color = contentColor,
-                    )
-                }
-            }
-        }
-    }
-}
 
 private fun Track.matchesSearch(query: String): Boolean {
     val normalizedQuery = query.trim()

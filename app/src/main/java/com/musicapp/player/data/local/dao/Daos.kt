@@ -239,6 +239,9 @@ interface PlayHistoryDao {
     @Upsert
     suspend fun upsert(entity: PlayHistoryEntity)
 
+    @Query("DELETE FROM play_history WHERE track_volume_name = :volumeName AND track_media_store_id = :mediaStoreId")
+    suspend fun delete(volumeName: String, mediaStoreId: Long): Int
+
     @Query("DELETE FROM play_history")
     suspend fun deleteAll()
 }

@@ -283,6 +283,13 @@ class FakeHistoryRepository(
         }
     }
 
+    override suspend fun deleteHistory(trackIds: Set<TrackId>) {
+        if (trackIds.isEmpty()) return
+        mutex.withLock {
+            history.value -= trackIds
+        }
+    }
+
     override suspend fun clearHistory() {
         mutex.withLock { history.value = emptyMap() }
     }

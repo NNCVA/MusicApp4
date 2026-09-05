@@ -88,6 +88,7 @@ data class PlaylistTrackChangeResult(
 interface HistoryRepository {
     fun observeHistory(): Flow<List<PlayHistory>>
     suspend fun recordPlayback(trackId: TrackId, playedAtMs: Long)
+    suspend fun deleteHistory(trackIds: Set<TrackId>)
     suspend fun clearHistory()
 }
 

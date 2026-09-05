@@ -262,6 +262,11 @@
     <string name="batch_result_counts">Processed %1$d, skipped %2$d</string>
     <string name="batch_result_failed">Batch action failed; changes were not completed</string>
     <string name="history_clear">Clear history</string>
+    <string name="history_more_actions">More actions</string>
+    <string name="history_search_action">Search</string>
+    <string name="history_select_action">Select</string>
+    <string name="history_delete_record">Delete record</string>
+    <string name="history_delete_selected">Delete selected</string>
     <string name="history_search_label">Search history</string>
     <string name="history_empty_title">No playback history</string>
     <string name="history_empty_description">Tracks you finish listening to will appear here.</string>
@@ -271,6 +276,26 @@
     <string name="history_clear_confirm_description">This removes all playback history and cannot be undone.</string>
     <string name="history_clear_confirm_action">Clear</string>
     <string name="history_clear_cancel">Cancel</string>
+    <string name="history_delete_confirm_title">Delete playback records?</string>
+    <string name="history_delete_confirm_single_title">Delete playback record?</string>
+    <string name="history_delete_confirm_single_description">Are you sure you want to remove this record from playback history?</string>
+    <string name="history_delete_confirm_action">Delete</string>
+    <plurals name="history_delete_confirm_description">
+        <item quantity="one">Are you sure you want to remove %1$d selected record from playback history?</item>
+        <item quantity="other">Are you sure you want to remove %1$d selected records from playback history?</item>
+    </plurals>
+    <string name="history_recent_played">Recently played: %1$s</string>
+    <string name="history_unavailable_record">Unavailable</string>
+    <plurals name="history_delete_result">
+        <item quantity="one">Deleted %1$d playback record</item>
+        <item quantity="other">Deleted %1$d playback records</item>
+    </plurals>
+    <string name="history_delete_failed">Failed to delete playback records</string>
+    <plurals name="history_item_count">
+        <item quantity="one">%1$d record</item>
+        <item quantity="other">%1$d records</item>
+    </plurals>
+    <string name="history_play_all_description">Play all playback history</string>
     <string name="history_missing_track">Missing track (%1$s:%2$d)</string>
     <plurals name="history_play_count">
         <item quantity="one">Played %1$d time</item>

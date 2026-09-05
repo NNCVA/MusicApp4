@@ -253,6 +253,11 @@
     <string name="batch_result_counts">已处理 %1$d 首，跳过 %2$d 首</string>
     <string name="batch_result_failed">批量操作失败，未完成更改</string>
     <string name="history_clear">清空历史</string>
+    <string name="history_more_actions">更多操作</string>
+    <string name="history_search_action">搜索</string>
+    <string name="history_select_action">多选</string>
+    <string name="history_delete_record">删除记录</string>
+    <string name="history_delete_selected">删除所选</string>
     <string name="history_search_label">搜索播放历史</string>
     <string name="history_empty_title">暂无播放历史</string>
     <string name="history_empty_description">达到记录条件的单曲会显示在这里。</string>
@@ -262,6 +267,23 @@
     <string name="history_clear_confirm_description">这会移除全部播放历史，且无法撤销。</string>
     <string name="history_clear_confirm_action">清空</string>
     <string name="history_clear_cancel">取消</string>
+    <string name="history_delete_confirm_title">删除播放记录？</string>
+    <string name="history_delete_confirm_single_title">删除播放记录？</string>
+    <string name="history_delete_confirm_single_description">确定要从播放历史中移除该记录吗？</string>
+    <string name="history_delete_confirm_action">删除</string>
+    <plurals name="history_delete_confirm_description">
+        <item quantity="other">确定要从播放历史中移除所选的 %1$d 条记录吗？</item>
+    </plurals>
+    <string name="history_recent_played">最近播放：%1$s</string>
+    <string name="history_unavailable_record">不可播放</string>
+    <plurals name="history_delete_result">
+        <item quantity="other">已删除 %1$d 条播放记录</item>
+    </plurals>
+    <string name="history_delete_failed">删除播放记录失败</string>
+    <plurals name="history_item_count">
+        <item quantity="other">%1$d 条记录</item>
+    </plurals>
+    <string name="history_play_all_description">播放全部历史记录</string>
     <string name="history_missing_track">缺失单曲（%1$s:%2$d）</string>
     <plurals name="history_play_count">
         <item quantity="other">播放 %1$d 次</item>

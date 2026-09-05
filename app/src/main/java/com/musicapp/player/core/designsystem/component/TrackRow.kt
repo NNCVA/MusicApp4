@@ -3,6 +3,7 @@ package com.musicapp.player.core.designsystem.component
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -143,8 +147,8 @@ fun TrackRow(
             ?.let { stringResource(R.string.track_artist_album, artistName, it) }
             ?: artistName
 
-    Row(
-        modifier = modifier
+    val rowModifier =
+        modifier
             .fillMaxWidth()
             .height(dimensions.trackListItemHeight)
             .then(
@@ -154,8 +158,31 @@ fun TrackRow(
                     Modifier
                 },
             )
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = outerHorizontalPadding),
+            .clip(MusicTheme.shapes.medium)
+            .then(
+                if (selectionMode && selected) {
+                    Modifier.background(MusicTheme.colors.secondaryContainer.copy(alpha = 0.5f))
+                } else {
+                    Modifier
+                },
+            )
+            .then(
+                if (selectionMode) {
+                    Modifier
+                        .toggleable(
+                            value = selected,
+                            role = Role.Checkbox,
+                            onValueChange = { onClick() },
+                        )
+                        .semantics(mergeDescendants = true) {}
+                } else {
+                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                },
+            )
+            .padding(horizontal = outerHorizontalPadding)
+
+    Row(
+        modifier = rowModifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
@@ -214,17 +241,19 @@ fun TrackRow(
         if (trailingContent != null) {
             trailingContent()
         } else if (selectionMode) {
-            BareIconButton(
-                onClick = onClick,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            Box(
+                modifier =
+                    Modifier
+                        .size(dimensions.minimumTouchTarget)
+                        .clearAndSetSemantics {},
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(
-                        if (selected) R.drawable.ic_common_check_circle else R.drawable.ic_common_radio_button_unchecked,
-                    ),
-                    contentDescription = stringResource(
-                        if (selected) R.string.selection_deselect_all else R.string.selection_select_all,
-                    ),
+                    painter =
+                        painterResource(
+                            if (selected) R.drawable.ic_common_check_circle else R.drawable.ic_common_radio_button_unchecked,
+                        ),
+                    contentDescription = null,
                     tint = if (selected) MusicTheme.colors.primary else MusicTheme.colors.onSurfaceVariant,
                     modifier = Modifier.size(dimensions.spaceLarge),
                 )

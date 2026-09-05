@@ -362,6 +362,15 @@ class RoomHistoryRepository @Inject constructor(
         }
     }
 
+    override suspend fun deleteHistory(trackIds: Set<TrackId>) {
+        if (trackIds.isEmpty()) return
+        database.withTransaction {
+            trackIds.forEach { trackId ->
+                historyDao.delete(trackId.volumeName, trackId.mediaStoreId)
+            }
+        }
+    }
+
     override suspend fun clearHistory() = historyDao.deleteAll()
 }
 
