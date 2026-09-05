@@ -163,7 +163,7 @@ private fun ArtistsHeader(
     openDrawer: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
-    val iconVisualOffset = dimensions.minimumTouchTarget - dimensions.spaceLarge
+    val iconVisualOffset = (dimensions.minimumTouchTarget - dimensions.spaceLarge)/2
     val headerStartPadding =
         if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
             dimensions.contentHorizontalPadding - iconVisualOffset
