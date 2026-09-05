@@ -6,7 +6,7 @@ ADR = Architecture Decision Record（架构决策记录）。当前实现以代�
 
 | 状态 | ADR | 说明 |
 | --- | --- | --- |
-| 当前实现依据 | 0001、0002、0003、0004、0007、0009、0010、0012、0014、0015 | 当前代码中仍能找到对应实现或测试；涉及 UI/手势的行为仍需设备验收。 |
+| 当前实现依据 | 0001、0002、0003、0004、0007、0009、0010、0012、0014、0015、0016 | 当前代码中仍能找到对应实现或测试；涉及 UI/手势的行为仍需设备验收。 |
 | 已取代 | 0006、0011 | 文件正文已分别标记由 0008、0012 取代。 |
 | 需要更新 | 0005 | ADR 写明固定白色气泡；当前 `MessageBubbleHost` 使用 `MaterialTheme.colorScheme.inverseSurface`（见 `app/src/main/java/com/musicapp/player/core/designsystem/snackbar/MessageBubbleHost.kt:70-74`）。 |
 | 需要更新 | 0008 | ADR 要求列表不可滚动时隐藏索引并提供滚动条模式；当前 `RightGutterOverlay`/调用方尚未按 `canScrollForward/canScrollBackward` 实现该条件（见 `app/src/main/java/com/musicapp/player/core/designsystem/component/RightGutterOverlay.kt:63-102`）。 |

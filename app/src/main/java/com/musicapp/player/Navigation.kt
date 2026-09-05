@@ -73,6 +73,7 @@ import com.musicapp.player.feature.aero.AeroBackground
 import com.musicapp.player.feature.permission.MediaPermissionState
 import com.musicapp.player.feature.albums.AlbumDetailScreenRoute
 import com.musicapp.player.feature.albums.AlbumDetailViewModel
+import com.musicapp.player.feature.albums.AlbumGroupKey
 import com.musicapp.player.feature.albums.AlbumsScreenRoute
 import com.musicapp.player.feature.albums.AlbumsViewModel
 import com.musicapp.player.feature.artists.ArtistDetailScreenRoute
@@ -263,9 +264,15 @@ fun MainNavigation(
                                 policy = policy,
                                 openDrawer = openDrawer,
                                 onScanMusic = ::navigateToScanMusic,
-                                onAlbumClick = { albumId ->
+                                onAlbumClick = { album ->
                                     commitNavigation {
-                                        navigate(AlbumDetailRoute(albumId.volumeName, albumId.mediaStoreId))
+                                        navigate(
+                                            AlbumDetailRoute(
+                                                volumeName = album.id.volumeName,
+                                                mediaStoreId = album.id.mediaStoreId,
+                                                groupKey = album.groupKey.encode(),
+                                            ),
+                                        )
                                     }
                                 },
                                 bottomPadding = bottomPadding,
@@ -346,10 +353,12 @@ fun MainNavigation(
                         }
                         entry<TrackInfoRoute> { key -> DestinationPlaceholder(key, contentInsets, policy, openDrawer) }
                         entry<AlbumDetailRoute> { key ->
+                            val groupKey = key.groupKey?.let(AlbumGroupKey::decode)
                             AlbumDetailScreenRoute(
                                 albumId = AlbumId(key.volumeName, key.mediaStoreId),
+                                groupKey = groupKey,
                                 viewModel = viewModel<AlbumDetailViewModel>(
-                                    key = "album:${key.volumeName}:${key.mediaStoreId}",
+                                    key = "album:${key.groupKey ?: "${key.volumeName}:${key.mediaStoreId}"}",
                                 ),
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,

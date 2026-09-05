@@ -85,6 +85,7 @@ import java.util.Locale
 @Composable
 fun AlbumDetailScreenRoute(
     albumId: AlbumId,
+    groupKey: AlbumGroupKey? = null,
     viewModel: AlbumDetailViewModel,
     contentInsets: WindowInsets,
     onBack: () -> Unit,
@@ -95,8 +96,8 @@ fun AlbumDetailScreenRoute(
     BackHandler(enabled = state.infoTrack != null) {
         viewModel.dismissTrackInfo()
     }
-    LaunchedEffect(albumId) {
-        viewModel.open(albumId)
+    LaunchedEffect(albumId, groupKey) {
+        viewModel.open(albumId, groupKey)
     }
 
     AlbumDetailScreen(

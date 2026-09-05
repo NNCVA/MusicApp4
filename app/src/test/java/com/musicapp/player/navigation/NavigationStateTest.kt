@@ -210,6 +210,32 @@ class NavigationStateTest {
     }
 
     @Test
+    fun serializedSnapshotPreservesAlbumGroupKey() {
+        val state = NavigationState.initial()
+        val route = AlbumDetailRoute(
+            volumeName = "external",
+            mediaStoreId = 3,
+            groupKey = "stable-album-group-key",
+        )
+        Navigator(state).navigate(route)
+
+        val restored = NavigationState.restore(NavigationSnapshot.decode(state.snapshot().encode()))
+
+        assertEquals(route, restored.currentBackStack.last())
+    }
+
+    @Test
+    fun previousSnapshotVersionWithoutAlbumGroupKeyRemainsReadable() {
+        val state = NavigationState.initial()
+        Navigator(state).navigate(AlbumDetailRoute(volumeName = "external", mediaStoreId = 3))
+        val snapshot = state.snapshot()
+
+        val restored = NavigationSnapshot.decode(previousSnapshot(snapshot))
+
+        assertEquals(snapshot, restored)
+    }
+
+    @Test
     fun serializedSnapshotPersistsHomeAndScanRoute() {
         val state = NavigationState.initial()
         val navigator = Navigator(state)
@@ -300,6 +326,22 @@ class NavigationStateTest {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes.toByteArray())
     }
 
+    private fun previousSnapshot(snapshot: NavigationSnapshot): String {
+        val bytes = ByteArrayOutputStream()
+        DataOutputStream(bytes).use { output ->
+            output.writeInt(3)
+            output.writeLegacyRoute(snapshot.currentTopLevelRoute)
+            output.writeLegacyRoute(snapshot.homeTopLevelRoute)
+            output.writeInt(snapshot.stacks.size)
+            snapshot.stacks.forEach { stack ->
+                output.writeLegacyRoute(stack.root)
+                output.writeInt(stack.routes.size)
+                stack.routes.forEach { route -> output.writeLegacyRoute(route) }
+            }
+        }
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes.toByteArray())
+    }
+
     private fun DataOutputStream.writeLegacyRoute(route: MusicNavKey) {
         when (route) {
             TracksRoute -> writeByte(0)
@@ -311,6 +353,11 @@ class NavigationStateTest {
             SettingsRoute -> writeByte(6)
             AboutRoute -> writeByte(7)
             ScanMusicRoute -> writeByte(13)
+            is AlbumDetailRoute -> {
+                writeByte(9)
+                writeUTF(route.volumeName)
+                writeLong(route.mediaStoreId)
+            }
             else -> error("legacy test fixture only supports top-level and scan routes")
         }
     }

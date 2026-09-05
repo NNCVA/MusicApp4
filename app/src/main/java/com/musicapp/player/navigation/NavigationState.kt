@@ -27,7 +27,8 @@ data class NavigationSnapshot(
 }
 
 private object NavigationSnapshotCodec {
-    private const val VERSION = 3
+    private const val VERSION = 4
+    private const val PREVIOUS_VERSION = 3
     private const val LEGACY_VERSION = 2
     private const val MAX_STACK_SIZE = 1_024
 
@@ -35,13 +36,13 @@ private object NavigationSnapshotCodec {
         val bytes = ByteArrayOutputStream()
         DataOutputStream(bytes).use { output ->
             output.writeInt(VERSION)
-            output.writeRoute(snapshot.currentTopLevelRoute)
-            output.writeRoute(snapshot.homeTopLevelRoute)
+            output.writeRoute(snapshot.currentTopLevelRoute, includeAlbumGroupKey = true)
+            output.writeRoute(snapshot.homeTopLevelRoute, includeAlbumGroupKey = true)
             output.writeInt(snapshot.stacks.size)
             snapshot.stacks.forEach { stack ->
-                output.writeRoute(stack.root)
+                output.writeRoute(stack.root, includeAlbumGroupKey = true)
                 output.writeInt(stack.routes.size)
-                stack.routes.forEach { route -> output.writeRoute(route) }
+                stack.routes.forEach { route -> output.writeRoute(route, includeAlbumGroupKey = true) }
             }
         }
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes.toByteArray())
@@ -52,8 +53,9 @@ private object NavigationSnapshotCodec {
         val input = DataInputStream(ByteArrayInputStream(Base64.getUrlDecoder().decode(encoded)))
         return input.use { stream ->
             when (val version = stream.readInt()) {
-                LEGACY_VERSION -> stream.readSnapshot(legacy = true)
-                VERSION -> stream.readSnapshot(legacy = false)
+                LEGACY_VERSION -> stream.readSnapshot(legacy = true, includeAlbumGroupKey = false)
+                PREVIOUS_VERSION -> stream.readSnapshot(legacy = false, includeAlbumGroupKey = false)
+                VERSION -> stream.readSnapshot(legacy = false, includeAlbumGroupKey = true)
                 else -> throw IllegalArgumentException("unsupported navigation snapshot version: $version")
             }.also {
                 require(stream.available() == 0) { "navigation snapshot has trailing data" }
@@ -61,20 +63,20 @@ private object NavigationSnapshotCodec {
         }
     }
 
-    private fun DataInputStream.readSnapshot(legacy: Boolean): NavigationSnapshot {
-        val currentTopLevelRoute = readRoute(legacy = legacy).asTopLevel()
+    private fun DataInputStream.readSnapshot(legacy: Boolean, includeAlbumGroupKey: Boolean): NavigationSnapshot {
+        val currentTopLevelRoute = readRoute(legacy = legacy, includeAlbumGroupKey = includeAlbumGroupKey).asTopLevel()
         val homeTopLevelRoute =
             if (legacy) {
                 currentTopLevelRoute.takeIf { it in homeTopLevelNavKeys } ?: TracksRoute
             } else {
-                readRoute(legacy = false).asTopLevel()
+                readRoute(legacy = false, includeAlbumGroupKey = includeAlbumGroupKey).asTopLevel()
             }
         val stacks =
             List(readCollectionSize(maximum = topLevelNavKeys.size)) {
-                val root = readRoute(legacy = legacy).asTopLevel()
+                val root = readRoute(legacy = legacy, includeAlbumGroupKey = includeAlbumGroupKey).asTopLevel()
                 val routes =
                     List(readCollectionSize(maximum = MAX_STACK_SIZE)) {
-                        readRoute(legacy = legacy)
+                        readRoute(legacy = legacy, includeAlbumGroupKey = includeAlbumGroupKey)
                     }
                 NavigationStackSnapshot(root = root, routes = routes)
             }
@@ -85,7 +87,7 @@ private object NavigationSnapshotCodec {
         )
     }
 
-    private fun DataOutputStream.writeRoute(route: MusicNavKey) {
+    private fun DataOutputStream.writeRoute(route: MusicNavKey, includeAlbumGroupKey: Boolean) {
         when (route) {
             TracksRoute -> writeByte(0)
             AlbumsRoute -> writeByte(1)
@@ -104,6 +106,10 @@ private object NavigationSnapshotCodec {
                 writeByte(9)
                 writeUTF(route.volumeName)
                 writeLong(route.mediaStoreId)
+                if (includeAlbumGroupKey) {
+                    writeBoolean(route.groupKey != null)
+                    route.groupKey?.let(::writeUTF)
+                }
             }
             is ArtistDetailRoute -> {
                 writeByte(10)
@@ -122,7 +128,7 @@ private object NavigationSnapshotCodec {
         }
     }
 
-    private fun DataInputStream.readRoute(legacy: Boolean = false): MusicNavKey =
+    private fun DataInputStream.readRoute(legacy: Boolean = false, includeAlbumGroupKey: Boolean = false): MusicNavKey =
         when (val routeType = readUnsignedByte()) {
             0 -> TracksRoute
             1 -> AlbumsRoute
@@ -133,7 +139,11 @@ private object NavigationSnapshotCodec {
             6 -> SettingsRoute
             7 -> AboutRoute
             8 -> TrackInfoRoute(volumeName = readUTF(), mediaStoreId = readLong())
-            9 -> AlbumDetailRoute(volumeName = readUTF(), mediaStoreId = readLong())
+            9 -> AlbumDetailRoute(
+                volumeName = readUTF(),
+                mediaStoreId = readLong(),
+                groupKey = if (includeAlbumGroupKey && readBoolean()) readUTF() else null,
+            )
             10 -> ArtistDetailRoute(artistName = readUTF())
             11 -> PlaylistDetailRoute(playlistId = readLong())
             12 -> FolderDetailRoute(volumeName = readUTF(), relativePath = readUTF())

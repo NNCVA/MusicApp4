@@ -63,10 +63,12 @@ data class TrackInfoRoute(
 data class AlbumDetailRoute(
     val volumeName: String,
     val mediaStoreId: Long,
+    val groupKey: String? = null,
 ) : MusicNavKey {
     init {
         require(volumeName.isNotBlank()) { "volumeName must not be blank" }
         require(mediaStoreId > 0) { "mediaStoreId must be positive" }
+        require(groupKey == null || groupKey.isNotBlank()) { "groupKey must not be blank" }
     }
 }
 

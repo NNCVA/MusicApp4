@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -147,15 +148,48 @@ class AlbumsViewModel internal constructor(
 }
 
 @HiltViewModel
-class AlbumDetailViewModel @Inject constructor(
+class AlbumDetailViewModel internal constructor(
     private val mediaLibraryRepository: MediaLibraryRepository,
     private val playbackController: PlaybackControllerFacade,
     private val trackMetadataRepository: com.musicapp.player.core.metadata.TrackMetadataRepository,
     private val playlistRepository: com.musicapp.player.data.repository.PlaylistRepository,
     private val batchActionExecutor: com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor,
     private val playlistUseCase: com.musicapp.player.feature.playlists.PlaylistUseCase,
+    private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
-    private val selectedAlbumId = MutableStateFlow<AlbumId?>(null)
+    @Inject
+    constructor(
+        mediaLibraryRepository: MediaLibraryRepository,
+        playbackController: PlaybackControllerFacade,
+        trackMetadataRepository: com.musicapp.player.core.metadata.TrackMetadataRepository,
+        playlistRepository: com.musicapp.player.data.repository.PlaylistRepository,
+        batchActionExecutor: com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor,
+        playlistUseCase: com.musicapp.player.feature.playlists.PlaylistUseCase,
+    ) : this(
+        mediaLibraryRepository = mediaLibraryRepository,
+        playbackController = playbackController,
+        trackMetadataRepository = trackMetadataRepository,
+        playlistRepository = playlistRepository,
+        batchActionExecutor = batchActionExecutor,
+        playlistUseCase = playlistUseCase,
+        computationDispatcher = Dispatchers.Default,
+    )
+    private data class AlbumSelection(
+        val albumId: AlbumId,
+        val groupKey: AlbumGroupKey?,
+    )
+
+    private data class GroupedLibrary(
+        val tracks: List<Track>,
+        val albums: List<AlbumSummary>,
+    )
+
+    private data class SelectedAlbumData(
+        val summary: AlbumSummary?,
+        val tracks: List<Track>,
+    )
+
+    private val selectedAlbum = MutableStateFlow<AlbumSelection?>(null)
     private val metadataMap = MutableStateFlow<Map<TrackId, com.musicapp.player.core.metadata.AdvancedTrackMetadata?>>(emptyMap())
     private val infoTrack = MutableStateFlow<Track?>(null)
     private val infoMetadata = MutableStateFlow<com.musicapp.player.core.metadata.AdvancedTrackMetadata?>(null)
@@ -167,10 +201,68 @@ class AlbumDetailViewModel @Inject constructor(
             .map { it.currentTrackId }
             .distinctUntilChanged()
 
+    private val groupedLibrary =
+        mediaLibraryRepository.observeTracks()
+            .map { tracks -> GroupedLibrary(tracks = tracks, albums = AlbumGrouping.group(tracks)) }
+            .flowOn(computationDispatcher)
+            .stateIn(
+                viewModelScope,
+                SharingStarted.Eagerly,
+                null,
+            )
+
+    private fun GroupedLibrary.findAlbum(selection: AlbumSelection): AlbumSummary? =
+        selection.groupKey
+            ?.let { key -> albums.firstOrNull { it.groupKey == key } }
+            ?: albums.firstOrNull {
+                selection.albumId in it.memberAlbumIds || it.id == selection.albumId
+            }
+            ?: selection.groupKey?.let { key -> AlbumGrouping.findAlbumByGroupKey(albums, key) }
+
+    private fun GroupedLibrary.findTracks(
+        selection: AlbumSelection,
+        matchedAlbum: AlbumSummary? = findAlbum(selection),
+    ): List<Track> {
+        return when {
+            matchedAlbum != null -> AlbumGrouping.findTracksForAlbum(tracks, matchedAlbum)
+            selection.albumId == UNKNOWN_ALBUM_ID -> tracks.filter {
+                it.albumId == null || it.albumTitle.isNullOrBlank()
+            }
+            else -> tracks.filter { it.albumId == selection.albumId }
+        }
+    }
+
+    private val selectedAlbumData =
+        combine(groupedLibrary, selectedAlbum) { library, selection ->
+            if (library == null || selection == null) {
+                SelectedAlbumData(summary = null, tracks = emptyList())
+            } else {
+                val matchedAlbum = library.findAlbum(selection)
+                val tracks = library.findTracks(selection, matchedAlbum)
+                SelectedAlbumData(summary = matchedAlbum, tracks = tracks)
+            }
+        }
+        .distinctUntilChanged()
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            SelectedAlbumData(summary = null, tracks = emptyList()),
+        )
+
+    private val selectedAlbumTracks =
+        selectedAlbumData
+            .map { it.tracks }
+            .distinctUntilChanged()
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+                emptyList(),
+            )
+
     val uiState: StateFlow<AlbumDetailUiState> =
         combine(
-            mediaLibraryRepository.observeTracks(),
-            selectedAlbumId,
+            selectedAlbumData,
+            selectedAlbum,
             currentPlayingTrackId,
             metadataMap,
             playlistRepository.observePlaylists(),
@@ -178,8 +270,11 @@ class AlbumDetailViewModel @Inject constructor(
             infoMetadata,
         ) { args ->
             @Suppress("UNCHECKED_CAST")
-            val tracks = args[0] as List<Track>
-            val albumId = args[1] as? AlbumId
+            val selectedData = args[0] as SelectedAlbumData
+            val matching = selectedData.tracks
+            val matchedAlbum = selectedData.summary
+            val selection = args[1] as? AlbumSelection
+            val albumId = selection?.albumId
             val playingId = args[2] as? TrackId
             @Suppress("UNCHECKED_CAST")
             val metaMap = args[3] as Map<TrackId, com.musicapp.player.core.metadata.AdvancedTrackMetadata?>
@@ -192,11 +287,6 @@ class AlbumDetailViewModel @Inject constructor(
                 return@combine AlbumDetailUiState()
             }
 
-            val matching = if (albumId == UNKNOWN_ALBUM_ID) {
-                tracks.filter { it.albumId == null || it.albumTitle.isNullOrBlank() }
-            } else {
-                tracks.filter { it.albumId == albumId }
-            }
             if (matching.isEmpty()) {
                 return@combine AlbumDetailUiState(
                     albumId = albumId,
@@ -212,20 +302,22 @@ class AlbumDetailViewModel @Inject constructor(
             val albumTitle = if (albumId == UNKNOWN_ALBUM_ID) {
                 UNKNOWN_ALBUM_SENTINEL
             } else {
-                orderedTracks.firstNotNullOfOrNull(Track::albumTitle) ?: representative?.title
+                matchedAlbum?.title ?: orderedTracks.firstNotNullOfOrNull(Track::albumTitle) ?: representative?.title
             }
             val artistName = if (albumId == UNKNOWN_ALBUM_ID) {
-                val distinctArtists = matching.map { it.artistName }.distinct()
-                if (distinctArtists.size == 1) distinctArtists.first() else VARIOUS_ARTISTS_SENTINEL
+                matchedAlbum?.artistName ?: run {
+                    val distinctArtists = matching.map { it.artistName }.distinct()
+                    if (distinctArtists.size == 1) distinctArtists.first() else VARIOUS_ARTISTS_SENTINEL
+                }
             } else {
-                orderedTracks.firstOrNull()?.artistName
+                matchedAlbum?.artistName ?: orderedTracks.firstOrNull()?.artistName
             }
             val stats = AlbumDetailAggregator.aggregateStats(matching)
             val techSummary = AlbumDetailAggregator.aggregateTechnicalSummary(matching, metaMap)
             val artists = AlbumDetailAggregator.aggregateArtists(orderedTracks)
 
             AlbumDetailUiState(
-                albumId = albumId,
+                albumId = matchedAlbum?.id ?: albumId,
                 title = albumTitle,
                 artistName = artistName,
                 representativeTrack = representative,
@@ -242,29 +334,27 @@ class AlbumDetailViewModel @Inject constructor(
                 infoMetadata = iMeta,
             )
         }
-        .flowOn(Dispatchers.Default)
+        .flowOn(computationDispatcher)
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             AlbumDetailUiState(),
         )
 
-    fun open(albumId: AlbumId) {
-        if (selectedAlbumId.value == albumId) return
-        selectedAlbumId.value = albumId
-        loadMetadataForAlbum(albumId)
+    fun open(albumId: AlbumId, groupKey: AlbumGroupKey? = null) {
+        val selection = AlbumSelection(albumId = albumId, groupKey = groupKey)
+        if (selectedAlbum.value == selection) return
+        selectedAlbum.value = selection
+        loadMetadataForAlbum(selection)
     }
 
-    private fun loadMetadataForAlbum(albumId: AlbumId) {
+    private fun loadMetadataForAlbum(selection: AlbumSelection) {
         metadataJob?.cancel()
         metadataMap.value = emptyMap()
         metadataJob = viewModelScope.launch(Dispatchers.IO) {
-            val allTracks = mediaLibraryRepository.observeTracks().first()
-            val tracks: List<Track> = if (albumId == UNKNOWN_ALBUM_ID) {
-                allTracks.filter { it.albumId == null || it.albumTitle.isNullOrBlank() }
-            } else {
-                allTracks.filter { it.albumId == albumId }
-            }
+            val library = groupedLibrary.filterNotNull().first()
+            val tracks = library.findTracks(selection)
+            if (selectedAlbum.value != selection) return@launch
             val semaphore = Semaphore(2)
             coroutineScope {
                 tracks.forEach { track ->

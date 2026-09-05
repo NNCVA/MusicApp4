@@ -66,7 +66,6 @@ import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollE
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
-import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.feature.category.CategoryNavigationAction
@@ -89,7 +88,7 @@ fun AlbumsScreenRoute(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
-    onAlbumClick: (AlbumId) -> Unit,
+    onAlbumClick: (AlbumSummary) -> Unit,
     bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -116,7 +115,7 @@ private fun AlbumsScreen(
     bottomPadding: Dp = 0.dp,
     onSortSelected: (AlbumSortField) -> Unit,
     onColumnCountSelected: (Int) -> Unit,
-    onAlbumClick: (AlbumId) -> Unit,
+    onAlbumClick: (AlbumSummary) -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
@@ -197,10 +196,10 @@ private fun AlbumsScreen(
                     horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                     verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                 ) {
-                    items(state.albums, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { album ->
+                    items(state.albums, key = { it.groupKey }) { album ->
                         AlbumCard(
                             album = album,
-                            onClick = { onAlbumClick(album.id) },
+                            onClick = { onAlbumClick(album) },
                         )
                     }
                 }

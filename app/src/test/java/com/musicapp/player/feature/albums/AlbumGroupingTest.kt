@@ -11,22 +11,216 @@ import org.junit.Test
 
 class AlbumGroupingTest {
     @Test
-    fun `same album title with different ids remains separate`() {
+    fun `same volume same title different ids are merged into single album`() {
         val tracks =
             listOf(
-                track(1, AlbumId("external", 10), "Shared title"),
-                track(2, AlbumId("external", 11), "Shared title"),
-                track(3, AlbumId("sdcard", 10), "Shared title"),
+                track(1, AlbumId("external", 10), "跨时代", artist = "周杰伦"),
+                track(2, AlbumId("external", 11), "跨时代", artist = "周杰伦"),
+            )
+
+        val grouped = AlbumGrouping.group(tracks)
+
+        assertEquals(1, grouped.size)
+        val album = grouped.single()
+        assertEquals("跨时代", album.title)
+        assertEquals("周杰伦", album.artistName)
+        assertEquals(2, album.trackCount)
+        assertEquals(1L, album.representativeTrack.id.mediaStoreId)
+        assertEquals(
+            setOf(AlbumId("external", 10), AlbumId("external", 11)),
+            album.memberAlbumIds,
+        )
+
+        val foundTracks = AlbumGrouping.findTracksForAlbum(tracks, AlbumId("external", 10))
+        assertEquals(2, foundTracks.size)
+        val foundTracksViaOtherId = AlbumGrouping.findTracksForAlbum(tracks, AlbumId("external", 11))
+        assertEquals(2, foundTracksViaOtherId.size)
+    }
+
+    @Test
+    fun `different volumes with same title remain separate`() {
+        val tracks =
+            listOf(
+                track(1, AlbumId("external", 10), "跨时代", artist = "周杰伦"),
+                track(2, AlbumId("sdcard", 10), "跨时代", artist = "周杰伦"),
+            )
+
+        val grouped = AlbumGrouping.group(tracks)
+
+        assertEquals(2, grouped.size)
+        val externalAlbum = grouped.first { it.id.volumeName == "external" }
+        val sdcardAlbum = grouped.first { it.id.volumeName == "sdcard" }
+        assertEquals(1, externalAlbum.trackCount)
+        assertEquals(1, sdcardAlbum.trackCount)
+    }
+
+    @Test
+    fun `different artists with same title remain separate`() {
+        val tracks =
+            listOf(
+                track(1, AlbumId("external", 10), "精选集", artist = "周杰伦"),
+                track(2, AlbumId("external", 11), "精选集", artist = "陈奕迅"),
+            )
+
+        val grouped = AlbumGrouping.group(tracks)
+
+        assertEquals(2, grouped.size)
+        val jayAlbum = grouped.first { it.artistName == "周杰伦" }
+        val easonAlbum = grouped.first { it.artistName == "陈奕迅" }
+        assertEquals(1, jayAlbum.trackCount)
+        assertEquals(1, easonAlbum.trackCount)
+    }
+
+    @Test
+    fun `compatible artists with delimiters and feats are merged with primary artist preserved`() {
+        val tracks =
+            listOf(
+                track(1, AlbumId("external", 20), "魔杰座", artist = "周杰伦"),
+                track(2, AlbumId("external", 21), "魔杰座", artist = "周杰伦 / 梁心颐"),
+                track(3, AlbumId("external", 21), "魔杰座", artist = "周杰伦 feat. 浪花兄弟"),
+            )
+
+        val grouped = AlbumGrouping.group(tracks)
+
+        assertEquals(1, grouped.size)
+        val album = grouped.single()
+        assertEquals("魔杰座", album.title)
+        assertEquals("周杰伦", album.artistName)
+        assertEquals(3, album.trackCount)
+        assertEquals(
+            setOf(AlbumId("external", 20), AlbumId("external", 21)),
+            album.memberAlbumIds,
+        )
+    }
+
+    @Test
+    fun `different release years with same title remain separate as version conflict`() {
+        val tracks =
+            listOf(
+                track(1, AlbumId("external", 40), "跨时代", artist = "周杰伦").copy(releaseYear = 2010),
+                track(2, AlbumId("external", 41), "跨时代", artist = "周杰伦").copy(releaseYear = 2024),
+            )
+
+        val grouped = AlbumGrouping.group(tracks)
+
+        assertEquals(2, grouped.size)
+        assertEquals(listOf(1, 1), grouped.map { it.trackCount })
+    }
+
+    @Test
+    fun `version modifier keywords like Live or Deluxe remain separate from original`() {
+        val tracks =
+            listOf(
+                track(1, AlbumId("external", 50), "跨时代", artist = "周杰伦"),
+                track(2, AlbumId("external", 51), "跨时代 (Live)", artist = "周杰伦"),
+                track(3, AlbumId("external", 52), "跨时代 [Deluxe Edition]", artist = "周杰伦"),
             )
 
         val grouped = AlbumGrouping.group(tracks)
 
         assertEquals(3, grouped.size)
-        assertEquals(tracks.mapNotNull(Track::albumId).toSet(), grouped.map(AlbumSummary::id).toSet())
-        assertEquals(listOf(1L, 2L, 3L), grouped.map { it.representativeTrack.id.mediaStoreId })
+        assertEquals(listOf(1, 1, 1), grouped.map { it.trackCount })
+    }
 
-        val reordered = AlbumGrouping.group(tracks.reversed()).associateBy(AlbumSummary::id)
-        assertEquals(1L, reordered.getValue(AlbumId("external", 10)).representativeTrack.id.mediaStoreId)
+    @Test
+    fun `transitive artist relation does not merge independent artists`() {
+        val tracks =
+            listOf(
+                // Group 1: Jay Chou solo
+                track(1, AlbumId("external", 60), "魔杰座", artist = "周杰伦"),
+                // Group 2: Jay Chou + Lara duet
+                track(2, AlbumId("external", 61), "魔杰座", artist = "周杰伦 / 梁心颐"),
+                // Group 3: Lara solo
+                track(3, AlbumId("external", 62), "魔杰座", artist = "梁心颐"),
+            )
+
+        val grouped = AlbumGrouping.group(tracks)
+
+        // Jay Chou solo and Jay+Lara share core artist "周杰伦" -> merged.
+        // Lara solo does not contain core artist "周杰伦" -> separate!
+        assertEquals(2, grouped.size)
+        val jayAlbum = grouped.first { it.artistName == "周杰伦" }
+        assertEquals(2, jayAlbum.trackCount)
+        assertEquals(setOf(AlbumId("external", 60), AlbumId("external", 61)), jayAlbum.memberAlbumIds)
+
+        val laraAlbum = grouped.first { it.artistName == "梁心颐" }
+        assertEquals(1, laraAlbum.trackCount)
+        assertEquals(setOf(AlbumId("external", 62)), laraAlbum.memberAlbumIds)
+    }
+
+    @Test
+    fun `artist delimiters support backslash and fullwidth punctuation`() {
+        val tracks =
+            listOf(
+                track(1, AlbumId("external", 70), "魔杰座", artist = "周杰伦\\梁心颐"),
+                track(2, AlbumId("external", 71), "魔杰座", artist = "周杰伦，梁心颐"),
+                track(3, AlbumId("external", 72), "魔杰座", artist = "周杰伦；梁心颐"),
+            )
+
+        val grouped = AlbumGrouping.group(tracks)
+
+        assertEquals(1, grouped.size)
+        val album = grouped.single()
+        assertEquals(3, album.trackCount)
+    }
+
+    @Test
+    fun `physical album summary uses normalized majority title`() {
+        val tracks = listOf(
+            track(1, AlbumId("external", 73), "Minor Title", artist = "周杰伦"),
+            track(2, AlbumId("external", 73), "Canonical Title", artist = "周杰伦"),
+            track(3, AlbumId("external", 73), "canonical title", artist = "周杰伦"),
+        )
+
+        val album = AlbumGrouping.group(tracks).single()
+
+        assertEquals("Canonical Title", album.title)
+        assertEquals("canonical title", album.groupKey.normalizedTitle)
+        assertEquals(album.groupKey.encode(), album.key)
+        assertEquals(album.groupKey, AlbumGroupKey.decode(album.key))
+    }
+
+    @Test
+    fun `group key remains stable when representative physical album is removed`() {
+        val allTracks = listOf(
+            track(1, AlbumId("external", 74), "跨时代", artist = "周杰伦"),
+            track(2, AlbumId("external", 75), "跨时代", artist = "周杰伦"),
+        )
+
+        val allKey = AlbumGrouping.group(allTracks).single().key
+        val remainingKey = AlbumGrouping.group(allTracks.drop(1)).single().key
+
+        assertEquals(allKey, remainingKey)
+    }
+
+    @Test
+    fun `same album input order produces the same artist cluster assignment`() {
+        val tracks = listOf(
+            track(1, AlbumId("external", 76), "魔杰座", artist = "周杰伦"),
+            track(2, AlbumId("external", 77), "魔杰座", artist = "梁心颐"),
+            track(3, AlbumId("external", 78), "魔杰座", artist = "周杰伦 / 梁心颐"),
+        )
+
+        val forward = AlbumGrouping.group(tracks).map { it.trackIds }
+        val reversed = AlbumGrouping.group(tracks.reversed()).map { it.trackIds }
+
+        assertEquals(forward, reversed)
+    }
+
+    @Test
+    fun `findTracksForAlbum does not leak orphan tracks from same physical album id into normal album detail`() {
+        val normalTrack = track(1, AlbumId("external", 80), "Known Album", artist = "Artist")
+        val orphanTrack = track(2, AlbumId("external", 80), null, artist = "Artist")
+        val tracks = listOf(normalTrack, orphanTrack)
+
+        val grouped = AlbumGrouping.group(tracks)
+        assertEquals(2, grouped.size) // 1 normal album, 1 unknown album
+
+        val normalTracks = AlbumGrouping.findTracksForAlbum(tracks, AlbumId("external", 80))
+        assertEquals(listOf(1L), normalTracks.map { it.id.mediaStoreId })
+
+        val unknownTracks = AlbumGrouping.findTracksForAlbum(tracks, UNKNOWN_ALBUM_ID)
+        assertEquals(listOf(2L), unknownTracks.map { it.id.mediaStoreId })
     }
 
     @Test

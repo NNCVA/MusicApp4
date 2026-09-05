@@ -9,10 +9,32 @@ import com.musicapp.player.core.designsystem.component.sortedBySectionText
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.feature.category.CategorySortDirection
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.text.Normalizer
+import java.util.Base64
 import java.util.Locale
 
 val UNKNOWN_ALBUM_ID = AlbumId(volumeName = "virtual", mediaStoreId = Long.MAX_VALUE)
 const val UNKNOWN_ALBUM_SENTINEL = "<unknown_album>"
+
+private val ALBUM_WHITESPACE_REGEX = Regex("\\s+")
+
+private fun normalizeAlbumTitleValue(rawTitle: String?): String {
+    if (rawTitle.isNullOrBlank()) return ""
+    return Normalizer.normalize(rawTitle, Normalizer.Form.NFKC)
+        .trim()
+        .replace(ALBUM_WHITESPACE_REGEX, " ")
+        .lowercase(Locale.ROOT)
+}
+
+private fun normalizeArtistTokenValue(rawArtist: String): String =
+    Normalizer.normalize(rawArtist, Normalizer.Form.NFKC)
+        .trim()
+        .replace(ALBUM_WHITESPACE_REGEX, " ")
+        .lowercase(Locale.ROOT)
 
 @Composable
 fun String.localizedAlbumTitle(): String =
@@ -25,6 +47,68 @@ data class AlbumSort(
     val direction: CategorySortDirection = CategorySortDirection.ASCENDING,
 )
 
+data class AlbumGroupKey(
+    val volumeName: String,
+    val normalizedTitle: String,
+    val artistSignature: String = "",
+    val versionKeywords: Set<String> = emptySet(),
+    val releaseYears: Set<Int> = emptySet(),
+) {
+    fun encode(): String {
+        val bytes = ByteArrayOutputStream()
+        DataOutputStream(bytes).use { output ->
+            output.writeInt(1)
+            output.writeUTF(volumeName)
+            output.writeUTF(normalizedTitle)
+            output.writeUTF(artistSignature)
+            output.writeInt(versionKeywords.size)
+            versionKeywords.toList().sorted().forEach(output::writeUTF)
+            output.writeInt(releaseYears.size)
+            releaseYears.toList().sorted().forEach(output::writeInt)
+        }
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes.toByteArray())
+    }
+
+    companion object {
+        fun legacy(id: AlbumId, title: String, artistName: String): AlbumGroupKey =
+            AlbumGroupKey(
+                volumeName = id.volumeName,
+                normalizedTitle = normalizeAlbumTitleValue(title),
+                artistSignature = normalizeArtistTokenValue(artistName),
+            )
+
+        fun decode(encoded: String): AlbumGroupKey? {
+            if (encoded.isBlank()) return null
+            return runCatching {
+                val input = DataInputStream(ByteArrayInputStream(Base64.getUrlDecoder().decode(encoded)))
+                input.use { stream ->
+                    require(stream.readInt() == 1) { "unsupported album group key version" }
+                    val volumeName = stream.readUTF()
+                    val normalizedTitle = stream.readUTF()
+                    val artistSignature = stream.readUTF()
+                    val versionCount = stream.readInt().also { require(it in 0..64) }
+                    val versionKeywords = List(versionCount) { stream.readUTF() }.toSet()
+                    val releaseYearCount = stream.readInt().also { require(it in 0..64) }
+                    val releaseYears = List(releaseYearCount) { stream.readInt() }.toSet()
+                    require(stream.available() == 0) { "album group key has trailing data" }
+                    AlbumGroupKey(
+                        volumeName = volumeName,
+                        normalizedTitle = normalizedTitle,
+                        artistSignature = artistSignature,
+                        versionKeywords = versionKeywords,
+                        releaseYears = releaseYears,
+                    )
+                }
+            }.getOrNull()
+        }
+    }
+}
+
+val UNKNOWN_ALBUM_GROUP_KEY = AlbumGroupKey(
+    volumeName = UNKNOWN_ALBUM_ID.volumeName,
+    normalizedTitle = UNKNOWN_ALBUM_SENTINEL,
+)
+
 data class AlbumSummary(
     val id: AlbumId,
     val title: String,
@@ -32,29 +116,271 @@ data class AlbumSummary(
     val trackCount: Int,
     val latestDateAddedMs: Long,
     val representativeTrack: Track,
-)
+    val memberAlbumIds: Set<AlbumId> = setOf(id),
+    val trackIds: Set<com.musicapp.player.core.domain.model.TrackId> = emptySet(),
+    val groupKey: AlbumGroupKey = AlbumGroupKey.legacy(id, title, artistName),
+) {
+    val key: String get() = groupKey.encode()
+}
 
 object AlbumGrouping {
+    private val ARTIST_DELIMITER_REGEX = Regex("(?i)[/、\\\\,;，；&]+|\\s+(?:feat\\.|ft\\.)\\s+")
+    private val VERSION_KEYWORD_REGEX = Regex("(?i)\\b(live|remix|deluxe|acoustic|instrumental|bonus|edition|version|remaster|remastered)\\b")
+
+    fun normalizeAlbumTitle(rawTitle: String?): String {
+        return normalizeAlbumTitleValue(rawTitle)
+    }
+
+    fun splitArtists(artistName: String?): List<String> {
+        if (artistName.isNullOrBlank()) return emptyList()
+        return artistName.split(ARTIST_DELIMITER_REGEX)
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .ifEmpty { listOf(artistName.trim()) }
+    }
+
+    fun extractVersionKeywords(title: String?): Set<String> {
+        if (title.isNullOrBlank()) return emptySet()
+        return VERSION_KEYWORD_REGEX.findAll(title).map { it.value.lowercase(Locale.ROOT) }.toSet()
+    }
+
+    private data class CanonicalTitle(
+        val normalized: String,
+        val display: String,
+    )
+
+    private fun canonicalAlbumTitle(tracks: List<Track>, fallback: String): CanonicalTitle {
+        val candidates = tracks.mapNotNull { track ->
+            track.albumTitle
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+        }
+        val winner = candidates
+            .groupBy(::normalizeAlbumTitle)
+            .entries
+            .sortedWith(
+                compareByDescending<Map.Entry<String, List<String>>> { it.value.size }
+                    .thenBy { it.key },
+            )
+            .firstOrNull()
+        val normalized = winner?.key ?: normalizeAlbumTitle(fallback)
+        val display = winner?.value
+            ?.minWithOrNull(compareBy<String>({ normalizeAlbumTitle(it) }, { it.lowercase(Locale.ROOT) }, { it }))
+            ?: fallback
+        return CanonicalTitle(normalized = normalized, display = display)
+    }
+
+    private fun canonicalArtistSignature(
+        tracks: List<Track>,
+        preferredArtists: Set<String> = emptySet(),
+    ): String {
+        val artists = if (preferredArtists.isNotEmpty()) {
+            preferredArtists
+        } else {
+            tracks
+                .flatMap { splitArtists(it.artistName) }
+                .map(::normalizeArtistTokenValue)
+                .toSet()
+        }
+        return artists
+            .filter(String::isNotEmpty)
+            .toSet()
+            .sorted()
+            .joinToString("\u001f")
+    }
+
+    private class PhysicalAlbumBundle(
+        val albumId: AlbumId,
+        val tracks: List<Track>,
+    ) {
+        val normalizedTitle: String
+        val displayTitle: String
+        val releaseYears: Set<Int>
+        val versionKeywords: Set<String>
+        val allArtists: Set<String>
+        val coreArtists: Set<String>
+
+        init {
+            val canonicalTitle = canonicalAlbumTitle(tracks, tracks.first().title)
+            displayTitle = canonicalTitle.display
+            normalizedTitle = canonicalTitle.normalized
+            releaseYears = tracks.mapNotNull { it.releaseYear }.toSet()
+            versionKeywords = extractVersionKeywords(displayTitle)
+
+            val trackArtistSets = tracks.map { track ->
+                splitArtists(track.artistName).map(::normalizeArtistTokenValue).toSet()
+            }.filter { it.isNotEmpty() }
+
+            allArtists = trackArtistSets.flatten().toSet()
+            coreArtists = if (trackArtistSets.isNotEmpty()) {
+                trackArtistSets.reduce { acc, set -> acc.intersect(set) }
+            } else {
+                emptySet()
+            }
+        }
+    }
+
+    private class AlbumCluster(
+        val bundles: MutableList<PhysicalAlbumBundle> = mutableListOf(),
+    ) {
+        val allTracks: List<Track> get() = bundles.flatMap { it.tracks }
+        val memberAlbumIds: Set<AlbumId> get() = bundles.map { it.albumId }.toSet()
+
+        fun stableAlbumId(): AlbumId =
+            memberAlbumIds.minWithOrNull(compareBy<AlbumId>({ it.volumeName }, { it.mediaStoreId }))
+                ?: error("album cluster must contain at least one physical album")
+
+        fun sharedCoreArtists(): Set<String> {
+            val bundleCores = bundles.map { it.coreArtists }.filter { it.isNotEmpty() }
+            return if (bundleCores.isNotEmpty()) {
+                bundleCores.reduce { acc, set -> acc.intersect(set) }
+            } else {
+                emptySet()
+            }
+        }
+
+        fun canMerge(candidate: PhysicalAlbumBundle): Boolean {
+            // 1. Release year conflict check
+            val clusterYears = bundles.flatMap { it.releaseYears }.toSet()
+            if (clusterYears.isNotEmpty() && candidate.releaseYears.isNotEmpty()) {
+                if (clusterYears.intersect(candidate.releaseYears).isEmpty()) {
+                    return false
+                }
+            }
+
+            // 2. Version keyword modifier conflict check
+            val clusterVersions = bundles.flatMap { it.versionKeywords }.toSet()
+            if (clusterVersions != candidate.versionKeywords) {
+                return false
+            }
+
+            // 3. Core primary artist check (prevents A -> A/B -> B transitive merge)
+            val currentCore = sharedCoreArtists()
+            if (currentCore.isNotEmpty() && candidate.allArtists.isNotEmpty()) {
+                if (currentCore.intersect(candidate.allArtists).isEmpty()) {
+                    return false
+                }
+            } else if (currentCore.isEmpty()) {
+                val clusterArtists = bundles.flatMap { it.allArtists }.toSet()
+                if (clusterArtists.isNotEmpty() && candidate.allArtists.isNotEmpty() && clusterArtists.intersect(candidate.allArtists).isEmpty()) {
+                    return false
+                }
+            }
+
+            return true
+        }
+    }
+
     fun group(tracks: List<Track>): List<AlbumSummary> {
         val (noAlbumTracks, hasAlbumTracks) = tracks.partition {
             it.albumId == null || it.albumTitle.isNullOrBlank()
         }
 
-        val normalAlbums = hasAlbumTracks.asSequence()
+        val bundlesByVolume = hasAlbumTracks
             .filter { it.albumId != null }
-            .groupBy { checkNotNull(it.albumId) }
-            .map { (id, albumTracks) ->
-                val stableTracks = albumTracks.sortedWith(trackIdentityComparator)
-                AlbumSummary(
-                    id = id,
-                    title = stableTracks.firstNotNullOfOrNull(Track::albumTitle) ?: stableTracks.first().title,
-                    artistName = stableTracks.first().artistName,
-                    trackCount = stableTracks.size,
-                    latestDateAddedMs = stableTracks.maxOf(Track::dateAddedMs),
-                    representativeTrack = stableTracks.first(),
-                )
+            .groupBy { checkNotNull(it.albumId).volumeName }
+            .mapValues { (_, volumeTracks) ->
+                volumeTracks.groupBy { checkNotNull(it.albumId) }
+                    .map { (albumId, albumTracks) -> PhysicalAlbumBundle(albumId, albumTracks) }
             }
-            .toList()
+
+        val normalAlbums = mutableListOf<AlbumSummary>()
+
+        for ((volumeName, volumeBundles) in bundlesByVolume) {
+            val bundlesByTitle = volumeBundles.groupBy { it.normalizedTitle }
+
+            for ((_, titleBundles) in bundlesByTitle) {
+                val clusters = mutableListOf<AlbumCluster>()
+
+                for (bundle in titleBundles.sortedWith(compareBy({ it.albumId.volumeName }, { it.albumId.mediaStoreId }))) {
+                    val matchingCluster = clusters
+                        .asSequence()
+                        .filter { it.canMerge(bundle) }
+                        .sortedWith(
+                            compareByDescending<AlbumCluster> {
+                                it.sharedCoreArtists().intersect(bundle.allArtists).size
+                            }
+                                .thenBy { it.stableAlbumId().volumeName }
+                                .thenBy { it.stableAlbumId().mediaStoreId },
+                        )
+                        .firstOrNull()
+                    if (matchingCluster != null) {
+                        matchingCluster.bundles.add(bundle)
+                    } else {
+                        clusters.add(AlbumCluster(mutableListOf(bundle)))
+                    }
+                }
+
+                for (cluster in clusters) {
+                    val allClusterTracks = cluster.allTracks.distinctBy { it.id }
+                    val stableTracks = allClusterTracks.sortedWith(trackIdentityComparator)
+                    val memberAlbumIds = cluster.memberAlbumIds
+                    val representativeTrack = stableTracks.first()
+                    val repAlbumId = representativeTrack.albumId ?: memberAlbumIds.first()
+                    val trackIds = stableTracks.map { it.id }.toSet()
+                    val canonicalTitle = canonicalAlbumTitle(stableTracks, stableTracks.first().title)
+                    val groupKey = AlbumGroupKey(
+                        volumeName = volumeName,
+                        normalizedTitle = canonicalTitle.normalized,
+                        artistSignature = canonicalArtistSignature(stableTracks, cluster.sharedCoreArtists()),
+                        versionKeywords = cluster.bundles.flatMap { it.versionKeywords }.toSet(),
+                        releaseYears = cluster.bundles.flatMap { it.releaseYears }.toSet(),
+                    )
+
+                    val artistCounts = mutableMapOf<String, Int>()
+                    val displayArtists = mutableMapOf<String, String>()
+                    stableTracks.forEach { track ->
+                        val artists = splitArtists(track.artistName)
+                        artists.forEach { raw ->
+                            val norm = normalizeArtistTokenValue(raw)
+                            artistCounts[norm] = (artistCounts[norm] ?: 0) + 1
+                            displayArtists.putIfAbsent(norm, raw)
+                        }
+                    }
+
+                    val primaryArtistNorm = artistCounts.maxByOrNull { it.value }?.key
+                    val allRawArtists = stableTracks.map { it.artistName }.distinct()
+                    val finalArtistName = when {
+                        allRawArtists.size == 1 -> allRawArtists.first()
+                        primaryArtistNorm != null && (artistCounts[primaryArtistNorm] ?: 0) > 0 -> {
+                            val maxCount = artistCounts[primaryArtistNorm] ?: 0
+                            val primaryArtistInEveryCredit = allRawArtists.all {
+                                primaryArtistNorm in splitArtists(it).map(::normalizeArtistTokenValue)
+                            }
+                            if (maxCount * 2 > stableTracks.size || primaryArtistInEveryCredit) {
+                                displayArtists[primaryArtistNorm] ?: stableTracks.first().artistName
+                            } else {
+                                VARIOUS_ARTISTS_SENTINEL
+                            }
+                        }
+                        else -> VARIOUS_ARTISTS_SENTINEL
+                    }
+
+                    normalAlbums.add(
+                        AlbumSummary(
+                            id = repAlbumId,
+                            title = canonicalTitle.display,
+                            artistName = finalArtistName,
+                            trackCount = stableTracks.size,
+                            latestDateAddedMs = stableTracks.maxOf(Track::dateAddedMs),
+                            representativeTrack = representativeTrack,
+                            memberAlbumIds = memberAlbumIds,
+                            trackIds = trackIds,
+                            groupKey = groupKey,
+                        ),
+                    )
+                }
+            }
+        }
+
+        // Sort normal albums deterministically
+        val sortedNormalAlbums = normalAlbums.sortedWith(
+            compareBy<AlbumSummary>(
+                { it.title.lowercase(Locale.ROOT) },
+                { it.id.volumeName.lowercase(Locale.ROOT) },
+                { it.id.mediaStoreId },
+            ),
+        )
 
         val unknownAlbum = if (noAlbumTracks.isNotEmpty()) {
             val stableNoAlbumTracks = noAlbumTracks.sortedWith(trackIdentityComparator)
@@ -71,17 +397,80 @@ object AlbumGrouping {
                 trackCount = stableNoAlbumTracks.size,
                 latestDateAddedMs = stableNoAlbumTracks.maxOf(Track::dateAddedMs),
                 representativeTrack = stableNoAlbumTracks.first(),
+                memberAlbumIds = setOf(UNKNOWN_ALBUM_ID),
+                trackIds = stableNoAlbumTracks.map { it.id }.toSet(),
+                groupKey = UNKNOWN_ALBUM_GROUP_KEY,
             )
         } else {
             null
         }
 
         return if (unknownAlbum != null) {
-            listOf(unknownAlbum) + normalAlbums
+            listOf(unknownAlbum) + sortedNormalAlbums
         } else {
-            normalAlbums
+            sortedNormalAlbums
         }
     }
+
+    fun findTracksForAlbum(tracks: List<Track>, targetAlbumId: AlbumId): List<Track> {
+        if (targetAlbumId == UNKNOWN_ALBUM_ID) {
+            return tracks.filter { it.albumId == null || it.albumTitle.isNullOrBlank() }
+        }
+        val allAlbums = group(tracks)
+        val matchedAlbum = allAlbums.firstOrNull { targetAlbumId in it.memberAlbumIds || it.id == targetAlbumId }
+        return if (matchedAlbum != null) {
+            findTracksForAlbum(tracks, matchedAlbum)
+        } else {
+            tracks.filter { it.albumId == targetAlbumId }
+        }
+    }
+
+    fun findTracksForAlbum(tracks: List<Track>, matchedAlbum: AlbumSummary): List<Track> =
+        tracks.filter { it.id in matchedAlbum.trackIds }
+
+    fun findAlbumByGroupKey(albums: List<AlbumSummary>, targetGroupKey: AlbumGroupKey): AlbumSummary? {
+        albums.firstOrNull { it.groupKey == targetGroupKey }?.let { return it }
+        if (targetGroupKey == UNKNOWN_ALBUM_GROUP_KEY) return null
+
+        val targetArtists = targetGroupKey.artistSignature
+            .split('\u001f')
+            .filter(String::isNotEmpty)
+            .toSet()
+        return albums
+            .asSequence()
+            .filter { album ->
+                val candidateKey = album.groupKey
+                val candidateArtists = candidateKey.artistSignature
+                    .split('\u001f')
+                    .filter(String::isNotEmpty)
+                    .toSet()
+                val artistCompatible = targetArtists.isEmpty() || candidateArtists.isEmpty() ||
+                    targetArtists.containsAll(candidateArtists) || candidateArtists.containsAll(targetArtists)
+                val yearCompatible = targetGroupKey.releaseYears.isEmpty() || candidateKey.releaseYears.isEmpty() ||
+                    targetGroupKey.releaseYears.intersect(candidateKey.releaseYears).isNotEmpty()
+                candidateKey.volumeName == targetGroupKey.volumeName &&
+                    candidateKey.normalizedTitle == targetGroupKey.normalizedTitle &&
+                    candidateKey.versionKeywords == targetGroupKey.versionKeywords &&
+                    artistCompatible && yearCompatible
+            }
+            .sortedWith(
+                compareByDescending<AlbumSummary> { album ->
+                    targetArtists.intersect(album.groupKey.artistSignature.split('\u001f').filter(String::isNotEmpty).toSet()).size
+                }
+                    .thenBy { it.id.volumeName }
+                    .thenBy { it.id.mediaStoreId },
+            )
+            .firstOrNull()
+    }
+
+    fun findTracksForAlbum(tracks: List<Track>, targetGroupKey: AlbumGroupKey): List<Track> {
+        if (targetGroupKey == UNKNOWN_ALBUM_GROUP_KEY) {
+            return tracks.filter { it.albumId == null || it.albumTitle.isNullOrBlank() }
+        }
+        val matchedAlbum = findAlbumByGroupKey(group(tracks), targetGroupKey)
+        return matchedAlbum?.let { findTracksForAlbum(tracks, it) } ?: emptyList()
+    }
+
 
     fun sorted(albums: List<AlbumSummary>, sort: AlbumSort): List<AlbumSummary> {
         val unknownAlbum = albums.firstOrNull { it.id == UNKNOWN_ALBUM_ID }
