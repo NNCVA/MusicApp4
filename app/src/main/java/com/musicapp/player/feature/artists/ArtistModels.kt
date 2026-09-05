@@ -51,14 +51,11 @@ object ArtistRouteKey {
 
 /** Groups artist labels by splitting delimiters while protecting known entities. */
 object ArtistGrouping {
-    private val ARTIST_DELIMITER_REGEX = Regex("(?i)[/、\\\\,;，；&]+|\\s+(?:feat\\.|ft\\.)\\s+")
-    private val PROTECTED_ARTIST_NAMES = listOf("AC/DC")
-
     fun splitArtistNames(artistName: String?): List<String> {
         if (artistName.isNullOrBlank()) return emptyList()
         var sanitized = artistName.trim()
         val replacements = mutableMapOf<String, String>()
-        for ((index, protectedName) in PROTECTED_ARTIST_NAMES.withIndex()) {
+        for ((index, protectedName) in ArtistSplittingRules.PROTECTED_WHITELIST.withIndex()) {
             val placeholder = "__PROTECTED_${index}__"
             val pattern = Regex("(?i)(?<=^|[/、\\\\,;，；&\\s])" + Regex.escape(protectedName) + "(?=[/、\\\\,;，；&\\s]|$)")
             sanitized = pattern.replace(sanitized) { matchResult ->
@@ -67,7 +64,7 @@ object ArtistGrouping {
                 placeholder
             }
         }
-        return sanitized.split(ARTIST_DELIMITER_REGEX)
+        return sanitized.split(ArtistSplittingRules.DELIMITER_REGEX)
             .map { token ->
                 var restored = token.trim()
                 for ((placeholder, originalText) in replacements) {

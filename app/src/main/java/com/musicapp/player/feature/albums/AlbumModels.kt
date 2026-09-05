@@ -124,20 +124,14 @@ data class AlbumSummary(
 }
 
 object AlbumGrouping {
-    private val ARTIST_DELIMITER_REGEX = Regex("(?i)[/、\\\\,;，；&]+|\\s+(?:feat\\.|ft\\.)\\s+")
     private val VERSION_KEYWORD_REGEX = Regex("(?i)\\b(live|remix|deluxe|acoustic|instrumental|bonus|edition|version|remaster|remastered)\\b")
 
     fun normalizeAlbumTitle(rawTitle: String?): String {
         return normalizeAlbumTitleValue(rawTitle)
     }
 
-    fun splitArtists(artistName: String?): List<String> {
-        if (artistName.isNullOrBlank()) return emptyList()
-        return artistName.split(ARTIST_DELIMITER_REGEX)
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .ifEmpty { listOf(artistName.trim()) }
-    }
+    fun splitArtists(artistName: String?): List<String> =
+        com.musicapp.player.feature.artists.ArtistGrouping.splitArtistNames(artistName)
 
     fun extractVersionKeywords(title: String?): Set<String> {
         if (title.isNullOrBlank()) return emptySet()
