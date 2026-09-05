@@ -4,7 +4,7 @@
 
 - 必须使用中文输出；项目说明统一放在 `README.md`，过程和验证文档统一放在 `docs/`。
 - 当前页面行为以 `app/` 下的代码、自动化测试和实际设备验证为准。`docs/plan/archive/`、页面级 `docs/design/archive/` 和首版实施规格只作历史参考，不得作为当前实现门槛。
-- 当前仍维护的设计资料仅包括通用组件规范 [`docs/design/selection-and-toggle-controls.md`](docs/design/selection-and-toggle-controls.md) 与资源/许可证规范 [`docs/design/resource-governance.md`](docs/design/resource-governance.md)。
+- 当前仍维护的设计资料包括通用组件规范 [`docs/design/selection-and-toggle-controls.md`](docs/design/selection-and-toggle-controls.md)、资源/许可证规范 [`docs/design/resource-governance.md`](docs/design/resource-governance.md)，以及业务规则规范（[`docs/design/artist-splitting-rules.md`](docs/design/artist-splitting-rules.md)、[`docs/design/album-grouping-rules.md`](docs/design/album-grouping-rules.md)、[`docs/design/audio-format-registry.md`](docs/design/audio-format-registry.md)）。
 - 架构决策见 [`docs/adr/README.md`](docs/adr/README.md)。发现 ADR 与代码冲突时，先记录具体代码证据和影响，再决定更新或标记 ADR；不要把过时 ADR 当作实现要求。
 
 ## 检索、协作与修改边界
