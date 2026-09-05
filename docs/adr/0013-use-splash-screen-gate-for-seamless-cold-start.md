@@ -1,6 +1,6 @@
 # 使用系统启动门控与状态机治理实现冷启动无感化加载
 
-> **状态：已接受 (Accepted)**。关联 [CONTEXT.md](../CONTEXT.md#L14-L24)。
+> **状态：需要更新（2026-09-05 静态核对）**。当前 `MainActivity` 的启动门控超时为 `3000 ms`，与本文记录的 `1200 ms` 不一致；关联 [CONTEXT.md](../CONTEXT.md#L14-L24)。产品确认前保留原始决策。
 
 MusicApp 采用 `androidx.core:core-splashscreen` 的 `SplashScreen.setKeepOnScreenCondition` 作为冷启动门控，将系统启动图挂起直至本地 Room 数据库完成首个有效曲库数据流的发派（或命中 `1200 ms` 超时兜底）。门控释放后首帧直接呈现完整歌曲列表，杜绝加载转圈、骨架跳动与首屏闪烁。
 

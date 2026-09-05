@@ -2,7 +2,7 @@
 
 状态：历史计划索引（2026-07-29）；当前实现状态以代码和实现规格为准。
 
-详细行为以 [`../design/implementation-spec.md`](../design/implementation-spec.md) 为准，实际执行与验证以 [`implementation-execution-plan.md`](implementation-execution-plan.md) 为准，Wave 范围映射见 [`implementation-wave-plan.md`](implementation-wave-plan.md)。
+详细行为以 [`../design/implementation-spec.md`](../../design/archive/implementation-spec.md) 为准，实际执行与验证以 [`implementation-execution-plan.md`](implementation-execution-plan.md) 为准，Wave 范围映射见 [`implementation-wave-plan.md`](implementation-wave-plan.md)。
 
 ## 目标
 
@@ -16,4 +16,4 @@
 
 ## 验证
 
-每个阶段的验证分层、环境选择、门禁命令、设备要求和回退规则统一以 [`../verification.md`](../verification.md) 与 [`../testing.md`](../testing.md) 为准；本索引不重复维护命令。
+每个阶段的验证分层、环境选择、门禁命令、设备要求和回退规则统一以 [`../../verification.md`](../../verification.md) 与 [`../../testing.md`](../../testing.md) 为准；本索引不重复维护命令。

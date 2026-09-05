@@ -1,6 +1,6 @@
 # 使用统一右侧覆盖层与固定 28 逻辑桶索引
 
-> **状态：已接受 (Accepted)**。取代 [0006-use-reusable-section-index.md](0006-use-reusable-section-index.md)。
+> **状态：需要更新（2026-09-05 静态核对）**。取代 [0006-use-reusable-section-index.md](0006-use-reusable-section-index.md)。本文要求列表不可滚动时自动隐藏索引并提供滚动条模式；当前 `RightGutterOverlay` 与调用方尚未按 `canScrollForward/canScrollBackward` 实现该条件，详见 [ADR 状态表](README.md)。
 
 ## 背景与上下文
 早期实现中各列表（Tracks、Albums、Artists、Folders）在字母索引逻辑上存在割裂：Tracks/Albums 采用动态桶（仅呈现实际存在的字符），Artists/Folders 采用固定桶；手势上支持单击且缺乏纵向滑动仲裁，导致列表右缘 48×48dp 操作按钮容易误触或被遮挡；无障碍上 28 个字符被拆散为独立焦点，且缺乏等距采样与 72dp 拖动字母气泡。

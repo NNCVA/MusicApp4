@@ -6,7 +6,7 @@
 | 文档版本 | v1.1 |
 | 确认日期 | 2026-09-03 |
 | 适用范围 | MusicApp 专辑详情页 `AlbumDetailScreen` |
-**对齐基线**：[`implementation-spec.md`](implementation-spec.md)、[`../CONTEXT.md`](../CONTEXT.md)、[`../adr/0015-album-detail-release-order-and-metadata-contract.md`](../adr/0015-album-detail-release-order-and-metadata-contract.md)
+**对齐基线**：[`implementation-spec.md`](implementation-spec.md)、[`../../CONTEXT.md`](../../CONTEXT.md)、[`../../adr/0015-album-detail-release-order-and-metadata-contract.md`](../../adr/0015-album-detail-release-order-and-metadata-contract.md)
 
 ## 1. 输入分层与产品定位
 

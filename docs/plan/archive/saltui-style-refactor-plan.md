@@ -29,4 +29,4 @@
 
 ## 已准备资源
 
-可使用 `ic_common_dropdown`、`ic_common_chevron_right`、`ic_status_check` 与 `ic_status_success`。来源、许可证及修改记录见 [`docs/design/resource-governance.md`](../design/resource-governance.md)。
+可使用 `ic_common_dropdown`、`ic_common_chevron_right`、`ic_status_check` 与 `ic_status_success`。来源、许可证及修改记录见 [`docs/design/resource-governance.md`](../../design/resource-governance.md)。

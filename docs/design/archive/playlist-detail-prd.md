@@ -3,7 +3,7 @@
 **文档状态**：已完全冻结并确认 (Decisions Finalized & Approved)  
 **文档版本**：v1.3
 **适用范围**：MusicApp 歌单详情页面 (`PlaylistDetailScreen`)  
-**对齐基线**：[`docs/design/implementation-spec.md`](implementation-spec.md)、[`docs/CONTEXT.md`](../CONTEXT.md)、[`docs/adr/0005-use-replacing-message-bubble.md`](../adr/0005-use-replacing-message-bubble.md)、[`docs/adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md`](../adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md)、[`docs/adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md`](../adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md)、[`docs/adr/0014-use-unified-app-dropdown-menu.md`](../adr/0014-use-unified-app-dropdown-menu.md)
+**对齐基线**：[`docs/design/implementation-spec.md`](implementation-spec.md)、[`docs/CONTEXT.md`](../../CONTEXT.md)、[`docs/adr/0005-use-replacing-message-bubble.md`](../../adr/0005-use-replacing-message-bubble.md)、[`docs/adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md`](../../adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md)、[`docs/adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md`](../../adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md)、[`docs/adr/0014-use-unified-app-dropdown-menu.md`](../../adr/0014-use-unified-app-dropdown-menu.md)
 
 ---
 

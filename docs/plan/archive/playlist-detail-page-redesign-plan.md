@@ -1,7 +1,7 @@
 # 歌单详情页改造技术实施方案 (Playlist Detail Redesign Plan)
 
 **文档状态**：待评审与执行 (Pending Review & Execution)  
-**对齐基线**：[`docs/design/playlist-detail-prd.md`](../design/playlist-detail-prd.md)、[`docs/CONTEXT.md`](../CONTEXT.md)、[`docs/adr/0005-use-replacing-message-bubble.md`](../adr/0005-use-replacing-message-bubble.md)、[`docs/adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md`](../adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md)、[`docs/adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md`](../adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md)、[`docs/adr/0014-use-unified-app-dropdown-menu.md`](../adr/0014-use-unified-app-dropdown-menu.md)
+**对齐基线**：[`docs/design/playlist-detail-prd.md`](../../design/archive/playlist-detail-prd.md)、[`docs/CONTEXT.md`](../../CONTEXT.md)、[`docs/adr/0005-use-replacing-message-bubble.md`](../../adr/0005-use-replacing-message-bubble.md)、[`docs/adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md`](../../adr/0008-use-unified-right-gutter-overlay-and-fixed-index.md)、[`docs/adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md`](../../adr/0011-use-unified-bounce-overscroll-for-scrollable-containers.md)、[`docs/adr/0014-use-unified-app-dropdown-menu.md`](../../adr/0014-use-unified-app-dropdown-menu.md)
 
 ---
 
@@ -86,7 +86,7 @@ Step 6: 完整门禁与自动化验证 (testDebugUnitTest + lintDebug + assemble
 
 ## 4. 验证与门禁标准
 
-严格遵循 [`docs/verification.md`](../verification.md) 与 Java 21 环境变量配置：
+严格遵循 [`docs/verification.md`](../../verification.md) 与 Java 21 环境变量配置：
 1. **全量 JVM 单元测试**：
    ```shell
    export JAVA_HOME="$(jenv prefix 21 2>/dev/null || echo '/Users/a1/.jenv/versions/21')"

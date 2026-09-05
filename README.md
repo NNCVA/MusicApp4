@@ -1,41 +1,10 @@
 # MusicApp
 
-MusicApp 是一款使用 Kotlin 与 Jetpack Compose 构建的现代化 Android 本地音乐播放器。应用完全离线运行，围绕本地媒体库、后台播放、同步歌词、播放列表和自适应界面提供完整的首版体验。
+MusicApp 是一款使用 Kotlin 与 Jetpack Compose 构建的 Android 本地音乐播放器。应用完全离线运行，围绕本地媒体库、后台播放、同步歌词、播放列表和自适应界面提供核心体验。
 
 ## 当前状态
 
-首版 26 项核心需求已基本完成代码实现，测试基础设施已接入；当前主要工作是按分层策略完成 JVM/Robolectric 与 Android Runtime 集成测试门禁，以及真机上的扫描、播放、系统媒体控制、视觉和交互验收。
-
-## 界面预览
-
-### 当前 App 页面
-
-<p align="center">
-  <img src="docs/pic_app/tracks.png" width="30%" alt="单曲页面" />
-  <img src="docs/pic_app/albums.png" width="30%" alt="专辑页面" />
-  <img src="docs/pic_app/artists.png" width="30%" alt="艺术家页面" />
-  <img src="docs/pic_app/playlists.png" width="30%" alt="播放列表页面" />
-  <img src="docs/pic_app/sidebar.png" width="30%" alt="侧边栏导航" />
-  <img src="docs/pic_app/folders.png" width="30%" alt="文件夹页面" />
-</p>
-
-### 目标页面样式
-
-以下图片是后续视觉与交互验收的目标样式，不代表当前 App 已达到完全一致的视觉效果。
-
-<p align="center">
-  <img src="docs/pic/tracks.png" width="30%" alt="目标单曲页面" />
-  <img src="docs/pic/albums.png" width="30%" alt="目标专辑页面" />
-  <img src="docs/pic/artists.png" width="30%" alt="目标艺术家页面" />
-  <img src="docs/pic/playlists.png" width="30%" alt="目标播放列表页面" />
-  <img src="docs/pic/sidebar.png" width="30%" alt="目标侧边栏导航" />
-  <img src="docs/pic/scan_screen.png" width="30%" alt="目标扫描页面" />
-  <img src="docs/pic/folders.png" width="30%" alt="文件夹页面" />
-  <img src="docs/pic/scan_permission.png" width="30%" alt="扫描权限弹窗" />
-  <img src="docs/pic/Permission.png" width="30%" alt="权限弹窗" />
-  <img src="docs/pic/playlist_null.png" width="30%" alt="歌单空状态页面" />
-  <img src="docs/pic/player_detail.png" width="30%" alt="歌曲详情页面" />
-</p>
+主要页面和核心播放/媒体库流程已完成大部分开发，测试基础设施已接入。当前页面行为以 `app/` 下代码、自动化测试和实际设备验证为准；早期视觉对照图、页面 PRD 和实施计划仅用于历史追溯，不再作为开发门槛。
 
 ## 核心功能
 
@@ -51,7 +20,7 @@ MusicApp 是一款使用 Kotlin 与 Jetpack Compose 构建的现代化 Android �
 | 类别 | 方案 |
 | --- | --- |
 | 平台 | Android，`minSdk 26`，`targetSdk 37` |
-| 语言与工具链 | Kotlin 2.x，JDK 17，Gradle |
+| 语言与工具链 | Kotlin 2.3.20；Gradle daemon 使用 JDK 21，应用编译 toolchain 使用 JDK 17 |
 | UI | Jetpack Compose，Material 3，Navigation 3 |
 | 播放 | AndroidX Media3，ExoPlayer，MediaSession，MediaLibraryService |
 | 架构 | 单向数据流、ViewModel、Coroutines、StateFlow、Hilt |
@@ -82,7 +51,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## 质量验证
 
-完整的 JVM、Lint、Debug 构建、Android Runtime、无设备编译检查、Runner 规则和回退方式统一见 [`docs/verification.md`](docs/verification.md) 与 [`docs/testing.md`](docs/testing.md)。README 不重复维护门禁命令，避免环境快照和验证口径漂移。
+构建门禁、无设备回退和结果报告统一见 [`docs/verification.md`](docs/verification.md)；测试分层和 Runner 归属见 [`docs/testing.md`](docs/testing.md)。README 不重复维护门禁命令，避免环境快照和验证口径漂移。
 
 ## 项目结构
 
@@ -98,10 +67,13 @@ app/src/main/java/com/musicapp/player/
 
 ## 文档
 
-- [设计与需求索引](docs/design/design-review-index.md)
-- [首版实现规格](docs/design/implementation-spec.md)
-- [逐过程执行计划](docs/plan/implementation-execution-plan.md)
-- [开发 Wave Plan](docs/plan/implementation-wave-plan.md)
-- [测试策略与验证命令](docs/testing.md)
+- [构建与验证准则](docs/verification.md)
+- [测试策略与 Runner](docs/testing.md)
 - [领域词汇](docs/CONTEXT.md)
-- [架构决策记录](docs/adr/)
+- [通用组件规范](docs/design/selection-and-toggle-controls.md)
+- [资源与许可证治理](docs/design/resource-governance.md)
+- [架构决策记录与冲突状态](docs/adr/README.md)
+- [早期页面设计说明](docs/design/README.md)
+- [早期实施计划](docs/plan/README.md)
+
+页面级设计、首版实施规格和计划文件集中在 `docs/design/archive/`、`docs/plan/archive/` 中供历史追溯，但不再作为当前实现依据。

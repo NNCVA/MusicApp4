@@ -8,10 +8,10 @@
 
 | 画面 | 截图中可直接观察的事实 | 已确认口径 | 实现推断/待验证 |
 | --- | --- | --- | --- |
-| 目标一级页 [`docs/pic/folders.png`](../pic/folders.png) | 标题为“文件夹”，顶部有抽屉与搜索操作；上方有两个存储卡片，卡片显示卷名、挂载路径和已用/总容量；下方有 `Music` 文件夹项、曲目数和三点菜单；右侧出现固定 `0/A–Z/#` 索引；底部有 Mini Player。 | 一级页并列显示仅含音乐的存储卷卡片和全部非根、直接含曲目的音乐文件夹快捷项；搜索与固定索引只作用快捷项；卷卡片不参与字母定位；三点菜单只提供“播放全部”。 | 需要把卷元数据和 `musicFolders()` 派生结果合成同一一级状态，并让快捷项保持递归计数/播放集合一致；索引空标签、搜索无结果和 Mini Player 避让需由 UI 树验证。 |
-| 目标中间页 [`docs/pic/folders_second.png`](../pic/folders_second.png) | 顶部为返回与卷名；内容区出现 `Music` 文件夹卡片，未显示路径或曲目行。 | 中间页按名称升序展示纯子目录卡片；直接含曲目的节点进入现有文件夹详情，详情继续承载曲目列表与播放入口；目录层级可达任意深度。 | 需保持 `FolderDetailRoute` 的卷名/规范化路径键，区分纯子目录导航与直接含曲目详情，并在截图/UI 树中验证返回栈。 |
-| 当前一级页 [`docs/pic_app/folders.png`](../pic_app/folders.png) | 仅看到一个 `external_primary` 行，副文案为“存储卷”和曲目数；标题栏右侧是名称排序；没有存储容量卡片、搜索或右侧索引。 | 目标口径不改变卷与文件夹树身份；改造后排序入口不承担快捷项的搜索/索引职责。 | 当前 UI 把卷根作为普通行，缺少容量信息、快捷项并列、搜索和索引；需要由状态层提供两类入口，避免将卷根重复映射为快捷项。 |
-| 当前中间页 [`docs/pic_app/folders_second.png`](../pic_app/folders_second.png) | 标题显示 `external`，右侧有“播放全部、名称↑、标题↑”；下方有“文件夹”分组和 `Music` 行，显示副标题与曲目数。 | 直接含曲目的节点复用现有详情；目标纯中间目录卡片按名称升序且不显示路径。 | 当前页混合目录排序、曲目排序和播放操作；需将中间页目录卡片与详情曲目区分，并将三点入口收敛为“播放全部”。 |
+| 目标一级页（历史图片已移除） | 标题为“文件夹”，顶部有抽屉与搜索操作；上方有两个存储卡片，卡片显示卷名、挂载路径和已用/总容量；下方有 `Music` 文件夹项、曲目数和三点菜单；右侧出现固定 `0/A–Z/#` 索引；底部有 Mini Player。 | 一级页并列显示仅含音乐的存储卷卡片和全部非根、直接含曲目的音乐文件夹快捷项；搜索与固定索引只作用快捷项；卷卡片不参与字母定位；三点菜单只提供“播放全部”。 | 需要把卷元数据和 `musicFolders()` 派生结果合成同一一级状态，并让快捷项保持递归计数/播放集合一致；索引空标签、搜索无结果和 Mini Player 避让需由 UI 树验证。 |
+| 目标中间页（历史图片已移除） | 顶部为返回与卷名；内容区出现 `Music` 文件夹卡片，未显示路径或曲目行。 | 中间页按名称升序展示纯子目录卡片；直接含曲目的节点进入现有文件夹详情，详情继续承载曲目列表与播放入口；目录层级可达任意深度。 | 需保持 `FolderDetailRoute` 的卷名/规范化路径键，区分纯子目录导航与直接含曲目详情，并在截图/UI 树中验证返回栈。 |
+| 当前一级页（历史图片已移除） | 仅看到一个 `external_primary` 行，副文案为“存储卷”和曲目数；标题栏右侧是名称排序；没有存储容量卡片、搜索或右侧索引。 | 目标口径不改变卷与文件夹树身份；改造后排序入口不承担快捷项的搜索/索引职责。 | 当前 UI 把卷根作为普通行，缺少容量信息、快捷项并列、搜索和索引；需要由状态层提供两类入口，避免将卷根重复映射为快捷项。 |
+| 当前中间页（历史图片已移除） | 标题显示 `external`，右侧有“播放全部、名称↑、标题↑”；下方有“文件夹”分组和 `Music` 行，显示副标题与曲目数。 | 直接含曲目的节点复用现有详情；目标纯中间目录卡片按名称升序且不显示路径。 | 当前页混合目录排序、曲目排序和播放操作；需将中间页目录卡片与详情曲目区分，并将三点入口收敛为“播放全部”。 |
 
 ## 2. 已确认的领域与交互口径
 
@@ -38,7 +38,7 @@
 
 - state worker：`FolderModels.kt`、`FoldersViewModel.kt`、`FolderVolumeMetadataSource.kt` 及文件夹状态/树逻辑测试；负责派生模型、元数据流和状态契约。
 - UI worker：`FoldersScreen.kt`、`FolderSectionIndex` 相关 UI、对应测试、双语字符串、`ic_common_storage.xml` 和 `ic_common_folder.xml`；负责卡片层级、搜索/固定索引、三点菜单、无障碍语义和资源接入。
-- docs worker（本文件）：`docs/plan/folders-page-redesign-plan.md`、`docs/design/implementation-spec.md`、`docs/design/resource-governance.md`、`app/src/main/res/raw/open_source_licenses.txt`；负责已确认口径、当前基线和可审计资源记录。
+- docs worker（本文件）：`docs/plan/archive/folders-page-redesign-plan.md`、`docs/design/archive/implementation-spec.md`、`docs/design/resource-governance.md`、`app/src/main/res/raw/open_source_licenses.txt`；负责已确认口径、当前基线和可审计资源记录。
 - 主线程：整合上述切面，核对实际 diff，运行并记录真实门禁及 Pixel 8 设备证据；已同步更新 `docs/CONTEXT.md` 的文件夹浏览领域术语。
 
 ## 5. 边界场景
@@ -64,7 +64,7 @@
 
 ## 7. 顺序门禁与记录规则
 
-按 [`docs/verification.md`](../verification.md) 的分层规则执行并逐项记录真实结果；文档/许可证改动完成后执行本任务约定的 `git diff --check`、限定 `rg` 和相对链接存在性检查。
+按 [`docs/verification.md`](../../verification.md) 的分层规则执行并逐项记录真实结果；文档/许可证改动完成后执行本任务约定的 `git diff --check`、限定 `rg` 和相对链接存在性检查。
 
 当前源码没有可报告的 `connectedDebugAndroidTest` 通过结果；历史 `31/31` XML 不作为本次最终源码的设备门禁证据。
 

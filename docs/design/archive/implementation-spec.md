@@ -2,6 +2,8 @@
 
 状态：已制定（2026-07-29）
 
+> **归档说明（2026-09-05）**：本文是首版实施历史记录，不再作为当前页面行为、实现顺序或验收依据。当前依据为 `app/` 下代码、自动化测试、实际设备验证和仍维护的通用组件规范。
+
 ## 1. 依据与优先级
 
 本规格把已接受的设计盘问转换为可编码、可测试的首版契约。发生表述冲突时，按以下顺序处理：
@@ -299,7 +301,7 @@ DataStore 只保存用户设置：
 - 加载、空态和错误态使用共享组件；有缓存时保留内容并局部提示，错误态提供明确重试。
 - Snackbar 固定在迷你播放器上方，同一时间只显示一条，其余顺序排队。
 - 颜色不得作为唯一状态表达，图标按钮必须有语义标签；触觉只用于长按进入多选和关键模式切换。
-- 所有单选项（Radio）、开关（Switch）与复选卡片统一遵循 [选项与开关组件开发规范](selection-and-toggle-controls.md)：整行/卡片可交互、带圆角容器先 clip、外层合并无障碍语义且内部子控件清除语义并置空回调、组件设为 internal 并具备自动化测试。
+- 所有单选项（Radio）、开关（Switch）与复选卡片统一遵循 [选项与开关组件开发规范](../selection-and-toggle-controls.md)：整行/卡片可交互、带圆角容器先 clip、外层合并无障碍语义且内部子控件清除语义并置空回调、组件设为 internal 并具备自动化测试。
 
 ## 11. 主题、设置与关于
 
@@ -336,4 +338,4 @@ DataStore 只保存用户设置：
 - `app/src/test` 只承载平台无关的领域规则、状态机、解析器、格式化和 ViewModel 逻辑，并保留少量使用 Robolectric 的平台适配测试；Robolectric 不替代真实 Room、Hilt、Service、资源或应用启动行为验证。
 - 以下测试归 `app/src/androidTest`，使用 `AndroidJUnit4` 与 Hilt Runner：`data/local/MusicDatabaseMigrationTest.kt`、`data/HistoryRepositoryTest.kt`、`data/MediaLibraryRepositoryTest.kt`、`data/PlaylistRepositoryTest.kt`、`data/PlaybackSnapshotRepositoryTest.kt`、`data/sync/MediaLibrarySyncTest.kt`、`di/ApplicationGraphTest.kt`、`media/service/PlaybackServiceHiltTest.kt`、`feature/about/AboutMetadataTest.kt`；`ApplicationStartupIntegrationTest` 负责 Android 资源启动冒烟。Room 测试使用真实 Android SQLite/Room 环境，Hilt 测试使用真实测试 Application 图。
 - Hilt 集成测试使用 `@HiltAndroidTest`、`HiltAndroidRule` 和 `hiltRule.inject()`；所有 instrumentation 测试使用 `@RunWith(AndroidJUnit4::class)`，Runner 为 `com.musicapp.player.HiltTestRunner`。纯逻辑测试不引入 Hilt/Room/Android Runtime 依赖。
-- CI、环境选择、设备要求和门禁命令统一见 [`docs/verification.md`](../verification.md)；测试分层、目录归属和 Runner 规则见 [`docs/testing.md`](../testing.md)。本规格只保留测试契约，不复制执行命令。
+- CI、环境选择、设备要求和门禁命令统一见 [`docs/verification.md`](../../verification.md)；测试分层、目录归属和 Runner 规则见 [`docs/testing.md`](../../testing.md)。本规格只保留测试契约，不复制执行命令。
