@@ -47,6 +47,7 @@ import androidx.compose.material3.nonInteractiveScrollbar
 import com.musicapp.player.core.designsystem.component.SelectionBarAction
 import com.musicapp.player.core.designsystem.component.SelectionBottomBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -117,9 +118,22 @@ fun PlaylistDetailScreenRoute(
     onBack: () -> Unit,
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
+    isActive: Boolean = true,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
+
+    LaunchedEffect(isActive) {
+        if (!isActive && state.isSelectionMode) {
+            viewModel.clearSelection()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearSelection()
+        }
+    }
 
     BackHandler(enabled = state.isSelectionMode || state.infoTrack != null || state.isSearching) {
         viewModel.onBack()
@@ -150,7 +164,10 @@ fun PlaylistDetailScreenRoute(
         state = state,
         contentInsets = contentInsets,
         bottomPadding = bottomPadding,
-        onBack = onBack,
+        onBack = {
+            viewModel.clearSelection()
+            onBack()
+        },
         onSortSelected = viewModel::selectSort,
         onSearchQueryChange = viewModel::setSearchQuery,
         onOpenSearch = viewModel::openSearch,
@@ -308,6 +325,7 @@ fun PlaylistDetailScreen(
                     if (state.isSearching) {
                         onCloseSearch()
                     } else {
+                        onClearSelection()
                         onBack()
                     }
                 },

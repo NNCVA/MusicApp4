@@ -125,6 +125,11 @@ class HistoryViewModelTest {
         testScheduler.runCurrent()
         assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
         assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        viewModel.exitSelectionMode()
+        testScheduler.runCurrent()
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
     }
 
     @Test

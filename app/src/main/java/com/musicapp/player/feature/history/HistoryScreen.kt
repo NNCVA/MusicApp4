@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -89,9 +90,22 @@ fun HistoryScreenRoute(
     onBack: () -> Unit,
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
+    isActive: Boolean = true,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
+
+    LaunchedEffect(isActive) {
+        if (!isActive && state.isSelectionMode) {
+            viewModel.exitSelectionMode()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.exitSelectionMode()
+        }
+    }
 
     val canHandleBack =
         state.isSelectionMode ||
@@ -108,7 +122,10 @@ fun HistoryScreenRoute(
         state = state,
         contentInsets = contentInsets,
         policy = policy,
-        onBack = onBack,
+        onBack = {
+            viewModel.exitSelectionMode()
+            onBack()
+        },
         bottomPadding = bottomPadding,
         onOpenSearch = viewModel::openSearch,
         onCloseSearch = viewModel::closeSearch,

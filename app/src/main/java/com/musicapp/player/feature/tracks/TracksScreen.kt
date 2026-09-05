@@ -60,6 +60,7 @@ import com.musicapp.player.core.designsystem.component.SelectionBottomBar
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -125,11 +126,25 @@ fun TracksScreenRoute(
     onScanMusic: () -> Unit,
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
+    isActive: Boolean = true,
 ) {
     val loadStartedNs = remember { SystemClock.elapsedRealtimeNanos() }
     val firstTrackLayoutLogged = remember { AtomicBoolean(false) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
+
+    LaunchedEffect(isActive) {
+        if (!isActive && state.isSelectionMode) {
+            viewModel.exitSelection()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.exitSelection()
+        }
+    }
+
     BackHandler(enabled = state.isSelectionMode || state.infoTrack != null) { viewModel.onBack() }
     TracksScreen(
         state = state,

@@ -217,6 +217,51 @@ class PlaylistDetailViewModelTest {
     }
 
     @Test
+    fun `clearSelection exits selection mode and clears selected tracks`() = runTest(dispatcher) {
+        val track1 = track(1, "Track 1")
+        val track2 = track(2, "Track 2")
+        val playlist = Playlist(
+            id = PlaylistId(1),
+            displayName = "My List",
+            normalizedName = "my list",
+            trackIds = listOf(track1.id, track2.id),
+            createdAtMs = 0L,
+        )
+        val playlistRepo = FakePlaylistRepository(
+            initialPlaylists = listOf(playlist),
+            existingTrackIds = setOf(track1.id, track2.id),
+        )
+        val mediaRepo = FakeMediaLibraryRepository(listOf(track1, track2))
+        val playbackController = DetailRecordingPlaybackController()
+        val executor = DefaultBatchTrackActionExecutor(playlistRepo, mediaRepo, playbackController, Clock { 10 })
+
+        val viewModel = PlaylistDetailViewModel(
+            playlistRepository = playlistRepo,
+            mediaLibraryRepository = mediaRepo,
+            useCase = PlaylistUseCase(playlistRepo, Clock { 10 }),
+            playbackController = playbackController,
+            batchActionExecutor = executor,
+            trackMetadataRepository = FakeTrackMetadataRepository(),
+            computationDispatcher = dispatcher,
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(playlist.id)
+        advanceUntilIdle()
+
+        viewModel.startSelection(track1.id)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(setOf(track1.id), viewModel.uiState.value.selectedTrackIds)
+
+        viewModel.clearSelection()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+
+        collection.cancel()
+    }
+
+    @Test
     fun `shuffle play prepares and triggers playback`() = runTest(dispatcher) {
         val track1 = track(1, "Track 1")
         val track2 = track(2, "Track 2")

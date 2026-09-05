@@ -228,6 +228,7 @@ fun MainNavigation(
             content = { contentInsets, policy, openDrawer ->
                 val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
                 val bottomPadding = bottomInset + if (playerState.currentTrack != null) MusicTheme.dimensions.miniPlayerHeight else 0.dp
+                val currentTopRoute = navigationState.currentBackStack.lastOrNull()
                 val destinationEntryProvider =
                     entryProvider<MusicNavKey> {
                         entry<TracksRoute> {
@@ -241,6 +242,7 @@ fun MainNavigation(
                                     messageBubbleQueue.enqueue(messageResId, formatArgs)
                                 },
                                 bottomPadding = bottomPadding,
+                                isActive = currentTopRoute == TracksRoute,
                             )
                         }
                         entry<ScanMusicRoute> {
@@ -314,6 +316,7 @@ fun MainNavigation(
                                     messageBubbleQueue.enqueue(messageResId, formatArgs)
                                 },
                                 bottomPadding = bottomPadding,
+                                isActive = currentTopRoute == HistoryRoute,
                             )
                         }
                         entry<FoldersRoute> {
@@ -402,6 +405,7 @@ fun MainNavigation(
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,
                                 bottomPadding = bottomPadding,
+                                isActive = currentTopRoute == key,
                             )
                         }
                         entry<FolderDetailRoute> { key ->
