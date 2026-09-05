@@ -717,23 +717,28 @@ object AlbumDetailAggregator {
     }
 
     fun aggregateArtists(orderedTracks: List<Track>): List<AlbumArtistCredit> {
-        val result = mutableListOf<AlbumArtistCredit>()
-        val seenArtists = mutableSetOf<String>()
+        val creditsByNormalized = linkedMapOf<String, MutableList<Track>>()
+        val displayNames = mutableMapOf<String, String>()
 
         for (track in orderedTracks) {
-            val artistName = track.artistName
-            if (seenArtists.add(artistName)) {
-                val count = orderedTracks.count { it.artistName == artistName }
-                result.add(
-                    AlbumArtistCredit(
-                        artistName = artistName,
-                        artistMediaStoreId = track.artistMediaStoreId,
-                        trackCount = count,
-                        representativeTrack = track,
-                    ),
-                )
+            val names = com.musicapp.player.feature.artists.ArtistGrouping.splitArtistNames(track.artistName)
+            for (name in names) {
+                val key = com.musicapp.player.feature.artists.ArtistGrouping.normalizedKey(name) ?: continue
+                creditsByNormalized.getOrPut(key) { mutableListOf() }.add(track)
+                displayNames.putIfAbsent(key, name)
             }
         }
-        return result
+
+        return creditsByNormalized.mapNotNull { (key, tracks) ->
+            val displayName = displayNames[key] ?: return@mapNotNull null
+            val distinctTracks = tracks.distinctBy { it.id }
+            val repTrack = distinctTracks.firstOrNull() ?: return@mapNotNull null
+            AlbumArtistCredit(
+                artistName = displayName,
+                artistMediaStoreId = repTrack.artistMediaStoreId,
+                trackCount = distinctTracks.size,
+                representativeTrack = repTrack,
+            )
+        }
     }
 }

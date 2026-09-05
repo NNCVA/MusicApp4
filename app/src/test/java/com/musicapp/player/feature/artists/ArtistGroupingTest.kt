@@ -12,7 +12,7 @@ import org.junit.Test
 
 class ArtistGroupingTest {
     @Test
-    fun `artist labels remain complete identities`() {
+    fun `artist labels are split into distinct artists and tracks are grouped accordingly`() {
         val tracks =
             listOf(
                 track(1, "周杰伦", AlbumId("external", 1)),
@@ -24,11 +24,13 @@ class ArtistGroupingTest {
         val grouped = ArtistGrouping.group(tracks)
         val byName = grouped.associateBy { it.displayName }
 
-        assertEquals(4, grouped.size)
-        assertEquals(setOf("周杰伦", "周杰伦/王力宏", "王力宏 & 林俊杰", "陶喆、周杰伦, 陶喆; 方大同"), byName.keys)
-        assertEquals(1, byName.getValue("周杰伦/王力宏").trackCount)
-        assertEquals(1, byName.getValue("王力宏 & 林俊杰").trackCount)
-        assertEquals(1, byName.getValue("陶喆、周杰伦, 陶喆; 方大同").trackCount)
+        assertEquals(5, grouped.size)
+        assertEquals(setOf("周杰伦", "王力宏", "林俊杰", "陶喆", "方大同"), byName.keys)
+        assertEquals(3, byName.getValue("周杰伦").trackCount)
+        assertEquals(2, byName.getValue("王力宏").trackCount)
+        assertEquals(1, byName.getValue("林俊杰").trackCount)
+        assertEquals(1, byName.getValue("陶喆").trackCount)
+        assertEquals(1, byName.getValue("方大同").trackCount)
     }
 
     @Test
@@ -49,14 +51,34 @@ class ArtistGroupingTest {
     }
 
     @Test
-    fun `splitArtistNames trims without splitting complete labels`() {
-        assertEquals(listOf("Alpha / Beta"), ArtistGrouping.splitArtistNames(" Alpha / Beta "))
-        assertEquals(listOf("Alpha、Beta"), ArtistGrouping.splitArtistNames("Alpha、Beta"))
-        assertEquals(listOf("Alpha, Beta"), ArtistGrouping.splitArtistNames("Alpha, Beta"))
-        assertEquals(listOf("Alpha; Beta"), ArtistGrouping.splitArtistNames("Alpha; Beta"))
-        assertEquals(listOf("Alpha & Beta"), ArtistGrouping.splitArtistNames("Alpha & Beta"))
+    fun `splitArtistNames splits delimiters and trims tokens`() {
+        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames(" Alpha / Beta "))
+        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha、Beta"))
+        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha, Beta"))
+        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha; Beta"))
+        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha & Beta"))
+        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha feat. Beta"))
+        assertEquals(listOf("Alpha", "Beta"), ArtistGrouping.splitArtistNames("Alpha ft. Beta"))
         assertEquals(emptyList<String>(), ArtistGrouping.splitArtistNames("   "))
         assertEquals(emptyList<String>(), ArtistGrouping.splitArtistNames(null))
+    }
+
+    @Test
+    fun `splitArtistNames protects whitelisted names such as AC-DC`() {
+        assertEquals(listOf("AC/DC"), ArtistGrouping.splitArtistNames("AC/DC"))
+        assertEquals(listOf("ac/dc"), ArtistGrouping.splitArtistNames("ac/dc"))
+        assertEquals(listOf("AC/DC", "Queen"), ArtistGrouping.splitArtistNames("AC/DC / Queen"))
+        assertEquals(listOf("Guns N' Roses", "AC/DC"), ArtistGrouping.splitArtistNames("Guns N' Roses & AC/DC"))
+    }
+
+    @Test
+    fun `matches correctly matches individual artists within collaborative tracks`() {
+        assertTrue(ArtistGrouping.matches("周杰伦 / 费玉清", ArtistId("周杰伦")))
+        assertTrue(ArtistGrouping.matches("周杰伦 / 费玉清", ArtistId("费玉清")))
+        org.junit.Assert.assertFalse(ArtistGrouping.matches("周杰伦 / 费玉清", ArtistId("  zhou jielun  ")))
+        assertTrue(ArtistGrouping.matches("AC/DC / Queen", ArtistId("ac/dc")))
+        assertTrue(ArtistGrouping.matches("AC/DC / Queen", ArtistId("Queen")))
+        org.junit.Assert.assertFalse(ArtistGrouping.matches("周杰伦 / 费玉清", ArtistId("王力宏")))
     }
 
     @Test

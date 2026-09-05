@@ -164,7 +164,10 @@ class ArtistDetailViewModel internal constructor(
             val matching = artistId?.let { selected ->
                 tracks.filter { track -> ArtistGrouping.matches(track.artistName, selected) }
             }.orEmpty()
-            val displayName = matching.firstOrNull()?.artistName?.trim()?.takeIf(String::isNotEmpty)
+            val targetKey = artistId?.let { ArtistGrouping.normalizedKey(it.name) }
+            val displayName = matching.asSequence()
+                .flatMap { ArtistGrouping.splitArtistNames(it.artistName).asSequence() }
+                .firstOrNull { ArtistGrouping.normalizedKey(it) == targetKey }
                 ?: artistId?.name
             val sortedTracks = sortCategoryTracks(matching, currentSort)
             ArtistDetailUiState(

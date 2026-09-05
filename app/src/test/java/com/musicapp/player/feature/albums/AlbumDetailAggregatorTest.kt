@@ -73,7 +73,7 @@ class AlbumDetailAggregatorTest {
     }
 
     @Test
-    fun `artists aggregation deduplicates full tags and counts tracks per artist`() {
+    fun `artists aggregation deduplicates and splits multiple artists and counts tracks per artist`() {
         val tracks = listOf(
             createTrack(1, artist = "周杰伦", artistMediaStoreId = 101L),
             createTrack(2, artist = "周杰伦", artistMediaStoreId = 101L),
@@ -84,10 +84,10 @@ class AlbumDetailAggregatorTest {
 
         assertEquals(2, artists.size)
         assertEquals("周杰伦", artists[0].artistName)
-        assertEquals(2, artists[0].trackCount)
+        assertEquals(3, artists[0].trackCount)
         assertEquals(101L, artists[0].artistMediaStoreId)
 
-        assertEquals("周杰伦 feat. 温岚", artists[1].artistName)
+        assertEquals("温岚", artists[1].artistName)
         assertEquals(1, artists[1].trackCount)
         assertNull(artists[1].artistMediaStoreId)
     }

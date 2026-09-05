@@ -49,18 +49,44 @@ object ArtistRouteKey {
     }
 }
 
-/** Groups complete, trimmed artist labels by a case-insensitive stable key. */
+/** Groups artist labels by splitting delimiters while protecting known entities. */
 object ArtistGrouping {
+    private val ARTIST_DELIMITER_REGEX = Regex("(?i)[/、\\\\,;，；&]+|\\s+(?:feat\\.|ft\\.)\\s+")
+    private val PROTECTED_ARTIST_NAMES = listOf("AC/DC")
+
     fun splitArtistNames(artistName: String?): List<String> {
-        val trimmed = artistName?.trim().orEmpty()
-        return trimmed.takeIf(String::isNotEmpty)?.let(::listOf).orEmpty()
+        if (artistName.isNullOrBlank()) return emptyList()
+        var sanitized = artistName.trim()
+        val replacements = mutableMapOf<String, String>()
+        for ((index, protectedName) in PROTECTED_ARTIST_NAMES.withIndex()) {
+            val placeholder = "__PROTECTED_${index}__"
+            val pattern = Regex("(?i)(?<=^|[/、\\\\,;，；&\\s])" + Regex.escape(protectedName) + "(?=[/、\\\\,;，；&\\s]|$)")
+            sanitized = pattern.replace(sanitized) { matchResult ->
+                val originalText = matchResult.value
+                replacements[placeholder] = originalText
+                placeholder
+            }
+        }
+        return sanitized.split(ARTIST_DELIMITER_REGEX)
+            .map { token ->
+                var restored = token.trim()
+                for ((placeholder, originalText) in replacements) {
+                    restored = restored.replace(placeholder, originalText)
+                }
+                restored.trim()
+            }
+            .filter(String::isNotEmpty)
+            .distinctBy { it.lowercase(Locale.ROOT) }
+            .ifEmpty { listOf(artistName.trim()) }
     }
 
     fun normalizedKey(artistName: String?): String? =
         artistName?.trim()?.takeIf(String::isNotEmpty)?.lowercase(Locale.ROOT)
 
-    fun matches(artistName: String?, artistId: ArtistId): Boolean =
-        normalizedKey(artistName) == normalizedKey(artistId.name)
+    fun matches(artistName: String?, artistId: ArtistId): Boolean {
+        val targetKey = normalizedKey(artistId.name) ?: return false
+        return splitArtistNames(artistName).any { normalizedKey(it) == targetKey }
+    }
 
     fun groupAlbumsForArtist(
         allTracks: List<Track>,
