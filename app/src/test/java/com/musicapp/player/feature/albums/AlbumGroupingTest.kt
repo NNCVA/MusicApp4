@@ -460,6 +460,69 @@ class AlbumGroupingTest {
         assertEquals(CategorySortDirection.ASCENDING, toggled.direction)
     }
 
+    @Test
+    fun `groupAlbumsByYear groups albums by year and puts un-yeared albums in null bucket at end`() {
+        val albums = listOf(
+            AlbumSummary(
+                id = AlbumId("external", 1),
+                title = "Album 2023",
+                artistName = "Artist",
+                trackCount = 1,
+                latestDateAddedMs = 1,
+                representativeTrack = track(1, AlbumId("external", 1), "Album 2023", releaseYear = 2023),
+                releaseYear = 2023,
+            ),
+            AlbumSummary(
+                id = AlbumId("external", 2),
+                title = "Album 2002 A",
+                artistName = "Artist",
+                trackCount = 2,
+                latestDateAddedMs = 2,
+                representativeTrack = track(2, AlbumId("external", 2), "Album 2002 A", releaseYear = 2002),
+                releaseYear = 2002,
+            ),
+            AlbumSummary(
+                id = AlbumId("external", 3),
+                title = "Album 2002 B",
+                artistName = "Artist",
+                trackCount = 1,
+                latestDateAddedMs = 3,
+                representativeTrack = track(3, AlbumId("external", 3), "Album 2002 B", releaseYear = 2002),
+                releaseYear = 2002,
+            ),
+            AlbumSummary(
+                id = AlbumId("external", 4),
+                title = "Album No Year",
+                artistName = "Artist",
+                trackCount = 1,
+                latestDateAddedMs = 4,
+                representativeTrack = track(4, AlbumId("external", 4), "Album No Year", releaseYear = null),
+                releaseYear = null,
+            ),
+            AlbumSummary(
+                id = UNKNOWN_ALBUM_ID,
+                title = UNKNOWN_ALBUM_SENTINEL,
+                artistName = "Artist",
+                trackCount = 1,
+                latestDateAddedMs = 5,
+                representativeTrack = track(5, null, null, releaseYear = null),
+                releaseYear = null,
+            ),
+        )
+
+        val groups = groupAlbumsByYear(albums)
+        assertEquals(3, groups.size)
+
+        assertEquals(2023, groups[0].year)
+        assertEquals(listOf(1L), groups[0].albums.map { it.id.mediaStoreId })
+
+        assertEquals(2002, groups[1].year)
+        assertEquals(listOf(2L, 3L), groups[1].albums.map { it.id.mediaStoreId })
+
+        org.junit.Assert.assertNull(groups[2].year)
+        assertEquals(listOf(4L, UNKNOWN_ALBUM_ID.mediaStoreId), groups[2].albums.map { it.id.mediaStoreId })
+    }
+
     private fun track(
         value: Long,
         albumId: AlbumId?,

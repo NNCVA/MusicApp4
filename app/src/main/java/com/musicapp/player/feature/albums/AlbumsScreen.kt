@@ -26,10 +26,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import com.musicapp.player.core.designsystem.component.localizedArtistName
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -120,9 +124,16 @@ private fun AlbumsScreen(
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
+    val isYearSort = state.sort.field == AlbumSortField.RELEASE_YEAR
     val gridState = rememberLazyGridState()
     gridState.ResetScrollOnChange(state.sort)
-    val overscrollEffect = rememberBounceOverscrollEffect(gridState)
+    val listState = rememberLazyListState()
+    listState.ResetScrollOnChange(state.sort)
+    val gridOverscrollEffect = rememberBounceOverscrollEffect(gridState)
+    val listOverscrollEffect = rememberBounceOverscrollEffect(listState)
+    val yearGroups = remember(state.albums, isYearSort) {
+        if (isYearSort) groupAlbumsByYear(state.albums) else emptyList()
+    }
     val hasUnknownTop = state.albums.firstOrNull()?.id == UNKNOWN_ALBUM_ID
     val targetAlbumsForSections = if (hasUnknownTop) state.albums.drop(1) else state.albums
     val sections = remember(targetAlbumsForSections, state.sort.field, state.sort.direction) {
@@ -183,11 +194,43 @@ private fun AlbumsScreen(
                     actionIconRes = R.drawable.ic_sidebar_scan,
                     onAction = onScanMusic,
                 )
+            } else if (isYearSort) {
+                LazyColumn(
+                    state = listState,
+                    overscrollEffect = listOverscrollEffect,
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                    contentPadding =
+                        PaddingValues(
+                            top = dimensions.spaceSmall,
+                            bottom = dimensions.spaceSmall + bottomPadding,
+                        ),
+                ) {
+                    yearGroups.forEachIndexed { index, group ->
+                        item(key = "year_header_${group.year ?: "unknown"}") {
+                            AlbumYearSectionHeader(
+                                year = group.year,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        top = if (index == 0) dimensions.spaceSmall else dimensions.spaceLarge,
+                                        bottom = dimensions.spaceSmall,
+                                    ),
+                            )
+                        }
+                        items(group.albums, key = { it.key }) { album ->
+                            AlbumListRow(
+                                album = album,
+                                onClick = { onAlbumClick(album) },
+                            )
+                        }
+                    }
+                }
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(state.columnCount),
                     state = gridState,
-                    overscrollEffect = overscrollEffect,
+                    overscrollEffect = gridOverscrollEffect,
                     modifier = Modifier.fillMaxWidth().weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding),
                     contentPadding =
@@ -378,35 +421,140 @@ private fun AlbumOptionsMenu(
                     onClick = { onSortSelected(field); expanded = false },
                 )
             }
-            AppDropdownMenuDivider()
-            listOf(
-                2 to R.string.albums_column_2,
-                3 to R.string.albums_column_3,
-                4 to R.string.albums_column_4,
-            ).forEach { (count, labelRes) ->
-                val isSelected = columnCount == count
-                AppDropdownMenuItem(
-                    text = {
-                        Text(
-                            text = stringResource(labelRes),
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        )
-                    },
-                    trailingIcon = if (isSelected) {
-                        {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_status_check),
-                                contentDescription = null,
-                                tint = MusicTheme.colors.primary,
-                                modifier = Modifier.size(dimensions.spaceMedium),
+            if (sort.field != AlbumSortField.RELEASE_YEAR) {
+                AppDropdownMenuDivider()
+                listOf(
+                    2 to R.string.albums_column_2,
+                    3 to R.string.albums_column_3,
+                    4 to R.string.albums_column_4,
+                ).forEach { (count, labelRes) ->
+                    val isSelected = columnCount == count
+                    AppDropdownMenuItem(
+                        text = {
+                            Text(
+                                text = stringResource(labelRes),
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             )
-                        }
-                    } else null,
-                    onClick = { onColumnCountSelected(count); expanded = false },
-                )
+                        },
+                        trailingIcon = if (isSelected) {
+                            {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_status_check),
+                                    contentDescription = null,
+                                    tint = MusicTheme.colors.primary,
+                                    modifier = Modifier.size(dimensions.spaceMedium),
+                                )
+                            }
+                        } else null,
+                        onClick = { onColumnCountSelected(count); expanded = false },
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun AlbumYearSectionHeader(
+    year: Int?,
+    modifier: Modifier = Modifier,
+) {
+    val text = year?.toString() ?: stringResource(R.string.album_sort_year_unknown)
+    Text(
+        text = text,
+        style = MusicTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        color = MusicTheme.colors.onSurface,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun AlbumListRow(
+    album: AlbumSummary,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dimensions = MusicTheme.dimensions
+    val title = album.title.localizedAlbumTitle()
+    val artistName = album.artistName.localizedArtistName()
+    val trackCountText = pluralStringResource(
+        R.plurals.album_track_count,
+        album.trackCount,
+        album.trackCount,
+    )
+    val detailsText = if (album.releaseYear != null) {
+        "$trackCountText ${album.releaseYear}"
+    } else {
+        trackCountText
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = dimensions.albumRowMinHeight)
+            .clip(MusicTheme.shapes.small)
+            .clickable(onClick = onClick)
+            .padding(vertical = dimensions.spaceSmallMedium),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
+    ) {
+        AlbumRowArtwork(
+            album = album,
+            modifier = Modifier.size(dimensions.albumRowArtworkSize),
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
+        ) {
+            Text(
+                text = title,
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = artistName,
+                style = MusicTheme.typography.bodySmall,
+                color = MusicTheme.colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = detailsText,
+                style = MusicTheme.typography.bodySmall,
+                color = MusicTheme.colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AlbumRowArtwork(
+    album: AlbumSummary,
+    modifier: Modifier = Modifier,
+) {
+    val artworkDescription = stringResource(R.string.album_artwork_description, album.title.localizedAlbumTitle())
+    val request = remember(album.id, album.representativeTrack.id, album.representativeTrack.dateModifiedMs) {
+        AudioArtworkRequest.AlbumArtworkRequest(
+            albumId = album.id,
+            representativeTrackId = album.representativeTrack.id,
+            dateModifiedMs = album.representativeTrack.dateModifiedMs,
+        )
+    }
+    AsyncImage(
+        model = request,
+        contentDescription = artworkDescription,
+        modifier = modifier
+            .clip(MusicTheme.shapes.small)
+            .background(MusicTheme.colors.secondaryContainer),
+        contentScale = ContentScale.Crop,
+        error = painterResource(R.drawable.ic_playlist_album),
+        placeholder = painterResource(R.drawable.ic_playlist_album),
+    )
 }
 
 @StringRes

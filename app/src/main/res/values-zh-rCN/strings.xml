@@ -187,6 +187,7 @@
     <string name="albums_empty_title">暂无专辑</string>
     <string name="albums_empty_description">音乐库中的专辑将显示在此处。</string>
     <string name="album_unknown_title">未知专辑</string>
+    <string name="album_sort_year_unknown">未知</string>
     <string name="album_empty_title">此专辑为空</string>
     <string name="album_empty_description">音乐库中没有属于此专辑的可用单曲。</string>
     <string name="artists_empty_title">暂无艺术家</string>

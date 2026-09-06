@@ -558,6 +558,27 @@ internal fun AlbumSort.next(field: AlbumSortField): AlbumSort =
         )
     }
 
+data class AlbumYearGroup(
+    val year: Int?,
+    val albums: List<AlbumSummary>,
+)
+
+fun groupAlbumsByYear(albums: List<AlbumSummary>): List<AlbumYearGroup> {
+    if (albums.isEmpty()) return emptyList()
+    val withYearAlbums = albums.filter { it.releaseYear != null }
+    val withoutYearAlbums = albums.filter { it.releaseYear == null }
+
+    val yearGroups = withYearAlbums
+        .groupBy { it.releaseYear }
+        .map { (year, groupAlbums) -> AlbumYearGroup(year = year, albums = groupAlbums) }
+
+    return if (withoutYearAlbums.isNotEmpty()) {
+        yearGroups + AlbumYearGroup(year = null, albums = withoutYearAlbums)
+    } else {
+        yearGroups
+    }
+}
+
 data class AlbumTrackPresentation(
     val track: Track,
     val trackNumberText: String,

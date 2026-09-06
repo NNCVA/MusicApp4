@@ -195,6 +195,7 @@
     <string name="albums_empty_title">No albums</string>
     <string name="albums_empty_description">Albums from your music library will appear here.</string>
     <string name="album_unknown_title">Unknown album</string>
+    <string name="album_sort_year_unknown">Unknown</string>
     <string name="album_empty_title">This album is empty</string>
     <string name="album_empty_description">No available library tracks belong to this album.</string>
     <string name="artists_empty_title">No artists</string>
