@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
@@ -92,7 +93,8 @@ fun AboutScreen(
                 state = listState,
                 overscrollEffect = overscrollEffect,
                 modifier = Modifier.fillMaxWidth().weight(1f)
-                    .widthIn(max = dimensions.settingsContentMaxWidth),
+                    .widthIn(max = dimensions.settingsContentMaxWidth)
+                    .bounceOverscroll(overscrollEffect),
                 contentPadding = PaddingValues(
                     bottom = dimensions.spaceMedium + bottomPadding,
                 ),

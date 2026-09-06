@@ -98,6 +98,7 @@ import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.TrackRow
 import com.musicapp.player.core.designsystem.component.isUnknownAlbum
 import com.musicapp.player.core.designsystem.component.isUnknownArtist
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.localizedArtistName
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.AlbumId
@@ -451,6 +452,7 @@ fun PlaylistDetailScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .bounceOverscroll(overscrollEffect)
                     .then(scrollbarModifier)
                     .graphicsLayer {
                         compositingStrategy = CompositingStrategy.Offscreen

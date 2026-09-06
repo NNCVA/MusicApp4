@@ -72,6 +72,7 @@ import com.musicapp.player.core.designsystem.component.SelectionBottomBar
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.TrackRow
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -408,7 +409,7 @@ private fun HistoryScreen(
                     LazyColumn(
                         state = listState,
                         overscrollEffect = overscrollEffect,
-                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(overscrollEffect),
                         contentPadding =
                             PaddingValues(
                                 top = dimensions.spaceSmall,

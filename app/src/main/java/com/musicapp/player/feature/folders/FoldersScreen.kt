@@ -54,6 +54,7 @@ import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryNavigationIconButton
@@ -180,6 +181,7 @@ private fun FoldersScreen(
                         state = listState,
                         overscrollEffect = overscrollEffect,
                         modifier = Modifier.fillMaxWidth().weight(1f)
+                            .bounceOverscroll(overscrollEffect)
                             .padding(horizontal = dimensions.contentHorizontalPadding),
                         contentPadding = PaddingValues(
                             top = dimensions.spaceSmall,

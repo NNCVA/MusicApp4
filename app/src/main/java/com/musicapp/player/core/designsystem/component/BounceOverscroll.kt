@@ -16,7 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasureResult
 import androidx.compose.ui.layout.MeasureScope
@@ -83,14 +85,12 @@ internal object BounceOverscrollPhysics {
         canScrollForward: Boolean,
         allowStartEdge: Boolean = true,
         allowEndEdge: Boolean = true,
-    ): BounceEdge? {
-        if (!canScrollBackward && !canScrollForward) return null
-        return when {
+    ): BounceEdge? =
+        when {
             deltaY > MIN_EFFECT_DELTA_PX && !canScrollBackward && allowStartEdge -> BounceEdge.START
             deltaY < -MIN_EFFECT_DELTA_PX && !canScrollForward && allowEndEdge -> BounceEdge.END
             else -> null
         }
-    }
 }
 
 /**
@@ -175,13 +175,107 @@ internal class BounceOverscrollEffect(
             reset()
             return
         }
-
         val remaining = velocity - consumed
-        val edge = resolveEdge(remaining.y)
+        settleBounce(remaining.y)
+    }
+
+    internal val nestedScrollConnection: NestedScrollConnection =
+        object : NestedScrollConnection {
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (!animationsEnabled()) return Offset.Zero
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                if (canScrollBackward() || canScrollForward()) return Offset.Zero
+
+                val consumedY = relaxationFor(available.y)
+                if (consumedY != 0f) {
+                    cancelSettle()
+                    offsetPx += consumedY
+                    if (abs(offsetPx) <= BounceOverscrollPhysics.MIN_EFFECT_DELTA_PX) {
+                        offsetPx = 0f
+                    }
+                    return Offset(0f, consumedY)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (!animationsEnabled()) return Offset.Zero
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                if (available.y == 0f) return Offset.Zero
+                if (canScrollBackward() || canScrollForward()) return Offset.Zero
+
+                cancelSettle()
+                val edge = resolveEdge(available.y) ?: return Offset.Zero
+                val maxDragPx =
+                    BounceOverscrollPhysics.maxDragDisplacementPx(
+                        viewportHeightPx = viewportHeightPx,
+                        capPx = maxDragCapPx,
+                    )
+                offsetPx =
+                    BounceOverscrollPhysics.resistedOffsetPx(
+                        currentOffsetPx = offsetPx,
+                        deltaY = available.y,
+                        maxDisplacementPx = maxDragPx,
+                    )
+                return Offset(0f, available.y)
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (!animationsEnabled()) return Velocity.Zero
+                if (canScrollBackward() || canScrollForward()) return Velocity.Zero
+                if (abs(offsetPx) > BounceOverscrollPhysics.MIN_EFFECT_DELTA_PX) {
+                    settleBounce(available.y)
+                    return available
+                }
+                return Velocity.Zero
+            }
+
+            override suspend fun onPostFling(
+                consumed: Velocity,
+                available: Velocity,
+            ): Velocity {
+                if (!animationsEnabled()) return Velocity.Zero
+                if (canScrollBackward() || canScrollForward()) return Velocity.Zero
+                settleBounce(available.y)
+                return available
+            }
+        }
+
+    override val isInProgress: Boolean
+        get() = abs(offsetPx) > BounceOverscrollPhysics.MIN_EFFECT_DELTA_PX
+
+    override val node: DelegatableNode =
+        object : Modifier.Node(), LayoutModifierNode {
+            override fun MeasureScope.measure(
+                measurable: Measurable,
+                constraints: Constraints,
+            ): MeasureResult {
+                val placeable = measurable.measure(constraints)
+                viewportHeightPx = placeable.height.toFloat()
+                return layout(placeable.width, placeable.height) {
+                    val offset = IntOffset(0, offsetPx.roundToInt())
+                    placeable.placeRelativeWithLayer(offset.x, offset.y)
+                }
+            }
+        }
+
+    private suspend fun settleBounce(remainingVelocityY: Float) {
+        if (!animationsEnabled()) {
+            reset()
+            return
+        }
+        val edge = resolveEdge(remainingVelocityY)
         val initialVelocity =
             if (edge != null) {
                 BounceOverscrollPhysics.flingVelocityPx(
-                    remainingVelocityY = remaining.y,
+                    remainingVelocityY = remainingVelocityY,
                     maxFlingDisplacementPx = maxFlingDisplacementPx,
                 )
             } else {
@@ -222,24 +316,6 @@ internal class BounceOverscrollEffect(
             }
         }
     }
-
-    override val isInProgress: Boolean
-        get() = abs(offsetPx) > BounceOverscrollPhysics.MIN_EFFECT_DELTA_PX
-
-    override val node: DelegatableNode =
-        object : Modifier.Node(), LayoutModifierNode {
-            override fun MeasureScope.measure(
-                measurable: Measurable,
-                constraints: Constraints,
-            ): MeasureResult {
-                val placeable = measurable.measure(constraints)
-                viewportHeightPx = placeable.height.toFloat()
-                return layout(placeable.width, placeable.height) {
-                    val offset = IntOffset(0, offsetPx.roundToInt())
-                    placeable.placeRelativeWithLayer(offset.x, offset.y)
-                }
-            }
-        }
 
     private fun resolveEdge(deltaY: Float): BounceEdge? =
         BounceOverscrollPhysics.edgeFor(
@@ -330,3 +406,10 @@ private fun rememberBounceOverscrollEffect(
         )
     }
 }
+
+/**
+ * Attaches nested scroll gesture routing so that short non-scrollable lists
+ * can also trigger bounce overscroll.
+ */
+internal fun Modifier.bounceOverscroll(effect: BounceOverscrollEffect): Modifier =
+    this.nestedScroll(effect.nestedScrollConnection)

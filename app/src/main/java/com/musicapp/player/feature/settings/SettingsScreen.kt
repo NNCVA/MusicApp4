@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.AppLanguage
@@ -162,6 +163,7 @@ private fun SettingsScreen(
                 state = listState,
                 overscrollEffect = overscrollEffect,
                 modifier = Modifier.fillMaxWidth().weight(1f)
+                    .bounceOverscroll(overscrollEffect)
                     .padding(horizontal = dimensions.contentHorizontalPadding),
                 contentPadding = PaddingValues(
                     top = dimensions.spaceSmallMedium,

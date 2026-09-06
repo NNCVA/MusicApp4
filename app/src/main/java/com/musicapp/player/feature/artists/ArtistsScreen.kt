@@ -55,6 +55,7 @@ import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.LoadingState
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.localizedArtistName
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.ArtistId
@@ -181,7 +182,11 @@ private fun ArtistsScreen(
                 LazyColumn(
                     state = listState,
                     overscrollEffect = overscrollEffect,
-                    modifier = Modifier.fillMaxWidth().weight(1f).then(scrollbarModifier),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .bounceOverscroll(overscrollEffect)
+                        .then(scrollbarModifier),
                     contentPadding = PaddingValues(
                         top = dimensions.spaceExtraSmall,
                         bottom = dimensions.spaceSmall + bottomPadding,

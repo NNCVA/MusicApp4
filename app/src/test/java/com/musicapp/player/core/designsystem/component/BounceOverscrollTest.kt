@@ -63,7 +63,7 @@ class BounceOverscrollTest {
     }
 
     @Test
-    fun `edge requires matching direction and a scrollable list`() {
+    fun `edge requires matching direction and supports short non-scrollable list`() {
         assertEquals(
             BounceEdge.START,
             BounceOverscrollPhysics.edgeFor(
@@ -87,9 +87,19 @@ class BounceOverscrollTest {
                 canScrollForward = true,
             ),
         )
-        assertNull(
+        // Short list (cannot scroll backward or forward) triggers START on pull-down and END on pull-up
+        assertEquals(
+            BounceEdge.START,
             BounceOverscrollPhysics.edgeFor(
                 deltaY = 20f,
+                canScrollBackward = false,
+                canScrollForward = false,
+            ),
+        )
+        assertEquals(
+            BounceEdge.END,
+            BounceOverscrollPhysics.edgeFor(
+                deltaY = -20f,
                 canScrollBackward = false,
                 canScrollForward = false,
             ),

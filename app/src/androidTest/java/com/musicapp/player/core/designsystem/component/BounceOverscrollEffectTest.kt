@@ -135,7 +135,7 @@ class BounceOverscrollEffectTest {
     }
 
     @Test
-    fun shortListDoesNotBounce() {
+    fun shortListBouncesAndSettles() {
         lateinit var effect: BounceOverscrollEffect
         composeRule.setContent {
             val listState = rememberLazyListState()
@@ -147,12 +147,48 @@ class BounceOverscrollEffectTest {
                 effect = rememberedEffect,
             )
         }
+        val headerBefore = composeRule.onNodeWithTag(HEADER_TAG).fetchSemanticsNode().boundsInRoot
+        composeRule.mainClock.autoAdvance = false
 
         composeRule.onNodeWithTag(LIST_TAG).performTouchInput {
             swipeDown(durationMillis = 120)
         }
-        composeRule.waitForIdle()
 
+        val headerDuringBounce = composeRule.onNodeWithTag(HEADER_TAG).fetchSemanticsNode().boundsInRoot
+        composeRule.runOnIdle { assertTrue(effect.isInProgress) }
+        assertEquals(headerBefore, headerDuringBounce)
+
+        composeRule.mainClock.autoAdvance = true
+        composeRule.waitForIdle()
+        composeRule.runOnIdle {
+            assertFalse(effect.isInProgress)
+            assertEquals(0f, effect.currentOffsetPx, 0.001f)
+        }
+    }
+
+    @Test
+    fun shortListEndEdgeBouncesAndSettles() {
+        lateinit var effect: BounceOverscrollEffect
+        composeRule.setContent {
+            val listState = rememberLazyListState()
+            val rememberedEffect = rememberBounceOverscrollEffect(listState)
+            SideEffect { effect = rememberedEffect }
+            TestList(
+                itemCount = 1,
+                state = listState,
+                effect = rememberedEffect,
+            )
+        }
+        composeRule.mainClock.autoAdvance = false
+
+        composeRule.onNodeWithTag(LIST_TAG).performTouchInput {
+            swipeUp(durationMillis = 120)
+        }
+
+        composeRule.runOnIdle { assertTrue(effect.isInProgress) }
+
+        composeRule.mainClock.autoAdvance = true
+        composeRule.waitForIdle()
         composeRule.runOnIdle {
             assertFalse(effect.isInProgress)
             assertEquals(0f, effect.currentOffsetPx, 0.001f)
@@ -172,7 +208,12 @@ class BounceOverscrollEffectTest {
             LazyColumn(
                 state = state,
                 overscrollEffect = effect,
-                modifier = Modifier.fillMaxWidth().weight(1f).testTag(LIST_TAG),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .bounceOverscroll(effect)
+                        .testTag(LIST_TAG),
             ) {
                 items((0 until itemCount).toList()) { index ->
                     Text(

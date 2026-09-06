@@ -72,6 +72,7 @@ import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.TrackActionsMenu
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.designsystem.component.resolveQuality
 import com.musicapp.player.core.domain.model.AlbumId
@@ -233,7 +234,8 @@ fun AlbumDetailScreen(
                     overscrollEffect = overscrollEffect,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(1f)
+                        .bounceOverscroll(overscrollEffect),
                     contentPadding = PaddingValues(
                         bottom = dimensions.spaceSmall + bottomPadding,
                     ),

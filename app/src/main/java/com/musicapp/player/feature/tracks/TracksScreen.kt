@@ -99,6 +99,7 @@ import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.TrackRow
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
@@ -581,6 +582,7 @@ private fun TrackList(
             state = listState,
             overscrollEffect = overscrollEffect,
             modifier = Modifier.fillMaxSize()
+                .bounceOverscroll(overscrollEffect)
                 .then(scrollbarModifier),
             contentPadding =
                 PaddingValues(

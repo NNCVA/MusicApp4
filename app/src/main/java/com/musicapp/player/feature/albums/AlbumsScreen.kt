@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
@@ -199,7 +200,8 @@ private fun AlbumsScreen(
                     state = listState,
                     overscrollEffect = listOverscrollEffect,
                     modifier = Modifier.fillMaxWidth().weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .bounceOverscroll(listOverscrollEffect),
                     contentPadding =
                         PaddingValues(
                             top = dimensions.spaceSmall,
@@ -232,7 +234,8 @@ private fun AlbumsScreen(
                     state = gridState,
                     overscrollEffect = gridOverscrollEffect,
                     modifier = Modifier.fillMaxWidth().weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .bounceOverscroll(gridOverscrollEffect),
                     contentPadding =
                         PaddingValues(
                             top = dimensions.spaceSmall,

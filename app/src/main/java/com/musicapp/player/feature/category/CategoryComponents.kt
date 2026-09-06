@@ -31,6 +31,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.Availability
@@ -125,7 +126,7 @@ fun CategoryTrackList(
     LazyColumn(
         state = listState,
         overscrollEffect = overscrollEffect,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().bounceOverscroll(overscrollEffect),
         contentPadding =
             PaddingValues(
                 top = dimensions.spaceSmall,

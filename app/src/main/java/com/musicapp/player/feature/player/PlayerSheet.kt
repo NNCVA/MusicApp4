@@ -96,6 +96,7 @@ import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkResult
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.feature.lyrics.LyricsPaneRoute
 import com.musicapp.player.feature.lyrics.LyricsViewModel
@@ -663,6 +664,7 @@ private fun QueuePage(
             state = listState,
             overscrollEffect = overscrollEffect,
             modifier = Modifier.fillMaxWidth().weight(1f)
+                .bounceOverscroll(overscrollEffect)
                 .nestedScroll(nestedScrollConnection),
         ) {
             if (rows.isEmpty()) {

@@ -59,6 +59,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.PathRule
 import com.musicapp.player.core.domain.model.PathRuleKind
@@ -206,7 +207,7 @@ private fun ScanMusicScreen(
             LazyColumn(
                 state = listState,
                 overscrollEffect = overscrollEffect,
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f).bounceOverscroll(overscrollEffect),
                 contentPadding = PaddingValues(
                     start = dimensions.contentHorizontalPadding,
                     end = dimensions.contentHorizontalPadding,
