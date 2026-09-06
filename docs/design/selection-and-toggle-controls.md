@@ -218,3 +218,26 @@ class SwitchCardTest {
 | **子组件保留 `onClick`/`onCheckedChange`** | 同一行有两个可点击目标，点击可能冲突或出现双重点击动画 | 子组件事件回调传入 `null`，统一由外层容器分发 |
 | **未添加 `clearAndSetSemantics`** | TalkBack 读屏聚焦外层后，又聚焦子组件单独朗读，形成无障碍噪音 | 子组件必须添加 `Modifier.clearAndSetSemantics {}` |
 | **组件声明为 `private`** | 无法直接在 `androidTest` 中进行独立的 UI 仪器测试 | 组件统一声明为 `internal` |
+| **列表切换排序未回到顶部** | 切换排序后仍停留在列表中间位置，无法直观查看重排后的首部项目 | 统一调用 `listState.ResetScrollOnChange(state.sort)` 在排序变更时瞬间回到第 0 项 |
+
+---
+
+## 5. 列表排序与筛选滚动重置规范 (List Sort & Filter Scroll Reset Specification)
+
+### 5.1 核心约束与设计意图
+- **排序与筛选变更必须重置到顶部**：当用户在列表或网格界面主动切换排序字段、升降序方向或全局筛选条件时，由于底层数据集重新排列，继续保留原有的滚动偏移（例如停留在第 50 项）会导致视图错位与用户操作割裂。列表必须立即重置回到第 0 项。
+- **避免动效冗长**：切换排序时数据已全量重排，应使用瞬间跳转 `scrollToItem(0)`，禁止使用 `animateScrollToItem(0)` 避免大列表跨长距离滚动的性能开销与掉帧。
+- **初次加载与返回保护**：进入页面、从详情页返回或发生配置变更（如屏幕旋转）时，不得误触发重置，必须保留既有的滚动记忆。
+
+### 5.2 标准代码实现
+严禁在各 Feature 业务 Composable 中自行编写重复的 `remember` 与 `LaunchedEffect` 样板代码，必须统一使用 `com.musicapp.player.core.designsystem.component` 提供的 `ResetScrollOnChange` 扩展函数：
+
+```kotlin
+// LazyColumn / LazyRow 列表
+val listState = rememberLazyListState()
+listState.ResetScrollOnChange(state.sort)
+
+// LazyVerticalGrid 网格
+val gridState = rememberLazyGridState()
+gridState.ResetScrollOnChange(state.sort)
+```

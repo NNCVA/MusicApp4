@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.nonInteractiveScrollbar
+import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import com.musicapp.player.core.designsystem.component.SelectionBarAction
 import com.musicapp.player.core.designsystem.component.SelectionBottomBar
 import androidx.compose.runtime.Composable
@@ -251,6 +252,7 @@ fun PlaylistDetailScreen(
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    listState.ResetScrollOnChange(state.sort)
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
 
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }

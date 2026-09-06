@@ -39,6 +39,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuDivider
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -120,13 +121,7 @@ private fun AlbumsScreen(
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
-    var lastSort by remember { mutableStateOf(state.sort) }
-    LaunchedEffect(state.sort) {
-        if (lastSort != state.sort) {
-            lastSort = state.sort
-            gridState.scrollToItem(0)
-        }
-    }
+    gridState.ResetScrollOnChange(state.sort)
     val overscrollEffect = rememberBounceOverscrollEffect(gridState)
     val hasUnknownTop = state.albums.firstOrNull()?.id == UNKNOWN_ALBUM_ID
     val targetAlbumsForSections = if (hasUnknownTop) state.albums.drop(1) else state.albums
