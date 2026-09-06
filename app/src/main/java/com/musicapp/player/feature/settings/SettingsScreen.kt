@@ -138,8 +138,7 @@ private fun SettingsScreen(
             CategoryHeader(
                 title = stringResource(R.string.navigation_settings),
                 policy = policy,
-                navigationAction = CategoryNavigationAction.BACK,
-                onNavigationClick = onBack,
+                onBack = onBack,
             )
             val workingProgressAlpha by animateFloatAsState(
                 targetValue = if (state.isWorking || state.syncState is LibrarySyncState.Syncing) 1f else 0f,

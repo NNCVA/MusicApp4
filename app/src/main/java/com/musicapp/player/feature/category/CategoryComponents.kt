@@ -96,9 +96,14 @@ fun CategoryHeader(
                     action = CategoryNavigationAction.BACK,
                     onClick = onBack,
                 )
-            policy == WindowLayoutPolicy.COMPACT_DRAWER && navigationAction != null ->
+            navigationAction == CategoryNavigationAction.BACK ->
                 CategoryNavigationIconButton(
-                    action = navigationAction,
+                    action = CategoryNavigationAction.BACK,
+                    onClick = onNavigationClick,
+                )
+            policy == WindowLayoutPolicy.COMPACT_DRAWER && navigationAction == CategoryNavigationAction.DRAWER ->
+                CategoryNavigationIconButton(
+                    action = CategoryNavigationAction.DRAWER,
                     onClick = onNavigationClick,
                 )
         }

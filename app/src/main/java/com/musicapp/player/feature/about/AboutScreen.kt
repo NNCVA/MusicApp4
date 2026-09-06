@@ -85,8 +85,7 @@ fun AboutScreen(
                 CategoryHeader(
                     title = stringResource(R.string.navigation_about),
                     policy = policy,
-                    navigationAction = CategoryNavigationAction.BACK,
-                    onNavigationClick = onBack,
+                    onBack = onBack,
                 )
             }
             LazyColumn(

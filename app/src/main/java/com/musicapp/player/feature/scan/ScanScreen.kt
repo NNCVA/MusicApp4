@@ -183,8 +183,7 @@ private fun ScanMusicScreen(
             CategoryHeader(
                 title = stringResource(R.string.scan_media_source),
                 policy = policy,
-                navigationAction = CategoryNavigationAction.BACK,
-                onNavigationClick = onBack,
+                onBack = onBack,
             )
             val scanningProgressAlpha by animateFloatAsState(
                 targetValue = if (state.isScanning) 1f else 0f,
