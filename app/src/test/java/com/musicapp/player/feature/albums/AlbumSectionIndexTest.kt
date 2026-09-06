@@ -36,6 +36,7 @@ class AlbumSectionIndexTest {
         assertEquals(listOf("A", "Z"), artistSections.map(AlbumSection::label))
         assertTrue(groupAlbumsIntoSections(albums, AlbumSortField.TRACK_COUNT).isEmpty())
         assertTrue(groupAlbumsIntoSections(albums, AlbumSortField.DATE_ADDED).isEmpty())
+        assertTrue(groupAlbumsIntoSections(albums, AlbumSortField.RELEASE_YEAR).isEmpty())
     }
 
     @Test

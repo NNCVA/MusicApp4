@@ -67,6 +67,17 @@ class AlbumsViewModelTest {
         viewModel.selectSort(AlbumSortField.ARTIST)
         advanceUntilIdle()
         assertEquals(AlbumSortField.ARTIST, viewModel.uiState.value.sort.field)
+
+        viewModel.selectSort(AlbumSortField.RELEASE_YEAR)
+        advanceUntilIdle()
+        assertEquals(AlbumSortField.RELEASE_YEAR, viewModel.uiState.value.sort.field)
+        assertEquals(com.musicapp.player.feature.category.CategorySortDirection.DESCENDING, viewModel.uiState.value.sort.direction)
+
+        viewModel.selectSort(AlbumSortField.RELEASE_YEAR)
+        advanceUntilIdle()
+        assertEquals(AlbumSortField.RELEASE_YEAR, viewModel.uiState.value.sort.field)
+        assertEquals(com.musicapp.player.feature.category.CategorySortDirection.ASCENDING, viewModel.uiState.value.sort.direction)
+
         collection.cancel()
     }
 

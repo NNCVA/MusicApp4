@@ -40,7 +40,7 @@ private fun normalizeArtistTokenValue(rawArtist: String): String =
 fun String.localizedAlbumTitle(): String =
     if (this == UNKNOWN_ALBUM_SENTINEL) stringResource(R.string.album_unknown_title) else this
 
-enum class AlbumSortField { TITLE, ARTIST, TRACK_COUNT, DATE_ADDED }
+enum class AlbumSortField { TITLE, ARTIST, TRACK_COUNT, DATE_ADDED, RELEASE_YEAR }
 
 data class AlbumSort(
     val field: AlbumSortField = AlbumSortField.TITLE,
@@ -119,6 +119,7 @@ data class AlbumSummary(
     val memberAlbumIds: Set<AlbumId> = setOf(id),
     val trackIds: Set<com.musicapp.player.core.domain.model.TrackId> = emptySet(),
     val groupKey: AlbumGroupKey = AlbumGroupKey.legacy(id, title, artistName),
+    val releaseYear: Int? = null,
 ) {
     val key: String = groupKey.encode()
 }
@@ -350,6 +351,7 @@ object AlbumGrouping {
                         else -> VARIOUS_ARTISTS_SENTINEL
                     }
 
+                    val minReleaseYear = stableTracks.mapNotNull { it.releaseYear }.minOrNull()
                     normalAlbums.add(
                         AlbumSummary(
                             id = repAlbumId,
@@ -361,6 +363,7 @@ object AlbumGrouping {
                             memberAlbumIds = memberAlbumIds,
                             trackIds = trackIds,
                             groupKey = groupKey,
+                            releaseYear = minReleaseYear,
                         ),
                     )
                 }
@@ -384,6 +387,7 @@ object AlbumGrouping {
             } else {
                 VARIOUS_ARTISTS_SENTINEL
             }
+            val minReleaseYear = stableNoAlbumTracks.mapNotNull { it.releaseYear }.minOrNull()
             AlbumSummary(
                 id = UNKNOWN_ALBUM_ID,
                 title = UNKNOWN_ALBUM_SENTINEL,
@@ -394,6 +398,7 @@ object AlbumGrouping {
                 memberAlbumIds = setOf(UNKNOWN_ALBUM_ID),
                 trackIds = stableNoAlbumTracks.map { it.id }.toSet(),
                 groupKey = UNKNOWN_ALBUM_GROUP_KEY,
+                releaseYear = minReleaseYear,
             )
         } else {
             null
@@ -508,6 +513,16 @@ object AlbumGrouping {
                         .then(textTieBreaker),
                 )
             }
+            AlbumSortField.RELEASE_YEAR -> {
+                val withYear = targetAlbums.filter { it.releaseYear != null }
+                val withoutYear = targetAlbums.filter { it.releaseYear == null }.sortedWith(textTieBreaker)
+                val primary = compareBy<AlbumSummary> { checkNotNull(it.releaseYear) }
+                val sortedWithYear = withYear.sortedWith(
+                    (if (sort.direction == CategorySortDirection.ASCENDING) primary else primary.reversed())
+                        .then(textTieBreaker),
+                )
+                sortedWithYear + withoutYear
+            }
         }
 
         return if (unknownAlbum != null) {
@@ -535,7 +550,7 @@ internal fun AlbumSort.next(field: AlbumSortField): AlbumSort =
         AlbumSort(
             field = field,
             direction =
-                if (field == AlbumSortField.DATE_ADDED || field == AlbumSortField.TRACK_COUNT) {
+                if (field == AlbumSortField.DATE_ADDED || field == AlbumSortField.TRACK_COUNT || field == AlbumSortField.RELEASE_YEAR) {
                     CategorySortDirection.DESCENDING
                 } else {
                     CategorySortDirection.ASCENDING

@@ -120,6 +120,13 @@ private fun AlbumsScreen(
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
+    var lastSort by remember { mutableStateOf(state.sort) }
+    LaunchedEffect(state.sort) {
+        if (lastSort != state.sort) {
+            lastSort = state.sort
+            gridState.scrollToItem(0)
+        }
+    }
     val overscrollEffect = rememberBounceOverscrollEffect(gridState)
     val hasUnknownTop = state.albums.firstOrNull()?.id == UNKNOWN_ALBUM_ID
     val targetAlbumsForSections = if (hasUnknownTop) state.albums.drop(1) else state.albums
@@ -414,4 +421,5 @@ private fun AlbumSortField.labelRes(): Int =
         AlbumSortField.ARTIST -> R.string.sort_artist
         AlbumSortField.TRACK_COUNT -> R.string.sort_track_count
         AlbumSortField.DATE_ADDED -> R.string.sort_date_added
+        AlbumSortField.RELEASE_YEAR -> R.string.sort_release_year
     }

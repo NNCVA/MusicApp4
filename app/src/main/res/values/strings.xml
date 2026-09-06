@@ -105,6 +105,7 @@
     <string name="sort_name">Name</string>
     <string name="sort_track_count">Track count</string>
     <string name="sort_album_count">Album count</string>
+    <string name="sort_release_year">Release year</string>
     <string name="sort_direction_ascending"> ↑</string>
     <string name="sort_direction_descending"> ↓</string>
     <string name="playlist_detail_title">Playlist details</string>

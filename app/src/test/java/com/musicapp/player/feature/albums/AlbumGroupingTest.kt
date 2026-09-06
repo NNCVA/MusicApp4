@@ -349,11 +349,123 @@ class AlbumGroupingTest {
         }
     }
 
+    @Test
+    fun `album grouping computes earliest release year for album summary`() {
+        val tracks = listOf(
+            track(1, AlbumId("external", 1), "Album A", releaseYear = 2023),
+            track(2, AlbumId("external", 1), "Album A", releaseYear = 2019),
+            track(3, AlbumId("external", 1), "Album A", releaseYear = 2021),
+            track(4, AlbumId("external", 2), "Album B", releaseYear = null),
+        )
+        val albums = AlbumGrouping.group(tracks)
+        val albumA = albums.first { it.id == AlbumId("external", 1) }
+        val albumB = albums.first { it.id == AlbumId("external", 2) }
+
+        assertEquals(2019, albumA.releaseYear)
+        assertEquals(null, albumB.releaseYear)
+    }
+
+    @Test
+    fun `album sort by RELEASE_YEAR orders descending with nulls placed at the end`() {
+        val albums = listOf(
+            AlbumSummary(
+                id = AlbumId("external", 1),
+                title = "Album 2018",
+                artistName = "Artist",
+                trackCount = 1,
+                latestDateAddedMs = 1,
+                representativeTrack = track(1, AlbumId("external", 1), "Album 2018", releaseYear = 2018),
+                releaseYear = 2018,
+            ),
+            AlbumSummary(
+                id = AlbumId("external", 2),
+                title = "Album No Year",
+                artistName = "Artist",
+                trackCount = 1,
+                latestDateAddedMs = 2,
+                representativeTrack = track(2, AlbumId("external", 2), "Album No Year", releaseYear = null),
+                releaseYear = null,
+            ),
+            AlbumSummary(
+                id = AlbumId("external", 3),
+                title = "Album 2024",
+                artistName = "Artist",
+                trackCount = 1,
+                latestDateAddedMs = 3,
+                representativeTrack = track(3, AlbumId("external", 3), "Album 2024", releaseYear = 2024),
+                releaseYear = 2024,
+            ),
+            AlbumSummary(
+                id = AlbumId("external", 4),
+                title = "Album 1999",
+                artistName = "Artist",
+                trackCount = 1,
+                latestDateAddedMs = 4,
+                representativeTrack = track(4, AlbumId("external", 4), "Album 1999", releaseYear = 1999),
+                releaseYear = 1999,
+            ),
+        )
+
+        val descending = AlbumGrouping.sorted(
+            albums,
+            AlbumSort(AlbumSortField.RELEASE_YEAR, CategorySortDirection.DESCENDING),
+        )
+        assertEquals(listOf(3L, 1L, 4L, 2L), descending.map { it.id.mediaStoreId })
+
+        val ascending = AlbumGrouping.sorted(
+            albums,
+            AlbumSort(AlbumSortField.RELEASE_YEAR, CategorySortDirection.ASCENDING),
+        )
+        assertEquals(listOf(4L, 1L, 3L, 2L), ascending.map { it.id.mediaStoreId })
+    }
+
+    @Test
+    fun `album sort by RELEASE_YEAR breaks ties by title tie breaker`() {
+        val albums = listOf(
+            AlbumSummary(
+                id = AlbumId("external", 1),
+                title = "Beta Album",
+                artistName = "Artist",
+                trackCount = 1,
+                latestDateAddedMs = 1,
+                representativeTrack = track(1, AlbumId("external", 1), "Beta Album", releaseYear = 2020),
+                releaseYear = 2020,
+            ),
+            AlbumSummary(
+                id = AlbumId("external", 2),
+                title = "Alpha Album",
+                artistName = "Artist",
+                trackCount = 1,
+                latestDateAddedMs = 2,
+                representativeTrack = track(2, AlbumId("external", 2), "Alpha Album", releaseYear = 2020),
+                releaseYear = 2020,
+            ),
+        )
+
+        val sorted = AlbumGrouping.sorted(
+            albums,
+            AlbumSort(AlbumSortField.RELEASE_YEAR, CategorySortDirection.DESCENDING),
+        )
+        assertEquals(listOf(2L, 1L), sorted.map { it.id.mediaStoreId })
+    }
+
+    @Test
+    fun `album sort next toggles direction and defaults to descending for RELEASE_YEAR`() {
+        val initial = AlbumSort().next(AlbumSortField.RELEASE_YEAR)
+        assertEquals(AlbumSortField.RELEASE_YEAR, initial.field)
+        assertEquals(CategorySortDirection.DESCENDING, initial.direction)
+
+        val toggled = initial.next(AlbumSortField.RELEASE_YEAR)
+        assertEquals(AlbumSortField.RELEASE_YEAR, toggled.field)
+        assertEquals(CategorySortDirection.ASCENDING, toggled.direction)
+    }
+
     private fun track(
         value: Long,
         albumId: AlbumId?,
         albumTitle: String?,
         artist: String = "Artist",
+        releaseYear: Int? = null,
     ) =
         Track(
             id = TrackId(albumId?.volumeName ?: "external", value),
@@ -366,5 +478,6 @@ class AlbumGroupingTest {
             dateModifiedMs = value,
             relativePath = "Music/",
             displayName = "$value.mp3",
+            releaseYear = releaseYear,
         )
 }

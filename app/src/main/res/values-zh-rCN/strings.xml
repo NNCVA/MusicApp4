@@ -102,6 +102,7 @@
     <string name="sort_name">名称</string>
     <string name="sort_track_count">单曲数量</string>
     <string name="sort_album_count">专辑数量</string>
+    <string name="sort_release_year">发行年份</string>
     <string name="sort_direction_ascending"> ↑</string>
     <string name="sort_direction_descending"> ↓</string>
     <string name="playlist_detail_title">歌单详情</string>

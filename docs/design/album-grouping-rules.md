@@ -94,7 +94,20 @@ graph TD
 
 ---
 
-## 6. 规则扩展与维护流程
+## 6. 专辑发行年份排序规则
+
+- **源数据年份提取**：
+  - 专辑的发行年份取该专辑内所有音轨的最早年份（`tracks.mapNotNull { it.releaseYear }.minOrNull()`），代表专辑最初面世的发行年份；
+- **缺失年份排序**：
+  - 缺少发行年份元数据（`releaseYear == null`）的专辑，无论升序还是降序均统一置于列表末端（置底），避免打断有年份专辑的连贯浏览；
+  - 虚拟未知专辑（`<unknown_album>`）不受年份影响，依然保持列表置顶；
+- **初始排序方向**：
+  - 首次切换至“按发行年份排序”时，默认方向为降序（最新年份在前）；再次点击在升序与降序之间切换；
+  - 同年份专辑按专辑标题（小写）、存储卷及媒体库 ID 进行稳定确定性次级排序（Tie-breaker）。
+
+---
+
+## 7. 规则扩展与维护流程
 
 1. **扩展版本关键词**：
    - 在 [`AlbumGroupingRules.kt`](../../app/src/main/java/com/musicapp/player/feature/albums/AlbumGroupingRules.kt) 的 `VERSION_KEYWORD_REGEX` 中添加新词汇；
@@ -102,3 +115,4 @@ graph TD
    - 在 [`AlbumGroupingTest.kt`](../../app/src/test/java/com/musicapp/player/feature/albums/AlbumGroupingTest.kt) 增加对应的版本隔离单测用例。
 2. **门禁验证**：
    - 运行 `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon --console=plain` 确保全量通过。
+

@@ -17,6 +17,7 @@ internal fun sectionLabelForAlbum(album: AlbumSummary, field: AlbumSortField): S
         AlbumSortField.ARTIST -> classifySectionLabel(album.artistName)
         AlbumSortField.TRACK_COUNT,
         AlbumSortField.DATE_ADDED,
+        AlbumSortField.RELEASE_YEAR,
         -> null
     }
 
