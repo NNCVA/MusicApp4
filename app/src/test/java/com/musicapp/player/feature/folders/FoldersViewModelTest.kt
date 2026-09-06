@@ -152,6 +152,25 @@ class FoldersViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `initial state is not loaded and becomes loaded after flow emits`() = runTest(dispatcher) {
+        val viewModel =
+            FoldersViewModel(
+                mediaLibraryRepository = FakeMediaLibraryRepository(emptyList()),
+                volumeMetadataSource = FolderVolumeMetadataSource { flowOf(emptyList()) },
+                playbackController = RecordingPlaybackController(),
+            )
+        assertFalse(viewModel.uiState.value.isLoaded)
+
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isLoaded)
+        assertTrue(viewModel.uiState.value.volumes.isEmpty())
+        assertTrue(viewModel.uiState.value.musicFolders.isEmpty())
+        collection.cancel()
+    }
+
     private fun track(
         volume: String,
         id: Long,

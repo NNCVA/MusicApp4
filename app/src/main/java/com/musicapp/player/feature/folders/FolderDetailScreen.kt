@@ -289,7 +289,7 @@ private fun FolderDetailScreen(
                 }
             }
 
-            if (!hasItems) {
+            if (state.isLoaded && !hasItems) {
                 EmptyState(
                     modifier = Modifier
                         .weight(1f)

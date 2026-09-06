@@ -377,6 +377,25 @@ class FolderDetailViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `initial detail state is not loaded and becomes loaded after flow emits`() = runTest(dispatcher) {
+        val viewModel =
+            FolderDetailViewModel(
+                mediaLibraryRepository = FakeMediaLibraryRepository(emptyList()),
+                playbackController = NoOpPlaybackController(),
+            )
+        assertFalse(viewModel.uiState.value.isLoaded)
+
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Music"))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isLoaded)
+        assertTrue(viewModel.uiState.value.directTracks.isEmpty())
+        assertTrue(viewModel.uiState.value.childFolders.isEmpty())
+        collection.cancel()
+    }
+
     private fun assertSort(
         viewModel: FolderDetailViewModel,
         field: CategoryTrackSortField,

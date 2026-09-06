@@ -165,7 +165,7 @@ private fun FoldersScreen(
                 onSearchQueryChange = { searchQuery = it },
             )
             when {
-                !hasContent ->
+                state.isLoaded && !hasContent ->
                     EmptyState(
                         modifier = Modifier.weight(1f)
                             .padding(horizontal = dimensions.contentHorizontalPadding)

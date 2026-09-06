@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -54,7 +55,7 @@ fun LoadingState(
   }
 }
 
-/** Displays an empty-content message with an optional leading action. */
+/** Displays an empty-content message, or a centered action button when an action is present. */
 @Composable
 fun EmptyState(
   modifier: Modifier = Modifier,
@@ -65,33 +66,37 @@ fun EmptyState(
   onAction: (() -> Unit)? = null,
 ) {
   val dimensions = MusicTheme.dimensions
-  StateMessage(
-    modifier = modifier,
-    title = title,
-    description = description,
-    leadingAction =
-      if (actionLabel != null && onAction != null) {
-        {
-          OutlinedButton(
-            onClick = onAction,
-            modifier = Modifier.heightIn(min = dimensions.minimumTouchTarget),
-            shape = MusicTheme.shapes.pill,
-          ) {
-            if (actionIconRes != null) {
-              Icon(
-                painter = painterResource(actionIconRes),
-                contentDescription = null,
-                modifier = Modifier.size(dimensions.spaceLarge),
-              )
-              Spacer(modifier = Modifier.width(dimensions.spaceSmallMedium))
-            }
-            Text(text = actionLabel, style = MusicTheme.typography.labelLarge)
-          }
+  if (actionLabel != null && onAction != null) {
+    Box(
+      modifier =
+        modifier.fillMaxSize().padding(dimensions.spaceLarge).semantics {
+          liveRegion = LiveRegionMode.Polite
+        },
+      contentAlignment = Alignment.Center,
+    ) {
+      OutlinedButton(
+        onClick = onAction,
+        modifier = Modifier.heightIn(min = dimensions.minimumTouchTarget),
+        shape = MusicTheme.shapes.pill,
+      ) {
+        if (actionIconRes != null) {
+          Icon(
+            painter = painterResource(actionIconRes),
+            contentDescription = null,
+            modifier = Modifier.size(dimensions.spaceLarge),
+          )
+          Spacer(modifier = Modifier.width(dimensions.spaceSmallMedium))
         }
-      } else {
-        null
-      },
-  )
+        Text(text = actionLabel, style = MusicTheme.typography.labelLarge)
+      }
+    }
+  } else {
+    StateMessage(
+      modifier = modifier,
+      title = title,
+      description = description,
+    )
+  }
 }
 
 /** Displays an error message with an action to retry the failed operation. */
@@ -167,6 +172,20 @@ private fun LoadingStatePreview() {
 @Composable
 private fun EmptyStatePreview() {
   MusicAppTheme { EmptyState() }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun EmptyStateWithActionPreview() {
+  MusicAppTheme {
+    EmptyState(
+      title = "No tracks found",
+      description = "Scan again after adding supported audio files.",
+      actionLabel = "Scan music",
+      actionIconRes = R.drawable.ic_sidebar_scan,
+      onAction = {},
+    )
+  }
 }
 
 @Preview(showBackground = true)

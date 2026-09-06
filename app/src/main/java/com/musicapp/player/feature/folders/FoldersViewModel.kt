@@ -39,11 +39,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class FoldersUiState(
+    val isLoaded: Boolean = false,
     val volumes: List<FolderVolumeItem> = emptyList(),
     val musicFolders: List<FolderNode> = emptyList(),
 )
 
 data class FolderDetailUiState(
+    val isLoaded: Boolean = false,
     val folderId: FolderId? = null,
     val displayName: String? = null,
     val childFolders: List<FolderNode> = emptyList(),
@@ -89,6 +91,7 @@ class FoldersViewModel @Inject constructor(
                             .thenBy { it.folder.id.sourceId },
                     )
             FoldersUiState(
+                isLoaded = true,
                 volumes = volumeItems,
                 musicFolders = FolderTree.sorted(FolderTree.musicFolders(roots), FolderSort()),
             )
@@ -222,6 +225,7 @@ class FolderDetailViewModel @Inject constructor(
             val validSelectedIds = currentSelectedIds.intersect(directTrackIds)
 
             FolderDetailUiState(
+                isLoaded = true,
                 folderId = folderId,
                 displayName = when {
                     node == null -> null
