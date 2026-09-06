@@ -122,6 +122,7 @@ import com.musicapp.player.theme.MusicWindowWidthTier
 import kotlin.math.roundToInt
 import java.util.Locale
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.SharedFlow
 
 @Composable
 fun PlayerSheetRoute(
@@ -160,6 +161,7 @@ fun PlayerSheetRoute(
         onDismissInfo = viewModel::dismissTrackInfo,
         onPageChanged = viewModel::selectFullPlayerPage,
         onExpansionChanged = onExpansionChanged,
+        expandRequests = viewModel.expandRequests,
     )
 }
 
@@ -183,6 +185,7 @@ fun PlayerSheet(
     onDismissInfo: () -> Unit,
     onPageChanged: (FullPlayerPage) -> Unit,
     onExpansionChanged: (Boolean) -> Unit,
+    expandRequests: SharedFlow<Unit>? = null,
 ) {
     val track = state.currentTrack ?: return
     val dimensions = MusicTheme.dimensions
@@ -215,6 +218,11 @@ fun PlayerSheet(
                 ) { value, _ ->
                     progress = value.coerceIn(0f, 1f)
                 }
+            }
+        }
+        LaunchedEffect(expandRequests) {
+            expandRequests?.collect {
+                animateSheetTo(1f, 0f)
             }
         }
         val dragSheet: (Float) -> Float = { deltaY ->

@@ -135,6 +135,7 @@ fun TrackArtwork(
 fun TrackRow(
     track: Track,
     modifier: Modifier = Modifier,
+    isCurrent: Boolean = false,
     selected: Boolean = false,
     selectionMode: Boolean = false,
     playlists: List<Playlist> = emptyList(),
@@ -220,7 +221,7 @@ fun TrackRow(
                 } else {
                     MusicTheme.typography.expandedTrackTitle
                 },
-                color = MusicTheme.colors.onSurface,
+                color = if (isCurrent) MusicTheme.colors.primary else MusicTheme.colors.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

@@ -133,6 +133,8 @@ fun PlaylistDetailScreenRoute(
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
+    currentPlayingTrackId: TrackId? = null,
+    onOpenPlayer: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
@@ -178,6 +180,7 @@ fun PlaylistDetailScreenRoute(
         state = state,
         contentInsets = contentInsets,
         bottomPadding = bottomPadding,
+        currentPlayingTrackId = currentPlayingTrackId,
         onNavigateToArtist = onArtistClick,
         onNavigateToAlbum = onAlbumClick,
         onSearchClick = onSearchClick,
@@ -194,6 +197,8 @@ fun PlaylistDetailScreenRoute(
         onTrackClick = { track ->
             if (state.isSelectionMode) {
                 viewModel.toggleSelection(track.id)
+            } else if (track.id == currentPlayingTrackId) {
+                onOpenPlayer()
             } else if (track.availability == Availability.AVAILABLE) {
                 viewModel.playTrack(track.id)
             }
@@ -237,6 +242,7 @@ fun PlaylistDetailScreen(
     state: PlaylistDetailUiState,
     contentInsets: WindowInsets,
     bottomPadding: Dp = 0.dp,
+    currentPlayingTrackId: TrackId? = null,
     onBack: () -> Unit,
     onSearchClick: () -> Unit = {},
     onSortSelected: (PlaylistTrackSortField) -> Unit,
@@ -576,6 +582,7 @@ fun PlaylistDetailScreen(
                             PlaylistTrackRowItem(
                                 track = track,
                                 modifier = Modifier.animateItem(),
+                                isCurrent = track.id == currentPlayingTrackId,
                                 selected = track.id in state.selectedTrackIds,
                                 selectionMode = state.isSelectionMode,
                                 allPlaylists = state.allPlaylists,
@@ -599,6 +606,7 @@ fun PlaylistDetailScreen(
                         PlaylistTrackRowItem(
                             track = track,
                             modifier = Modifier.animateItem(),
+                            isCurrent = track.id == currentPlayingTrackId,
                             selected = track.id in state.selectedTrackIds,
                             selectionMode = state.isSelectionMode,
                             allPlaylists = state.allPlaylists,
@@ -849,6 +857,7 @@ private fun PlaylistTrackRowItem(
     selected: Boolean,
     selectionMode: Boolean,
     allPlaylists: List<Playlist>,
+    isCurrent: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRemoveFromPlaylist: () -> Unit,
@@ -864,6 +873,7 @@ private fun PlaylistTrackRowItem(
     TrackRow(
         track = track,
         modifier = modifier,
+        isCurrent = isCurrent,
         selected = selected,
         selectionMode = selectionMode,
         onClick = onClick,

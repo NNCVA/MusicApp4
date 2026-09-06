@@ -134,6 +134,8 @@ fun TracksScreenRoute(
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
+    currentPlayingTrackId: TrackId? = null,
+    onOpenPlayer: () -> Unit = {},
 ) {
     val loadStartedNs = remember { SystemClock.elapsedRealtimeNanos() }
     val firstTrackLayoutLogged = remember { AtomicBoolean(false) }
@@ -163,6 +165,7 @@ fun TracksScreenRoute(
         onNavigateToAlbum = onAlbumClick,
         onSearchClick = onSearchClick,
         bottomPadding = bottomPadding,
+        currentPlayingTrackId = currentPlayingTrackId,
         onSortSelected = viewModel::selectSort,
         onTrackAddToQueue = viewModel::addTrackToQueue,
         onTrackPlayNext = viewModel::playTrackNext,
@@ -173,6 +176,8 @@ fun TracksScreenRoute(
         onTrackClick = { track ->
             if (state.isSelectionMode) {
                 viewModel.toggleSelection(track.id)
+            } else if (track.id == currentPlayingTrackId) {
+                onOpenPlayer()
             } else {
                 viewModel.playTrack(track.id)
             }
@@ -218,6 +223,7 @@ fun TracksScreen(
     onNavigateToArtist: (String) -> Unit = {},
     onNavigateToAlbum: (AlbumId) -> Unit = {},
     bottomPadding: Dp = 0.dp,
+    currentPlayingTrackId: TrackId? = null,
     onSortSelected: (TrackSortField) -> Unit,
     onTrackArtworkRequested: suspend (Track) -> Unit = {},
     onTrackAddToQueue: (TrackId) -> Unit,
@@ -410,6 +416,7 @@ fun TracksScreen(
                     onTrackLongClick = onTrackLongClick,
                     onFirstTrackLaidOut = onFirstTrackLaidOut,
                     bottomPadding = dynamicBottomPadding,
+                    currentPlayingTrackId = currentPlayingTrackId,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -521,6 +528,7 @@ private fun TrackList(
     onTrackLongClick: (Track) -> Unit,
     onFirstTrackLaidOut: () -> Unit,
     bottomPadding: Dp = 0.dp,
+    currentPlayingTrackId: TrackId? = null,
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -553,6 +561,7 @@ private fun TrackList(
                     selectedIds = selectedIds,
                     selectionMode = selectionMode,
                     playlists = playlists,
+                    currentPlayingTrackId = currentPlayingTrackId,
                     onAddToQueue = onAddToQueue,
                     onPlayNext = onPlayNext,
                     onHide = onHide,
@@ -572,6 +581,7 @@ private fun TrackList(
                         selectedIds = selectedIds,
                         selectionMode = selectionMode,
                         playlists = playlists,
+                        currentPlayingTrackId = currentPlayingTrackId,
                         onAddToQueue = onAddToQueue,
                         onPlayNext = onPlayNext,
                         onHide = onHide,
@@ -595,6 +605,7 @@ private fun LazyListScope.trackItems(
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
     playlists: List<com.musicapp.player.core.domain.model.Playlist>,
+    currentPlayingTrackId: TrackId?,
     onAddToQueue: (TrackId) -> Unit,
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
@@ -611,6 +622,7 @@ private fun LazyListScope.trackItems(
         TrackRow(
             track = track,
             modifier = Modifier.animateItem(),
+            isCurrent = track.id == currentPlayingTrackId,
             selected = track.id in selectedIds,
             selectionMode = selectionMode,
             playlists = playlists,

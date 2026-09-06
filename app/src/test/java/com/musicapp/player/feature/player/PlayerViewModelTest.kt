@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -232,6 +233,21 @@ class PlayerViewModelTest {
         viewModel.dismissTrackInfo()
         advanceUntilIdle()
         assertEquals(false, viewModel.uiState.value.showTrackInfo)
+        collection.cancel()
+    }
+
+    @Test
+    fun `expandPlayer emits to expandRequests flow`() = runTest(dispatcher) {
+        val viewModel = subject(RecordingController(PlaybackControllerState()), emptyList())
+        var expandEmitted = false
+        val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.expandRequests.collect {
+                expandEmitted = true
+            }
+        }
+        viewModel.expandPlayer()
+
+        assertTrue(expandEmitted)
         collection.cancel()
     }
 

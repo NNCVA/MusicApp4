@@ -18,8 +18,12 @@ import com.musicapp.player.data.repository.MediaLibraryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -69,6 +73,15 @@ class PlayerViewModel @Inject constructor(
     private val fullPlayerPage = MutableStateFlow(FullPlayerPage.ARTWORK)
     private val infoState = combine(showTrackInfo, metadata, metadataLoading, fullPlayerPage, ::PlayerInfoState)
     private var metadataJob: Job? = null
+    private val _expandRequests = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val expandRequests: SharedFlow<Unit> = _expandRequests.asSharedFlow()
+
+    fun expandPlayer() {
+        _expandRequests.tryEmit(Unit)
+    }
 
     val uiState = combine(
         playbackController.state,

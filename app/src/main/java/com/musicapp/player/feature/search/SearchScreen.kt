@@ -91,6 +91,8 @@ fun SearchScreenRoute(
     onAlbumClick: (AlbumId) -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
+    currentPlayingTrackId: TrackId? = null,
+    onOpenPlayer: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -129,11 +131,18 @@ fun SearchScreenRoute(
         state = state,
         contentInsets = contentInsets,
         bottomPadding = bottomPadding,
+        currentPlayingTrackId = currentPlayingTrackId,
         onBack = onBack,
         onQueryChange = viewModel::onQueryChange,
         onClearQuery = viewModel::clearQuery,
         onSortSelected = viewModel::onSortSelected,
-        onPlayTrack = viewModel::playTrack,
+        onPlayTrack = { track ->
+            if (track.id == currentPlayingTrackId) {
+                onOpenPlayer()
+            } else {
+                viewModel.playTrack(track)
+            }
+        },
         onPlayAll = viewModel::playAll,
         onEnterSelection = viewModel::enterSelection,
         onToggleSelection = viewModel::toggleSelection,
@@ -156,6 +165,7 @@ fun SearchScreen(
     state: SearchUiState,
     contentInsets: WindowInsets,
     bottomPadding: Dp,
+    currentPlayingTrackId: TrackId? = null,
     onBack: () -> Unit,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
@@ -427,6 +437,7 @@ fun SearchScreen(
                     ) { track ->
                         TrackRow(
                             track = track,
+                            isCurrent = track.id == currentPlayingTrackId,
                             selected = track.id in state.selectedTrackIds,
                             selectionMode = state.isSelectionMode,
                             playlists = state.playlists,

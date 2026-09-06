@@ -95,6 +95,8 @@ fun HistoryScreenRoute(
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
+    currentPlayingTrackId: TrackId? = null,
+    onOpenPlayer: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
@@ -126,6 +128,7 @@ fun HistoryScreenRoute(
         state = state,
         contentInsets = contentInsets,
         policy = policy,
+        currentPlayingTrackId = currentPlayingTrackId,
         onBack = {
             viewModel.exitSelectionMode()
             onBack()
@@ -144,6 +147,8 @@ fun HistoryScreenRoute(
         onTrackClick = { entry ->
             if (state.isSelectionMode) {
                 viewModel.toggleSelection(entry.trackId)
+            } else if (entry.trackId == currentPlayingTrackId) {
+                onOpenPlayer()
             } else {
                 viewModel.playTrack(entry.trackId)
             }
@@ -181,6 +186,7 @@ private fun HistoryScreen(
     state: HistoryUiState,
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
+    currentPlayingTrackId: TrackId? = null,
     onBack: () -> Unit,
     onSearchClick: () -> Unit = {},
     onOpenSearch: () -> Unit,
@@ -416,6 +422,7 @@ private fun HistoryScreen(
                             if (track != null) {
                                 TrackRow(
                                     track = track,
+                                    isCurrent = entry.trackId == currentPlayingTrackId,
                                     selected = entry.trackId in state.selectedTrackIds,
                                     selectionMode = state.isSelectionMode,
                                     onClick = { onTrackClick(entry) },

@@ -108,6 +108,7 @@ import com.musicapp.player.feature.tracks.TracksViewModel
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.ArtistId
+import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.ui.shell.AppShell
 import com.musicapp.player.ui.shell.LibrarySyncFeedbackDialog
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
@@ -233,6 +234,8 @@ fun MainNavigation(
                 val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
                 val bottomPadding = bottomInset + if (playerState.currentTrack != null) MusicTheme.dimensions.miniPlayerHeight else 0.dp
                 val currentTopRoute = navigationState.currentBackStack.lastOrNull()
+                val currentPlayingTrackId: TrackId? = playerState.currentTrack?.id
+                val onOpenPlayer: () -> Unit = playerViewModel::expandPlayer
                 val navigateToArtist: (String) -> Unit = { artistName ->
                     commitNavigation { navigate(ArtistDetailRoute(ArtistRouteKey.encode(artistName))) }
                 }
@@ -267,6 +270,8 @@ fun MainNavigation(
                                 },
                                 bottomPadding = bottomPadding,
                                 isActive = currentTopRoute == TracksRoute,
+                                currentPlayingTrackId = currentPlayingTrackId,
+                                onOpenPlayer = onOpenPlayer,
                             )
                         }
                         entry<ScanMusicRoute> {
@@ -348,6 +353,8 @@ fun MainNavigation(
                                 },
                                 bottomPadding = bottomPadding,
                                 isActive = currentTopRoute == HistoryRoute,
+                                currentPlayingTrackId = currentPlayingTrackId,
+                                onOpenPlayer = onOpenPlayer,
                             )
                         }
                         entry<FoldersRoute> {
@@ -400,6 +407,8 @@ fun MainNavigation(
                                 onArtistClick = navigateToArtist,
                                 onAlbumClick = navigateToAlbum,
                                 bottomPadding = bottomPadding,
+                                currentPlayingTrackId = currentPlayingTrackId,
+                                onOpenPlayer = onOpenPlayer,
                             )
                         }
                         entry<ArtistDetailRoute> { key ->
@@ -425,6 +434,8 @@ fun MainNavigation(
                                 onArtistClick = navigateToArtist,
                                 onAlbumIdClick = navigateToAlbum,
                                 bottomPadding = bottomPadding,
+                                currentPlayingTrackId = currentPlayingTrackId,
+                                onOpenPlayer = onOpenPlayer,
                             )
                         }
                         entry<PlaylistDetailRoute> { key ->
@@ -442,6 +453,8 @@ fun MainNavigation(
                                 },
                                 bottomPadding = bottomPadding,
                                 isActive = currentTopRoute == key,
+                                currentPlayingTrackId = currentPlayingTrackId,
+                                onOpenPlayer = onOpenPlayer,
                             )
                         }
                         entry<SearchRoute> { key ->
@@ -459,6 +472,8 @@ fun MainNavigation(
                                     messageBubbleQueue.enqueue(messageResId, formatArgs)
                                 },
                                 bottomPadding = bottomPadding,
+                                currentPlayingTrackId = currentPlayingTrackId,
+                                onOpenPlayer = onOpenPlayer,
                             )
                         }
                         entry<FolderDetailRoute> { key ->
@@ -481,6 +496,8 @@ fun MainNavigation(
                                 },
                                 bottomPadding = bottomPadding,
                                 isActive = currentTopRoute == key,
+                                currentPlayingTrackId = currentPlayingTrackId,
+                                onOpenPlayer = onOpenPlayer,
                             )
                         }
                     }

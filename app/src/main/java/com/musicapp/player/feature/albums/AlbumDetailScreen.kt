@@ -95,6 +95,8 @@ fun AlbumDetailScreenRoute(
     onArtistClick: (String) -> Unit = {},
     onAlbumClick: (AlbumId) -> Unit = {},
     bottomPadding: Dp = 0.dp,
+    currentPlayingTrackId: TrackId? = null,
+    onOpenPlayer: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     BackHandler(enabled = state.infoTrack != null) {
@@ -109,7 +111,13 @@ fun AlbumDetailScreenRoute(
         contentInsets = contentInsets,
         bottomPadding = bottomPadding,
         onBack = onBack,
-        onTrackClick = viewModel::playTrack,
+        onTrackClick = { trackId ->
+            if (trackId == currentPlayingTrackId) {
+                onOpenPlayer()
+            } else {
+                viewModel.playTrack(trackId)
+            }
+        },
         onAddToQueue = viewModel::addToQueue,
         onPlayNext = viewModel::playNext,
         onAddToPlaylist = viewModel::addToPlaylist,

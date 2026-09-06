@@ -83,6 +83,8 @@ fun ArtistDetailScreenRoute(
     onArtistClick: (String) -> Unit = {},
     onAlbumIdClick: (AlbumId) -> Unit = {},
     bottomPadding: Dp = 0.dp,
+    currentPlayingTrackId: TrackId? = null,
+    onOpenPlayer: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     BackHandler(enabled = state.infoTrack != null) { viewModel.dismissTrackInfo() }
@@ -91,12 +93,19 @@ fun ArtistDetailScreenRoute(
         state = state,
         contentInsets = contentInsets,
         bottomPadding = bottomPadding,
+        currentPlayingTrackId = currentPlayingTrackId,
         onBack = onBack,
         onAlbumClick = onAlbumClick,
         onArtistClick = onArtistClick,
         onAlbumIdClick = onAlbumIdClick,
         onPlayAll = viewModel::playAll,
-        onTrackClick = { viewModel.playTrack(it.id) },
+        onTrackClick = { track ->
+            if (track.id == currentPlayingTrackId) {
+                onOpenPlayer()
+            } else {
+                viewModel.playTrack(track.id)
+            }
+        },
         onAddToQueue = viewModel::addToQueue,
         onPlayNext = viewModel::playNext,
         onHide = viewModel::hideTrack,
@@ -125,6 +134,7 @@ internal fun ArtistDetailScreen(
     onDismissTrackInfo: () -> Unit,
     onCreatePlaylist: (String) -> Unit,
     bottomPadding: Dp = 0.dp,
+    currentPlayingTrackId: TrackId? = null,
 ) {
     val dimensions = MusicTheme.dimensions
     val listState = rememberLazyListState()
@@ -227,6 +237,7 @@ internal fun ArtistDetailScreen(
                             TrackRow(
                                 track = track,
                                 playlists = state.playlists,
+                                isCurrent = track.id == currentPlayingTrackId,
                                 onAddToQueue = { onAddToQueue(track.id) },
                                 onPlayNext = { onPlayNext(track.id) },
                                 onHide = { onHide(track.id) },

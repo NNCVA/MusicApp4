@@ -88,6 +88,8 @@ fun FolderDetailScreenRoute(
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
+    currentPlayingTrackId: TrackId? = null,
+    onOpenPlayer: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
@@ -132,6 +134,7 @@ fun FolderDetailScreenRoute(
     FolderDetailScreen(
         state = state,
         contentInsets = contentInsets,
+        currentPlayingTrackId = currentPlayingTrackId,
         onNavigateToArtist = onArtistClick,
         onNavigateToAlbum = onAlbumClick,
         onBack = {
@@ -151,6 +154,8 @@ fun FolderDetailScreenRoute(
         onTrackClick = { track ->
             if (state.isSelectionMode) {
                 viewModel.toggleSelection(track.id)
+            } else if (track.id == currentPlayingTrackId) {
+                onOpenPlayer()
             } else {
                 viewModel.playTrack(track.id)
             }
@@ -198,6 +203,7 @@ private fun FolderDetailScreen(
     onNavigateToArtist: (String) -> Unit = {},
     onNavigateToAlbum: (AlbumId) -> Unit = {},
     bottomPadding: Dp = 0.dp,
+    currentPlayingTrackId: TrackId? = null,
 ) {
     val dimensions = MusicTheme.dimensions
     val listState = rememberLazyListState()
@@ -358,6 +364,7 @@ private fun FolderDetailScreen(
                             TrackRow(
                                 track = track,
                                 modifier = Modifier.animateItem(),
+                                isCurrent = track.id == currentPlayingTrackId,
                                 selected = track.id in state.selectedTrackIds,
                                 selectionMode = state.isSelectionMode,
                                 playlists = state.playlists,
