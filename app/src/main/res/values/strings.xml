@@ -398,7 +398,7 @@
     <string name="settings_action_failed">The settings action could not be completed.</string>
     <string name="about_version_format">Version %1$s (%2$d)</string>
     <string name="about_developer">Developer</string>
-    <string name="about_developer_name">MusicApp contributors</string>
+    <string name="about_developer_name">VANC</string>
     <string name="about_acknowledgements">Acknowledgements</string>
     <string name="about_acknowledgements_body">Built with Kotlin, Jetpack Compose, AndroidX Media3, Room, Hilt, and other open-source software.</string>
     <string name="about_open_source_licenses">Open-source licenses</string>
