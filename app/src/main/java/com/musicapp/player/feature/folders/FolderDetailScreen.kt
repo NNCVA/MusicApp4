@@ -54,6 +54,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.LockScrollOnChange
 import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import com.musicapp.player.core.designsystem.component.ListActionBar
 import com.musicapp.player.core.designsystem.component.SearchableTopBar
@@ -200,7 +201,7 @@ private fun FolderDetailScreen(
 ) {
     val dimensions = MusicTheme.dimensions
     val listState = rememberLazyListState()
-    listState.ResetScrollOnChange(state.trackSort)
+    listState.LockScrollOnChange(state.trackSort)
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
 
     var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
@@ -356,6 +357,7 @@ private fun FolderDetailScreen(
                         ) { track ->
                             TrackRow(
                                 track = track,
+                                modifier = Modifier.animateItem(),
                                 selected = track.id in state.selectedTrackIds,
                                 selectionMode = state.isSelectionMode,
                                 playlists = state.playlists,

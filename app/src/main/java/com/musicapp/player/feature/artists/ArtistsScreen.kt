@@ -50,6 +50,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.LockScrollOnChange
 import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
@@ -103,7 +104,7 @@ private fun ArtistsScreen(
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    listState.ResetScrollOnChange(state.sort)
+    listState.LockScrollOnChange(state.sort)
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
     val isTextSort = state.sort.field == ArtistSortField.NAME
     val sections = remember(state.artists, isTextSort, state.sort.direction) {
@@ -192,6 +193,7 @@ private fun ArtistsScreen(
                     items(displayArtists, key = { it.id.name }) { artist ->
                         ArtistRow(
                             artist = artist,
+                            modifier = Modifier.animateItem(),
                             onClick = { onArtistClick(artist.id) },
                         )
                     }
@@ -312,10 +314,11 @@ private fun ArtistSortField.labelRes(): Int =
 private fun ArtistRow(
     artist: ArtistSummary,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
     Row(
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
             .heightIn(min = dimensions.minimumTouchTarget)
             .clip(MusicTheme.shapes.small)
             .clickable(onClick = onClick)

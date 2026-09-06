@@ -55,6 +55,7 @@ import androidx.compose.material3.VerticalDivider
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
+import com.musicapp.player.core.designsystem.component.LockScrollOnChange
 import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import com.musicapp.player.core.designsystem.component.SelectionBarAction
 import com.musicapp.player.core.designsystem.component.SelectionBottomBar
@@ -272,7 +273,7 @@ fun TracksScreen(
             }
         }
     val listState = rememberLazyListState()
-    listState.ResetScrollOnChange(state.sort)
+    listState.LockScrollOnChange(state.sort)
     val sections = remember(filteredTracks, state.sections, isSearching, state.sort.field, state.sort.direction) {
         if (isSearching) {
             groupTracksIntoSections(filteredTracks, state.sort.field, state.sort.direction)
@@ -654,6 +655,7 @@ private fun LazyListScope.trackItems(
     items(tracks, key = { track -> "${track.id.volumeName}:${track.id.mediaStoreId}" }) { track ->
         TrackRow(
             track = track,
+            modifier = Modifier.animateItem(),
             selected = track.id in selectedIds,
             selectionMode = selectionMode,
             playlists = playlists,

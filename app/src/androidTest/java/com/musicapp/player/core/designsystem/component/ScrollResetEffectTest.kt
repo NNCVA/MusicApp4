@@ -8,7 +8,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -35,7 +37,7 @@ class ScrollResetEffectTest {
 
         composeRule.setContent {
             val listState = rememberLazyListState(initialFirstVisibleItemIndex = 5)
-            listState.ResetScrollOnChange(key)
+            listState.LockScrollOnChange(key)
             capturedState = listState
 
             LazyColumn(
@@ -55,13 +57,46 @@ class ScrollResetEffectTest {
     }
 
     @Test
-    fun lazyListState_resetsToTopWhenKeyChanges() {
+    fun lazyListState_locksViewportAtTopWhenKeyChanges() {
+        var key by mutableStateOf("sort_title")
+        lateinit var capturedState: LazyListState
+
+        composeRule.setContent {
+            val listState = rememberLazyListState(initialFirstVisibleItemIndex = 0)
+            listState.LockScrollOnChange(key)
+            capturedState = listState
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(50) { index ->
+                    Box(modifier = Modifier.height(50.dp)) {
+                        Text(text = "Item $index")
+                    }
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertEquals(0, capturedState.firstVisibleItemIndex)
+
+        composeRule.runOnIdle {
+            key = "sort_artist"
+        }
+        composeRule.waitForIdle()
+
+        assertEquals(0, capturedState.firstVisibleItemIndex)
+    }
+
+    @Test
+    fun lazyListState_locksViewportWhenKeyChangesScrolled() {
         var key by mutableStateOf("sort_title")
         lateinit var capturedState: LazyListState
 
         composeRule.setContent {
             val listState = rememberLazyListState(initialFirstVisibleItemIndex = 10)
-            listState.ResetScrollOnChange(key)
+            listState.LockScrollOnChange(key)
             capturedState = listState
 
             LazyColumn(
@@ -84,17 +119,55 @@ class ScrollResetEffectTest {
         }
         composeRule.waitForIdle()
 
+        // Viewport position is preserved at index 10 rather than jumping to 0 or following key
+        assertEquals(10, capturedState.firstVisibleItemIndex)
+    }
+
+    @Test
+    fun lazyListState_preventsKeyTrackingDriftOnDataReorder() {
+        var key by mutableStateOf("asc")
+        var data by mutableStateOf((0 until 50).map { "item_$it" })
+        lateinit var capturedState: LazyListState
+
+        composeRule.setContent {
+            val listState = rememberLazyListState(initialFirstVisibleItemIndex = 0)
+            listState.LockScrollOnChange(key)
+            capturedState = listState
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(data, key = { it }) { item ->
+                    Box(modifier = Modifier.height(50.dp)) {
+                        Text(text = item)
+                    }
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertEquals(0, capturedState.firstVisibleItemIndex)
+
+        // Reverse data order so item_0 moves to the end (index 49)
+        composeRule.runOnIdle {
+            key = "desc"
+            data = data.reversed()
+        }
+        composeRule.waitForIdle()
+
+        // LockScrollOnChange prevents LazyColumn from drifting to index 49 to follow "item_0"
         assertEquals(0, capturedState.firstVisibleItemIndex)
     }
 
     @Test
-    fun lazyGridState_resetsToTopWhenKeyChanges() {
+    fun lazyGridState_locksViewportWhenKeyChanges() {
         var key by mutableStateOf("sort_title")
         lateinit var capturedState: LazyGridState
 
         composeRule.setContent {
             val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = 8)
-            gridState.ResetScrollOnChange(key)
+            gridState.LockScrollOnChange(key)
             capturedState = gridState
 
             LazyVerticalGrid(
@@ -115,6 +188,39 @@ class ScrollResetEffectTest {
 
         composeRule.runOnIdle {
             key = "sort_year"
+        }
+        composeRule.waitForIdle()
+
+        assertEquals(8, capturedState.firstVisibleItemIndex)
+    }
+
+    @Test
+    fun lazyListState_resetsToExplicitItemIndexWhenRequested() {
+        var key by mutableStateOf("sort_title")
+        lateinit var capturedState: LazyListState
+
+        composeRule.setContent {
+            val listState = rememberLazyListState(initialFirstVisibleItemIndex = 15)
+            listState.ResetScrollOnChange(key, itemIndex = 0)
+            capturedState = listState
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(50) { index ->
+                    Box(modifier = Modifier.height(50.dp)) {
+                        Text(text = "Item $index")
+                    }
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertEquals(15, capturedState.firstVisibleItemIndex)
+
+        composeRule.runOnIdle {
+            key = "sort_artist"
         }
         composeRule.waitForIdle()
 

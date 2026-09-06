@@ -43,6 +43,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuDivider
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.LockScrollOnChange
 import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -127,9 +128,9 @@ private fun AlbumsScreen(
     val coroutineScope = rememberCoroutineScope()
     val isYearSort = state.sort.field == AlbumSortField.RELEASE_YEAR
     val gridState = rememberLazyGridState()
-    gridState.ResetScrollOnChange(state.sort)
+    gridState.LockScrollOnChange(state.sort)
     val listState = rememberLazyListState()
-    listState.ResetScrollOnChange(state.sort)
+    listState.LockScrollOnChange(state.sort)
     val gridOverscrollEffect = rememberBounceOverscrollEffect(gridState)
     val listOverscrollEffect = rememberBounceOverscrollEffect(listState)
     val yearGroups = remember(state.albums, isYearSort) {
@@ -223,6 +224,7 @@ private fun AlbumsScreen(
                         items(group.albums, key = { it.key }) { album ->
                             AlbumListRow(
                                 album = album,
+                                modifier = Modifier.animateItem(),
                                 onClick = { onAlbumClick(album) },
                             )
                         }
@@ -247,6 +249,7 @@ private fun AlbumsScreen(
                     items(state.albums, key = { it.key }) { album ->
                         AlbumCard(
                             album = album,
+                            modifier = Modifier.animateItem(),
                             onClick = { onAlbumClick(album) },
                         )
                     }
@@ -305,6 +308,7 @@ private fun AlbumsHeader(
 private fun AlbumCard(
     album: AlbumSummary,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
     val cardShape = when (dimensions.windowWidthTier) {
@@ -314,7 +318,7 @@ private fun AlbumCard(
         -> MusicTheme.shapes.large
     }
     Column(
-        modifier = Modifier.fillMaxWidth().clip(cardShape).clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth().clip(cardShape).clickable(onClick = onClick),
     ) {
         AlbumArtwork(
             album = album,

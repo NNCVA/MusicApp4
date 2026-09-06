@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.nonInteractiveScrollbar
+import com.musicapp.player.core.designsystem.component.LockScrollOnChange
 import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import com.musicapp.player.core.designsystem.component.SelectionBarAction
 import com.musicapp.player.core.designsystem.component.SelectionBottomBar
@@ -267,7 +268,7 @@ fun PlaylistDetailScreen(
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    listState.ResetScrollOnChange(state.sort)
+    listState.LockScrollOnChange(state.sort)
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
 
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
@@ -571,6 +572,7 @@ fun PlaylistDetailScreen(
                         items(section.tracks, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { track ->
                             PlaylistTrackRowItem(
                                 track = track,
+                                modifier = Modifier.animateItem(),
                                 selected = track.id in state.selectedTrackIds,
                                 selectionMode = state.isSelectionMode,
                                 allPlaylists = state.allPlaylists,
@@ -593,6 +595,7 @@ fun PlaylistDetailScreen(
                     items(state.displayTracks, key = { "${it.id.volumeName}:${it.id.mediaStoreId}" }) { track ->
                         PlaylistTrackRowItem(
                             track = track,
+                            modifier = Modifier.animateItem(),
                             selected = track.id in state.selectedTrackIds,
                             selectionMode = state.isSelectionMode,
                             allPlaylists = state.allPlaylists,
@@ -850,12 +853,14 @@ private fun PlaylistTrackRowItem(
     onAddToQueue: () -> Unit,
     onAddToOtherPlaylist: () -> Unit,
     onShowTrackInfo: () -> Unit,
+    modifier: Modifier = Modifier,
     onNavigateToArtist: (String) -> Unit = {},
     onNavigateToAlbum: (AlbumId) -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
     TrackRow(
         track = track,
+        modifier = modifier,
         selected = selected,
         selectionMode = selectionMode,
         onClick = onClick,
