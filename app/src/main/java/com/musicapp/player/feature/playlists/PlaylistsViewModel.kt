@@ -15,6 +15,8 @@ import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
 import com.musicapp.player.data.repository.PlaylistTrackChangeResult
+import com.musicapp.player.data.sort.InMemorySortPreferencesRepository
+import com.musicapp.player.data.sort.SortPreferencesRepository
 import com.musicapp.player.feature.tracks.batch.BatchTrackAction
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
@@ -113,6 +115,7 @@ class PlaylistDetailViewModel internal constructor(
     private val playbackController: PlaybackControllerFacade,
     private val batchActionExecutor: BatchTrackActionExecutor,
     private val trackMetadataRepository: TrackMetadataRepository,
+    private val sortPreferencesRepository: SortPreferencesRepository = InMemorySortPreferencesRepository(),
     private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
     @Inject
@@ -123,6 +126,7 @@ class PlaylistDetailViewModel internal constructor(
         playbackController: PlaybackControllerFacade,
         batchActionExecutor: BatchTrackActionExecutor,
         trackMetadataRepository: TrackMetadataRepository,
+        sortPreferencesRepository: SortPreferencesRepository,
     ) : this(
         playlistRepository = playlistRepository,
         mediaLibraryRepository = mediaLibraryRepository,
@@ -130,6 +134,7 @@ class PlaylistDetailViewModel internal constructor(
         playbackController = playbackController,
         batchActionExecutor = batchActionExecutor,
         trackMetadataRepository = trackMetadataRepository,
+        sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = Dispatchers.Default,
     )
 
@@ -138,6 +143,7 @@ class PlaylistDetailViewModel internal constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         useCase: PlaylistUseCase,
         playbackController: PlaybackControllerFacade,
+        sortPreferencesRepository: SortPreferencesRepository = InMemorySortPreferencesRepository(),
     ) : this(
         playlistRepository = playlistRepository,
         mediaLibraryRepository = mediaLibraryRepository,
@@ -158,11 +164,11 @@ class PlaylistDetailViewModel internal constructor(
                 isReadable = true,
             )
         },
+        sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = Dispatchers.Main.immediate,
     )
 
     private val selectedPlaylistId = MutableStateFlow<PlaylistId?>(null)
-    private val sort = MutableStateFlow(PlaylistTrackSort.DEFAULT)
     private val searchQuery = MutableStateFlow("")
     private val isSearching = MutableStateFlow(false)
     private val isSelectionMode = MutableStateFlow(false)
@@ -181,7 +187,7 @@ class PlaylistDetailViewModel internal constructor(
             playlistRepository.observePlaylists(),
             mediaLibraryRepository.observeTracks(),
             selectedPlaylistId,
-            sort,
+            sortPreferencesRepository.playlistTrackSort,
             searchQuery,
             isSearching,
             isSelectionMode,
@@ -271,21 +277,9 @@ class PlaylistDetailViewModel internal constructor(
     }
 
     fun selectSort(field: PlaylistTrackSortField) {
-        sort.update { current ->
-            if (current.field == field) {
-                val nextDirection =
-                    if (current.direction == PlaylistTrackSortDirection.ASCENDING) {
-                        PlaylistTrackSortDirection.DESCENDING
-                    } else {
-                        PlaylistTrackSortDirection.ASCENDING
-                    }
-                current.copy(direction = nextDirection)
-            } else {
-                PlaylistTrackSort(
-                    field = field,
-                    direction = PlaylistTrackSortDirection.ASCENDING,
-                )
-            }
+        val nextSort = uiState.value.sort.next(field)
+        viewModelScope.launch {
+            sortPreferencesRepository.setPlaylistTrackSort(nextSort)
         }
     }
 

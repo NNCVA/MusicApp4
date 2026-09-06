@@ -46,7 +46,7 @@ class ArtistsViewModelTest {
         val first = track(1, dateModifiedMs = 10, artistName = "Jay Chou")
         val second = track(2, dateModifiedMs = 20, artistName = "Jay Chou")
         val third = track(3, dateModifiedMs = 30, artistName = "Eason Chan")
-        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(first, second, third)), computationDispatcher = dispatcher)
+        val viewModel = subject(listOf(first, second, third))
         collectState(viewModel)
         advanceUntilIdle()
 
@@ -63,7 +63,7 @@ class ArtistsViewModelTest {
     @Test
     fun `artists uiState is immediately loaded and exposes stable summaries`() = runTest(dispatcher) {
         val track = track(1, dateModifiedMs = 10, artistName = "Solo Artist")
-        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(track)), computationDispatcher = dispatcher)
+        val viewModel = subject(listOf(track))
         collectState(viewModel)
         advanceUntilIdle()
 
@@ -78,7 +78,7 @@ class ArtistsViewModelTest {
         val t1 = track(1, dateModifiedMs = 10, artistName = "Zulu")
         val t2 = track(2, dateModifiedMs = 20, artistName = "Alpha")
         val t3 = track(3, dateModifiedMs = 30, artistName = "Beta")
-        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(t1, t2, t3)), computationDispatcher = dispatcher)
+        val viewModel = subject(listOf(t1, t2, t3))
         collectState(viewModel)
         advanceUntilIdle()
 
@@ -93,7 +93,7 @@ class ArtistsViewModelTest {
         val b1 = track(3, dateModifiedMs = 30, artistName = "Alpha")
         val c1 = track(4, dateModifiedMs = 40, artistName = "Beta")
         val c2 = track(5, dateModifiedMs = 50, artistName = "Beta")
-        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(a1, a2, b1, c1, c2)), computationDispatcher = dispatcher)
+        val viewModel = subject(listOf(a1, a2, b1, c1, c2))
         collectState(viewModel)
         advanceUntilIdle()
 
@@ -109,7 +109,7 @@ class ArtistsViewModelTest {
         val a1 = track(1, dateModifiedMs = 10, artistName = "Zulu")
         val a2 = track(2, dateModifiedMs = 20, artistName = "Zulu")
         val b1 = track(3, dateModifiedMs = 30, artistName = "Alpha")
-        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(a1, a2, b1)), computationDispatcher = dispatcher)
+        val viewModel = subject(listOf(a1, a2, b1))
         collectState(viewModel)
         advanceUntilIdle()
 
@@ -126,7 +126,7 @@ class ArtistsViewModelTest {
     fun `selectSort with NAME toggles between ascending and descending`() = runTest(dispatcher) {
         val t1 = track(1, dateModifiedMs = 10, artistName = "Alpha")
         val t2 = track(2, dateModifiedMs = 20, artistName = "Beta")
-        val viewModel = ArtistsViewModel(FakeMediaLibraryRepository(listOf(t1, t2)), computationDispatcher = dispatcher)
+        val viewModel = subject(listOf(t1, t2))
         collectState(viewModel)
         advanceUntilIdle()
 
@@ -138,26 +138,26 @@ class ArtistsViewModelTest {
     }
 
     @Test
-    fun `artists sort restored from savedStateHandle correctly`() = runTest(dispatcher) {
-        val handle = SavedStateHandle(
-            mapOf(
-                "artists.sort.field" to ArtistSortField.TRACK_COUNT.name,
-                "artists.sort.direction" to CategorySortDirection.ASCENDING.name,
-            )
+    fun `artists sort observed from sortPreferencesRepository correctly`() = runTest(dispatcher) {
+        val sortRepo = com.musicapp.player.fakes.FakeSortPreferencesRepository(
+            initialArtistSort = ArtistSort(ArtistSortField.TRACK_COUNT, CategorySortDirection.ASCENDING),
         )
         val t1 = track(1, dateModifiedMs = 10, artistName = "Zulu")
         val t2 = track(2, dateModifiedMs = 20, artistName = "Zulu")
         val t3 = track(3, dateModifiedMs = 30, artistName = "Alpha")
-        val viewModel = ArtistsViewModel(
-            mediaLibraryRepository = FakeMediaLibraryRepository(listOf(t1, t2, t3)),
-            savedStateHandle = handle,
-            computationDispatcher = dispatcher,
+        val viewModel = subject(
+            tracks = listOf(t1, t2, t3),
+            sortPreferencesRepository = sortRepo,
         )
         collectState(viewModel)
         advanceUntilIdle()
 
         assertEquals(ArtistSort(ArtistSortField.TRACK_COUNT, CategorySortDirection.ASCENDING), viewModel.uiState.value.sort)
         assertEquals(listOf("Alpha", "Zulu"), viewModel.uiState.value.artists.map { it.displayName })
+
+        viewModel.selectSort(ArtistSortField.NAME)
+        advanceUntilIdle()
+        assertEquals(ArtistSortField.NAME, sortRepo.artistSort.value.field)
     }
 
     @Test
@@ -170,6 +170,7 @@ class ArtistsViewModelTest {
             val detailVm = ArtistDetailViewModel(
                 mediaLibraryRepository = fakeRepo,
                 playbackController = NoOpPlaybackController(),
+                sortPreferencesRepository = com.musicapp.player.fakes.FakeSortPreferencesRepository(),
             )
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detailVm.uiState.collect {} }
             detailVm.open(ArtistId("周杰伦"))
@@ -194,6 +195,7 @@ class ArtistsViewModelTest {
             val detailVm = ArtistDetailViewModel(
                 mediaLibraryRepository = fakeRepo,
                 playbackController = NoOpPlaybackController(),
+                sortPreferencesRepository = com.musicapp.player.fakes.FakeSortPreferencesRepository(),
             )
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detailVm.uiState.collect {} }
             detailVm.open(ArtistId("queen"))
@@ -204,6 +206,27 @@ class ArtistsViewModelTest {
             assertEquals(listOf(track.id), state.tracks.map { it.id })
         }
 
+    @Test
+    fun `artist detail selectSort updates state and persists to sortPreferencesRepository`() = runTest(dispatcher) {
+        val track = track(1, dateModifiedMs = 10, artistName = "Solo")
+        val fakeRepo = FakeMediaLibraryRepository(listOf(track))
+        val sortRepo = com.musicapp.player.fakes.FakeSortPreferencesRepository()
+        val detailVm = ArtistDetailViewModel(
+            mediaLibraryRepository = fakeRepo,
+            playbackController = NoOpPlaybackController(),
+            sortPreferencesRepository = sortRepo,
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detailVm.uiState.collect {} }
+        detailVm.open(ArtistId("solo"))
+        advanceUntilIdle()
+
+        detailVm.selectSort(com.musicapp.player.feature.category.CategoryTrackSortField.TITLE)
+        advanceUntilIdle()
+
+        assertEquals(com.musicapp.player.feature.category.CategoryTrackSortField.TITLE, detailVm.uiState.value.sort.field)
+        assertEquals(com.musicapp.player.feature.category.CategoryTrackSortField.TITLE, sortRepo.artistTrackSort.value.field)
+    }
+
     private fun kotlinx.coroutines.test.TestScope.collectState(viewModel: ArtistsViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         testScheduler.runCurrent()
@@ -211,9 +234,10 @@ class ArtistsViewModelTest {
 
     private fun subject(
         tracks: List<Track>,
-        artworkRepository: ArtworkRepository,
+        sortPreferencesRepository: com.musicapp.player.data.sort.SortPreferencesRepository = com.musicapp.player.fakes.FakeSortPreferencesRepository(),
     ) = ArtistsViewModel(
         mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
+        sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = dispatcher,
     )
 

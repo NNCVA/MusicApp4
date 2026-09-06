@@ -17,6 +17,8 @@ import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.FakePlaylistRepository
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
+import com.musicapp.player.data.sort.InMemorySortPreferencesRepository
+import com.musicapp.player.data.sort.SortPreferencesRepository
 import com.musicapp.player.feature.category.CategoryPlaybackContextFactory
 import com.musicapp.player.feature.category.CategorySortDirection
 import com.musicapp.player.feature.category.CategoryTrackSort
@@ -76,26 +78,28 @@ data class ArtistDetailUiState(
 class ArtistsViewModel internal constructor(
     mediaLibraryRepository: MediaLibraryRepository,
     private val savedStateHandle: SavedStateHandle,
+    private val sortPreferencesRepository: SortPreferencesRepository,
     private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
     @Inject
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         savedStateHandle: SavedStateHandle,
-    ) : this(mediaLibraryRepository, savedStateHandle, Dispatchers.Default)
+        sortPreferencesRepository: SortPreferencesRepository,
+    ) : this(mediaLibraryRepository, savedStateHandle, sortPreferencesRepository, Dispatchers.Default)
 
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         savedStateHandle: SavedStateHandle,
         artworkRepository: ArtworkRepository,
-    ) : this(mediaLibraryRepository, savedStateHandle, Dispatchers.Default)
+        sortPreferencesRepository: SortPreferencesRepository,
+    ) : this(mediaLibraryRepository, savedStateHandle, sortPreferencesRepository, Dispatchers.Default)
 
     internal constructor(
         mediaLibraryRepository: MediaLibraryRepository,
+        sortPreferencesRepository: SortPreferencesRepository,
         computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    ) : this(mediaLibraryRepository, SavedStateHandle(), computationDispatcher)
-
-    private val sort = MutableStateFlow(restoreArtistSort(savedStateHandle))
+    ) : this(mediaLibraryRepository, SavedStateHandle(), sortPreferencesRepository, computationDispatcher)
 
     private val artists =
         mediaLibraryRepository.observeTracks()
@@ -103,7 +107,7 @@ class ArtistsViewModel internal constructor(
             .flowOn(computationDispatcher)
 
     val uiState: StateFlow<ArtistsUiState> =
-        combine(artists, sort) { rawArtists, currentSort ->
+        combine(artists, sortPreferencesRepository.artistSort) { rawArtists, currentSort ->
             ArtistsUiState(
                 artists = sortArtists(rawArtists, currentSort),
                 sort = currentSort,
@@ -114,13 +118,14 @@ class ArtistsViewModel internal constructor(
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            ArtistsUiState(sort = sort.value, isLoaded = false),
+            ArtistsUiState(sort = sortPreferencesRepository.artistSort.value, isLoaded = false),
         )
 
     fun selectSort(field: ArtistSortField) {
-        sort.value = sort.value.next(field)
-        savedStateHandle[ARTIST_SORT_FIELD_KEY] = sort.value.field.name
-        savedStateHandle[ARTIST_SORT_DIRECTION_KEY] = sort.value.direction.name
+        val nextSort = uiState.value.sort.next(field)
+        viewModelScope.launch {
+            sortPreferencesRepository.setArtistSort(nextSort)
+        }
     }
 
     @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in Composable")
@@ -136,6 +141,7 @@ class ArtistDetailViewModel internal constructor(
     private val playlistRepository: PlaylistRepository,
     private val playlistUseCase: PlaylistUseCase,
     private val trackMetadataRepository: TrackMetadataRepository,
+    private val sortPreferencesRepository: SortPreferencesRepository,
     private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
     @Inject
@@ -145,18 +151,21 @@ class ArtistDetailViewModel internal constructor(
         playlistRepository: PlaylistRepository,
         playlistUseCase: PlaylistUseCase,
         trackMetadataRepository: TrackMetadataRepository,
+        sortPreferencesRepository: SortPreferencesRepository,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playbackController = playbackController,
         playlistRepository = playlistRepository,
         playlistUseCase = playlistUseCase,
         trackMetadataRepository = trackMetadataRepository,
+        sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = Dispatchers.Default,
     )
 
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         playbackController: PlaybackControllerFacade,
+        sortPreferencesRepository: SortPreferencesRepository = InMemorySortPreferencesRepository(),
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playbackController = playbackController,
@@ -166,11 +175,11 @@ class ArtistDetailViewModel internal constructor(
             Clock { System.currentTimeMillis() },
         ),
         trackMetadataRepository = DefaultArtistTrackMetadataRepository,
+        sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = Dispatchers.Unconfined,
     )
 
     private val selectedArtistId = MutableStateFlow<ArtistId?>(null)
-    private val sort = MutableStateFlow(CategoryTrackSort(field = CategoryTrackSortField.ALBUM))
     private val infoTrack = MutableStateFlow<Track?>(null)
     private val infoMetadata = MutableStateFlow<AdvancedTrackMetadata?>(null)
     private val isInfoLoading = MutableStateFlow(false)
@@ -184,7 +193,7 @@ class ArtistDetailViewModel internal constructor(
     private val baseUiState = combine(
         mediaLibraryRepository.observeTracks(),
         selectedArtistId,
-        sort,
+        sortPreferencesRepository.artistTrackSort,
         playlists,
     ) { tracks, artistId, currentSort, currentPlaylists ->
             val matching = artistId?.let { selected ->
@@ -231,7 +240,10 @@ class ArtistDetailViewModel internal constructor(
     }
 
     fun selectSort(field: CategoryTrackSortField) {
-        sort.value = sort.value.next(field)
+        val nextSort = uiState.value.sort.next(field)
+        viewModelScope.launch {
+            sortPreferencesRepository.setArtistTrackSort(nextSort)
+        }
     }
 
     fun playAll() = play(selectedTrackId = null)
@@ -341,15 +353,3 @@ private val trackIdentityComparator =
     compareBy<Track>({ it.id.volumeName }, { it.id.mediaStoreId })
 
 private const val STOP_TIMEOUT_MS = 5_000L
-private const val ARTIST_SORT_FIELD_KEY = "artists.sort.field"
-private const val ARTIST_SORT_DIRECTION_KEY = "artists.sort.direction"
-
-private fun restoreArtistSort(handle: SavedStateHandle): ArtistSort {
-    val field = handle.get<String>(ARTIST_SORT_FIELD_KEY)?.let { stored ->
-        ArtistSortField.entries.firstOrNull { it.name == stored }
-    } ?: ArtistSortField.NAME
-    val direction = handle.get<String>(ARTIST_SORT_DIRECTION_KEY)?.let { stored ->
-        CategorySortDirection.entries.firstOrNull { it.name == stored }
-    } ?: ArtistSort().next(field).let { if (field == ArtistSortField.NAME) ArtistSort().direction else it.direction }
-    return ArtistSort(field, direction)
-}

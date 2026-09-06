@@ -14,6 +14,8 @@ import com.musicapp.player.core.domain.model.ScanMode
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.settings.SettingsRepository
+import com.musicapp.player.data.sort.InMemorySortPreferencesRepository
+import com.musicapp.player.data.sort.SortPreferencesRepository
 import com.musicapp.player.data.sync.LibrarySyncState
 import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
 import com.musicapp.player.feature.settings.data.DataManagementAction
@@ -66,7 +68,23 @@ class SettingsViewModel @Inject constructor(
     private val pathRuleChangeCoordinator: PathRuleChangeCoordinator,
     private val dataManagementUseCase: DataManagementUseCase,
     private val syncController: SettingsSyncController,
+    private val sortPreferencesRepository: SortPreferencesRepository,
 ) : ViewModel() {
+    constructor(
+        settingsRepository: SettingsRepository,
+        mediaLibraryRepository: MediaLibraryRepository,
+        pathRuleChangeCoordinator: PathRuleChangeCoordinator,
+        dataManagementUseCase: DataManagementUseCase,
+        syncController: SettingsSyncController,
+    ) : this(
+        settingsRepository = settingsRepository,
+        mediaLibraryRepository = mediaLibraryRepository,
+        pathRuleChangeCoordinator = pathRuleChangeCoordinator,
+        dataManagementUseCase = dataManagementUseCase,
+        syncController = syncController,
+        sortPreferencesRepository = InMemorySortPreferencesRepository(),
+    )
+
     private val controls = MutableStateFlow(SettingsControls())
 
     val uiState: StateFlow<SettingsUiState> =
@@ -147,6 +165,7 @@ class SettingsViewModel @Inject constructor(
                             val scanModeChanged =
                                 settingsRepository.settings.value.scanMode != AppSettings().scanMode
                             settingsRepository.reset()
+                            sortPreferencesRepository.reset()
                             if (scanModeChanged) pathRuleChangeCoordinator.markScanPolicyChanged()
                         }
                         SettingsConfirmation.CLEAR_HISTORY ->

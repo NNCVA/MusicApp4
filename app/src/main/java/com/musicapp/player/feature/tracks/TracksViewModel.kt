@@ -17,6 +17,7 @@ import com.musicapp.player.core.metadata.TrackMetadataRepository
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
+import com.musicapp.player.data.sort.SortPreferencesRepository
 import com.musicapp.player.feature.tracks.batch.BatchTrackAction
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
@@ -62,10 +63,24 @@ enum class TrackSortDirection {
 }
 
 data class TrackSort(
-    val field: TrackSortField,
-    val direction: TrackSortDirection,
+    val field: TrackSortField = TrackSortField.TITLE,
+    val direction: TrackSortDirection = TrackSortDirection.ASCENDING,
 ) {
+    fun next(field: TrackSortField): TrackSort =
+        if (this.field == field) {
+            val nextDirection =
+                if (direction == TrackSortDirection.ASCENDING) {
+                    TrackSortDirection.DESCENDING
+                } else {
+                    TrackSortDirection.ASCENDING
+                }
+            copy(direction = nextDirection)
+        } else {
+            defaultFor(field)
+        }
+
     companion object {
+        val DEFAULT = TrackSort(TrackSortField.TITLE, TrackSortDirection.ASCENDING)
         fun defaultFor(field: TrackSortField): TrackSort =
             TrackSort(
                 field = field,
@@ -107,6 +122,7 @@ class TracksViewModel internal constructor(
     private val batchActionExecutor: BatchTrackActionExecutor,
     private val artworkRepository: ArtworkRepository,
     private val trackMetadataRepository: TrackMetadataRepository,
+    private val sortPreferencesRepository: SortPreferencesRepository,
     private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
     @Inject
@@ -119,6 +135,7 @@ class TracksViewModel internal constructor(
         batchActionExecutor: BatchTrackActionExecutor,
         artworkRepository: ArtworkRepository,
         trackMetadataRepository: TrackMetadataRepository,
+        sortPreferencesRepository: SortPreferencesRepository,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playlistRepository = playlistRepository,
@@ -128,6 +145,7 @@ class TracksViewModel internal constructor(
         batchActionExecutor = batchActionExecutor,
         artworkRepository = artworkRepository,
         trackMetadataRepository = trackMetadataRepository,
+        sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = Dispatchers.Default,
     )
 
@@ -139,6 +157,7 @@ class TracksViewModel internal constructor(
         batchActionExecutor: BatchTrackActionExecutor,
         artworkRepository: ArtworkRepository,
         trackMetadataRepository: TrackMetadataRepository,
+        sortPreferencesRepository: SortPreferencesRepository,
         computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
@@ -149,10 +168,10 @@ class TracksViewModel internal constructor(
         batchActionExecutor = batchActionExecutor,
         artworkRepository = artworkRepository,
         trackMetadataRepository = trackMetadataRepository,
+        sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = computationDispatcher,
     )
 
-    private val sort = MutableStateFlow(restoreSort(savedStateHandle))
     private val isSelectionMode = MutableStateFlow(false)
     private val selectedTrackIds = MutableStateFlow<Set<TrackId>>(emptySet())
     private val batchResult = MutableStateFlow<BatchTrackActionResult?>(null)
@@ -174,7 +193,7 @@ class TracksViewModel internal constructor(
             .onStart { emit(emptyList()) }
 
     private val sortedTracksState =
-        combine(libraryState, sort) { library, currentSort ->
+        combine(libraryState, sortPreferencesRepository.trackSort) { library, currentSort ->
             val sortedTracks = library.tracks.sortedWithTrackSort(currentSort)
             val sections = groupTracksIntoSections(sortedTracks, currentSort.field, currentSort.direction)
             val sectionPositions = sectionStartPositions(sections, currentSort.direction)
@@ -236,27 +255,14 @@ class TracksViewModel internal constructor(
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = TracksUiState(sort = sort.value, isLibraryLoaded = false),
+            initialValue = TracksUiState(sort = sortPreferencesRepository.trackSort.value, isLibraryLoaded = false),
         )
 
     fun selectSort(field: TrackSortField) {
-        val current = sort.value
-        val updated =
-            if (current.field == field) {
-                current.copy(
-                    direction =
-                        if (current.direction == TrackSortDirection.ASCENDING) {
-                            TrackSortDirection.DESCENDING
-                        } else {
-                            TrackSortDirection.ASCENDING
-                        },
-                )
-            } else {
-                TrackSort.defaultFor(field)
-            }
-        sort.value = updated
-        savedStateHandle[SORT_FIELD_KEY] = updated.field.name
-        savedStateHandle[SORT_DIRECTION_KEY] = updated.direction.name
+        val updated = uiState.value.sort.next(field)
+        viewModelScope.launch {
+            sortPreferencesRepository.setTrackSort(updated)
+        }
     }
 
     fun startSelection(trackId: TrackId) {
@@ -461,19 +467,7 @@ class TracksViewModel internal constructor(
 
     private companion object {
         const val ARTWORK_TARGET_PX = 128
-        const val SORT_FIELD_KEY = "tracks.sort.field"
-        const val SORT_DIRECTION_KEY = "tracks.sort.direction"
         const val STOP_TIMEOUT_MS = 5_000L
-
-        fun restoreSort(handle: SavedStateHandle): TrackSort {
-            val field = handle.get<String>(SORT_FIELD_KEY)?.let { value ->
-                TrackSortField.entries.firstOrNull { it.name == value }
-            } ?: TrackSortField.TITLE
-            val direction = handle.get<String>(SORT_DIRECTION_KEY)?.let { value ->
-                TrackSortDirection.entries.firstOrNull { it.name == value }
-            } ?: TrackSort.defaultFor(field).direction
-            return TrackSort(field, direction)
-        }
     }
 }
 

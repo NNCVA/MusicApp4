@@ -73,6 +73,35 @@ class FolderDetailViewModelTest {
     }
 
     @Test
+    fun `selectTrackSort and selectFolderSort persist to sortPreferencesRepository`() = runTest(dispatcher) {
+        val tracks = listOf(
+            track(1, title = "Bravo", artist = "Alpha", dateAddedMs = 100, durationMs = 1_000),
+            track(2, title = "Alpha", artist = "Charlie", dateAddedMs = 300, durationMs = 3_000),
+        )
+        val sortRepo = com.musicapp.player.fakes.FakeSortPreferencesRepository()
+        val viewModel = FolderDetailViewModel(
+            mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
+            playbackController = NoOpPlaybackController(),
+            sortPreferencesRepository = sortRepo,
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Music"))
+        advanceUntilIdle()
+
+        viewModel.selectTrackSort(CategoryTrackSortField.DATE_ADDED)
+        advanceUntilIdle()
+        assertEquals(CategoryTrackSortField.DATE_ADDED, viewModel.uiState.value.trackSort.field)
+        assertEquals(CategoryTrackSortField.DATE_ADDED, sortRepo.folderTrackSort.value.field)
+
+        viewModel.selectFolderSort(FolderSortField.TRACK_COUNT)
+        advanceUntilIdle()
+        assertEquals(FolderSortField.TRACK_COUNT, viewModel.uiState.value.folderSort.field)
+        assertEquals(FolderSortField.TRACK_COUNT, sortRepo.folderSort.value.field)
+
+        collection.cancel()
+    }
+
+    @Test
     fun `volume root without direct tracks is browser only and uses friendly title`() = runTest(dispatcher) {
         val viewModel =
             FolderDetailViewModel(

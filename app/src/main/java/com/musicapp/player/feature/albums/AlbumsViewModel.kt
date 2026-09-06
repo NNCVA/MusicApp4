@@ -12,6 +12,7 @@ import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.settings.SettingsRepository
+import com.musicapp.player.data.sort.SortPreferencesRepository
 import com.musicapp.player.feature.category.CategoryPlaybackContextFactory
 import com.musicapp.player.feature.category.CategoryTrackSort
 import com.musicapp.player.feature.category.CategoryTrackSortField
@@ -81,6 +82,7 @@ class AlbumsViewModel internal constructor(
     private val mediaLibraryRepository: MediaLibraryRepository,
     private val savedStateHandle: SavedStateHandle,
     private val settingsRepository: SettingsRepository,
+    private val sortPreferencesRepository: SortPreferencesRepository,
     private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     @Inject
@@ -89,10 +91,12 @@ class AlbumsViewModel internal constructor(
         savedStateHandle: SavedStateHandle,
         artworkRepository: ArtworkRepository,
         settingsRepository: SettingsRepository,
+        sortPreferencesRepository: SortPreferencesRepository,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         savedStateHandle = savedStateHandle,
         settingsRepository = settingsRepository,
+        sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = Dispatchers.Default,
     )
 
@@ -101,18 +105,18 @@ class AlbumsViewModel internal constructor(
         savedStateHandle: SavedStateHandle,
         artworkRepository: ArtworkRepository,
         settingsRepository: SettingsRepository,
+        sortPreferencesRepository: SortPreferencesRepository,
         computationDispatcher: CoroutineDispatcher,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         savedStateHandle = savedStateHandle,
         settingsRepository = settingsRepository,
+        sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = computationDispatcher,
     )
 
-    private val sort = MutableStateFlow(restoreAlbumSort(savedStateHandle))
-
     val uiState: StateFlow<AlbumsUiState> =
-        combine(mediaLibraryRepository.observeTracks(), sort, settingsRepository.settings) { tracks, currentSort, settings ->
+        combine(mediaLibraryRepository.observeTracks(), sortPreferencesRepository.albumSort, settingsRepository.settings) { tracks, currentSort, settings ->
             AlbumsUiState(
                 albums = AlbumGrouping.sorted(AlbumGrouping.group(tracks), currentSort),
                 sort = currentSort,
@@ -124,13 +128,14 @@ class AlbumsViewModel internal constructor(
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            AlbumsUiState(sort = sort.value, columnCount = settingsRepository.settings.value.albumGridColumns, isLoaded = false),
+            AlbumsUiState(sort = sortPreferencesRepository.albumSort.value, columnCount = settingsRepository.settings.value.albumGridColumns, isLoaded = false),
         )
 
     fun selectSort(field: AlbumSortField) {
-        sort.value = sort.value.next(field)
-        savedStateHandle[ALBUM_SORT_FIELD_KEY] = sort.value.field.name
-        savedStateHandle[ALBUM_SORT_DIRECTION_KEY] = sort.value.direction.name
+        val nextSort = uiState.value.sort.next(field)
+        viewModelScope.launch {
+            sortPreferencesRepository.setAlbumSort(nextSort)
+        }
     }
 
     fun selectColumnCount(columns: Int) {
@@ -441,15 +446,3 @@ class AlbumDetailViewModel internal constructor(
 
 private const val STOP_TIMEOUT_MS = 5_000L
 private const val ALBUM_ARTWORK_TARGET_PX = 512
-private const val ALBUM_SORT_FIELD_KEY = "albums.sort.field"
-private const val ALBUM_SORT_DIRECTION_KEY = "albums.sort.direction"
-
-private fun restoreAlbumSort(handle: SavedStateHandle): AlbumSort {
-    val field = handle.get<String>(ALBUM_SORT_FIELD_KEY)?.let { stored ->
-        AlbumSortField.entries.firstOrNull { it.name == stored }
-    } ?: AlbumSortField.TITLE
-    val direction = handle.get<String>(ALBUM_SORT_DIRECTION_KEY)?.let { stored ->
-        com.musicapp.player.feature.category.CategorySortDirection.entries.firstOrNull { it.name == stored }
-    } ?: AlbumSort().next(field).let { if (field == AlbumSortField.TITLE) AlbumSort().direction else it.direction }
-    return AlbumSort(field, direction)
-}

@@ -18,6 +18,7 @@ import com.musicapp.player.feature.tracks.batch.BatchTrackAction
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import com.musicapp.player.feature.tracks.batch.DefaultBatchTrackActionExecutor
+import com.musicapp.player.fakes.FakeSortPreferencesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -104,6 +105,44 @@ class PlaylistDetailViewModelTest {
         viewModel.selectSort(PlaylistTrackSortField.DEFAULT)
         advanceUntilIdle()
         assertEquals(listOf(trackC.id, trackA.id, trackB.id), viewModel.uiState.value.displayTracks.map(Track::id))
+
+        collection.cancel()
+    }
+
+    @Test
+    fun `view model persists sort preference changes`() = runTest(dispatcher) {
+        val playlist = Playlist(
+            id = PlaylistId(1),
+            displayName = "Favorites",
+            normalizedName = "favorites",
+            trackIds = emptyList(),
+            createdAtMs = 1000L,
+        )
+        val playlistRepo = FakePlaylistRepository(initialPlaylists = listOf(playlist))
+        val mediaRepo = FakeMediaLibraryRepository(emptyList())
+        val sortPreferencesRepo = FakeSortPreferencesRepository()
+        val viewModel = PlaylistDetailViewModel(
+            playlistRepository = playlistRepo,
+            mediaLibraryRepository = mediaRepo,
+            useCase = PlaylistUseCase(playlistRepo, Clock { 10 }),
+            playbackController = DetailRecordingPlaybackController(),
+            sortPreferencesRepository = sortPreferencesRepo,
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(playlist.id)
+        advanceUntilIdle()
+
+        viewModel.selectSort(PlaylistTrackSortField.ARTIST)
+        advanceUntilIdle()
+
+        assertEquals(
+            PlaylistTrackSort(field = PlaylistTrackSortField.ARTIST, direction = PlaylistTrackSortDirection.ASCENDING),
+            sortPreferencesRepo.playlistTrackSort.value,
+        )
+        assertEquals(
+            PlaylistTrackSort(field = PlaylistTrackSortField.ARTIST, direction = PlaylistTrackSortDirection.ASCENDING),
+            viewModel.uiState.value.sort,
+        )
 
         collection.cancel()
     }

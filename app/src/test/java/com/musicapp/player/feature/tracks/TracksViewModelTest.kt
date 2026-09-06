@@ -181,7 +181,8 @@ class TracksViewModelTest {
                 track(2, title = "Alpha", artist = "Charlie", album = "Alpha", dateAddedMs = 20, durationMs = 1_000),
                 track(3, title = "Beta", artist = "Beta", album = "Charlie", dateAddedMs = 15, durationMs = 2_000),
             )
-        val first = subject(tracks, savedState = savedState)
+        val sortRepo = com.musicapp.player.fakes.FakeSortPreferencesRepository()
+        val first = subject(tracks, sortPreferencesRepository = sortRepo)
         collectState(first)
         assertEquals(listOf(2L, 3L, 1L), first.uiState.value.tracks.map { it.id.mediaStoreId })
         first.selectSort(TrackSortField.ARTIST)
@@ -215,7 +216,7 @@ class TracksViewModelTest {
                 .tracks.map { it.id.mediaStoreId },
         )
 
-        val restored = subject(tracks, savedState = savedState)
+        val restored = subject(tracks, sortPreferencesRepository = sortRepo)
         collectState(restored)
         assertEquals(TrackSort(TrackSortField.DURATION, TrackSortDirection.DESCENDING), restored.uiState.value.sort)
         assertEquals(listOf(1L, 3L, 2L), restored.uiState.value.tracks.map { it.id.mediaStoreId })
@@ -579,6 +580,7 @@ class TracksViewModelTest {
         batchActionExecutor: BatchTrackActionExecutor? = null,
         artworkRepository: ArtworkRepository = placeholderArtworkRepository,
         trackMetadataRepository: TrackMetadataRepository = placeholderTrackMetadataRepository,
+        sortPreferencesRepository: com.musicapp.player.data.sort.SortPreferencesRepository = com.musicapp.player.fakes.FakeSortPreferencesRepository(),
     ): TracksViewModel {
         val clock = FakeClock(123)
         return TracksViewModel(
@@ -596,6 +598,7 @@ class TracksViewModelTest {
                     ),
             artworkRepository = artworkRepository,
             trackMetadataRepository = trackMetadataRepository,
+            sortPreferencesRepository = sortPreferencesRepository,
             computationDispatcher = dispatcher,
         )
     }

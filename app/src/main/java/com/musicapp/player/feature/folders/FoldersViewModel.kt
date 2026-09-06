@@ -13,6 +13,8 @@ import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.FakePlaylistRepository
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
+import com.musicapp.player.data.sort.InMemorySortPreferencesRepository
+import com.musicapp.player.data.sort.SortPreferencesRepository
 import com.musicapp.player.feature.category.CategoryPlaybackContextFactory
 import com.musicapp.player.feature.category.CategorySortDirection
 import com.musicapp.player.feature.category.CategoryTrackSort
@@ -72,12 +74,14 @@ class FoldersViewModel @Inject constructor(
     mediaLibraryRepository: MediaLibraryRepository,
     private val volumeMetadataSource: FolderVolumeMetadataSource,
     private val playbackController: PlaybackControllerFacade,
+    private val sortPreferencesRepository: SortPreferencesRepository,
 ) : ViewModel() {
     val uiState: StateFlow<FoldersUiState> =
         combine(
             mediaLibraryRepository.observeTracks(),
             volumeMetadataSource.observe().catch { emit(emptyList()) },
-        ) { tracks, metadata ->
+            sortPreferencesRepository.folderSort,
+        ) { tracks, metadata, currentFolderSort ->
             val roots = FolderTree.build(tracks)
             val metadataByVolume = metadata.associateBy(FolderVolumeMetadata::volumeName)
             val volumeItems =
@@ -93,7 +97,7 @@ class FoldersViewModel @Inject constructor(
             FoldersUiState(
                 isLoaded = true,
                 volumes = volumeItems,
-                musicFolders = FolderTree.sorted(FolderTree.musicFolders(roots), FolderSort()),
+                musicFolders = FolderTree.sorted(FolderTree.musicFolders(roots), currentFolderSort),
             )
         }.stateIn(
             viewModelScope,
@@ -123,10 +127,12 @@ class FolderDetailViewModel @Inject constructor(
     private val playlistUseCase: PlaylistUseCase,
     private val trackMetadataRepository: TrackMetadataRepository,
     private val batchActionExecutor: BatchTrackActionExecutor,
+    private val sortPreferencesRepository: SortPreferencesRepository,
 ) : ViewModel() {
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         playbackController: PlaybackControllerFacade,
+        sortPreferencesRepository: SortPreferencesRepository = InMemorySortPreferencesRepository(),
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playbackController = playbackController,
@@ -140,12 +146,14 @@ class FolderDetailViewModel @Inject constructor(
             playbackController,
             com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() },
         ),
+        sortPreferencesRepository = sortPreferencesRepository,
     )
 
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         playbackController: PlaybackControllerFacade,
         volumeMetadataSource: FolderVolumeMetadataSource,
+        sortPreferencesRepository: SortPreferencesRepository = InMemorySortPreferencesRepository(),
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playbackController = playbackController,
@@ -159,12 +167,14 @@ class FolderDetailViewModel @Inject constructor(
             playbackController,
             com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() },
         ),
+        sortPreferencesRepository = sortPreferencesRepository,
     )
 
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         playbackController: PlaybackControllerFacade,
         batchActionExecutor: BatchTrackActionExecutor,
+        sortPreferencesRepository: SortPreferencesRepository = InMemorySortPreferencesRepository(),
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playbackController = playbackController,
@@ -173,11 +183,10 @@ class FolderDetailViewModel @Inject constructor(
         playlistUseCase = PlaylistUseCase(FakePlaylistRepository(), com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() }),
         trackMetadataRepository = DefaultFolderTrackMetadataRepository,
         batchActionExecutor = batchActionExecutor,
+        sortPreferencesRepository = sortPreferencesRepository,
     )
 
     private val selectedFolderId = MutableStateFlow<FolderId?>(null)
-    private val folderSort = MutableStateFlow(FolderSort())
-    private val trackSort = MutableStateFlow(CategoryTrackSort())
     private val infoTrack = MutableStateFlow<Track?>(null)
     private val infoMetadata = MutableStateFlow<AdvancedTrackMetadata?>(null)
     private val isInfoLoading = MutableStateFlow(false)
@@ -208,8 +217,8 @@ class FolderDetailViewModel @Inject constructor(
     val uiState: StateFlow<FolderDetailUiState> =
         combine(
             coreState,
-            folderSort,
-            trackSort,
+            sortPreferencesRepository.folderSort,
+            sortPreferencesRepository.folderTrackSort,
             playlistRepository.observePlaylists().onStart { emit(emptyList()) }.catch { emit(emptyList()) },
             combine(infoState, selectionState) { info, selection -> Pair(info, selection) },
         ) { (tracks, metadata, folderId), currentFolderSort, currentTrackSort, playlists, (info, selection) ->
@@ -260,11 +269,17 @@ class FolderDetailViewModel @Inject constructor(
     }
 
     fun selectFolderSort(field: FolderSortField) {
-        folderSort.value = folderSort.value.next(field)
+        val nextSort = uiState.value.folderSort.next(field)
+        viewModelScope.launch {
+            sortPreferencesRepository.setFolderSort(nextSort)
+        }
     }
 
     fun selectTrackSort(field: CategoryTrackSortField) {
-        trackSort.value = trackSort.value.next(field)
+        val nextSort = uiState.value.trackSort.next(field)
+        viewModelScope.launch {
+            sortPreferencesRepository.setFolderTrackSort(nextSort)
+        }
     }
 
     fun playAll() = play(selectedTrackId = null)

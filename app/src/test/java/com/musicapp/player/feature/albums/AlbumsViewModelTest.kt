@@ -82,6 +82,33 @@ class AlbumsViewModelTest {
     }
 
     @Test
+    fun `selectSort updates state and persists to sortPreferencesRepository`() = runTest(dispatcher) {
+        val sortRepo = com.musicapp.player.fakes.FakeSortPreferencesRepository()
+        val viewModel = subject(sortPreferencesRepository = sortRepo)
+        val collection = collectState(viewModel)
+        advanceUntilIdle()
+
+        viewModel.selectSort(AlbumSortField.TRACK_COUNT)
+        advanceUntilIdle()
+        assertEquals(AlbumSortField.TRACK_COUNT, viewModel.uiState.value.sort.field)
+        assertEquals(AlbumSortField.TRACK_COUNT, sortRepo.albumSort.value.field)
+
+        collection.cancel()
+    }
+
+    @Test
+    fun `sortPreferencesRepository initial albumSort is observed`() = runTest(dispatcher) {
+        val initialSort = AlbumSort(field = AlbumSortField.RELEASE_YEAR, direction = com.musicapp.player.feature.category.CategorySortDirection.DESCENDING)
+        val sortRepo = com.musicapp.player.fakes.FakeSortPreferencesRepository(initialAlbumSort = initialSort)
+        val viewModel = subject(sortPreferencesRepository = sortRepo)
+        val collection = collectState(viewModel)
+        advanceUntilIdle()
+
+        assertEquals(initialSort, viewModel.uiState.value.sort)
+        collection.cancel()
+    }
+
+    @Test
     fun `selectColumnCount updates state and persists to settings repository`() = runTest(dispatcher) {
         val settingsRepository = com.musicapp.player.data.repository.FakeSettingsRepository()
         val viewModel = subject(settingsRepository = settingsRepository)
@@ -258,10 +285,12 @@ class AlbumsViewModelTest {
         savedStateHandle: SavedStateHandle = SavedStateHandle(),
         artworkRepository: ArtworkRepository = RecordingArtworkRepository(),
         settingsRepository: com.musicapp.player.data.settings.SettingsRepository = com.musicapp.player.data.repository.FakeSettingsRepository(),
+        sortPreferencesRepository: com.musicapp.player.data.sort.SortPreferencesRepository = com.musicapp.player.fakes.FakeSortPreferencesRepository(),
     ) = AlbumsViewModel(
         mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
         savedStateHandle = savedStateHandle,
         settingsRepository = settingsRepository,
+        sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = dispatcher,
     )
 

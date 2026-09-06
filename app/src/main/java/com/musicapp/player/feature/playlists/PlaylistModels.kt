@@ -49,6 +49,22 @@ data class PlaylistTrackSort(
     val field: PlaylistTrackSortField = PlaylistTrackSortField.DEFAULT,
     val direction: PlaylistTrackSortDirection = PlaylistTrackSortDirection.ASCENDING,
 ) {
+    fun next(field: PlaylistTrackSortField): PlaylistTrackSort =
+        if (this.field == field) {
+            val nextDirection =
+                if (direction == PlaylistTrackSortDirection.ASCENDING) {
+                    PlaylistTrackSortDirection.DESCENDING
+                } else {
+                    PlaylistTrackSortDirection.ASCENDING
+                }
+            copy(direction = nextDirection)
+        } else {
+            PlaylistTrackSort(
+                field = field,
+                direction = PlaylistTrackSortDirection.ASCENDING,
+            )
+        }
+
     companion object {
         val DEFAULT = PlaylistTrackSort(PlaylistTrackSortField.DEFAULT, PlaylistTrackSortDirection.ASCENDING)
     }

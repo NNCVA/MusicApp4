@@ -45,25 +45,23 @@ class FoldersViewModelTest {
                 track("external", 2, "Music/Live", "Alpha"),
                 track("sdcard", 3, "Music/Live", "Card"),
             )
-        val viewModel =
-            FoldersViewModel(
-                mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
-                volumeMetadataSource = FolderVolumeMetadataSource {
-                    flowOf(
-                        listOf(
-                            FolderVolumeMetadata(
-                                volumeName = "external",
-                                displayName = "Internal storage",
-                                rootPath = "/storage/emulated/0",
-                                isPrimary = true,
-                                usedBytes = 80,
-                                totalBytes = 100,
-                            ),
+        val viewModel = createViewModel(
+            tracks = tracks,
+            volumeMetadataSource = FolderVolumeMetadataSource {
+                flowOf(
+                    listOf(
+                        FolderVolumeMetadata(
+                            volumeName = "external",
+                            displayName = "Internal storage",
+                            rootPath = "/storage/emulated/0",
+                            isPrimary = true,
+                            usedBytes = 80,
+                            totalBytes = 100,
                         ),
-                    )
-                },
-                playbackController = RecordingPlaybackController(),
-            )
+                    ),
+                )
+            },
+        )
         val collection = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
@@ -87,18 +85,14 @@ class FoldersViewModelTest {
     @Test
     fun `playFolder uses recursive available tracks and stable folder source id`() = runTest(dispatcher) {
         val controller = RecordingPlaybackController()
-        val viewModel =
-            FoldersViewModel(
-                mediaLibraryRepository = FakeMediaLibraryRepository(
-                    listOf(
-                        track("external", 1, "Music", "A"),
-                        track("external", 2, "Music/Live", "B"),
-                        track("external", 3, "Music/Live", "Unavailable", Availability.TEMPORARILY_UNAVAILABLE),
-                    ),
-                ),
-                volumeMetadataSource = FolderVolumeMetadataSource { flowOf(emptyList()) },
-                playbackController = controller,
-            )
+        val viewModel = createViewModel(
+            tracks = listOf(
+                track("external", 1, "Music", "A"),
+                track("external", 2, "Music/Live", "B"),
+                track("external", 3, "Music/Live", "Unavailable", Availability.TEMPORARILY_UNAVAILABLE),
+            ),
+            playbackController = controller,
+        )
         val collection = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
@@ -111,17 +105,12 @@ class FoldersViewModelTest {
 
     @Test
     fun `primary media volume stays primary when platform metadata is unavailable`() = runTest(dispatcher) {
-        val viewModel =
-            FoldersViewModel(
-                mediaLibraryRepository = FakeMediaLibraryRepository(
-                    listOf(
-                        track("external_primary", 1, "Music", "Primary"),
-                        track("1234-5678", 2, "Music", "Secondary"),
-                    ),
-                ),
-                volumeMetadataSource = FolderVolumeMetadataSource { flowOf(emptyList()) },
-                playbackController = RecordingPlaybackController(),
-            )
+        val viewModel = createViewModel(
+            tracks = listOf(
+                track("external_primary", 1, "Music", "Primary"),
+                track("1234-5678", 2, "Music", "Secondary"),
+            ),
+        )
         val collection = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
@@ -133,16 +122,12 @@ class FoldersViewModelTest {
 
     @Test
     fun `metadata source failure keeps folder state available`() = runTest(dispatcher) {
-        val viewModel =
-            FoldersViewModel(
-                mediaLibraryRepository = FakeMediaLibraryRepository(
-                    listOf(track("external", 1, "Music", "Primary")),
-                ),
-                volumeMetadataSource = FolderVolumeMetadataSource {
-                    flow { error("metadata unavailable") }
-                },
-                playbackController = RecordingPlaybackController(),
-            )
+        val viewModel = createViewModel(
+            tracks = listOf(track("external", 1, "Music", "Primary")),
+            volumeMetadataSource = FolderVolumeMetadataSource {
+                flow { error("metadata unavailable") }
+            },
+        )
         val collection = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
@@ -154,12 +139,7 @@ class FoldersViewModelTest {
 
     @Test
     fun `initial state is not loaded and becomes loaded after flow emits`() = runTest(dispatcher) {
-        val viewModel =
-            FoldersViewModel(
-                mediaLibraryRepository = FakeMediaLibraryRepository(emptyList()),
-                volumeMetadataSource = FolderVolumeMetadataSource { flowOf(emptyList()) },
-                playbackController = RecordingPlaybackController(),
-            )
+        val viewModel = createViewModel(tracks = emptyList())
         assertFalse(viewModel.uiState.value.isLoaded)
 
         val collection = backgroundScope.launch { viewModel.uiState.collect {} }
@@ -170,6 +150,39 @@ class FoldersViewModelTest {
         assertTrue(viewModel.uiState.value.musicFolders.isEmpty())
         collection.cancel()
     }
+
+    @Test
+    fun `folderSort from sortPreferencesRepository orders musicFolders`() = runTest(dispatcher) {
+        val tracks = listOf(
+            track("external", 1, "Music/A", "A1"),
+            track("external", 2, "Music/B", "B1"),
+            track("external", 3, "Music/B", "B2"),
+        )
+        val sortRepo = com.musicapp.player.fakes.FakeSortPreferencesRepository(
+            initialFolderSort = FolderSort(FolderSortField.TRACK_COUNT, com.musicapp.player.feature.category.CategorySortDirection.DESCENDING),
+        )
+        val viewModel = createViewModel(
+            tracks = tracks,
+            sortPreferencesRepository = sortRepo,
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(listOf("B", "A"), viewModel.uiState.value.musicFolders.map(FolderNode::displayName))
+        collection.cancel()
+    }
+
+    private fun createViewModel(
+        tracks: List<Track>,
+        volumeMetadataSource: FolderVolumeMetadataSource = FolderVolumeMetadataSource { flowOf(emptyList()) },
+        playbackController: PlaybackControllerFacade = RecordingPlaybackController(),
+        sortPreferencesRepository: com.musicapp.player.data.sort.SortPreferencesRepository = com.musicapp.player.fakes.FakeSortPreferencesRepository(),
+    ) = FoldersViewModel(
+        mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
+        volumeMetadataSource = volumeMetadataSource,
+        playbackController = playbackController,
+        sortPreferencesRepository = sortPreferencesRepository,
+    )
 
     private fun track(
         volume: String,

@@ -16,8 +16,12 @@ import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.data.repository.FakeHistoryRepository
 import com.musicapp.player.data.repository.FakeMediaLibraryRepository
 import com.musicapp.player.data.repository.FakePlaylistRepository
+import com.musicapp.player.fakes.FakeSortPreferencesRepository
 import com.musicapp.player.feature.settings.data.DataManagementUseCase
 import com.musicapp.player.feature.settings.data.PathRuleChangeCoordinator
+import com.musicapp.player.feature.tracks.TrackSort
+import com.musicapp.player.feature.tracks.TrackSortDirection
+import com.musicapp.player.feature.tracks.TrackSortField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -82,6 +86,9 @@ class SettingsViewModelTest {
         advanceUntilIdle()
         fixture.viewModel.setThemeMode(ThemeMode.DARK)
         fixture.viewModel.addPathRule("external", "Music/", PathRuleKind.INCLUDE)
+        fixture.sortPreferences.setTrackSort(
+            TrackSort(field = TrackSortField.ARTIST, direction = TrackSortDirection.DESCENDING),
+        )
         advanceUntilIdle()
 
         fixture.viewModel.cancelPathRescan()
@@ -90,6 +97,7 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(AppSettings(), fixture.viewModel.uiState.value.settings)
+        assertEquals(TrackSort(), fixture.sortPreferences.trackSort.value)
         assertTrue(fixture.viewModel.uiState.value.pendingLibrarySync)
         assertEquals("Music", fixture.media.observePathRules().first().single().directory)
         assertEquals(1, fixture.playlists.observePlaylists().first().size)
@@ -136,6 +144,7 @@ class SettingsViewModelTest {
         )
         val sync = RecordingSettingsSyncController()
         val pathCoordinator = PathRuleChangeCoordinator(media, settings, sync, scope)
+        val sortPreferences = FakeSortPreferencesRepository()
         return Fixture(
             viewModel = SettingsViewModel(
                 settingsRepository = settings,
@@ -143,10 +152,12 @@ class SettingsViewModelTest {
                 pathRuleChangeCoordinator = pathCoordinator,
                 dataManagementUseCase = DataManagementUseCase(history, playlists, sync),
                 syncController = sync,
+                sortPreferencesRepository = sortPreferences,
             ),
             media = media,
             history = history,
             playlists = playlists,
+            sortPreferences = sortPreferences,
         )
     }
 
@@ -166,5 +177,6 @@ class SettingsViewModelTest {
         val media: FakeMediaLibraryRepository,
         val history: FakeHistoryRepository,
         val playlists: FakePlaylistRepository,
+        val sortPreferences: FakeSortPreferencesRepository,
     )
 }
