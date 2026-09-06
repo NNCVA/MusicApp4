@@ -63,6 +63,7 @@ import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.TrackRow
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
+import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
@@ -80,6 +81,8 @@ fun FolderDetailScreenRoute(
     contentInsets: WindowInsets,
     onBack: () -> Unit,
     onFolderClick: (FolderId) -> Unit,
+    onArtistClick: (String) -> Unit = {},
+    onAlbumClick: (AlbumId) -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
@@ -127,6 +130,8 @@ fun FolderDetailScreenRoute(
     FolderDetailScreen(
         state = state,
         contentInsets = contentInsets,
+        onNavigateToArtist = onArtistClick,
+        onNavigateToAlbum = onAlbumClick,
         onBack = {
             if (state.isSelectionMode) {
                 viewModel.exitSelection()
@@ -188,6 +193,8 @@ private fun FolderDetailScreen(
     onCreatePlaylist: (String) -> Unit = {},
     onTrackShowInfo: (Track) -> Unit = {},
     onDismissTrackInfo: () -> Unit = {},
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToAlbum: (AlbumId) -> Unit = {},
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -357,6 +364,8 @@ private fun FolderDetailScreen(
                                     showAddToPlaylistDialog = true
                                 },
                                 onShowTrackInfo = { onTrackShowInfo(track) },
+                                onNavigateToArtist = onNavigateToArtist,
+                                onNavigateToAlbum = onNavigateToAlbum,
                                 onClick = { onTrackClick(track) },
                                 onLongClick = { onTrackLongClick(track) },
                             )

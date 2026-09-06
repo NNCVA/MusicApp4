@@ -66,6 +66,7 @@ data class MusicDimensions(
     val spaceExtraLarge: Dp = 32.dp,
     val topBarHorizontalPadding: Dp = 16.dp,
     val topBarNavigationVisualStartPadding: Dp = 31.dp,
+    val dropdownMenuWidth: Dp = 200.dp,
     val dropdownMenuMinWidth: Dp = 128.dp,
     val dropdownMenuMaxWidth: Dp = 280.dp,
     val settingsOptionMinHeight: Dp = 84.dp,

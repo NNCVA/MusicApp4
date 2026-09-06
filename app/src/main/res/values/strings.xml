@@ -260,6 +260,9 @@
     <string name="selection_add_to_queue">Add to queue</string>
     <string name="selection_play_next">Play next</string>
     <string name="selection_track_info">Track info</string>
+    <string name="selection_menu_artist_named">Artist: %1$s</string>
+    <string name="selection_menu_album_named">Album: %1$s</string>
+    <string name="selection_menu_select_artist_title">Select artist</string>
     <string name="selection_add_to_playlist_named">Add to playlist: %1$s</string>
     <string name="selection_no_playlists">No playlists</string>
     <string name="batch_result_counts">Processed %1$d, skipped %2$d</string>

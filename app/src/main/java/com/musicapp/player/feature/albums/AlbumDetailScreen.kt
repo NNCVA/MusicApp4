@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -68,6 +68,7 @@ import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.QualityBadge
+import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.TrackActionsMenu
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
@@ -79,6 +80,7 @@ import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.image.AudioArtworkRequest
+import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.theme.MusicTheme
 import java.util.Locale
 
@@ -90,6 +92,7 @@ fun AlbumDetailScreenRoute(
     contentInsets: WindowInsets,
     onBack: () -> Unit,
     onArtistClick: (String) -> Unit = {},
+    onAlbumClick: (AlbumId) -> Unit = {},
     bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -114,6 +117,7 @@ fun AlbumDetailScreenRoute(
         onShowTrackInfo = viewModel::showTrackInfo,
         onDismissTrackInfo = viewModel::dismissTrackInfo,
         onArtistClick = onArtistClick,
+        onAlbumClick = onAlbumClick,
     )
 }
 
@@ -130,6 +134,7 @@ fun AlbumDetailScreen(
     onShowTrackInfo: (Track) -> Unit,
     onDismissTrackInfo: () -> Unit,
     onArtistClick: (String) -> Unit,
+    onAlbumClick: (AlbumId) -> Unit = {},
     onCreatePlaylist: (String) -> Unit = {},
     bottomPadding: Dp = 0.dp,
 ) {
@@ -150,9 +155,11 @@ fun AlbumDetailScreen(
         }
     }
 
-    val showTopBarTitle by remember {
+    val heroCollapseOffsetPx = with(LocalDensity.current) { 240.dp.toPx() }
+    val showTopBarTitle by remember(heroCollapseOffsetPx) {
         derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 240
+            listState.firstVisibleItemIndex > 0 ||
+                listState.firstVisibleItemScrollOffset > heroCollapseOffsetPx
         }
     }
 
@@ -196,91 +203,101 @@ fun AlbumDetailScreen(
             }
         }
 
-        // Main scrollable detail list
-        if (state.isUnavailable) {
-            EmptyState(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = dimensions.contentHorizontalPadding)
-                    .padding(bottom = dimensions.spaceSmall + bottomPadding),
-                title = stringResource(R.string.album_detail_unavailable_title),
-                description = stringResource(R.string.album_detail_unavailable_description),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+        ) {
+            // Keep the app bar outside the scroll container so the Aero canvas remains visible
+            // through it and the list never needs to be painted underneath it.
+            AlbumDetailTopBar(
+                title = (state.title ?: stringResource(R.string.album_unknown_title)).localizedAlbumTitle(),
+                showTitle = showTopBarTitle,
+                onBack = onBack,
             )
-        } else {
-            LazyColumn(
-                state = listState,
-                overscrollEffect = overscrollEffect,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = topInsetPadding + 56.dp,
-                    bottom = dimensions.spaceSmall + bottomPadding,
-                ),
-            ) {
-                // Item 0: Hero Section
-                item(key = "album_hero") {
-                    AlbumHeroSection(
-                        state = state,
-                        modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
-                    )
-                }
 
-                // Item 1: Stats Section
-                item(key = "album_stats") {
-                    AlbumStatsSection(state = state)
-                }
-
-                // Empty album state if no tracks
-                if (state.isLoaded && state.tracks.isEmpty()) {
-                    item(key = "album_empty") {
-                        EmptyState(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = dimensions.spaceLarge),
-                            title = stringResource(R.string.album_empty_title),
-                            description = stringResource(R.string.album_empty_description),
+            // Main scrollable detail list
+            if (state.isUnavailable) {
+                EmptyState(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .padding(bottom = dimensions.spaceSmall + bottomPadding),
+                    title = stringResource(R.string.album_detail_unavailable_title),
+                    description = stringResource(R.string.album_detail_unavailable_description),
+                )
+            } else {
+                LazyColumn(
+                    state = listState,
+                    overscrollEffect = overscrollEffect,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = PaddingValues(
+                        bottom = dimensions.spaceSmall + bottomPadding,
+                    ),
+                ) {
+                    // Item 0: Hero Section
+                    item(key = "album_hero") {
+                        AlbumHeroSection(
+                            state = state,
+                            modifier = Modifier.padding(horizontal = dimensions.contentHorizontalPadding),
                         )
                     }
-                }
 
-                // Track rows
-                items(
-                    items = state.tracks,
-                    key = { "${it.track.id.volumeName}:${it.track.id.mediaStoreId}" },
-                ) { presentation ->
-                    AlbumTrackItem(
-                        presentation = presentation,
-                        playlists = state.playlists,
-                        onClick = { onTrackClick(presentation.track.id) },
-                        onAddToQueue = { onAddToQueue(presentation.track.id) },
-                        onPlayNext = { onPlayNext(presentation.track.id) },
-                        onAddToPlaylist = {
-                            singleTrackAddToPlaylistTarget = presentation.track.id
-                            showAddToPlaylistDialog = true
-                        },
-                        onHide = { onHideTrack(presentation.track.id) },
-                        onShowTrackInfo = { onShowTrackInfo(presentation.track) },
-                    )
-                }
+                    // Item 1: Stats Section
+                    item(key = "album_stats") {
+                        AlbumStatsSection(state = state)
+                    }
 
-                // Artists section
-                if (state.artists.isNotEmpty()) {
-                    item(key = "album_artists") {
-                        AlbumArtistsSection(
-                            artists = state.artists,
-                            onArtistClick = onArtistClick,
+                    // Empty album state if no tracks
+                    if (state.isLoaded && state.tracks.isEmpty()) {
+                        item(key = "album_empty") {
+                            EmptyState(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = dimensions.spaceLarge),
+                                title = stringResource(R.string.album_empty_title),
+                                description = stringResource(R.string.album_empty_description),
+                            )
+                        }
+                    }
+
+                    // Track rows
+                    items(
+                        items = state.tracks,
+                        key = { "${it.track.id.volumeName}:${it.track.id.mediaStoreId}" },
+                    ) { presentation ->
+                        AlbumTrackItem(
+                            presentation = presentation,
+                            playlists = state.playlists,
+                            onClick = { onTrackClick(presentation.track.id) },
+                            onAddToQueue = { onAddToQueue(presentation.track.id) },
+                            onPlayNext = { onPlayNext(presentation.track.id) },
+                            onAddToPlaylist = {
+                                singleTrackAddToPlaylistTarget = presentation.track.id
+                                showAddToPlaylistDialog = true
+                            },
+                            onHide = { onHideTrack(presentation.track.id) },
+                            onShowTrackInfo = { onShowTrackInfo(presentation.track) },
+                            onNavigateToArtist = onArtistClick,
+                            onNavigateToAlbum = onAlbumClick,
                         )
+                    }
+
+                    // Artists section
+                    if (state.artists.isNotEmpty()) {
+                        item(key = "album_artists") {
+                            AlbumArtistsSection(
+                                artists = state.artists,
+                                onArtistClick = onArtistClick,
+                            )
+                        }
                     }
                 }
             }
         }
-
-        // Fixed Top Navigation Bar
-        AlbumDetailTopBar(
-            title = (state.title ?: stringResource(R.string.album_unknown_title)).localizedAlbumTitle(),
-            showTitle = showTopBarTitle,
-            onBack = onBack,
-            contentInsets = contentInsets,
-        )
 
         // Track Info Dialog
         if (state.infoTrack != null) {
@@ -331,48 +348,31 @@ private fun AlbumDetailTopBar(
     title: String,
     showTitle: Boolean,
     onBack: () -> Unit,
-    contentInsets: WindowInsets,
     modifier: Modifier = Modifier,
 ) {
-    val dimensions = MusicTheme.dimensions
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-            .height(56.dp)
-            .padding(horizontal = dimensions.spaceSmall),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BareIconButton(
-            onClick = onBack,
-            modifier = Modifier.size(dimensions.minimumTouchTarget),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_navigation_back),
-                contentDescription = stringResource(R.string.category_back),
-                tint = MusicTheme.colors.onSurface,
-                modifier = Modifier.size(dimensions.spaceLarge),
-            )
-        }
-        AnimatedVisibility(
-            visible = showTitle,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Text(
-                text = title,
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .padding(start = dimensions.spaceSmall)
-                    .semantics {
+    SearchableTopBar(
+        modifier = modifier,
+        navigationAction = CategoryNavigationAction.BACK,
+        onNavigationClick = onBack,
+        titleContent = {
+            AnimatedVisibility(
+                visible = showTitle,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                Text(
+                    text = title,
+                    style = MusicTheme.typography.titleLarge,
+                    color = MusicTheme.colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics {
                         contentDescription = title
                     },
-            )
-        }
-    }
+                )
+            }
+        },
+    )
 }
 
 @Composable
@@ -547,6 +547,8 @@ private fun AlbumTrackItem(
     onAddToPlaylist: () -> Unit,
     onHide: () -> Unit,
     onShowTrackInfo: () -> Unit,
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToAlbum: (AlbumId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -645,10 +647,13 @@ private fun AlbumTrackItem(
             }
             TrackActionsMenu(
                 expanded = menuExpanded,
+                track = track,
                 onDismissRequest = { menuExpanded = false },
                 onAddToQueue = onAddToQueue,
                 onPlayNext = onPlayNext,
                 onAddToPlaylist = onAddToPlaylist,
+                onNavigateToArtist = onNavigateToArtist,
+                onNavigateToAlbum = onNavigateToAlbum,
                 onHide = onHide,
                 onShowTrackInfo = onShowTrackInfo,
                 playlists = playlists,

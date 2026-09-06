@@ -100,6 +100,7 @@ import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.TrackRow
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
+import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
@@ -125,6 +126,8 @@ fun TracksScreenRoute(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
+    onArtistClick: (String) -> Unit = {},
+    onAlbumClick: (AlbumId) -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
@@ -153,6 +156,8 @@ fun TracksScreenRoute(
         policy = policy,
         openDrawer = openDrawer,
         onScanMusic = onScanMusic,
+        onNavigateToArtist = onArtistClick,
+        onNavigateToAlbum = onAlbumClick,
         bottomPadding = bottomPadding,
         onSortSelected = viewModel::selectSort,
         onTrackAddToQueue = viewModel::addTrackToQueue,
@@ -206,6 +211,8 @@ fun TracksScreen(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onScanMusic: () -> Unit,
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToAlbum: (AlbumId) -> Unit = {},
     bottomPadding: Dp = 0.dp,
     onSortSelected: (TrackSortField) -> Unit,
     onTrackArtworkRequested: suspend (Track) -> Unit = {},
@@ -440,6 +447,8 @@ fun TracksScreen(
                         showAddToPlaylistDialog = true
                     },
                     onShowTrackInfo = onTrackShowInfo,
+                    onNavigateToArtist = onNavigateToArtist,
+                    onNavigateToAlbum = onNavigateToAlbum,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
                     onFirstTrackLaidOut = onFirstTrackLaidOut,
@@ -548,6 +557,8 @@ private fun TrackList(
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
     onAddToPlaylist: (TrackId) -> Unit,
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToAlbum: (AlbumId) -> Unit = {},
     onShowTrackInfo: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
@@ -588,6 +599,8 @@ private fun TrackList(
                     onPlayNext = onPlayNext,
                     onHide = onHide,
                     onAddToPlaylist = onAddToPlaylist,
+                    onNavigateToArtist = onNavigateToArtist,
+                    onNavigateToAlbum = onNavigateToAlbum,
                     onShowTrackInfo = onShowTrackInfo,
                     onTrackClick = onTrackClick,
                     onTrackLongClick = onTrackLongClick,
@@ -605,6 +618,8 @@ private fun TrackList(
                         onPlayNext = onPlayNext,
                         onHide = onHide,
                         onAddToPlaylist = onAddToPlaylist,
+                        onNavigateToArtist = onNavigateToArtist,
+                        onNavigateToAlbum = onNavigateToAlbum,
                         onShowTrackInfo = onShowTrackInfo,
                         onTrackClick = onTrackClick,
                         onTrackLongClick = onTrackLongClick,
@@ -626,6 +641,8 @@ private fun LazyListScope.trackItems(
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
     onAddToPlaylist: (TrackId) -> Unit,
+    onNavigateToArtist: (String) -> Unit,
+    onNavigateToAlbum: (AlbumId) -> Unit,
     onShowTrackInfo: (Track) -> Unit,
     onTrackClick: (Track) -> Unit,
     onTrackLongClick: (Track) -> Unit,
@@ -642,6 +659,8 @@ private fun LazyListScope.trackItems(
             onPlayNext = { onPlayNext(track.id) },
             onHide = { onHide(track.id) },
             onAddToPlaylist = { onAddToPlaylist(track.id) },
+            onNavigateToArtist = onNavigateToArtist,
+            onNavigateToAlbum = onNavigateToAlbum,
             onShowTrackInfo = { onShowTrackInfo(track) },
             onClick = { onTrackClick(track) },
             onLongClick = { onTrackLongClick(track) },

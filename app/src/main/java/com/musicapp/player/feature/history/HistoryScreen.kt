@@ -73,6 +73,7 @@ import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.TrackRow
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
+import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
@@ -88,6 +89,8 @@ fun HistoryScreenRoute(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     onBack: () -> Unit,
+    onArtistClick: (String) -> Unit = {},
+    onAlbumClick: (AlbumId) -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
@@ -126,6 +129,8 @@ fun HistoryScreenRoute(
             viewModel.exitSelectionMode()
             onBack()
         },
+        onNavigateToArtist = onArtistClick,
+        onNavigateToAlbum = onAlbumClick,
         bottomPadding = bottomPadding,
         onOpenSearch = viewModel::openSearch,
         onCloseSearch = viewModel::closeSearch,
@@ -199,6 +204,8 @@ private fun HistoryScreen(
     onCreatePlaylist: (String) -> Unit,
     onShowTrackInfo: (Track) -> Unit,
     onDismissTrackInfo: () -> Unit,
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToAlbum: (AlbumId) -> Unit = {},
     onAcknowledgeBatchResult: () -> Unit,
     onAcknowledgeUserMessage: () -> Unit,
     onShowMessage: (Int, List<Any>) -> Unit,
@@ -448,6 +455,8 @@ private fun HistoryScreen(
                                                             showAddToPlaylistDialog = true
                                                         },
                                                         onShowTrackInfo = { onShowTrackInfo(track) },
+                                                        onNavigateToArtist = onNavigateToArtist,
+                                                        onNavigateToAlbum = onNavigateToAlbum,
                                                     )
                                                 }
                                             }

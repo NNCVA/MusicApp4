@@ -80,6 +80,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuDivider
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
@@ -91,15 +92,22 @@ import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
+import com.musicapp.player.core.designsystem.component.SelectArtistDialog
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.TrackRow
+import com.musicapp.player.core.designsystem.component.isUnknownAlbum
+import com.musicapp.player.core.designsystem.component.isUnknownArtist
+import com.musicapp.player.core.designsystem.component.localizedArtistName
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
+import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.feature.albums.UNKNOWN_ALBUM_ID
+import com.musicapp.player.feature.artists.ArtistGrouping
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryNavigationIconButton
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
@@ -117,6 +125,8 @@ fun PlaylistDetailScreenRoute(
     viewModel: PlaylistDetailViewModel,
     contentInsets: WindowInsets,
     onBack: () -> Unit,
+    onArtistClick: (String) -> Unit = {},
+    onAlbumClick: (AlbumId) -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
@@ -165,6 +175,8 @@ fun PlaylistDetailScreenRoute(
         state = state,
         contentInsets = contentInsets,
         bottomPadding = bottomPadding,
+        onNavigateToArtist = onArtistClick,
+        onNavigateToAlbum = onAlbumClick,
         onBack = {
             viewModel.clearSelection()
             onBack()
@@ -244,6 +256,8 @@ fun PlaylistDetailScreen(
     onAddSelectedToQueue: () -> Unit,
     onTrackShowInfo: (Track) -> Unit,
     onDismissTrackInfo: () -> Unit,
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToAlbum: (AlbumId) -> Unit = {},
     onRenamePlaylist: (String) -> Unit,
     onDeletePlaylist: () -> Unit,
     onCreatePlaylist: (String) -> Unit = {},
@@ -566,6 +580,8 @@ fun PlaylistDetailScreen(
                                     showAddToPlaylistDialog = true
                                 },
                                 onShowTrackInfo = { onTrackShowInfo(track) },
+                                onNavigateToArtist = onNavigateToArtist,
+                                onNavigateToAlbum = onNavigateToAlbum,
                             )
                         }
                     }
@@ -586,6 +602,8 @@ fun PlaylistDetailScreen(
                                 showAddToPlaylistDialog = true
                             },
                             onShowTrackInfo = { onTrackShowInfo(track) },
+                            onNavigateToArtist = onNavigateToArtist,
+                            onNavigateToAlbum = onNavigateToAlbum,
                         )
                     }
                 }
@@ -828,6 +846,8 @@ private fun PlaylistTrackRowItem(
     onAddToQueue: () -> Unit,
     onAddToOtherPlaylist: () -> Unit,
     onShowTrackInfo: () -> Unit,
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToAlbum: (AlbumId) -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
     TrackRow(
@@ -855,10 +875,13 @@ private fun PlaylistTrackRowItem(
                     PlaylistTrackActionsMenu(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false },
+                        track = track,
                         onRemoveFromPlaylist = onRemoveFromPlaylist,
                         onPlayNext = onPlayNext,
                         onAddToQueue = onAddToQueue,
                         onAddToOtherPlaylist = onAddToOtherPlaylist,
+                        onNavigateToArtist = onNavigateToArtist,
+                        onNavigateToAlbum = onNavigateToAlbum,
                         onShowTrackInfo = onShowTrackInfo,
                     )
                 }
@@ -871,35 +894,80 @@ private fun PlaylistTrackRowItem(
 private fun PlaylistTrackActionsMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
+    track: Track,
     onRemoveFromPlaylist: () -> Unit,
     onPlayNext: () -> Unit,
     onAddToQueue: () -> Unit = {},
     onAddToOtherPlaylist: () -> Unit,
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToAlbum: (AlbumId) -> Unit = {},
     onShowTrackInfo: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showSelectArtistDialog by remember { mutableStateOf(false) }
+    val splitArtists = remember(track.artistName) {
+        ArtistGrouping.splitArtistNames(track.artistName)
+    }
+
+    if (showSelectArtistDialog && splitArtists.size > 1) {
+        SelectArtistDialog(
+            artists = splitArtists,
+            onSelectArtist = { selectedArtist ->
+                onNavigateToArtist(selectedArtist)
+            },
+            onDismiss = { showSelectArtistDialog = false },
+        )
+    }
+
+    val rawArtistName = track.artistName
+    val isUnknownArtist = isUnknownArtist(rawArtistName)
+    val displayArtistName = rawArtistName.localizedArtistName()
+
+    val rawAlbumTitle = track.albumTitle
+    val albumId = track.albumId
+    val isUnknownAlbum = isUnknownAlbum(rawAlbumTitle, albumId)
+    val displayAlbumTitle = if (rawAlbumTitle.isNullOrBlank()) {
+        stringResource(R.string.album_unknown_title)
+    } else {
+        rawAlbumTitle
+    }
+
     AppDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         modifier = modifier,
     ) {
+        // 第一组：播放与加入歌单
         AppDropdownMenuItem(
-            text = { Text(stringResource(R.string.playlist_remove_from_playlist)) },
-            isDestructive = true,
-            iconTint = MenuIconPalette.Delete,
+            text = {
+                Text(
+                    text = stringResource(R.string.selection_add_to_queue),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                )
+            },
+            iconTint = MenuIconPalette.Add,
             trailingIcon = {
                 Icon(
-                    painter = painterResource(R.drawable.ic_common_delete),
+                    painter = painterResource(R.drawable.ic_common_queue_add),
                     contentDescription = null,
                 )
             },
             onClick = {
                 onDismissRequest()
-                onRemoveFromPlaylist()
+                onAddToQueue()
             },
         )
         AppDropdownMenuItem(
-            text = { Text(stringResource(R.string.selection_play_next)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.selection_play_next),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                )
+            },
             iconTint = MenuIconPalette.Play,
             trailingIcon = {
                 Icon(
@@ -913,7 +981,14 @@ private fun PlaylistTrackActionsMenu(
             },
         )
         AppDropdownMenuItem(
-            text = { Text(stringResource(R.string.selection_add_to_playlist)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.selection_add_to_playlist),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                )
+            },
             iconTint = MenuIconPalette.Add,
             trailingIcon = {
                 Icon(
@@ -926,8 +1001,67 @@ private fun PlaylistTrackActionsMenu(
                 onAddToOtherPlaylist()
             },
         )
+
+        AppDropdownMenuDivider()
+
+        // 第二组：艺术家、专辑、歌曲信息
         AppDropdownMenuItem(
-            text = { Text(stringResource(R.string.selection_track_info)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.selection_menu_artist_named, displayArtistName),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                )
+            },
+            enabled = !isUnknownArtist,
+            iconTint = MenuIconPalette.Artist,
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_sidebar_artists),
+                    contentDescription = null,
+                )
+            },
+            onClick = {
+                onDismissRequest()
+                if (splitArtists.size > 1) {
+                    showSelectArtistDialog = true
+                } else if (splitArtists.isNotEmpty()) {
+                    onNavigateToArtist(splitArtists.first())
+                }
+            },
+        )
+        AppDropdownMenuItem(
+            text = {
+                Text(
+                    text = stringResource(R.string.selection_menu_album_named, displayAlbumTitle),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                )
+            },
+            enabled = !isUnknownAlbum,
+            iconTint = MenuIconPalette.Album,
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_sidebar_albums),
+                    contentDescription = null,
+                )
+            },
+            onClick = {
+                onDismissRequest()
+                albumId?.let(onNavigateToAlbum)
+            },
+        )
+        AppDropdownMenuItem(
+            text = {
+                Text(
+                    text = stringResource(R.string.selection_track_info),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                )
+            },
             iconTint = MenuIconPalette.Info,
             trailingIcon = {
                 Icon(
@@ -938,6 +1072,32 @@ private fun PlaylistTrackActionsMenu(
             onClick = {
                 onDismissRequest()
                 onShowTrackInfo()
+            },
+        )
+
+        AppDropdownMenuDivider()
+
+        // 第三组：从歌单移除
+        AppDropdownMenuItem(
+            text = {
+                Text(
+                    text = stringResource(R.string.playlist_remove_from_playlist),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                )
+            },
+            isDestructive = true,
+            iconTint = MenuIconPalette.Delete,
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_delete),
+                    contentDescription = null,
+                )
+            },
+            onClick = {
+                onDismissRequest()
+                onRemoveFromPlaylist()
             },
         )
     }

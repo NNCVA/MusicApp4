@@ -251,6 +251,9 @@
     <string name="selection_add_to_queue">加入队列</string>
     <string name="selection_play_next">下一首播放</string>
     <string name="selection_track_info">歌曲信息</string>
+    <string name="selection_menu_artist_named">艺术家：%1$s</string>
+    <string name="selection_menu_album_named">专辑：%1$s</string>
+    <string name="selection_menu_select_artist_title">选择艺术家</string>
     <string name="selection_add_to_playlist_named">加入歌单：%1$s</string>
     <string name="selection_no_playlists">暂无歌单</string>
     <string name="batch_result_counts">已处理 %1$d 首，跳过 %2$d 首</string>

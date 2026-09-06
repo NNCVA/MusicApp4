@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImage
 import com.musicapp.player.R
+import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -44,8 +45,22 @@ import com.musicapp.player.theme.MusicTheme
 import android.content.Context
 import com.musicapp.player.theme.MusicWindowWidthTier
 
+import com.musicapp.player.feature.albums.UNKNOWN_ALBUM_ID
+
 const val UNKNOWN_ARTIST_SENTINEL = "<unknown>"
 const val VARIOUS_ARTISTS_SENTINEL = com.musicapp.player.feature.albums.AlbumGroupingRules.VARIOUS_ARTISTS_SENTINEL
+
+/**
+ * 判断艺术家名称是否缺失或为未知艺术家占位符。
+ */
+fun isUnknownArtist(artistName: String?): Boolean =
+    artistName == null || artistName == UNKNOWN_ARTIST_SENTINEL || artistName.isBlank()
+
+/**
+ * 判断专辑是否缺失或为未知专辑。
+ */
+fun isUnknownAlbum(albumTitle: String?, albumId: AlbumId?): Boolean =
+    albumTitle.isNullOrBlank() || albumId == null || albumId == UNKNOWN_ALBUM_ID
 
 /**
  * 转换未知艺术家或各种艺术家占位符为本地化文案。
@@ -127,6 +142,8 @@ fun TrackRow(
     onPlayNext: () -> Unit = {},
     onHide: () -> Unit = {},
     onAddToPlaylist: () -> Unit = {},
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToAlbum: (AlbumId) -> Unit = {},
     onShowTrackInfo: () -> Unit = {},
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
@@ -274,6 +291,7 @@ fun TrackRow(
                 }
                 TrackActionsMenu(
                     expanded = menuExpanded,
+                    track = track,
                     playlists = playlists,
                     onDismissRequest = { menuExpanded = false },
                     onAddToQueue = onAddToQueue,
@@ -281,6 +299,8 @@ fun TrackRow(
                     onShowTrackInfo = onShowTrackInfo,
                     onHide = onHide,
                     onAddToPlaylist = onAddToPlaylist,
+                    onNavigateToArtist = onNavigateToArtist,
+                    onNavigateToAlbum = onNavigateToAlbum,
                 )
             }
         }

@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -47,7 +48,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.musicapp.player.R
@@ -55,11 +55,13 @@ import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.ListActionBar
 import com.musicapp.player.core.designsystem.component.LoadingState
+import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.TrackRow
 import com.musicapp.player.core.designsystem.component.localizedArtistName
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
+import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -68,7 +70,6 @@ import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.image.AudioArtworkRequest
 import com.musicapp.player.feature.albums.localizedAlbumTitle
 import com.musicapp.player.feature.category.CategoryNavigationAction
-import com.musicapp.player.feature.category.CategoryNavigationIconButton
 import com.musicapp.player.theme.MusicTheme
 
 @Composable
@@ -79,6 +80,8 @@ fun ArtistDetailScreenRoute(
     onBack: () -> Unit,
     onScanMusic: () -> Unit = {},
     onAlbumClick: (ArtistAlbumSummary) -> Unit = {},
+    onArtistClick: (String) -> Unit = {},
+    onAlbumIdClick: (AlbumId) -> Unit = {},
     bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -91,6 +94,8 @@ fun ArtistDetailScreenRoute(
         onBack = onBack,
         onScanMusic = onScanMusic,
         onAlbumClick = onAlbumClick,
+        onArtistClick = onArtistClick,
+        onAlbumIdClick = onAlbumIdClick,
         onPlayAll = viewModel::playAll,
         onTrackClick = { viewModel.playTrack(it.id) },
         onAddToQueue = viewModel::addToQueue,
@@ -110,6 +115,8 @@ internal fun ArtistDetailScreen(
     onBack: () -> Unit,
     onScanMusic: () -> Unit,
     onAlbumClick: (ArtistAlbumSummary) -> Unit,
+    onArtistClick: (String) -> Unit = {},
+    onAlbumIdClick: (AlbumId) -> Unit = {},
     onPlayAll: () -> Unit,
     onTrackClick: (Track) -> Unit,
     onAddToQueue: (TrackId) -> Unit,
@@ -124,9 +131,13 @@ internal fun ArtistDetailScreen(
     val dimensions = MusicTheme.dimensions
     val listState = rememberLazyListState()
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
-    val showTopBarTitle by remember {
+    val heroCollapseOffsetPx = with(LocalDensity.current) {
+        dimensions.artistHeroArtworkSize.toPx()
+    }
+    val showTopBarTitle by remember(heroCollapseOffsetPx) {
         derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > dimensions.artistHeroArtworkSize.value.toInt()
+            listState.firstVisibleItemIndex > 0 ||
+                listState.firstVisibleItemScrollOffset > heroCollapseOffsetPx
         }
     }
     val title = (state.displayName ?: stringResource(R.string.artist_unknown_name)).localizedArtistName()
@@ -134,107 +145,114 @@ internal fun ArtistDetailScreen(
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier.fillMaxSize()
-            .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+        modifier = Modifier.fillMaxSize(),
     ) {
-        if (!state.isLoaded) {
-            LoadingState(modifier = Modifier.fillMaxSize())
-        } else {
-            LazyColumn(
-                state = listState,
-                overscrollEffect = overscrollEffect,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = dimensions.detailTopBarHeight,
-                    bottom = dimensions.spaceSmall + bottomPadding,
-                ),
-            ) {
-                item(key = "artist-hero") {
-                    ArtistHeroSection(state = state, title = title)
-                }
-                item(key = "artist-actions") {
-                    ListActionBar(
-                        isSelectionMode = false,
-                        itemCount = state.tracks.size,
-                        hasPlayableItems = state.tracks.any { it.availability == Availability.AVAILABLE },
-                        itemCountDescription = pluralStringResource(
-                            R.plurals.category_track_count,
-                            state.tracks.size,
-                            state.tracks.size,
-                        ),
-                        onPlayAll = onPlayAll,
-                    )
-                }
-                if (state.tracks.isEmpty()) {
-                    item(key = "artist-empty") {
-                        EmptyState(
-                            modifier = Modifier.fillMaxWidth()
-                                .padding(horizontal = dimensions.contentHorizontalPadding)
-                                .padding(bottom = dimensions.spaceLarge),
-                            title = stringResource(R.string.artist_empty_title),
-                            description = stringResource(R.string.artist_empty_description),
-                            actionLabel = stringResource(R.string.navigation_scan_music),
-                            actionIconRes = R.drawable.ic_sidebar_scan,
-                            onAction = onScanMusic,
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+        ) {
+            SearchableTopBar(
+                navigationAction = CategoryNavigationAction.BACK,
+                onNavigationClick = onBack,
+                titleContent = {
+                    AnimatedVisibility(
+                        visible = showTopBarTitle,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        Text(
+                            text = title,
+                            style = MusicTheme.typography.titleLarge,
+                            color = MusicTheme.colors.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
-                } else {
-                    items(
-                        items = state.tracks,
-                        key = { "track:${it.id.volumeName}:${it.id.mediaStoreId}" },
-                    ) { track ->
-                        TrackRow(
-                            track = track,
-                            playlists = state.playlists,
-                            onAddToQueue = { onAddToQueue(track.id) },
-                            onPlayNext = { onPlayNext(track.id) },
-                            onHide = { onHide(track.id) },
-                            onAddToPlaylist = { addToPlaylistTrackId = track.id },
-                            onShowTrackInfo = { onShowTrackInfo(track) },
-                            onClick = { onTrackClick(track) },
+                },
+            )
+
+            if (!state.isLoaded) {
+                LoadingState(modifier = Modifier.fillMaxWidth().weight(1f))
+            } else {
+                LazyColumn(
+                    state = listState,
+                    overscrollEffect = overscrollEffect,
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentPadding = PaddingValues(
+                        bottom = dimensions.spaceSmall + bottomPadding,
+                    ),
+                ) {
+                    item(key = "artist-hero") {
+                        ArtistHeroSection(state = state, title = title)
+                    }
+                    item(key = "artist-actions") {
+                        ListActionBar(
+                            isSelectionMode = false,
+                            itemCount = state.tracks.size,
+                            hasPlayableItems = state.tracks.any { it.availability == Availability.AVAILABLE },
+                            itemCountDescription = pluralStringResource(
+                                R.plurals.category_track_count,
+                                state.tracks.size,
+                                state.tracks.size,
+                            ),
+                            onPlayAll = onPlayAll,
                         )
                     }
-                    if (state.albums.isNotEmpty()) {
-                        item(key = "artist-albums-title") {
-                            Text(
-                                text = stringResource(R.string.artist_albums_section_title),
-                                style = MusicTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                color = MusicTheme.colors.onSurface,
-                                modifier = Modifier.padding(
-                                    start = dimensions.contentHorizontalPadding,
-                                    end = dimensions.contentHorizontalPadding,
-                                    top = dimensions.spaceLarge,
-                                    bottom = dimensions.spaceSmall,
-                                ),
+                    if (state.tracks.isEmpty()) {
+                        item(key = "artist-empty") {
+                            EmptyState(
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(horizontal = dimensions.contentHorizontalPadding)
+                                    .padding(bottom = dimensions.spaceLarge),
+                                title = stringResource(R.string.artist_empty_title),
+                                description = stringResource(R.string.artist_empty_description),
+                                actionLabel = stringResource(R.string.navigation_scan_music),
+                                actionIconRes = R.drawable.ic_sidebar_scan,
+                                onAction = onScanMusic,
                             )
                         }
+                    } else {
                         items(
-                            items = state.albums,
-                            key = { "album:${it.groupKey.encode()}" },
-                        ) { album ->
-                            ArtistAlbumRow(album = album, onClick = { onAlbumClick(album) })
+                            items = state.tracks,
+                            key = { "track:${it.id.volumeName}:${it.id.mediaStoreId}" },
+                        ) { track ->
+                            TrackRow(
+                                track = track,
+                                playlists = state.playlists,
+                                onAddToQueue = { onAddToQueue(track.id) },
+                                onPlayNext = { onPlayNext(track.id) },
+                                onHide = { onHide(track.id) },
+                                onAddToPlaylist = { addToPlaylistTrackId = track.id },
+                                onNavigateToArtist = onArtistClick,
+                                onNavigateToAlbum = onAlbumIdClick,
+                                onShowTrackInfo = { onShowTrackInfo(track) },
+                                onClick = { onTrackClick(track) },
+                            )
+                        }
+                        if (state.albums.isNotEmpty()) {
+                            item(key = "artist-albums-title") {
+                                Text(
+                                    text = stringResource(R.string.artist_albums_section_title),
+                                    style = MusicTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = MusicTheme.colors.onSurface,
+                                    modifier = Modifier.padding(
+                                        start = dimensions.contentHorizontalPadding,
+                                        end = dimensions.contentHorizontalPadding,
+                                        top = dimensions.spaceLarge,
+                                        bottom = dimensions.spaceSmall,
+                                    ),
+                                )
+                            }
+                            items(
+                                items = state.albums,
+                                key = { "album:${it.groupKey.encode()}" },
+                            ) { album ->
+                                ArtistAlbumRow(album = album, onClick = { onAlbumClick(album) })
+                            }
                         }
                     }
                 }
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().height(dimensions.detailTopBarHeight)
-                .padding(horizontal = dimensions.topBarHorizontalPadding)
-                .zIndex(2f),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CategoryNavigationIconButton(action = CategoryNavigationAction.BACK, onClick = onBack)
-            AnimatedVisibility(visible = showTopBarTitle, enter = fadeIn(), exit = fadeOut()) {
-                Text(
-                    text = title,
-                    style = MusicTheme.typography.titleLarge,
-                    color = MusicTheme.colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
             }
         }
 

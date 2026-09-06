@@ -229,6 +229,19 @@ fun MainNavigation(
                 val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
                 val bottomPadding = bottomInset + if (playerState.currentTrack != null) MusicTheme.dimensions.miniPlayerHeight else 0.dp
                 val currentTopRoute = navigationState.currentBackStack.lastOrNull()
+                val navigateToArtist: (String) -> Unit = { artistName ->
+                    commitNavigation { navigate(ArtistDetailRoute(ArtistRouteKey.encode(artistName))) }
+                }
+                val navigateToAlbum: (AlbumId) -> Unit = { albumId ->
+                    commitNavigation {
+                        navigate(
+                            AlbumDetailRoute(
+                                volumeName = albumId.volumeName,
+                                mediaStoreId = albumId.mediaStoreId,
+                            ),
+                        )
+                    }
+                }
                 val destinationEntryProvider =
                     entryProvider<MusicNavKey> {
                         entry<TracksRoute> {
@@ -238,6 +251,8 @@ fun MainNavigation(
                                 policy = policy,
                                 openDrawer = openDrawer,
                                 onScanMusic = ::navigateToScanMusic,
+                                onArtistClick = navigateToArtist,
+                                onAlbumClick = navigateToAlbum,
                                 onShowMessage = { messageResId, formatArgs ->
                                     messageBubbleQueue.enqueue(messageResId, formatArgs)
                                 },
@@ -312,6 +327,8 @@ fun MainNavigation(
                                 contentInsets = contentInsets,
                                 policy = policy,
                                 onBack = ::handleBack,
+                                onArtistClick = navigateToArtist,
+                                onAlbumClick = navigateToAlbum,
                                 onShowMessage = { messageResId, formatArgs ->
                                     messageBubbleQueue.enqueue(messageResId, formatArgs)
                                 },
@@ -366,11 +383,8 @@ fun MainNavigation(
                                 ),
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,
-                                onArtistClick = { artistName ->
-                                    commitNavigation {
-                                        navigate(ArtistDetailRoute(ArtistRouteKey.encode(artistName)))
-                                    }
-                                },
+                                onArtistClick = navigateToArtist,
+                                onAlbumClick = navigateToAlbum,
                                 bottomPadding = bottomPadding,
                             )
                         }
@@ -395,6 +409,8 @@ fun MainNavigation(
                                         )
                                     }
                                 },
+                                onArtistClick = navigateToArtist,
+                                onAlbumIdClick = navigateToAlbum,
                                 bottomPadding = bottomPadding,
                             )
                         }
@@ -404,6 +420,8 @@ fun MainNavigation(
                                 viewModel = viewModel<PlaylistDetailViewModel>(key = "playlist:${key.playlistId}"),
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,
+                                onArtistClick = navigateToArtist,
+                                onAlbumClick = navigateToAlbum,
                                 bottomPadding = bottomPadding,
                                 isActive = currentTopRoute == key,
                             )
@@ -421,6 +439,8 @@ fun MainNavigation(
                                         navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))
                                     }
                                 },
+                                onArtistClick = navigateToArtist,
+                                onAlbumClick = navigateToAlbum,
                                 onShowMessage = { messageResId, formatArgs ->
                                     messageBubbleQueue.enqueue(messageResId, formatArgs)
                                 },

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -90,9 +88,9 @@ fun AppDropdownMenu(
                 shadowElevation = shadowElevation,
                 border = border,
                 modifier =
-                    modifier
-                        .widthIn(min = MusicTheme.dimensions.dropdownMenuMinWidth, max = MusicTheme.dimensions.dropdownMenuMaxWidth)
-                        .width(IntrinsicSize.Max)
+                    Modifier
+                        .width(MusicTheme.dimensions.dropdownMenuWidth)
+                        .then(modifier)
                         .clip(shape),
             ) {
                 Column(
@@ -129,6 +127,10 @@ object MenuIconPalette {
         @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.hide
     val Delete: androidx.compose.ui.graphics.Color
         @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.delete
+    val Artist: androidx.compose.ui.graphics.Color
+        @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.mediaIconColors.getOrElse(2) { androidx.compose.ui.graphics.Color(0xFFE45F91) }
+    val Album: androidx.compose.ui.graphics.Color
+        @Composable get() = com.musicapp.player.theme.MusicTheme.accentPalette.mediaIconColors.getOrElse(1) { androidx.compose.ui.graphics.Color(0xFF9B6BE8) }
 }
 
 /**
