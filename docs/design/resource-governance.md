@@ -146,6 +146,7 @@ MusicApp2 仅作为本次资源的中间存放仓库及固定 revision 证据，
 | MusicApp 资源 | 用途 | 修改 |
 |---|---|---|
 | `ic_status_empty_playlist.xml` | 歌单页面无歌单时的居中空态插画 | 使用三个中性几何面构成打开的空盒图形，并由 `MusicTheme` 着色 |
+| `img_empty_state.png` | 全局非扫描空态通用插画（透明毛玻璃唱片盒） | 用户提供的原创 Aero Glass 质感插画，1254×1254 RGBA PNG，由 EmptyState 统一渲染 |
 
 ## MusicApp 自有界面资源
 

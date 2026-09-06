@@ -1,6 +1,7 @@
 package com.musicapp.player.core.designsystem.component
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +62,7 @@ fun EmptyState(
   modifier: Modifier = Modifier,
   title: String = stringResource(R.string.empty_state_title),
   description: String? = null,
+  @DrawableRes illustrationRes: Int? = R.drawable.img_empty_state,
   actionLabel: String? = null,
   @DrawableRes actionIconRes: Int? = null,
   onAction: (() -> Unit)? = null,
@@ -91,11 +93,21 @@ fun EmptyState(
       }
     }
   } else {
-    StateMessage(
-      modifier = modifier,
-      title = title,
-      description = description,
-    )
+    Box(
+      modifier =
+        modifier.fillMaxSize().padding(dimensions.spaceLarge).semantics {
+          liveRegion = LiveRegionMode.Polite
+        },
+      contentAlignment = Alignment.Center,
+    ) {
+      if (illustrationRes != null) {
+        Image(
+          painter = painterResource(illustrationRes),
+          contentDescription = title,
+          modifier = Modifier.size(dimensions.emptyStateIllustrationSize),
+        )
+      }
+    }
   }
 }
 

@@ -73,6 +73,7 @@ data class MusicDimensions(
     val settingsOptionIconSize: Dp = 28.dp,
     val sectionIndexBubbleShadowElevation: Dp = 8.dp,
     val sectionIndexBubbleOffsetExtra: Dp = 16.dp,
+    val emptyStateIllustrationSize: Dp = 144.dp,
     val contentHorizontalPadding: Dp,
 ) {
     companion object {

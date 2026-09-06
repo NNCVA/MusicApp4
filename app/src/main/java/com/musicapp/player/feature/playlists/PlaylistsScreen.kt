@@ -45,6 +45,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
+import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.MenuIconPalette
 import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.TextInputDialog
@@ -156,11 +157,13 @@ private fun PlaylistsScreen(
             },
         )
         if (state.isLoaded && state.playlists.isEmpty()) {
-            PlaylistEmptyState(
+            EmptyState(
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = dimensions.contentHorizontalPadding)
                     .padding(bottom = bottomPadding),
+                title = stringResource(R.string.playlist_empty_title),
+                description = stringResource(R.string.playlist_empty_description),
             )
         } else {
             LazyColumn(
@@ -235,21 +238,6 @@ private fun PlaylistsScreen(
             message = stringResource(messageRes),
             confirmLabel = stringResource(R.string.dismiss),
             onDismiss = onClearMessage,
-        )
-    }
-}
-
-@Composable
-private fun PlaylistEmptyState(modifier: Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_playlist_album),
-            contentDescription = null,
-            tint = MusicTheme.colors.onSurfaceVariant,
-            modifier = Modifier.size(MusicTheme.dimensions.playerHeaderHeight),
         )
     }
 }
