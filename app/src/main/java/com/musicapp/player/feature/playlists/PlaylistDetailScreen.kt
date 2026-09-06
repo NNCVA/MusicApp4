@@ -129,6 +129,7 @@ fun PlaylistDetailScreenRoute(
     onBack: () -> Unit,
     onArtistClick: (String) -> Unit = {},
     onAlbumClick: (AlbumId) -> Unit = {},
+    onSearchClick: () -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
@@ -179,6 +180,7 @@ fun PlaylistDetailScreenRoute(
         bottomPadding = bottomPadding,
         onNavigateToArtist = onArtistClick,
         onNavigateToAlbum = onAlbumClick,
+        onSearchClick = onSearchClick,
         onBack = {
             viewModel.clearSelection()
             onBack()
@@ -236,6 +238,7 @@ fun PlaylistDetailScreen(
     contentInsets: WindowInsets,
     bottomPadding: Dp = 0.dp,
     onBack: () -> Unit,
+    onSearchClick: () -> Unit = {},
     onSortSelected: (PlaylistTrackSortField) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onOpenSearch: () -> Unit,
@@ -410,7 +413,7 @@ fun PlaylistDetailScreen(
                                     if (state.isSelectionMode) {
                                         onClearSelection()
                                     }
-                                    onOpenSearch()
+                                    onSearchClick()
                                 },
                             )
                             AppDropdownMenuItem(

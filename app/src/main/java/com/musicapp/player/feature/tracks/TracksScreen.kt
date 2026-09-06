@@ -130,6 +130,7 @@ fun TracksScreenRoute(
     onScanMusic: () -> Unit,
     onArtistClick: (String) -> Unit = {},
     onAlbumClick: (AlbumId) -> Unit = {},
+    onSearchClick: () -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
@@ -160,6 +161,7 @@ fun TracksScreenRoute(
         onScanMusic = onScanMusic,
         onNavigateToArtist = onArtistClick,
         onNavigateToAlbum = onAlbumClick,
+        onSearchClick = onSearchClick,
         bottomPadding = bottomPadding,
         onSortSelected = viewModel::selectSort,
         onTrackAddToQueue = viewModel::addTrackToQueue,
@@ -237,17 +239,15 @@ fun TracksScreen(
     onHideSelected: () -> Unit,
     onAcknowledgeBatchResult: () -> Unit,
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
+    onSearchClick: () -> Unit = {},
     onPlayAll: () -> Unit = {},
     onFirstTrackLaidOut: () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
-    var searchActive by rememberSaveable { mutableStateOf(false) }
-    var searchQuery by rememberSaveable { mutableStateOf("") }
     var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var singleTrackAddToPlaylistTarget by remember { mutableStateOf<TrackId?>(null) }
-    val isSearching = searchQuery.isNotBlank()
     LaunchedEffect(state.batchResult) {
         val result = state.batchResult ?: return@LaunchedEffect
         when (result) {
@@ -264,44 +264,26 @@ fun TracksScreen(
         }
         onAcknowledgeBatchResult()
     }
-    val filteredTracks =
-        remember(state.tracks, searchQuery, isSearching) {
-            if (isSearching) {
-                state.tracks.filter { it.matchesSearch(searchQuery) }
-            } else {
-                state.tracks
-            }
-        }
     val listState = rememberLazyListState()
     listState.LockScrollOnChange(state.sort)
-    val sections = remember(filteredTracks, state.sections, isSearching, state.sort.field, state.sort.direction) {
-        if (isSearching) {
-            groupTracksIntoSections(filteredTracks, state.sort.field, state.sort.direction)
-        } else {
-            state.sections
-        }
-    }
-    val sectionPositions = remember(sections, state.sort.direction) {
-        sectionStartPositions(sections, state.sort.direction)
-    }
     val isTextSort = state.sort.field in listOf(
         TrackSortField.TITLE,
         TrackSortField.ARTIST,
         TrackSortField.ALBUM,
     )
-    val gutterMode = remember(state.isLibraryLoaded, state.tracks, filteredTracks, isTextSort, state.sort.direction, sections, sectionPositions) {
+    val gutterMode = remember(state.isLibraryLoaded, state.tracks, isTextSort, state.sort.direction, state.sections, state.sectionPositions) {
         when {
-            !state.isLibraryLoaded || state.tracks.isEmpty() || filteredTracks.isEmpty() ->
+            !state.isLibraryLoaded || state.tracks.isEmpty() ->
                 GutterMode.Hidden
             isTextSort ->
                 GutterMode.Index(
                     sortOrder = trackSortDirectionToSectionOrder(state.sort.direction),
-                    activeSectionProvider = { sectionLabelAtPosition(sections, listState.firstVisibleItemIndex) },
-                    populatedBuckets = sections.map(TrackSection::label).toSet(),
+                    activeSection = sectionLabelAtPosition(state.sections, listState.firstVisibleItemIndex),
+                    populatedBuckets = state.sections.map(TrackSection::label).toSet(),
                     onSectionSelected = { label ->
-                        sectionPositions[label]?.let { position ->
+                        state.sectionPositions[label]?.let { position ->
                             coroutineScope.launch {
-                                listState.scrollToItem(position)
+                                listState.scrollToItem(position.coerceAtLeast(0))
                             }
                         }
                     },
@@ -309,35 +291,20 @@ fun TracksScreen(
             else -> GutterMode.Scrollbar
         }
     }
+    val onPlayAllResolved: () -> Unit = {
+        onPlayAll()
+    }
+    val onToggleSelectAllResolved: () -> Unit = {
+        if (state.selectedTrackIds.size >= state.tracks.size) {
+            onClearSelection()
+        } else {
+            onSelectTracks(state.tracks.map(Track::id))
+        }
+    }
     val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
     val hasMiniPlayer = bottomPadding > bottomInset + 1.dp
     val selectionBarHeight = dimensions.minimumTouchTarget
     val dynamicBottomPadding = bottomPadding + if (state.isSelectionMode) selectionBarHeight else 0.dp
-
-    val onToggleSelectAllResolved = {
-        if (searchActive && searchQuery.isNotBlank()) {
-            val visibleIds = filteredTracks.map(Track::id).toSet()
-            if (visibleIds.isNotEmpty() && state.selectedTrackIds.containsAll(visibleIds)) {
-                onClearSelection()
-            } else {
-                onSelectTracks(visibleIds)
-            }
-        } else {
-            onToggleSelectAll()
-        }
-    }
-
-    val onPlayAllResolved = {
-        val targetTracks = if (searchActive && searchQuery.isNotBlank()) filteredTracks else state.tracks
-        val firstAvailable = targetTracks.firstOrNull { it.availability == Availability.AVAILABLE }
-        if (firstAvailable != null) {
-            if (searchActive && searchQuery.isNotBlank()) {
-                onTrackClick(firstAvailable)
-            } else {
-                onPlayAll()
-            }
-        }
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -352,22 +319,18 @@ fun TracksScreen(
                     title = stringResource(R.string.tracks_page_title),
                     navigationAction = if (policy == WindowLayoutPolicy.COMPACT_DRAWER) CategoryNavigationAction.DRAWER else null,
                     onNavigationClick = openDrawer,
-                    searchActive = searchActive,
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    onOpenSearch = { searchActive = true },
-                    onCloseSearch = {
-                        searchActive = false
-                        searchQuery = ""
-                    },
+                    searchActive = false,
+                    searchQuery = "",
+                    onOpenSearch = onSearchClick,
+                    onCloseSearch = {},
                 )
-                if (state.isLibraryLoaded && filteredTracks.isNotEmpty()) {
+                if (state.isLibraryLoaded && state.tracks.isNotEmpty()) {
                     var sortMenuExpanded by remember { mutableStateOf(false) }
                     ListActionBar(
                         isSelectionMode = state.isSelectionMode,
-                        itemCount = filteredTracks.size,
+                        itemCount = state.tracks.size,
                         showPlayAll = true,
-                        hasPlayableItems = filteredTracks.any { it.availability == Availability.AVAILABLE },
+                        hasPlayableItems = state.tracks.any { it.availability == Availability.AVAILABLE },
                         onPlayAll = onPlayAllResolved,
                         trailingContent = {
                             Box {
@@ -407,7 +370,7 @@ fun TracksScreen(
                             }
                         },
                         selectedCount = state.selectedTrackIds.size,
-                        isAllSelected = filteredTracks.isNotEmpty() && state.selectedTrackIds.size >= filteredTracks.size,
+                        isAllSelected = state.tracks.isNotEmpty() && state.selectedTrackIds.size >= state.tracks.size,
                         onClearSelection = onClearSelection,
                         onToggleSelectAll = onToggleSelectAllResolved,
                     )
@@ -424,18 +387,10 @@ fun TracksScreen(
                     actionIconRes = R.drawable.ic_sidebar_scan,
                     onAction = onScanMusic,
                 )
-            } else if (state.isLibraryLoaded && filteredTracks.isEmpty() && searchQuery.isNotBlank()) {
-                EmptyState(
-                    modifier = Modifier.weight(1f)
-                        .padding(horizontal = dimensions.contentHorizontalPadding)
-                        .padding(bottom = dynamicBottomPadding),
-                    title = stringResource(R.string.tracks_no_results_title),
-                    description = stringResource(R.string.tracks_no_results_description),
-                )
             } else {
                 TrackList(
-                    tracks = filteredTracks,
-                    sections = sections,
+                    tracks = state.tracks,
+                    sections = state.sections,
                     showSectionIndex = gutterMode is GutterMode.Index,
                     listState = listState,
                     selectedIds = state.selectedTrackIds,
@@ -671,15 +626,6 @@ private fun LazyListScope.trackItems(
             onLaidOut = if (track.id == firstTrackId) onFirstTrackLaidOut else null,
         )
     }
-}
-
-
-private fun Track.matchesSearch(query: String): Boolean {
-    val normalizedQuery = query.trim()
-    if (normalizedQuery.isEmpty()) return true
-    return listOf(title, artistName, albumTitle, displayName)
-        .filterNotNull()
-        .any { it.contains(normalizedQuery, ignoreCase = true) }
 }
 
 private fun TrackSortField.labelResId(): Int =

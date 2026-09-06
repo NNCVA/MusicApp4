@@ -91,6 +91,7 @@ fun HistoryScreenRoute(
     onBack: () -> Unit,
     onArtistClick: (String) -> Unit = {},
     onAlbumClick: (AlbumId) -> Unit = {},
+    onSearchClick: () -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
     isActive: Boolean = true,
@@ -131,6 +132,7 @@ fun HistoryScreenRoute(
         },
         onNavigateToArtist = onArtistClick,
         onNavigateToAlbum = onAlbumClick,
+        onSearchClick = onSearchClick,
         bottomPadding = bottomPadding,
         onOpenSearch = viewModel::openSearch,
         onCloseSearch = viewModel::closeSearch,
@@ -180,6 +182,7 @@ private fun HistoryScreen(
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     onBack: () -> Unit,
+    onSearchClick: () -> Unit = {},
     onOpenSearch: () -> Unit,
     onCloseSearch: () -> Unit,
     onQueryChange: (String) -> Unit,
@@ -301,7 +304,7 @@ private fun HistoryScreen(
                                         },
                                         onClick = {
                                             topBarMenuExpanded = false
-                                            onOpenSearch()
+                                            onSearchClick()
                                         },
                                     )
                                     AppDropdownMenuItem(

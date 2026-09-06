@@ -55,12 +55,16 @@ import com.musicapp.player.navigation.NavigationState
 import com.musicapp.player.navigation.Navigator
 import com.musicapp.player.navigation.PlaylistDetailRoute
 import com.musicapp.player.navigation.PlaylistsRoute
-import com.musicapp.player.navigation.SettingsRoute
 import com.musicapp.player.navigation.ScanMusicRoute
+import com.musicapp.player.navigation.SearchRoute
+import com.musicapp.player.navigation.SearchScopeType
+import com.musicapp.player.navigation.SettingsRoute
 import com.musicapp.player.navigation.TopLevelNavKey
 import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
 import com.musicapp.player.navigation.topLevelNavKeys
+import com.musicapp.player.feature.search.SearchScreenRoute
+import com.musicapp.player.feature.search.SearchViewModel
 import com.musicapp.player.core.aero.AeroRuntimeSignals
 import com.musicapp.player.core.designsystem.snackbar.MessageBubbleHost
 import com.musicapp.player.core.designsystem.snackbar.MessageBubbleQueue
@@ -253,6 +257,11 @@ fun MainNavigation(
                                 onScanMusic = ::navigateToScanMusic,
                                 onArtistClick = navigateToArtist,
                                 onAlbumClick = navigateToAlbum,
+                                onSearchClick = {
+                                    commitNavigation {
+                                        navigate(SearchRoute(SearchScopeType.ALL_TRACKS))
+                                    }
+                                },
                                 onShowMessage = { messageResId, formatArgs ->
                                     messageBubbleQueue.enqueue(messageResId, formatArgs)
                                 },
@@ -329,6 +338,11 @@ fun MainNavigation(
                                 onBack = ::handleBack,
                                 onArtistClick = navigateToArtist,
                                 onAlbumClick = navigateToAlbum,
+                                onSearchClick = {
+                                    commitNavigation {
+                                        navigate(SearchRoute(SearchScopeType.HISTORY))
+                                    }
+                                },
                                 onShowMessage = { messageResId, formatArgs ->
                                     messageBubbleQueue.enqueue(messageResId, formatArgs)
                                 },
@@ -421,8 +435,30 @@ fun MainNavigation(
                                 onBack = ::handleBack,
                                 onArtistClick = navigateToArtist,
                                 onAlbumClick = navigateToAlbum,
+                                onSearchClick = {
+                                    commitNavigation {
+                                        navigate(SearchRoute(SearchScopeType.PLAYLIST, key.playlistId))
+                                    }
+                                },
                                 bottomPadding = bottomPadding,
                                 isActive = currentTopRoute == key,
+                            )
+                        }
+                        entry<SearchRoute> { key ->
+                            SearchScreenRoute(
+                                viewModel = viewModel<SearchViewModel>(
+                                    key = "search:${key.scopeType}:${key.playlistId ?: "default"}",
+                                ),
+                                scopeType = key.scopeType,
+                                playlistId = key.playlistId,
+                                contentInsets = contentInsets,
+                                onBack = ::handleBack,
+                                onArtistClick = navigateToArtist,
+                                onAlbumClick = navigateToAlbum,
+                                onShowMessage = { messageResId, formatArgs ->
+                                    messageBubbleQueue.enqueue(messageResId, formatArgs)
+                                },
+                                bottomPadding = bottomPadding,
                             )
                         }
                         entry<FolderDetailRoute> { key ->
@@ -613,4 +649,5 @@ private fun MusicNavKey.titleResId(): Int =
         SettingsRoute -> R.string.navigation_settings
         AboutRoute -> R.string.navigation_about
         is ScanMusicRoute -> R.string.navigation_scan_music
+        is SearchRoute -> R.string.tracks_search_label
     }

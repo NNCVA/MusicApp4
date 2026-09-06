@@ -38,6 +38,11 @@
     <string name="tracks_search_placeholder">搜索标题、艺术家或专辑</string>
     <string name="tracks_no_results_title">没有匹配的歌曲</string>
     <string name="tracks_no_results_description">请尝试其他标题、艺术家、专辑或文件名。</string>
+    <string name="search_tracks_placeholder_format">在 %1$d 首歌曲中搜索</string>
+    <string name="search_playlist_placeholder_format">在歌单 %1$d 首歌曲中搜索</string>
+    <string name="search_history_placeholder_format">在 %1$d 条历史歌曲中搜索</string>
+    <string name="search_cancel">取消</string>
+    <string name="search_clear">清空搜索</string>
     <string name="tracks_sort_label">排序歌曲</string>
     <string name="track_add_to_queue">加入队列</string>
     <string name="track_more_actions">此歌曲的更多操作</string>

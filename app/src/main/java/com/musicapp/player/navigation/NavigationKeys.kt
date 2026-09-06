@@ -106,6 +106,26 @@ data class FolderDetailRoute(
     }
 }
 
+@Serializable
+enum class SearchScopeType {
+    ALL_TRACKS,
+    PLAYLIST,
+    HISTORY,
+}
+
+@Serializable
+@SerialName("search")
+data class SearchRoute(
+    val scopeType: SearchScopeType = SearchScopeType.ALL_TRACKS,
+    val playlistId: Long? = null,
+) : MusicNavKey {
+    init {
+        if (scopeType == SearchScopeType.PLAYLIST) {
+            require(playlistId != null && playlistId > 0) { "playlistId must be positive for PLAYLIST search" }
+        }
+    }
+}
+
 val topLevelNavKeys: List<TopLevelNavKey> =
     listOf(
         TracksRoute,
@@ -136,4 +156,10 @@ internal fun MusicNavKey.owner(): TopLevelNavKey =
         is ArtistDetailRoute -> ArtistsRoute
         is PlaylistDetailRoute -> PlaylistsRoute
         is FolderDetailRoute -> FoldersRoute
+        is SearchRoute ->
+            when (scopeType) {
+                SearchScopeType.ALL_TRACKS -> TracksRoute
+                SearchScopeType.PLAYLIST -> PlaylistsRoute
+                SearchScopeType.HISTORY -> HistoryRoute
+            }
     }

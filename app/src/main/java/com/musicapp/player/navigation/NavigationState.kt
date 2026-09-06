@@ -125,6 +125,12 @@ private object NavigationSnapshotCodec {
                 writeUTF(route.relativePath)
             }
             ScanMusicRoute -> writeByte(13)
+            is SearchRoute -> {
+                writeByte(14)
+                writeByte(route.scopeType.ordinal)
+                writeBoolean(route.playlistId != null)
+                route.playlistId?.let(::writeLong)
+            }
         }
     }
 
@@ -148,6 +154,12 @@ private object NavigationSnapshotCodec {
             11 -> PlaylistDetailRoute(playlistId = readLong())
             12 -> FolderDetailRoute(volumeName = readUTF(), relativePath = readUTF())
             13 -> ScanMusicRoute
+            14 -> {
+                val scopeOrdinal = readUnsignedByte()
+                val scopeType = SearchScopeType.entries[scopeOrdinal]
+                val playlistId = if (readBoolean()) readLong() else null
+                SearchRoute(scopeType = scopeType, playlistId = playlistId)
+            }
             else -> throw IllegalArgumentException("unknown navigation route type: $routeType")
         }
 

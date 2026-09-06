@@ -363,6 +363,23 @@ class NavigationStateTest {
         assertEquals(state.snapshot(), restored.snapshot())
     }
 
+    @Test
+    fun searchRoutePreservedInSnapshot() {
+        val state = NavigationState.initial()
+        val navigator = Navigator(state)
+        val searchRoute = SearchRoute(scopeType = SearchScopeType.PLAYLIST, playlistId = 42L)
+
+        navigator.navigate(PlaylistsRoute)
+        navigator.navigate(searchRoute)
+
+        val encoded = state.snapshot().encode()
+        val restored = NavigationState.restore(NavigationSnapshot.decode(encoded))
+
+        assertEquals(PlaylistsRoute, restored.currentTopLevelRoute)
+        assertEquals(listOf(PlaylistsRoute, searchRoute), restored.backStack(PlaylistsRoute))
+        assertEquals(state.snapshot(), restored.snapshot())
+    }
+
     private fun legacySnapshot(
         currentTopLevelRoute: TopLevelNavKey,
         stacks: List<NavigationStackSnapshot>,

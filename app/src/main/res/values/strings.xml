@@ -41,6 +41,11 @@
     <string name="tracks_search_placeholder">Search title, artist, or album</string>
     <string name="tracks_no_results_title">No matching tracks</string>
     <string name="tracks_no_results_description">Try another title, artist, album, or file name.</string>
+    <string name="search_tracks_placeholder_format">Search in %1$d songs</string>
+    <string name="search_playlist_placeholder_format">Search in %1$d playlist songs</string>
+    <string name="search_history_placeholder_format">Search in %1$d history songs</string>
+    <string name="search_cancel">Cancel</string>
+    <string name="search_clear">Clear search</string>
     <string name="tracks_sort_label">Sort tracks</string>
     <string name="track_add_to_queue">Add to queue</string>
     <string name="track_more_actions">More actions for this track</string>

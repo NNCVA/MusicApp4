@@ -530,7 +530,7 @@ private fun List<Track>.sortedWithTrackSort(sort: TrackSort): List<Track> {
     }
 }
 
-private fun TrackSort.comparator(): Comparator<Track> {
+internal fun TrackSort.comparator(): Comparator<Track> {
     val textTieBreaker =
         compareBy<Track>(
             { it.title.lowercase(Locale.ROOT) },

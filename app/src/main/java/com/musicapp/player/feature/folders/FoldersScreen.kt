@@ -101,12 +101,7 @@ private fun FoldersScreen(
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
-    var searchActive by rememberSaveable { mutableStateOf(false) }
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    val filteredFolders = remember(state.musicFolders, searchQuery) {
-        state.musicFolders.filter { it.matchesFolderSearch(searchQuery) }
-    }
-    val sections = remember(filteredFolders) { groupFoldersIntoSections(filteredFolders) }
+    val sections = remember(state.musicFolders) { groupFoldersIntoSections(state.musicFolders) }
     val displayFolders = remember(sections) { sections.flatMap(FolderSection::folders) }
     val indexLabels = remember { sectionIndexLabels() }
     val sectionPositions = remember(sections, state.volumes.size) {
@@ -155,14 +150,6 @@ private fun FoldersScreen(
             FoldersHeader(
                 policy = policy,
                 openDrawer = openDrawer,
-                searchActive = searchActive,
-                searchQuery = searchQuery,
-                onOpenSearch = { searchActive = true },
-                onCloseSearch = {
-                    searchActive = false
-                    searchQuery = ""
-                },
-                onSearchQueryChange = { searchQuery = it },
             )
             when {
                 state.isLoaded && !hasContent ->
@@ -199,24 +186,15 @@ private fun FoldersScreen(
                                 onClick = { onFolderClick(volume.folder.id) },
                             )
                         }
-                        if (displayFolders.isEmpty() && searchQuery.isNotBlank()) {
-                            item(key = "folder-search-empty") {
-                                EmptyState(
-                                    title = stringResource(R.string.folders_no_results_title),
-                                    description = stringResource(R.string.folders_no_results_description),
-                                )
-                            }
-                        } else {
-                            items(
-                                items = displayFolders,
-                                key = { "folder:${it.id.sourceId}" },
-                            ) { folder ->
-                                FolderShortcutCard(
-                                    folder = folder,
-                                    onClick = { onFolderClick(folder.id) },
-                                    onPlayAll = { onPlayFolder(folder.id) },
-                                )
-                            }
+                        items(
+                            items = displayFolders,
+                            key = { "folder:${it.id.sourceId}" },
+                        ) { folder ->
+                            FolderShortcutCard(
+                                folder = folder,
+                                onClick = { onFolderClick(folder.id) },
+                                onPlayAll = { onPlayFolder(folder.id) },
+                            )
                         }
                     }
             }
@@ -234,11 +212,6 @@ private fun FoldersScreen(
 private fun FoldersHeader(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
-    searchActive: Boolean,
-    searchQuery: String,
-    onOpenSearch: () -> Unit,
-    onCloseSearch: () -> Unit,
-    onSearchQueryChange: (String) -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     Row(
@@ -251,60 +224,13 @@ private fun FoldersHeader(
         if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
             CategoryNavigationIconButton(CategoryNavigationAction.DRAWER, openDrawer)
         }
-        if (searchActive) {
-            BasicTextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                textStyle = MusicTheme.typography.titleLarge.copy(color = MusicTheme.colors.onSurface),
-                decorationBox = { innerTextField ->
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        if (searchQuery.isBlank()) {
-                            Text(
-                                text = stringResource(R.string.folders_search_placeholder),
-                                style = MusicTheme.typography.titleMedium,
-                                color = MusicTheme.colors.onSurfaceVariant,
-                            )
-                        }
-                        innerTextField()
-                    }
-                },
-            )
-            BareIconButton(
-                onClick = onCloseSearch,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_common_close),
-                    contentDescription = stringResource(R.string.folders_search_close),
-                    tint = MusicTheme.colors.onSurface,
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
-        } else {
-            Text(
-                text = stringResource(R.string.folders_page_title),
-                style = MusicTheme.typography.titleLarge,
-                color = MusicTheme.colors.onSurface,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-            )
-            BareIconButton(
-                onClick = onOpenSearch,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_common_search),
-                    contentDescription = stringResource(R.string.folders_search_label),
-                    tint = MusicTheme.colors.onSurface,
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
-        }
+        Text(
+            text = stringResource(R.string.folders_page_title),
+            style = MusicTheme.typography.titleLarge,
+            color = MusicTheme.colors.onSurface,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+        )
     }
 }
 
@@ -477,12 +403,6 @@ private fun FolderShortcutCard(
 }
 
 
-private fun FolderNode.matchesFolderSearch(query: String): Boolean {
-    val normalizedQuery = query.trim()
-    if (normalizedQuery.isEmpty()) return true
-    return displayName.contains(normalizedQuery, ignoreCase = true) ||
-        folderSearchKey(displayName).contains(folderSearchKey(normalizedQuery))
-}
 
 private enum class StorageUnit(
     val divisor: Double,
