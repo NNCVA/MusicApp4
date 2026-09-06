@@ -14,7 +14,7 @@ class WindowLayoutPolicyTest {
     @Test
     fun compactBreakpointStartsPersistentMediumSidebar() {
         assertEquals(WindowLayoutPolicy.MEDIUM_SIDEBAR, WindowLayoutPolicy.forWidth(600.dp))
-        assertEquals(240.dp, WindowLayoutPolicy.MEDIUM_SIDEBAR.sidebarWidth)
+        assertEquals(300.dp, WindowLayoutPolicy.MEDIUM_SIDEBAR.sidebarWidth)
     }
 
     @Test
@@ -25,6 +25,6 @@ class WindowLayoutPolicyTest {
     @Test
     fun expandedBreakpointUsesPermanentSidebar() {
         assertEquals(WindowLayoutPolicy.EXPANDED_SIDEBAR, WindowLayoutPolicy.forWidth(840.dp))
-        assertEquals(256.dp, WindowLayoutPolicy.EXPANDED_SIDEBAR.sidebarWidth)
+        assertEquals(300.dp, WindowLayoutPolicy.EXPANDED_SIDEBAR.sidebarWidth)
     }
 }
