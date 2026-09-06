@@ -436,7 +436,11 @@ private fun FullPlayer(
                 ),
         ) { page ->
             when (FullPlayerPage.entries[page]) {
-                FullPlayerPage.ARTWORK -> ArtworkPage(state, track)
+                FullPlayerPage.ARTWORK -> ArtworkPage(
+                    state = state,
+                    track = track,
+                    isVisible = pager.currentPage == FullPlayerPage.ARTWORK.ordinal,
+                )
                 FullPlayerPage.LYRICS -> LyricsPaneRoute(
                     viewModel = lyricsViewModel,
                     missingText = stringResource(R.string.lyrics_not_found),
@@ -555,16 +559,21 @@ private fun FullPlayer(
 }
 
 @Composable
-private fun ArtworkPage(state: PlayerUiState, track: Track) {
+private fun ArtworkPage(
+    state: PlayerUiState,
+    track: Track,
+    isVisible: Boolean = true,
+) {
     val dimensions = MusicTheme.dimensions
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dimensions.spaceLarge, Alignment.CenterVertically),
     ) {
-        PlayerArtwork(
+        RotatingArtworkDisc(
             track = track,
-            shape = CircleShape,
+            isPlaying = state.isPlaying,
+            isVisible = isVisible,
             modifier = Modifier.size(dimensions.fullPlayerArtworkSize),
         )
         Text(track.title, style = MusicTheme.typography.headlineMedium, color = MusicTheme.colors.onSurface, maxLines = 2)
