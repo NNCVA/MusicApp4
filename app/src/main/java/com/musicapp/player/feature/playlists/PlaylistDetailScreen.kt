@@ -469,77 +469,79 @@ fun PlaylistDetailScreen(
                     )
                 }
 
-                stickyHeader(key = "playlist_responsive_action_bar") {
-                    val isPinned by remember {
-                        derivedStateOf { listState.firstVisibleItemIndex >= 1 }
-                    }
-                    var sortMenuExpanded by remember { mutableStateOf(false) }
-                    ListActionBar(
-                        modifier = Modifier
-                            .offset {
-                                IntOffset(
-                                    x = 0,
-                                    y = if (isPinned && overscrollEffect.currentOffsetPx < 0f) {
-                                        (-overscrollEffect.currentOffsetPx).roundToInt()
-                                    } else {
-                                        0
-                                    },
-                                )
-                            }
-                            .drawWithContent {
-                                drawRect(
-                                    color = Color.Transparent,
-                                    blendMode = BlendMode.Clear,
-                                )
-                                drawContent()
-                            },
-                        isSelectionMode = state.isSelectionMode,
-                        itemCount = state.displayTracks.size,
-                        showPlayAll = true,
-                        hasPlayableItems = state.displayTracks.any { it.availability == Availability.AVAILABLE },
-                        onPlayAll = onPlayAll,
-                        trailingContent = {
-                            Box {
-                                BareIconButton(
-                                    onClick = { sortMenuExpanded = true },
-                                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_common_sort),
-                                        contentDescription = stringResource(R.string.tracks_sort_label),
-                                        tint = MusicTheme.colors.onSurface,
-                                        modifier = Modifier.size(dimensions.spaceLarge),
+                if (state.tracks.isNotEmpty()) {
+                    stickyHeader(key = "playlist_responsive_action_bar") {
+                        val isPinned by remember {
+                            derivedStateOf { listState.firstVisibleItemIndex >= 1 }
+                        }
+                        var sortMenuExpanded by remember { mutableStateOf(false) }
+                        ListActionBar(
+                            modifier = Modifier
+                                .offset {
+                                    IntOffset(
+                                        x = 0,
+                                        y = if (isPinned && overscrollEffect.currentOffsetPx < 0f) {
+                                            (-overscrollEffect.currentOffsetPx).roundToInt()
+                                        } else {
+                                            0
+                                        },
                                     )
                                 }
-
-                                AppDropdownMenu(
-                                    expanded = sortMenuExpanded,
-                                    onDismissRequest = { sortMenuExpanded = false },
-                                ) {
-                                    PlaylistTrackSortField.entries.forEach { field ->
-                                        AppDropdownMenuItem(
-                                            text = {
-                                                val suffix = if (field == state.sort.field && field != PlaylistTrackSortField.DEFAULT) {
-                                                    stringResource(state.sort.direction.labelResId())
-                                                } else {
-                                                    ""
-                                                }
-                                                Text(stringResource(field.labelResId()) + suffix)
-                                            },
-                                            onClick = {
-                                                onSortSelected(field)
-                                                sortMenuExpanded = false
-                                            },
+                                .drawWithContent {
+                                    drawRect(
+                                        color = Color.Transparent,
+                                        blendMode = BlendMode.Clear,
+                                    )
+                                    drawContent()
+                                },
+                            isSelectionMode = state.isSelectionMode,
+                            itemCount = state.displayTracks.size,
+                            showPlayAll = true,
+                            hasPlayableItems = state.displayTracks.any { it.availability == Availability.AVAILABLE },
+                            onPlayAll = onPlayAll,
+                            trailingContent = {
+                                Box {
+                                    BareIconButton(
+                                        onClick = { sortMenuExpanded = true },
+                                        modifier = Modifier.size(dimensions.minimumTouchTarget),
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_common_sort),
+                                            contentDescription = stringResource(R.string.tracks_sort_label),
+                                            tint = MusicTheme.colors.onSurface,
+                                            modifier = Modifier.size(dimensions.spaceLarge),
                                         )
                                     }
+
+                                    AppDropdownMenu(
+                                        expanded = sortMenuExpanded,
+                                        onDismissRequest = { sortMenuExpanded = false },
+                                    ) {
+                                        PlaylistTrackSortField.entries.forEach { field ->
+                                            AppDropdownMenuItem(
+                                                text = {
+                                                    val suffix = if (field == state.sort.field && field != PlaylistTrackSortField.DEFAULT) {
+                                                        stringResource(state.sort.direction.labelResId())
+                                                    } else {
+                                                        ""
+                                                    }
+                                                    Text(stringResource(field.labelResId()) + suffix)
+                                                },
+                                                onClick = {
+                                                    onSortSelected(field)
+                                                    sortMenuExpanded = false
+                                                },
+                                            )
+                                        }
+                                    }
                                 }
-                            }
-                        },
-                        selectedCount = state.selectedTrackIds.size,
-                        isAllSelected = state.displayTracks.isNotEmpty() && state.selectedTrackIds.size >= state.displayTracks.size,
-                        onClearSelection = onClearSelection,
-                        onToggleSelectAll = onToggleSelectAll,
-                    )
+                            },
+                            selectedCount = state.selectedTrackIds.size,
+                            isAllSelected = state.displayTracks.isNotEmpty() && state.selectedTrackIds.size >= state.displayTracks.size,
+                            onClearSelection = onClearSelection,
+                            onToggleSelectAll = onToggleSelectAll,
+                        )
+                    }
                 }
 
                 if (state.isLibraryLoaded && state.tracks.isEmpty()) {

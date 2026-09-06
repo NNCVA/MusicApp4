@@ -52,7 +52,6 @@ import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import com.musicapp.player.core.designsystem.component.GutterMode
-import com.musicapp.player.core.designsystem.component.LoadingState
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
@@ -165,9 +164,7 @@ private fun ArtistsScreen(
                     )
                 },
             )
-            if (!state.isLoaded) {
-                LoadingState(modifier = Modifier.weight(1f))
-            } else if (state.artists.isEmpty()) {
+            if (state.isLoaded && state.artists.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)

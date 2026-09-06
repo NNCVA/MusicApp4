@@ -227,6 +227,25 @@ class ArtistsViewModelTest {
         assertEquals(com.musicapp.player.feature.category.CategoryTrackSortField.TITLE, sortRepo.artistTrackSort.value.field)
     }
 
+    @Test
+    fun `artist detail marks isUnavailable when library has tracks but no match for artist`() = runTest(dispatcher) {
+        val track = track(1, dateModifiedMs = 10, artistName = "Other Artist")
+        val fakeRepo = FakeMediaLibraryRepository(listOf(track))
+        val detailVm = ArtistDetailViewModel(
+            mediaLibraryRepository = fakeRepo,
+            playbackController = NoOpPlaybackController(),
+            sortPreferencesRepository = com.musicapp.player.fakes.FakeSortPreferencesRepository(),
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detailVm.uiState.collect {} }
+        detailVm.open(ArtistId("NonExistent"))
+        advanceUntilIdle()
+
+        val state = detailVm.uiState.value
+        assertTrue(state.isLoaded)
+        assertTrue(state.isUnavailable)
+        assertTrue(state.tracks.isEmpty())
+    }
+
     private fun kotlinx.coroutines.test.TestScope.collectState(viewModel: ArtistsViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         testScheduler.runCurrent()

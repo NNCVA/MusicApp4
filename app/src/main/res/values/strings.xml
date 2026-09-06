@@ -426,6 +426,8 @@
     <string name="album_detail_sample_rate_format">%1$d Hz</string>
     <string name="album_detail_unavailable_title">Album unavailable</string>
     <string name="album_detail_unavailable_description">This album is no longer available in your library.</string>
+    <string name="artist_detail_unavailable_title">Artist unavailable</string>
+    <string name="artist_detail_unavailable_description">This artist is no longer available in your library.</string>
     <string name="album_detail_meta_na_desc">Not available</string>
     <string name="album_detail_meta_multiple_desc">Multiple values in album</string>
     <string name="album_detail_track_number_desc">Track %1$s</string>

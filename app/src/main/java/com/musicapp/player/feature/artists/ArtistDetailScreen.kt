@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,7 +55,6 @@ import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.ListActionBar
-import com.musicapp.player.core.designsystem.component.LoadingState
 import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.TextInputDialog
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
@@ -79,7 +79,6 @@ fun ArtistDetailScreenRoute(
     viewModel: ArtistDetailViewModel,
     contentInsets: WindowInsets,
     onBack: () -> Unit,
-    onScanMusic: () -> Unit = {},
     onAlbumClick: (ArtistAlbumSummary) -> Unit = {},
     onArtistClick: (String) -> Unit = {},
     onAlbumIdClick: (AlbumId) -> Unit = {},
@@ -93,7 +92,6 @@ fun ArtistDetailScreenRoute(
         contentInsets = contentInsets,
         bottomPadding = bottomPadding,
         onBack = onBack,
-        onScanMusic = onScanMusic,
         onAlbumClick = onAlbumClick,
         onArtistClick = onArtistClick,
         onAlbumIdClick = onAlbumIdClick,
@@ -114,7 +112,6 @@ internal fun ArtistDetailScreen(
     state: ArtistDetailUiState,
     contentInsets: WindowInsets,
     onBack: () -> Unit,
-    onScanMusic: () -> Unit,
     onAlbumClick: (ArtistAlbumSummary) -> Unit,
     onArtistClick: (String) -> Unit = {},
     onAlbumIdClick: (AlbumId) -> Unit = {},
@@ -173,8 +170,18 @@ internal fun ArtistDetailScreen(
                 },
             )
 
-            if (!state.isLoaded) {
-                LoadingState(modifier = Modifier.fillMaxWidth().weight(1f))
+            if (state.isUnavailable) {
+                EmptyState(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = dimensions.contentHorizontalPadding)
+                        .padding(bottom = dimensions.spaceSmall + bottomPadding),
+                    title = stringResource(R.string.artist_detail_unavailable_title),
+                    description = stringResource(R.string.artist_detail_unavailable_description),
+                )
+            } else if (!state.isLoaded) {
+                Spacer(modifier = Modifier.fillMaxWidth().weight(1f))
             } else {
                 LazyColumn(
                     state = listState,
@@ -187,18 +194,20 @@ internal fun ArtistDetailScreen(
                     item(key = "artist-hero") {
                         ArtistHeroSection(state = state, title = title)
                     }
-                    item(key = "artist-actions") {
-                        ListActionBar(
-                            isSelectionMode = false,
-                            itemCount = state.tracks.size,
-                            hasPlayableItems = state.tracks.any { it.availability == Availability.AVAILABLE },
-                            itemCountDescription = pluralStringResource(
-                                R.plurals.category_track_count,
-                                state.tracks.size,
-                                state.tracks.size,
-                            ),
-                            onPlayAll = onPlayAll,
-                        )
+                    if (state.tracks.isNotEmpty()) {
+                        item(key = "artist-actions") {
+                            ListActionBar(
+                                isSelectionMode = false,
+                                itemCount = state.tracks.size,
+                                hasPlayableItems = state.tracks.any { it.availability == Availability.AVAILABLE },
+                                itemCountDescription = pluralStringResource(
+                                    R.plurals.category_track_count,
+                                    state.tracks.size,
+                                    state.tracks.size,
+                                ),
+                                onPlayAll = onPlayAll,
+                            )
+                        }
                     }
                     if (state.tracks.isEmpty()) {
                         item(key = "artist-empty") {
@@ -208,9 +217,6 @@ internal fun ArtistDetailScreen(
                                     .padding(bottom = dimensions.spaceLarge),
                                 title = stringResource(R.string.artist_empty_title),
                                 description = stringResource(R.string.artist_empty_description),
-                                actionLabel = stringResource(R.string.navigation_scan_music),
-                                actionIconRes = R.drawable.ic_sidebar_scan,
-                                onAction = onScanMusic,
                             )
                         }
                     } else {

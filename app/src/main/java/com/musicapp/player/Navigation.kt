@@ -397,7 +397,6 @@ fun MainNavigation(
                                 ),
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,
-                                onScanMusic = ::navigateToScanMusic,
                                 onAlbumClick = { album ->
                                     commitNavigation {
                                         navigate(
