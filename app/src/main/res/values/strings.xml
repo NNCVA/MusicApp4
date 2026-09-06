@@ -16,6 +16,11 @@
     <string name="playback_next">Next</string>
     <string name="playback_next_short">⏭</string>
     <string name="playback_queue">Playback queue</string>
+    <string name="playback_sleep_timer">Sleep timer</string>
+    <string name="playback_sleep_timer_coming_soon">Sleep timer is coming soon</string>
+    <string name="playback_equalizer">Equalizer</string>
+    <string name="playback_equalizer_coming_soon">Equalizer is coming soon</string>
+    <string name="playback_more_options">More options</string>
     <string name="loading">Loading…</string>
     <string name="empty_state_title">Nothing here yet</string>
     <string name="error_state_title">Something went wrong</string>

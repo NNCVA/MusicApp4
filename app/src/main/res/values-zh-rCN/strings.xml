@@ -13,6 +13,11 @@
     <string name="playback_next">下一首</string>
     <string name="playback_next_short">⏭</string>
     <string name="playback_queue">播放队列</string>
+    <string name="playback_sleep_timer">睡眠定时</string>
+    <string name="playback_sleep_timer_coming_soon">睡眠定时功能正在开发中，敬请期待</string>
+    <string name="playback_equalizer">音效均衡器</string>
+    <string name="playback_equalizer_coming_soon">均衡器功能正在开发中，敬请期待</string>
+    <string name="playback_more_options">更多操作</string>
     <string name="loading">正在加载…</string>
     <string name="empty_state_title">暂无内容</string>
     <string name="error_state_title">出现错误</string>

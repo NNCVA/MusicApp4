@@ -2,14 +2,24 @@ package com.musicapp.player.feature.player
 
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import coil3.compose.AsyncImage
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
@@ -72,19 +82,25 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.window.Dialog
@@ -383,6 +399,7 @@ private fun FullPlayer(
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
+    val coroutineScope = rememberCoroutineScope()
     val pager = rememberPagerState(initialPage = initialPage.ordinal, pageCount = { FullPlayerPage.entries.size })
     val backgroundDragState = rememberDraggableState { deltaY ->
         PlayerGestureRouter.routeSheetDrag(
@@ -406,23 +423,54 @@ private fun FullPlayer(
         }
     }
     LaunchedEffect(pager.currentPage) { onPageChanged(FullPlayerPage.entries[pager.currentPage]) }
+
+    var feedbackMessage by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(feedbackMessage) {
+        if (feedbackMessage != null) {
+            kotlinx.coroutines.delay(2000L)
+            feedbackMessage = null
+        }
+    }
+
     Column(
         modifier = modifier.fillMaxSize().windowInsetsPadding(contentInsets),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(dimensions.playerHeaderHeight)
-                .padding(horizontal = dimensions.topBarHorizontalPadding)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = dimensions.topBarHorizontalPadding,
+                    end = dimensions.topBarHorizontalPadding,
+                    top = dimensions.spaceMedium,
+                    bottom = dimensions.spaceSmall,
+                )
                 .draggable(
                     state = backgroundDragState,
                     orientation = Orientation.Vertical,
                     onDragStopped = { velocityY -> onSheetSettle(velocityY) },
                 ),
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = Alignment.Start,
         ) {
-            TextButton(onClick = onCollapse) { Text(stringResource(R.string.player_collapse)) }
-            Text(track.title, style = MusicTheme.typography.titleLarge, color = MusicTheme.colors.onSurface, maxLines = 1, modifier = Modifier.weight(1f))
-            TextButton(onClick = onShowInfo) { Text(stringResource(R.string.track_info_title)) }
+            Text(
+                text = track.title,
+                style = MusicTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .basicMarquee(iterations = Int.MAX_VALUE),
+            )
+            Spacer(Modifier.height(dimensions.spaceExtraSmall))
+            Text(
+                text = track.artistName.localizedArtistName(),
+                style = MusicTheme.typography.bodyMedium,
+                color = MusicTheme.colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         HorizontalPager(
             state = pager,
@@ -464,27 +512,92 @@ private fun FullPlayer(
         ) {
             PlayerStatus(state.loadState, state.errorMessageRes)
         }
-        val fraction = if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f
-        Slider(
-            value = fraction.coerceIn(0f, 1f),
-            onValueChangeFinished = {},
-            onValueChange = onSeek,
+        InteractiveThinProgressBar(
+            positionMs = state.positionMs,
+            durationMs = state.durationMs,
             enabled = state.durationMs > 0,
+            onSeek = onSeek,
             modifier = Modifier.fillMaxWidth()
                 .padding(horizontal = dimensions.contentHorizontalPadding),
         )
+        Spacer(Modifier.height(dimensions.spaceSmall))
         Row(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
                 .padding(horizontal = dimensions.contentHorizontalPadding),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            Text(formatDuration(state.positionMs), style = MusicTheme.typography.labelMedium, color = MusicTheme.colors.onSurfaceVariant)
-            Text(formatDuration(state.durationMs), style = MusicTheme.typography.labelMedium, color = MusicTheme.colors.onSurfaceVariant)
+            val previousDescription = stringResource(R.string.playback_previous)
+            BareIconButton(
+                onClick = onPrevious,
+                enabled = state.canSkipPrevious,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_playback_skip_previous),
+                    contentDescription = previousDescription,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
+            val playbackDescription =
+                stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
+            BareIconButton(
+                onClick = onTogglePlayback,
+                modifier = Modifier.size(64.dp),
+            ) {
+                Icon(
+                    painter = painterResource(if (state.isPlaying) R.drawable.ic_playback_pause else R.drawable.ic_playback_play),
+                    contentDescription = playbackDescription,
+                    modifier = Modifier.size(48.dp),
+                )
+            }
+            val nextDescription = stringResource(R.string.playback_next)
+            BareIconButton(
+                onClick = onNext,
+                enabled = state.canSkipNext,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_playback_skip_next),
+                    contentDescription = nextDescription,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
         }
-        Column(
-            modifier = Modifier.fillMaxWidth()
-                .padding(horizontal = dimensions.contentHorizontalPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        Spacer(Modifier.height(dimensions.spaceSmall))
+        AnimatedVisibility(
+            visible = feedbackMessage != null,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+        ) {
+            feedbackMessage?.let { msg ->
+                Surface(
+                    shape = RoundedCornerShape(dimensions.spaceMedium),
+                    color = MusicTheme.colors.inverseSurface.copy(alpha = 0.88f),
+                    tonalElevation = dimensions.playerSheetElevation,
+                ) {
+                    Text(
+                        text = msg,
+                        style = MusicTheme.typography.bodySmall,
+                        color = MusicTheme.colors.inverseOnSurface,
+                        modifier = Modifier.padding(
+                            horizontal = dimensions.spaceMedium,
+                            vertical = dimensions.spaceSmallMedium,
+                        ),
+                    )
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = dimensions.contentHorizontalPadding,
+                    vertical = dimensions.spaceSmall,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceAround,
         ) {
             BareIconButton(
                 onClick = onCycleMode,
@@ -496,64 +609,182 @@ private fun FullPlayer(
                     modifier = Modifier.size(dimensions.spaceLarge),
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly,
+            val sleepTimerComingSoon = stringResource(R.string.playback_sleep_timer_coming_soon)
+            BareIconButton(
+                onClick = { feedbackMessage = sleepTimerComingSoon },
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
             ) {
-                val previousDescription = stringResource(R.string.playback_previous)
-                BareIconButton(
-                    onClick = onPrevious,
-                    enabled = state.canSkipPrevious,
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_playback_skip_previous),
-                        contentDescription = previousDescription,
-                        modifier = Modifier.size(dimensions.spaceLarge),
+                Icon(
+                    painter = painterResource(R.drawable.ic_playback_sleep_timer),
+                    contentDescription = stringResource(R.string.playback_sleep_timer),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
+            val equalizerComingSoon = stringResource(R.string.playback_equalizer_coming_soon)
+            BareIconButton(
+                onClick = { feedbackMessage = equalizerComingSoon },
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_sidebar_equalizer),
+                    contentDescription = stringResource(R.string.playback_equalizer),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
+            BareIconButton(
+                onClick = {
+                    coroutineScope.launch {
+                        pager.animateScrollToPage(FullPlayerPage.QUEUE.ordinal)
+                    }
+                },
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_view_list),
+                    contentDescription = stringResource(R.string.playback_queue),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
+            BareIconButton(
+                onClick = onShowInfo,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_more_horizontal),
+                    contentDescription = stringResource(R.string.playback_more_options),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InteractiveThinProgressBar(
+    positionMs: Long,
+    durationMs: Long,
+    enabled: Boolean,
+    onSeek: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var isDragging by remember { mutableStateOf(false) }
+    var dragFraction by remember { mutableFloatStateOf(0f) }
+
+    val currentFraction = if (durationMs > 0) {
+        (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
+    } else 0f
+
+    val displayFraction = if (isDragging) dragFraction else currentFraction
+
+    val trackHeight by animateDpAsState(
+        targetValue = if (isDragging) 5.dp else 2.5.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "trackHeight",
+    )
+    val thumbRadius by animateDpAsState(
+        targetValue = if (isDragging) 6.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "thumbRadius",
+    )
+
+    val activeColor = MusicTheme.colors.onSurface
+    val inactiveColor = MusicTheme.colors.onSurface.copy(alpha = 0.2f)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp)
+                .pointerInput(enabled, durationMs) {
+                    if (!enabled || durationMs <= 0) return@pointerInput
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val width = size.width
+                        if (width <= 0) return@awaitEachGesture
+                        isDragging = true
+                        dragFraction = (down.position.x / width).coerceIn(0f, 1f)
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+
+                        var lastHapticFraction = dragFraction
+                        val pointer = down.id
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == pointer } ?: break
+                            if (change.pressed) {
+                                val newFraction = (change.position.x / width).coerceIn(0f, 1f)
+                                if (kotlin.math.abs(newFraction - lastHapticFraction) >= 0.015f) {
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    lastHapticFraction = newFraction
+                                }
+                                dragFraction = newFraction
+                                change.consume()
+                            } else {
+                                change.consume()
+                                onSeek(dragFraction)
+                                break
+                            }
+                        }
+                        isDragging = false
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(modifier = Modifier.fillMaxWidth().height(16.dp)) {
+                val centerY = size.height / 2f
+                val strokeWidthPx = trackHeight.toPx()
+                val thumbRadiusPx = thumbRadius.toPx()
+                val startX = 0f
+                val endX = size.width
+                val progressX = (endX * displayFraction).coerceIn(0f, endX)
+
+                drawLine(
+                    color = inactiveColor,
+                    start = Offset(startX, centerY),
+                    end = Offset(endX, centerY),
+                    strokeWidth = strokeWidthPx,
+                    cap = StrokeCap.Round,
+                )
+
+                if (progressX > 0f) {
+                    drawLine(
+                        color = activeColor,
+                        start = Offset(startX, centerY),
+                        end = Offset(progressX, centerY),
+                        strokeWidth = strokeWidthPx,
+                        cap = StrokeCap.Round,
                     )
                 }
-                val rewindDescription = stringResource(R.string.playback_rewind_10_seconds)
-                TextButton(
-                    onClick = onRewind,
-                    enabled = state.durationMs > 0,
-                    modifier = Modifier.semantics { contentDescription = rewindDescription },
-                ) {
-                    Text(stringResource(R.string.playback_rewind_10_seconds_short))
-                }
-                val playbackDescription =
-                    stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
-                FilledIconButton(
-                    onClick = onTogglePlayback,
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(if (state.isPlaying) R.drawable.ic_playback_pause else R.drawable.ic_playback_play),
-                        contentDescription = playbackDescription,
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-                val forwardDescription = stringResource(R.string.playback_forward_10_seconds)
-                TextButton(
-                    onClick = onFastForward,
-                    enabled = state.durationMs > 0,
-                    modifier = Modifier.semantics { contentDescription = forwardDescription },
-                ) {
-                    Text(stringResource(R.string.playback_forward_10_seconds_short))
-                }
-                val nextDescription = stringResource(R.string.playback_next)
-                BareIconButton(
-                    onClick = onNext,
-                    enabled = state.canSkipNext,
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_playback_skip_next),
-                        contentDescription = nextDescription,
-                        modifier = Modifier.size(dimensions.spaceLarge),
+
+                if (thumbRadiusPx > 0f) {
+                    drawCircle(
+                        color = activeColor,
+                        radius = thumbRadiusPx,
+                        center = Offset(progressX, centerY),
                     )
                 }
             }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            val displayedPosition = if (isDragging) {
+                (dragFraction * durationMs).toLong()
+            } else {
+                positionMs
+            }
+            Text(
+                text = formatDuration(displayedPosition),
+                style = MusicTheme.typography.labelMedium,
+                color = MusicTheme.colors.onSurfaceVariant,
+            )
+            Text(
+                text = formatDuration(durationMs),
+                style = MusicTheme.typography.labelMedium,
+                color = MusicTheme.colors.onSurfaceVariant,
+            )
         }
     }
 }
@@ -565,10 +796,9 @@ private fun ArtworkPage(
     isVisible: Boolean = true,
 ) {
     val dimensions = MusicTheme.dimensions
-    Column(
+    Box(
         modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(dimensions.spaceLarge, Alignment.CenterVertically),
+        contentAlignment = Alignment.Center,
     ) {
         RotatingArtworkDisc(
             track = track,
@@ -576,8 +806,6 @@ private fun ArtworkPage(
             isVisible = isVisible,
             modifier = Modifier.size(dimensions.fullPlayerArtworkSize),
         )
-        Text(track.title, style = MusicTheme.typography.headlineMedium, color = MusicTheme.colors.onSurface, maxLines = 2)
-        Text(track.artistName.localizedArtistName(), style = MusicTheme.typography.titleMedium, color = MusicTheme.colors.onSurfaceVariant)
     }
 }
 

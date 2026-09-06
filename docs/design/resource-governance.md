@@ -56,10 +56,12 @@
 | `ic_playback_repeat_one.xml` | `src/av/repeat_one/materialiconsround/24px.svg` | 单曲循环；转为 `VectorDrawable`，循环环线与数字1圆角化 |
 | `ic_playback_shuffle.xml` | `src/av/shuffle/materialiconsround/24px.svg` | 随机播放；转为 `VectorDrawable`，交叉箭头拐角与端点平滑圆角化 |
 | `ic_playback_queue.xml` | `src/av/queue_music/materialiconsround/24px.svg` | 播放队列；转为 `VectorDrawable`，横线与音符拐角平滑圆角化 |
+| `ic_playback_sleep_timer.xml` | `src/image/timer/materialiconsround/24px.svg` | 播放详情页睡眠定时入口；转为 `VectorDrawable`，圆角表盘与指针 |
 
 ### 通用与导航资源
 | MusicApp 资源 | Google 源文件 (Round) | 用途与修改 |
 |---|---|---|
+| `ic_common_more_horizontal.xml` | `src/navigation/more_horiz/materialiconsround/24px.svg` | 播放详情页歌曲信息入口（横向三点）；转为 `VectorDrawable`，平滑圆点 |
 | `ic_common_add.xml` | `src/content/add/materialiconsround/24px.svg` | 添加操作；十字端点圆角化 |
 | `ic_common_close.xml` | `src/navigation/close/materialiconsround/24px.svg` | 关闭与清除；交叉叉号端点圆角化 |
 | `ic_common_close_circle.xml` | `src/navigation/cancel/materialiconsround/24px.svg` | 退出多选；圆圈内叉号端点圆角化 |
