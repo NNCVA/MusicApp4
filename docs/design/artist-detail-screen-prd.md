@@ -158,7 +158,7 @@ data class ArtistAlbumSummary(
 ## 6. 异常与边界场景处理
 
 1. **空曲目/艺术家缺失**：
-   - 若媒体库中无该艺术家曲目，显示标准 `EmptyState` 组件并引导“扫描音乐”。
+   - 若该艺术家在已就绪媒体库中无法匹配任何曲目（如外部删除或实体失效），呈现全屏 `isUnavailable` 失效态（“艺术家不可用”）并保留返回；若艺术家存在但曲目为空，展示纯文本空态说明，严禁越权引导扫描音乐。
 2. **纯未知专辑场景**：
    - 若该艺术家所有歌曲均无专辑信息，单曲列表正常展示，专辑分区展示一个“未知专辑”收纳项，点击可查看完整未知专辑详情。
 3. **超长文本排版**：
@@ -198,7 +198,7 @@ data class ArtistAlbumSummary(
 ### 7.4 状态、Insets 与自适应
 
 - 详情状态至少区分 `Loading`、`Content`、`Empty`、`Unavailable`、`StorageOffline` 和 `Error`；只有媒体库就绪后才能判定空状态。
-- 空状态需要保留扫描入口；详情路由提供扫描回调。
+- 详情页不承担扫描职责，严禁保留扫描入口；详情路由不暴露扫描回调。曲目为空时自动隐藏播放全部等行动栏。
 - 底部直接沿用调用方传入的 `bottomPadding`，不再额外增加 Mini Player 的 80dp。
 - 覆盖 `Compact`、`Medium`、`Expanded` 窗口；新增 `detailTopBarHeight`、`artistHeroArtworkSize`、`albumRowArtworkSize`、`albumRowMinHeight` 等设计令牌。
 - 艺术家名采用加粗 `titleLarge`；专辑标题最多两行，并由 `albumRowMinHeight` 保证三行元数据的可读高度。
