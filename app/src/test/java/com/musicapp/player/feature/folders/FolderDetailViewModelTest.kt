@@ -1,6 +1,7 @@
 package com.musicapp.player.feature.folders
 
 import com.musicapp.player.core.domain.model.PlaybackContext
+import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.playback.PlaybackControllerFacade
@@ -8,6 +9,9 @@ import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.data.repository.FakeMediaLibraryRepository
 import com.musicapp.player.feature.category.CategorySortDirection
 import com.musicapp.player.feature.category.CategoryTrackSortField
+import com.musicapp.player.feature.tracks.batch.BatchTrackAction
+import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
+import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -213,6 +217,166 @@ class FolderDetailViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `startSelection activates selection mode and selects track`() = runTest(dispatcher) {
+        val targetTrack = track(10, title = "Single", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
+        val viewModel = FolderDetailViewModel(
+            mediaLibraryRepository = FakeMediaLibraryRepository(listOf(targetTrack)),
+            playbackController = NoOpPlaybackController(),
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Music"))
+        advanceUntilIdle()
+
+        viewModel.startSelection(targetTrack.id)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(setOf(targetTrack.id), viewModel.uiState.value.selectedTrackIds)
+        collection.cancel()
+    }
+
+    @Test
+    fun `toggleSelection toggles selection and exits when empty`() = runTest(dispatcher) {
+        val t1 = track(1, title = "Track 1", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
+        val t2 = track(2, title = "Track 2", artist = "Artist", dateAddedMs = 2, durationMs = 1_000)
+        val viewModel = FolderDetailViewModel(
+            mediaLibraryRepository = FakeMediaLibraryRepository(listOf(t1, t2)),
+            playbackController = NoOpPlaybackController(),
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Music"))
+        advanceUntilIdle()
+
+        viewModel.startSelection(t1.id)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        // Add t2
+        viewModel.toggleSelection(t2.id)
+        advanceUntilIdle()
+        assertEquals(setOf(t1.id, t2.id), viewModel.uiState.value.selectedTrackIds)
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        // Remove t1
+        viewModel.toggleSelection(t1.id)
+        advanceUntilIdle()
+        assertEquals(setOf(t2.id), viewModel.uiState.value.selectedTrackIds)
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        // Remove t2 -> empty -> exits selection mode
+        viewModel.toggleSelection(t2.id)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        collection.cancel()
+    }
+
+    @Test
+    fun `selectAll and toggleSelectAll work on direct tracks only`() = runTest(dispatcher) {
+        val t1 = track(1, title = "Direct 1", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
+        val t2 = track(2, title = "Direct 2", artist = "Artist", dateAddedMs = 2, durationMs = 1_000)
+        val t3 = track(3, title = "Subtrack", artist = "Artist", dateAddedMs = 3, durationMs = 1_000).copy(relativePath = "Music/Sub")
+        val viewModel = FolderDetailViewModel(
+            mediaLibraryRepository = FakeMediaLibraryRepository(listOf(t1, t2, t3)),
+            playbackController = NoOpPlaybackController(),
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Music"))
+        advanceUntilIdle()
+
+        viewModel.selectAll()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(setOf(t1.id, t2.id), viewModel.uiState.value.selectedTrackIds)
+
+        // toggleSelectAll when all are selected -> clear & exit
+        viewModel.toggleSelectAll()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+
+        // toggleSelectAll when none selected -> select all & enter
+        viewModel.toggleSelectAll()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(setOf(t1.id, t2.id), viewModel.uiState.value.selectedTrackIds)
+        collection.cancel()
+    }
+
+    @Test
+    fun `clearSelection and exitSelection clear selection and exit mode`() = runTest(dispatcher) {
+        val t1 = track(1, title = "Track 1", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
+        val viewModel = FolderDetailViewModel(
+            mediaLibraryRepository = FakeMediaLibraryRepository(listOf(t1)),
+            playbackController = NoOpPlaybackController(),
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Music"))
+        advanceUntilIdle()
+
+        viewModel.startSelection(t1.id)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        viewModel.clearSelection()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+
+        viewModel.startSelection(t1.id)
+        advanceUntilIdle()
+        viewModel.exitSelection()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+        collection.cancel()
+    }
+
+    @Test
+    fun `addSelectedToQueue and addSelectedToPlaylist execute batch actions and exit selection`() = runTest(dispatcher) {
+        val t1 = track(1, title = "Track 1", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
+        val t2 = track(2, title = "Track 2", artist = "Artist", dateAddedMs = 2, durationMs = 1_000)
+        val batchExecutor = RecordingBatchTrackActionExecutor()
+        val viewModel = FolderDetailViewModel(
+            mediaLibraryRepository = FakeMediaLibraryRepository(listOf(t1, t2)),
+            playbackController = NoOpPlaybackController(),
+            batchActionExecutor = batchExecutor,
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Music"))
+        advanceUntilIdle()
+
+        viewModel.startSelection(t1.id)
+        viewModel.toggleSelection(t2.id)
+        advanceUntilIdle()
+
+        viewModel.addSelectedToQueue()
+        advanceUntilIdle()
+
+        assertEquals(BatchTrackAction.AddToQueue, batchExecutor.lastAction)
+        assertEquals(listOf(t1.id, t2.id), batchExecutor.lastTrackIds)
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+        assertTrue(viewModel.uiState.value.batchResult is BatchTrackActionResult.Completed)
+
+        viewModel.acknowledgeBatchResult()
+        advanceUntilIdle()
+        org.junit.Assert.assertNull(viewModel.uiState.value.batchResult)
+
+        // Now test add to playlist
+        viewModel.startSelection(t1.id)
+        advanceUntilIdle()
+        val playlistId = PlaylistId(1L)
+        viewModel.addSelectedToPlaylist(playlistId)
+        advanceUntilIdle()
+
+        assertEquals(BatchTrackAction.AddToPlaylist(playlistId), batchExecutor.lastAction)
+        assertEquals(listOf(t1.id), batchExecutor.lastTrackIds)
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        collection.cancel()
+    }
+
     private fun assertSort(
         viewModel: FolderDetailViewModel,
         field: CategoryTrackSortField,
@@ -240,6 +404,25 @@ class FolderDetailViewModelTest {
         relativePath = "Music",
         displayName = "$id.mp3",
     )
+}
+
+private class RecordingBatchTrackActionExecutor : BatchTrackActionExecutor {
+    var lastAction: BatchTrackAction? = null
+    var lastTrackIds: List<TrackId>? = null
+
+    override suspend fun execute(
+        action: BatchTrackAction,
+        orderedTrackIds: List<TrackId>,
+    ): BatchTrackActionResult {
+        lastAction = action
+        lastTrackIds = orderedTrackIds
+        return BatchTrackActionResult.Completed(
+            action = action,
+            selectedCount = orderedTrackIds.size,
+            affectedCount = orderedTrackIds.size,
+            skippedCount = 0,
+        )
+    }
 }
 
 private class NoOpPlaybackController : PlaybackControllerFacade {

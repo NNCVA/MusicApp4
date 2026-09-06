@@ -20,6 +20,10 @@ import com.musicapp.player.feature.category.CategoryTrackSortField
 import com.musicapp.player.feature.category.next
 import com.musicapp.player.feature.category.sortCategoryTracks
 import com.musicapp.player.feature.playlists.PlaylistUseCase
+import com.musicapp.player.feature.tracks.batch.BatchTrackAction
+import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
+import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
+import com.musicapp.player.feature.tracks.batch.DefaultBatchTrackActionExecutor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.Locale
 import javax.inject.Inject
@@ -31,6 +35,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class FoldersUiState(
@@ -54,6 +59,10 @@ data class FolderDetailUiState(
     val infoTrack: Track? = null,
     val infoMetadata: AdvancedTrackMetadata? = null,
     val isInfoLoading: Boolean = false,
+    val isSelectionMode: Boolean = false,
+    val selectedTrackIds: Set<TrackId> = emptySet(),
+    val batchResult: BatchTrackActionResult? = null,
+    val isBatchActionRunning: Boolean = false,
 )
 
 @HiltViewModel
@@ -110,6 +119,7 @@ class FolderDetailViewModel @Inject constructor(
     private val playlistRepository: PlaylistRepository,
     private val playlistUseCase: PlaylistUseCase,
     private val trackMetadataRepository: TrackMetadataRepository,
+    private val batchActionExecutor: BatchTrackActionExecutor,
 ) : ViewModel() {
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
@@ -121,6 +131,12 @@ class FolderDetailViewModel @Inject constructor(
         playlistRepository = FakePlaylistRepository(),
         playlistUseCase = PlaylistUseCase(FakePlaylistRepository(), com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() }),
         trackMetadataRepository = DefaultFolderTrackMetadataRepository,
+        batchActionExecutor = DefaultBatchTrackActionExecutor(
+            FakePlaylistRepository(),
+            mediaLibraryRepository,
+            playbackController,
+            com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() },
+        ),
     )
 
     constructor(
@@ -134,6 +150,26 @@ class FolderDetailViewModel @Inject constructor(
         playlistRepository = FakePlaylistRepository(),
         playlistUseCase = PlaylistUseCase(FakePlaylistRepository(), com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() }),
         trackMetadataRepository = DefaultFolderTrackMetadataRepository,
+        batchActionExecutor = DefaultBatchTrackActionExecutor(
+            FakePlaylistRepository(),
+            mediaLibraryRepository,
+            playbackController,
+            com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() },
+        ),
+    )
+
+    constructor(
+        mediaLibraryRepository: MediaLibraryRepository,
+        playbackController: PlaybackControllerFacade,
+        batchActionExecutor: BatchTrackActionExecutor,
+    ) : this(
+        mediaLibraryRepository = mediaLibraryRepository,
+        playbackController = playbackController,
+        volumeMetadataSource = EmptyFolderVolumeMetadataSource,
+        playlistRepository = FakePlaylistRepository(),
+        playlistUseCase = PlaylistUseCase(FakePlaylistRepository(), com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() }),
+        trackMetadataRepository = DefaultFolderTrackMetadataRepository,
+        batchActionExecutor = batchActionExecutor,
     )
 
     private val selectedFolderId = MutableStateFlow<FolderId?>(null)
@@ -142,6 +178,10 @@ class FolderDetailViewModel @Inject constructor(
     private val infoTrack = MutableStateFlow<Track?>(null)
     private val infoMetadata = MutableStateFlow<AdvancedTrackMetadata?>(null)
     private val isInfoLoading = MutableStateFlow(false)
+    private val isSelectionMode = MutableStateFlow(false)
+    private val selectedTrackIds = MutableStateFlow<Set<TrackId>>(emptySet())
+    private val batchResult = MutableStateFlow<BatchTrackActionResult?>(null)
+    private val isBatchActionRunning = MutableStateFlow(false)
 
     private val coreState =
         combine(
@@ -157,19 +197,30 @@ class FolderDetailViewModel @Inject constructor(
             Triple(track, metadata, loading)
         }
 
+    private val selectionState =
+        combine(isSelectionMode, selectedTrackIds, batchResult, isBatchActionRunning) { selectionMode, selectedIds, bResult, batchRunning ->
+            SelectionState(selectionMode, selectedIds, bResult, batchRunning)
+        }
+
     val uiState: StateFlow<FolderDetailUiState> =
         combine(
             coreState,
             folderSort,
             trackSort,
             playlistRepository.observePlaylists().onStart { emit(emptyList()) }.catch { emit(emptyList()) },
-            infoState,
-        ) { (tracks, metadata, folderId), currentFolderSort, currentTrackSort, playlists, (currentInfoTrack, currentInfoMeta, loadingInfo) ->
+            combine(infoState, selectionState) { info, selection -> Pair(info, selection) },
+        ) { (tracks, metadata, folderId), currentFolderSort, currentTrackSort, playlists, (info, selection) ->
+            val (currentInfoTrack, currentInfoMeta, loadingInfo) = info
+            val (selectionMode, currentSelectedIds, currentBatchResult, batchRunning) = selection
             val roots = FolderTree.build(tracks)
             val node = folderId?.let { FolderTree.find(roots, it) }
             val volumeMetadata = node?.let { metadata.associateBy(FolderVolumeMetadata::volumeName)[it.id.volumeName] }
             val isVolumeRoot = node?.isVolumeRoot == true
             val isMusicFolder = node?.hasDirectTracks == true
+            val sortedDirectTracks = sortCategoryTracks(node?.directTracks.orEmpty(), currentTrackSort)
+            val directTrackIds = sortedDirectTracks.mapTo(mutableSetOf(), Track::id)
+            val validSelectedIds = currentSelectedIds.intersect(directTrackIds)
+
             FolderDetailUiState(
                 folderId = folderId,
                 displayName = when {
@@ -181,7 +232,7 @@ class FolderDetailViewModel @Inject constructor(
                     node?.children.orEmpty(),
                     FolderSort(field = FolderSortField.NAME, direction = CategorySortDirection.ASCENDING),
                 ),
-                directTracks = sortCategoryTracks(node?.directTracks.orEmpty(), currentTrackSort),
+                directTracks = sortedDirectTracks,
                 recursiveTracks = sortCategoryTracks(node?.recursiveTracks.orEmpty(), currentTrackSort),
                 folderSort = currentFolderSort,
                 trackSort = currentTrackSort,
@@ -193,6 +244,10 @@ class FolderDetailViewModel @Inject constructor(
                 infoTrack = currentInfoTrack,
                 infoMetadata = currentInfoMeta,
                 isInfoLoading = loadingInfo,
+                isSelectionMode = selectionMode,
+                selectedTrackIds = validSelectedIds,
+                batchResult = currentBatchResult,
+                isBatchActionRunning = batchRunning,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), FolderDetailUiState())
 
@@ -240,6 +295,88 @@ class FolderDetailViewModel @Inject constructor(
         }
     }
 
+    fun startSelection(trackId: TrackId) {
+        isSelectionMode.value = true
+        selectedTrackIds.value = setOf(trackId)
+    }
+
+    fun toggleSelection(trackId: TrackId) {
+        selectedTrackIds.update { current ->
+            val updated = if (trackId in current) current - trackId else current + trackId
+            if (updated.isEmpty()) {
+                isSelectionMode.value = false
+            }
+            updated
+        }
+    }
+
+    fun selectAll() {
+        val visibleIds = uiState.value.directTracks.mapTo(linkedSetOf(), Track::id)
+        selectedTrackIds.value = visibleIds
+        if (visibleIds.isNotEmpty()) {
+            isSelectionMode.value = true
+        }
+    }
+
+    fun selectTracks(trackIds: Collection<TrackId>) {
+        val targetIds = uiState.value.directTracks.map(Track::id).intersect(trackIds.toSet())
+        selectedTrackIds.value = targetIds
+        isSelectionMode.value = targetIds.isNotEmpty()
+    }
+
+    fun toggleSelectAll() {
+        val visibleIds = uiState.value.directTracks.map(Track::id).toSet()
+        if (visibleIds.isNotEmpty() && selectedTrackIds.value.containsAll(visibleIds)) {
+            selectedTrackIds.value = emptySet()
+            isSelectionMode.value = false
+        } else {
+            selectedTrackIds.value = visibleIds
+            isSelectionMode.value = visibleIds.isNotEmpty()
+        }
+    }
+
+    fun clearSelection() {
+        selectedTrackIds.value = emptySet()
+        isSelectionMode.value = false
+    }
+
+    fun exitSelection() {
+        clearSelection()
+    }
+
+    fun addSelectedToQueue() {
+        executeBatchAction(selectedTracksInOrder(), BatchTrackAction.AddToQueue)
+    }
+
+    fun addSelectedToPlaylist(playlistId: PlaylistId) {
+        executeBatchAction(selectedTracksInOrder(), BatchTrackAction.AddToPlaylist(playlistId))
+    }
+
+    fun acknowledgeBatchResult() {
+        batchResult.value = null
+    }
+
+    private fun selectedTracksInOrder(): List<TrackId> {
+        val selected = selectedTrackIds.value
+        return uiState.value.directTracks.map(Track::id).filter { it in selected }
+    }
+
+    private fun executeBatchAction(trackIds: List<TrackId>, action: BatchTrackAction) {
+        if (trackIds.isEmpty() || isBatchActionRunning.value) return
+        isBatchActionRunning.value = true
+        viewModelScope.launch {
+            try {
+                val result = batchActionExecutor.execute(action, trackIds)
+                batchResult.value = result
+                if (result is BatchTrackActionResult.Completed) {
+                    clearSelection()
+                }
+            } finally {
+                isBatchActionRunning.value = false
+            }
+        }
+    }
+
     fun showTrackInfo(track: Track) {
         infoTrack.value = track
         infoMetadata.value = null
@@ -270,6 +407,13 @@ class FolderDetailViewModel @Inject constructor(
         )?.let(playbackController::play)
     }
 }
+
+private data class SelectionState(
+    val isSelectionMode: Boolean,
+    val selectedTrackIds: Set<TrackId>,
+    val batchResult: BatchTrackActionResult?,
+    val isBatchActionRunning: Boolean,
+)
 
 private object DefaultFolderTrackMetadataRepository : TrackMetadataRepository {
     override suspend fun read(track: Track): AdvancedTrackMetadata =

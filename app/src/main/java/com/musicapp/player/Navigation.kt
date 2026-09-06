@@ -421,7 +421,11 @@ fun MainNavigation(
                                         navigate(FolderDetailRoute(folderId.volumeName, folderId.relativePath))
                                     }
                                 },
+                                onShowMessage = { messageResId, formatArgs ->
+                                    messageBubbleQueue.enqueue(messageResId, formatArgs)
+                                },
                                 bottomPadding = bottomPadding,
+                                isActive = currentTopRoute == key,
                             )
                         }
                     }
