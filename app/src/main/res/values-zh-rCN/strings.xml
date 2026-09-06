@@ -110,6 +110,7 @@
     <string name="playlist_total_duration_minutes">%1$d分钟</string>
     <string name="playlist_total_duration_hours_minutes">%1$d小时%2$d分钟</string>
     <string name="playlist_search_placeholder">搜索歌单内的歌曲</string>
+    <string name="playlist_search_action">搜索</string>
     <string name="playlist_remove_from_playlist">移出歌单</string>
     <string name="selection_close">完成</string>
     <string name="selection_cancel">退出多选</string>

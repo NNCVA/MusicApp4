@@ -332,7 +332,7 @@ fun PlaylistDetailScreen(
                 searchActive = state.isSearching,
                 searchQuery = state.searchQuery,
                 onSearchQueryChange = onSearchQueryChange,
-                onOpenSearch = onOpenSearch,
+                onOpenSearch = null,
                 onCloseSearch = onCloseSearch,
                 searchPlaceholder = stringResource(R.string.playlist_search_placeholder),
                 titleContent = {
@@ -379,6 +379,22 @@ fun PlaylistDetailScreen(
                                 pageMenuExpanded = false
                             },
                         ) {
+                            AppDropdownMenuItem(
+                                text = { Text(stringResource(R.string.playlist_search_action)) },
+                                trailingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_common_search),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    pageMenuExpanded = false
+                                    if (state.isSelectionMode) {
+                                        onClearSelection()
+                                    }
+                                    onOpenSearch()
+                                },
+                            )
                             AppDropdownMenuItem(
                                 text = { Text(stringResource(R.string.playlist_rename)) },
                                 iconTint = MenuIconPalette.Rename,

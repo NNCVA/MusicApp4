@@ -113,6 +113,7 @@
     <string name="playlist_total_duration_minutes">%1$d mins</string>
     <string name="playlist_total_duration_hours_minutes">%1$d hr %2$d mins</string>
     <string name="playlist_search_placeholder">Search playlist</string>
+    <string name="playlist_search_action">Search</string>
     <string name="playlist_remove_from_playlist">Remove from playlist</string>
     <string name="selection_close">Done</string>
     <string name="selection_cancel">Exit selection</string>
