@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -370,18 +369,7 @@ private fun HistoryScreen(
             // 2. 列表内容
             when {
                 state.isLoading -> {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(horizontal = dimensions.contentHorizontalPadding)
-                                .padding(bottom = bottomPadding),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    Spacer(modifier = Modifier.fillMaxWidth().weight(1f))
                 }
                 state.entries.isEmpty() -> {
                     EmptyState(
