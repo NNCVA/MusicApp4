@@ -332,6 +332,7 @@ private fun AlbumCard(
         ) {
             Text(
                 text = album.title.localizedAlbumTitle(),
+                fontWeight = FontWeight.Normal,
                 style = MusicTheme.typography.titleMedium,
                 color = MusicTheme.colors.onSurface,
                 maxLines = 1,

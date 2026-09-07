@@ -68,6 +68,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -421,6 +422,16 @@ private fun FullPlayer(
         FullPlayerPage.LYRICS -> lyricsUiState.mode == LyricsDisplayMode.SYNCHRONIZED
         FullPlayerPage.ARTWORK -> false
     }
+    val artworkContent = remember {
+        movableContentOf { artworkModifier: Modifier, artworkTrack: Track, artworkIsPlaying: Boolean, artworkIsVisible: Boolean ->
+            RotatingArtworkDisc(
+                track = artworkTrack,
+                isPlaying = artworkIsPlaying,
+                isVisible = artworkIsVisible,
+                modifier = artworkModifier,
+            )
+        }
+    }
     val backgroundDragState = rememberDraggableState { deltaY ->
         PlayerGestureRouter.routeSheetDrag(
             region = PlayerGestureRegion.SHEET_BACKGROUND,
@@ -455,215 +466,54 @@ private fun FullPlayer(
         }
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier.fillMaxSize().windowInsetsPadding(contentInsets),
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = dimensions.spaceLarge,
-                        end = dimensions.spaceLarge,
-                        top = dimensions.spaceLarge,
-                        bottom = dimensions.spaceSmall,
-                    )
-                    .draggable(
-                        state = backgroundDragState,
-                        orientation = Orientation.Vertical,
-                        onDragStopped = { velocityY -> onSheetSettle(velocityY) },
-                    ),
-                horizontalAlignment = Alignment.Start,
-            ) {
-                Text(
-                    text = track.title,
-                    style = MusicTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MusicTheme.colors.onSurface,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .basicMarquee(iterations = Int.MAX_VALUE),
-                )
-                Spacer(Modifier.height(dimensions.spaceExtraSmall))
-                Text(
-                    text = track.artistName.localizedArtistName(),
-                    style = MusicTheme.typography.bodyMedium,
-                    color = MusicTheme.colors.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            HorizontalPager(
-                state = pager,
-                modifier = Modifier.fillMaxWidth().weight(1f)
-                    .padding(horizontal = dimensions.contentHorizontalPadding)
-                    .draggable(
-                        state = pagerVerticalDragState,
-                        orientation = Orientation.Vertical,
-                        enabled = !isScrollableContentActive,
-                        onDragStopped = { velocityY -> onSheetSettle(velocityY) },
-                    ),
-            ) { page ->
-                when (FullPlayerPage.entries[page]) {
-                    FullPlayerPage.ARTWORK -> ArtworkPage(
-                        state = state,
-                        track = track,
-                        isVisible = pager.currentPage == FullPlayerPage.ARTWORK.ordinal,
-                    )
-                    FullPlayerPage.LYRICS -> LyricsPaneRoute(
-                        viewModel = lyricsViewModel,
-                        missingText = stringResource(R.string.lyrics_not_found),
-                        loadingText = stringResource(R.string.lyrics_loading),
-                        returnToCurrentText = stringResource(R.string.lyrics_return_to_current),
-                        onSheetDrag = onSheetDrag,
-                        onSheetSettle = onSheetSettle,
-                        sheetProgress = sheetProgress,
-                    )
-                    FullPlayerPage.QUEUE -> QueuePage(
-                        rows = state.queue,
-                        playbackMode = state.playbackMode,
-                        onCycleMode = onCycleMode,
-                        onJump = onJumpToQueueItem,
-                        onRemove = onRemoveQueueItem,
-                        onSheetDrag = onSheetDrag,
-                        onSheetSettle = onSheetSettle,
-                        sheetProgress = sheetProgress,
-                    )
-                }
-            }
-            Box(
-                modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
-            ) {
-                PlayerStatus(state.loadState, state.errorMessageRes)
-            }
-            InteractiveThinProgressBar(
-                trackId = track.id,
-                positionMs = state.positionMs,
-                durationMs = state.durationMs,
-                enabled = state.durationMs > 0,
+        val isLandscape = PlayerResponsivePolicy.isLandscape(maxWidth, maxHeight)
+        if (isLandscape) {
+            PlayerLandscapeContent(
+                state = state,
+                lyricsViewModel = lyricsViewModel,
+                track = track,
+                pager = pager,
+                artworkContent = artworkContent,
+                isScrollableContentActive = isScrollableContentActive,
+                onTogglePlayback = onTogglePlayback,
+                onPrevious = onPrevious,
+                onNext = onNext,
                 onSeek = onSeek,
-                modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                onCycleMode = onCycleMode,
+                onJumpToQueueItem = onJumpToQueueItem,
+                onRemoveQueueItem = onRemoveQueueItem,
+                onShowInfo = onShowInfo,
+                showFeedback = showFeedback,
+                onSheetDrag = onSheetDrag,
+                onSheetSettle = onSheetSettle,
+                sheetProgress = sheetProgress,
             )
-            Spacer(Modifier.height(dimensions.spaceSmall))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = dimensions.contentHorizontalPadding),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                val previousDescription = stringResource(R.string.playback_previous)
-                BareIconButton(
-                    onClick = onPrevious,
-                    enabled = state.canSkipPrevious,
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_playback_skip_previous),
-                        contentDescription = previousDescription,
-                        modifier = Modifier.size(36.dp),
-                    )
-                }
-                val playbackDescription =
-                    stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
-                BareIconButton(
-                    onClick = onTogglePlayback,
-                    modifier = Modifier.size(64.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(if (state.isPlaying) R.drawable.ic_playback_pause else R.drawable.ic_playback_play),
-                        contentDescription = playbackDescription,
-                        modifier = Modifier.size(48.dp),
-                    )
-                }
-                val nextDescription = stringResource(R.string.playback_next)
-                BareIconButton(
-                    onClick = onNext,
-                    enabled = state.canSkipNext,
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_playback_skip_next),
-                        contentDescription = nextDescription,
-                        modifier = Modifier.size(36.dp),
-                    )
-                }
-            }
-            Spacer(Modifier.height(dimensions.spaceSmall))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = dimensions.contentHorizontalPadding,
-                        vertical = dimensions.spaceSmall,
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceAround,
-            ) {
-                BareIconButton(
-                    onClick = onCycleMode,
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(state.playbackMode.iconRes()),
-                        contentDescription = stringResource(state.playbackMode.labelRes()),
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-                val sleepTimerComingSoon = stringResource(R.string.playback_sleep_timer_coming_soon)
-                BareIconButton(
-                    onClick = { showFeedback(sleepTimerComingSoon) },
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_playback_sleep_timer),
-                        contentDescription = stringResource(R.string.playback_sleep_timer),
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-                val equalizerComingSoon = stringResource(R.string.playback_equalizer_coming_soon)
-                BareIconButton(
-                    onClick = { showFeedback(equalizerComingSoon) },
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_sidebar_equalizer),
-                        contentDescription = stringResource(R.string.playback_equalizer),
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-                BareIconButton(
-                    onClick = {
-                        coroutineScope.launch {
-                            pager.animateScrollToPage(FullPlayerPage.QUEUE.ordinal)
-                        }
-                    },
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_view_list),
-                        contentDescription = stringResource(R.string.playback_queue),
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-                BareIconButton(
-                    onClick = onShowInfo,
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_common_more_horizontal),
-                        contentDescription = stringResource(R.string.playback_more_options),
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
-                }
-            }
+        } else {
+            PortraitFullPlayer(
+                state = state,
+                lyricsViewModel = lyricsViewModel,
+                track = track,
+                pager = pager,
+                artworkContent = artworkContent,
+                isScrollableContentActive = isScrollableContentActive,
+                backgroundDragState = backgroundDragState,
+                pagerVerticalDragState = pagerVerticalDragState,
+                onTogglePlayback = onTogglePlayback,
+                onPrevious = onPrevious,
+                onNext = onNext,
+                onSeek = onSeek,
+                onCycleMode = onCycleMode,
+                onJumpToQueueItem = onJumpToQueueItem,
+                onRemoveQueueItem = onRemoveQueueItem,
+                onShowInfo = onShowInfo,
+                showFeedback = showFeedback,
+                onSheetDrag = onSheetDrag,
+                onSheetSettle = onSheetSettle,
+                sheetProgress = sheetProgress,
+            )
         }
         AnimatedVisibility(
             visible = feedbackMessage != null,
@@ -689,6 +539,243 @@ private fun FullPlayer(
                         ),
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PortraitFullPlayer(
+    state: PlayerUiState,
+    lyricsViewModel: LyricsViewModel,
+    track: Track,
+    pager: androidx.compose.foundation.pager.PagerState,
+    artworkContent: @Composable (Modifier, Track, Boolean, Boolean) -> Unit,
+    isScrollableContentActive: Boolean,
+    backgroundDragState: androidx.compose.foundation.gestures.DraggableState,
+    pagerVerticalDragState: androidx.compose.foundation.gestures.DraggableState,
+    onTogglePlayback: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onCycleMode: () -> Unit,
+    onJumpToQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
+    onRemoveQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
+    onShowInfo: () -> Unit,
+    showFeedback: (String) -> Unit,
+    onSheetDrag: (Float) -> Float,
+    onSheetSettle: (Float) -> Unit,
+    sheetProgress: () -> Float,
+    modifier: Modifier = Modifier,
+) {
+    val dimensions = MusicTheme.dimensions
+    val coroutineScope = rememberCoroutineScope()
+
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = dimensions.spaceLarge,
+                    end = dimensions.spaceLarge,
+                    top = dimensions.spaceLarge,
+                    bottom = dimensions.spaceSmall,
+                )
+                .draggable(
+                    state = backgroundDragState,
+                    orientation = Orientation.Vertical,
+                    onDragStopped = { velocityY -> onSheetSettle(velocityY) },
+                ),
+            horizontalAlignment = Alignment.Start,
+        ) {
+            Text(
+                text = track.title,
+                style = MusicTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Medium,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .basicMarquee(iterations = Int.MAX_VALUE),
+            )
+            Spacer(Modifier.height(dimensions.spaceExtraSmall))
+            Text(
+                text = track.artistName.localizedArtistName(),
+                style = MusicTheme.typography.bodyMedium,
+                color = MusicTheme.colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        HorizontalPager(
+            state = pager,
+            modifier = Modifier.fillMaxWidth().weight(1f)
+                .padding(horizontal = dimensions.contentHorizontalPadding)
+                .draggable(
+                    state = pagerVerticalDragState,
+                    orientation = Orientation.Vertical,
+                    enabled = !isScrollableContentActive,
+                    onDragStopped = { velocityY -> onSheetSettle(velocityY) },
+                ),
+        ) { page ->
+            when (FullPlayerPage.entries[page]) {
+                FullPlayerPage.ARTWORK -> ArtworkPage(
+                    state = state,
+                    track = track,
+                    artworkContent = artworkContent,
+                    isVisible = pager.currentPage == FullPlayerPage.ARTWORK.ordinal,
+                )
+                FullPlayerPage.LYRICS -> LyricsPaneRoute(
+                    viewModel = lyricsViewModel,
+                    missingText = stringResource(R.string.lyrics_not_found),
+                    loadingText = stringResource(R.string.lyrics_loading),
+                    returnToCurrentText = stringResource(R.string.lyrics_return_to_current),
+                    onSheetDrag = onSheetDrag,
+                    onSheetSettle = onSheetSettle,
+                    sheetProgress = sheetProgress,
+                )
+                FullPlayerPage.QUEUE -> QueuePage(
+                    rows = state.queue,
+                    playbackMode = state.playbackMode,
+                    onCycleMode = onCycleMode,
+                    onJump = onJumpToQueueItem,
+                    onRemove = onRemoveQueueItem,
+                    onSheetDrag = onSheetDrag,
+                    onSheetSettle = onSheetSettle,
+                    sheetProgress = sheetProgress,
+                )
+            }
+        }
+        Box(
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
+        ) {
+            PlayerStatus(state.loadState, state.errorMessageRes)
+        }
+        InteractiveThinProgressBar(
+            trackId = track.id,
+            positionMs = state.positionMs,
+            durationMs = state.durationMs,
+            enabled = state.durationMs > 0,
+            onSeek = onSeek,
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
+        )
+        Spacer(Modifier.height(dimensions.spaceSmall))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = dimensions.contentHorizontalPadding),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            val previousDescription = stringResource(R.string.playback_previous)
+            BareIconButton(
+                onClick = onPrevious,
+                enabled = state.canSkipPrevious,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_playback_skip_previous),
+                    contentDescription = previousDescription,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
+            val playbackDescription =
+                stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
+            BareIconButton(
+                onClick = onTogglePlayback,
+                modifier = Modifier.size(64.dp),
+            ) {
+                Icon(
+                    painter = painterResource(if (state.isPlaying) R.drawable.ic_playback_pause else R.drawable.ic_playback_play),
+                    contentDescription = playbackDescription,
+                    modifier = Modifier.size(48.dp),
+                )
+            }
+            val nextDescription = stringResource(R.string.playback_next)
+            BareIconButton(
+                onClick = onNext,
+                enabled = state.canSkipNext,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_playback_skip_next),
+                    contentDescription = nextDescription,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
+        }
+        Spacer(Modifier.height(dimensions.spaceSmall))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = dimensions.contentHorizontalPadding,
+                    vertical = dimensions.spaceSmall,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceAround,
+        ) {
+            BareIconButton(
+                onClick = onCycleMode,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(state.playbackMode.iconRes()),
+                    contentDescription = stringResource(state.playbackMode.labelRes()),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
+            val sleepTimerComingSoon = stringResource(R.string.playback_sleep_timer_coming_soon)
+            BareIconButton(
+                onClick = { showFeedback(sleepTimerComingSoon) },
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_playback_sleep_timer),
+                    contentDescription = stringResource(R.string.playback_sleep_timer),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
+            val equalizerComingSoon = stringResource(R.string.playback_equalizer_coming_soon)
+            BareIconButton(
+                onClick = { showFeedback(equalizerComingSoon) },
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_sidebar_equalizer),
+                    contentDescription = stringResource(R.string.playback_equalizer),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
+            BareIconButton(
+                onClick = {
+                    coroutineScope.launch {
+                        pager.animateScrollToPage(FullPlayerPage.QUEUE.ordinal)
+                    }
+                },
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_view_list),
+                    contentDescription = stringResource(R.string.playback_queue),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            }
+            BareIconButton(
+                onClick = onShowInfo,
+                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_more_horizontal),
+                    contentDescription = stringResource(R.string.playback_more_options),
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
             }
         }
     }
@@ -861,6 +948,7 @@ internal fun InteractiveThinProgressBar(
 private fun ArtworkPage(
     state: PlayerUiState,
     track: Track,
+    artworkContent: @Composable (Modifier, Track, Boolean, Boolean) -> Unit,
     isVisible: Boolean = true,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -868,17 +956,17 @@ private fun ArtworkPage(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        RotatingArtworkDisc(
-            track = track,
-            isPlaying = state.isPlaying,
-            isVisible = isVisible,
-            modifier = Modifier.size(dimensions.fullPlayerArtworkSize),
+        artworkContent(
+            Modifier.size(dimensions.fullPlayerArtworkSize),
+            track,
+            state.isPlaying,
+            isVisible,
         )
     }
 }
 
 @Composable
-private fun QueuePage(
+internal fun QueuePage(
     rows: List<PlayerQueueRow>,
     playbackMode: PlaybackMode,
     onCycleMode: () -> Unit,
@@ -1003,7 +1091,7 @@ private fun PlayerArtwork(track: Track?, shape: Shape, modifier: Modifier) {
 }
 
 @Composable
-private fun PlayerStatus(status: PlayerLoadState, @androidx.annotation.StringRes errorMessageRes: Int?) {
+internal fun PlayerStatus(status: PlayerLoadState, @androidx.annotation.StringRes errorMessageRes: Int?) {
     when (status) {
         PlayerLoadState.PREPARING -> Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(MusicTheme.dimensions.statusIndicatorSize))
@@ -1023,19 +1111,19 @@ private fun PlayerStatus(status: PlayerLoadState, @androidx.annotation.StringRes
     }
 }
 
-private fun PlaybackMode.labelRes() = when (this) {
+internal fun PlaybackMode.labelRes() = when (this) {
     PlaybackMode.LIST_REPEAT -> R.string.playback_mode_list_repeat
     PlaybackMode.SINGLE_REPEAT -> R.string.playback_mode_single_repeat
     PlaybackMode.SHUFFLE -> R.string.playback_mode_shuffle
 }
 
-private fun PlaybackMode.iconRes() = when (this) {
+internal fun PlaybackMode.iconRes() = when (this) {
     PlaybackMode.LIST_REPEAT -> R.drawable.ic_playback_repeat
     PlaybackMode.SINGLE_REPEAT -> R.drawable.ic_playback_repeat_one
     PlaybackMode.SHUFFLE -> R.drawable.ic_playback_shuffle
 }
 
-private fun formatDuration(milliseconds: Long): String {
+internal fun formatDuration(milliseconds: Long): String {
     val seconds = milliseconds.coerceAtLeast(0) / 1_000
     return String.format(Locale.getDefault(), "%d:%02d", seconds / 60, seconds % 60)
 }
@@ -1114,4 +1202,3 @@ internal fun rememberPlayerSheetNestedScrollConnection(
         }
     }
 }
-
