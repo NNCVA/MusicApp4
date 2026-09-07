@@ -47,7 +47,7 @@
 ### 播放控制资源
 | MusicApp 资源 | Google 源文件 (Round) | 用途与修改 |
 |---|---|---|
-| `ic_playback_play.xml` | `src/av/play_arrow/materialiconsround/24px.svg` | 播放；转为 `VectorDrawable`，采用圆角三角形路径并设为中性路径色 |
+| `ic_playback_play.xml` | `src/av/play_arrow/materialiconsround/24px.svg` | 播放；转为 `VectorDrawable`，采用圆角三角形路径并按视觉比例微调像素尺寸以平衡暂停图标体量，设为中性路径色 |
 | `ic_playback_play_circle.xml` | `src/av/play_circle_outline/materialiconsround/24px.svg` | 列表全部播放操作；转为 `VectorDrawable`，内三角平滑圆角化 |
 | `ic_playback_pause.xml` | `src/av/pause/materialiconsround/24px.svg` | 暂停；转为 `VectorDrawable`，采用圆角矩形竖条路径 |
 | `ic_playback_skip_previous.xml` | `src/av/skip_previous/materialiconsround/24px.svg` | 上一首；转为 `VectorDrawable`，竖条与三角形顶点全面圆角化 |

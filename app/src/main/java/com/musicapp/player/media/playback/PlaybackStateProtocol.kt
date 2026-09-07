@@ -10,13 +10,34 @@ import com.musicapp.player.core.playback.PlaybackStatus
 
 internal fun PlaybackControllerState.preparingFor(
     trackId: TrackId? = currentTrackId,
+    playWhenReady: Boolean = false,
 ): PlaybackControllerState = copy(
     currentTrackId = trackId,
     playbackStatus = PlaybackStatus.PREPARING,
     playbackFailure = null,
-    isPlaying = false,
+    isPlaying = playWhenReady,
     isBuffering = false,
 )
+
+
+internal object Media3PlaybackIsPlayingResolver {
+    fun resolve(
+        isPlaying: Boolean,
+        playWhenReady: Boolean,
+        playbackState: Int,
+        playbackSuppressionReason: Int = Player.PLAYBACK_SUPPRESSION_REASON_NONE,
+        hasItem: Boolean,
+        hasFailure: Boolean = false,
+    ): Boolean {
+        if (isPlaying) return true
+        val isSuppressed = playbackSuppressionReason != Player.PLAYBACK_SUPPRESSION_REASON_NONE
+        return playWhenReady &&
+            !isSuppressed &&
+            playbackState != Player.STATE_ENDED &&
+            !hasFailure &&
+            hasItem
+    }
+}
 
 internal object Media3PlaybackStatusResolver {
     fun resolve(

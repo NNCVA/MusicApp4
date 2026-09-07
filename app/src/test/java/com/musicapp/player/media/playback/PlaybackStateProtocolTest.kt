@@ -30,6 +30,23 @@ class PlaybackStateProtocolTest {
     }
 
     @Test
+    fun `user command with playWhenReady preserves playing intent during preparation`() {
+        val trackId = TrackId("external", 7)
+        val state = PlaybackControllerState(
+            isPlaying = true,
+            currentTrackId = TrackId("external", 1),
+        )
+
+        val preparing = state.preparingFor(trackId, playWhenReady = true)
+
+        assertEquals(trackId, preparing.currentTrackId)
+        assertEquals(PlaybackStatus.PREPARING, preparing.playbackStatus)
+        assertEquals(true, preparing.isPlaying)
+        assertEquals(false, preparing.isBuffering)
+    }
+
+
+    @Test
     fun `buffering remains preparing until the visibility threshold is reached`() {
         assertEquals(
             PlaybackStatus.PREPARING,
@@ -97,6 +114,88 @@ class PlaybackStateProtocolTest {
         assertEquals(200L, PlaybackPositionRefreshPolicy.nextDelayMs(isConnected = true, isPlaying = true))
         assertNull(PlaybackPositionRefreshPolicy.nextDelayMs(isConnected = true, isPlaying = false))
         assertNull(PlaybackPositionRefreshPolicy.nextDelayMs(isConnected = false, isPlaying = true))
+    }
+
+    @Test
+    fun `is playing resolver returns true when player reports playing`() {
+        val result = Media3PlaybackIsPlayingResolver.resolve(
+            isPlaying = true,
+            playWhenReady = true,
+            playbackState = Player.STATE_READY,
+            hasItem = true,
+        )
+        assertEquals(true, result)
+    }
+
+    @Test
+    fun `is playing resolver maintains true during buffering when playWhenReady is true to prevent button flicker`() {
+        // In ExoPlayer, player.isPlaying is false during STATE_BUFFERING even if playWhenReady is true.
+        // The resolver must return true so the Pause button does not flicker to Play.
+        val result = Media3PlaybackIsPlayingResolver.resolve(
+            isPlaying = false,
+            playWhenReady = true,
+            playbackState = Player.STATE_BUFFERING,
+            hasItem = true,
+            hasFailure = false,
+        )
+        assertEquals(true, result)
+    }
+
+    @Test
+    fun `is playing resolver returns false when playWhenReady is false`() {
+        val result = Media3PlaybackIsPlayingResolver.resolve(
+            isPlaying = false,
+            playWhenReady = false,
+            playbackState = Player.STATE_READY,
+            hasItem = true,
+        )
+        assertEquals(false, result)
+    }
+
+    @Test
+    fun `is playing resolver returns false when playback is ended`() {
+        val result = Media3PlaybackIsPlayingResolver.resolve(
+            isPlaying = false,
+            playWhenReady = true,
+            playbackState = Player.STATE_ENDED,
+            hasItem = true,
+        )
+        assertEquals(false, result)
+    }
+
+    @Test
+    fun `is playing resolver returns false when playback is suppressed`() {
+        val result = Media3PlaybackIsPlayingResolver.resolve(
+            isPlaying = false,
+            playWhenReady = true,
+            playbackState = Player.STATE_READY,
+            playbackSuppressionReason = Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS,
+            hasItem = true,
+        )
+        assertEquals(false, result)
+    }
+
+    @Test
+    fun `is playing resolver returns false when there is a playback failure`() {
+        val result = Media3PlaybackIsPlayingResolver.resolve(
+            isPlaying = false,
+            playWhenReady = true,
+            playbackState = Player.STATE_BUFFERING,
+            hasItem = true,
+            hasFailure = true,
+        )
+        assertEquals(false, result)
+    }
+
+    @Test
+    fun `is playing resolver returns false when there is no current item`() {
+        val result = Media3PlaybackIsPlayingResolver.resolve(
+            isPlaying = false,
+            playWhenReady = true,
+            playbackState = Player.STATE_BUFFERING,
+            hasItem = false,
+        )
+        assertEquals(false, result)
     }
 
     private fun resolve(

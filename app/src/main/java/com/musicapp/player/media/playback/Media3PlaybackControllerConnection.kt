@@ -51,6 +51,13 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     private var playbackMode = PlaybackMode.DEFAULT
     private var playbackQueue = PlaybackQueue()
     private var serviceFailure: PlaybackFailure? = null
+    private var pendingTrackId: TrackId? = null
+    private var pendingPlayWhenReady: Boolean? = null
+    private val pendingTimeout = Runnable {
+        pendingTrackId = null
+        pendingPlayWhenReady = null
+        controller?.let(::updateState)
+    }
 
     override val state: StateFlow<PlaybackControllerState> = mutableState.asStateFlow()
 
@@ -90,6 +97,9 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
                 controller.removeListener(playerListener)
                 resetBuffering()
                 stopPositionRefresh()
+                mainHandler.removeCallbacks(pendingTimeout)
+                pendingTrackId = null
+                pendingPlayWhenReady = null
                 serviceFailure = null
                 this@Media3PlaybackControllerConnection.controller = null
                 val disconnectedFuture = controllerFuture
@@ -177,7 +187,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     ) {
         require(tracks.isNotEmpty()) { "tracks must not be empty" }
         require(startIndex in tracks.indices) { "startIndex must be within tracks" }
-        dispatchPreparing(tracks[startIndex].id) { mediaController ->
+        dispatchPreparing(tracks[startIndex].id, playWhenReady = playWhenReady) { mediaController ->
             mediaController.sendCustomCommand(
                 PlaybackSessionProtocol.replaceQueueCommand,
                 PlaybackSessionProtocol.tracksArgs(tracks, startIndex, playWhenReady),
@@ -185,9 +195,15 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         }
     }
 
-    override fun play() = dispatchPreparing(mutableState.value.currentTrackId, MediaController::play)
+    override fun play() = dispatchPreparing(mutableState.value.currentTrackId, playWhenReady = true, command = MediaController::play)
 
-    override fun pause() = dispatch(MediaController::pause)
+    override fun pause() {
+        pendingPlayWhenReady = false
+        if (pendingTrackId != null) {
+            mutableState.value = mutableState.value.copy(isPlaying = false)
+        }
+        dispatch(MediaController::pause)
+    }
 
     override fun skipToPrevious() = dispatch(MediaController::seekToPreviousMediaItem)
 
@@ -220,7 +236,8 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     }
 
     override fun jumpToQueueItem(queueItemId: QueueItemId) = dispatchPreparing(
-        playbackQueue.originalQueue.firstOrNull { it.id == queueItemId }?.trackId,
+        trackId = playbackQueue.originalQueue.firstOrNull { it.id == queueItemId }?.trackId,
+        playWhenReady = true,
     ) {
         it.sendCustomCommand(
             PlaybackSessionProtocol.jumpToQueueItemCommand,
@@ -274,10 +291,17 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
 
     private fun dispatchPreparing(
         trackId: TrackId?,
+        playWhenReady: Boolean = true,
         command: (MediaController) -> Unit,
     ) {
         serviceFailure = null
-        mutableState.value = mutableState.value.preparingFor(trackId)
+        mainHandler.removeCallbacks(pendingTimeout)
+        pendingTrackId = trackId
+        pendingPlayWhenReady = playWhenReady
+        if (trackId != null) {
+            mainHandler.postDelayed(pendingTimeout, PENDING_TRACK_TIMEOUT_MS)
+        }
+        mutableState.value = mutableState.value.preparingFor(trackId, playWhenReady = playWhenReady)
         dispatch(command)
     }
 
@@ -289,23 +313,59 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         )
         val playbackFailure = serviceFailure
             ?: player.playerError?.let { Media3PlaybackFailureMapper.from(it.errorCode) }
-        val playbackStatus = Media3PlaybackStatusResolver.resolve(
-            playerState = player.playbackState,
+
+        val decodedTrackId = QueueMediaIdCodec.decode(player.currentMediaItem?.mediaId.orEmpty())?.trackId
+            ?: playbackQueue.currentItem?.trackId
+
+        val activePending = pendingTrackId
+        if (activePending != null) {
+            if (decodedTrackId == activePending || playbackFailure != null) {
+                mainHandler.removeCallbacks(pendingTimeout)
+                pendingTrackId = null
+                pendingPlayWhenReady = null
+            }
+        }
+
+        val effectiveTrackId = pendingTrackId ?: decodedTrackId
+        val isPending = pendingTrackId != null && playbackFailure == null
+
+        val playbackStatus = if (isPending) {
+            PlaybackStatus.PREPARING
+        } else {
+            Media3PlaybackStatusResolver.resolve(
+                playerState = player.playbackState,
+                isPlaying = player.isPlaying,
+                playWhenReady = player.playWhenReady,
+                hasCurrentItem = player.currentMediaItem != null || playbackQueue.currentItem != null,
+                bufferingVisible = bufferingVisible,
+                failure = playbackFailure,
+            )
+        }
+
+        val resolvedIsPlaying = Media3PlaybackIsPlayingResolver.resolve(
             isPlaying = player.isPlaying,
             playWhenReady = player.playWhenReady,
-            hasCurrentItem = player.currentMediaItem != null || playbackQueue.currentItem != null,
-            bufferingVisible = bufferingVisible,
-            failure = playbackFailure,
+            playbackState = player.playbackState,
+            playbackSuppressionReason = player.playbackSuppressionReason,
+            hasItem = player.currentMediaItem != null || playbackQueue.currentItem != null,
+            hasFailure = playbackFailure != null,
         )
+
+        val effectiveIsPlaying = if (isPending) {
+            pendingPlayWhenReady ?: resolvedIsPlaying
+        } else {
+            resolvedIsPlaying
+        }
+
+
         mutableState.value = PlaybackControllerState(
             connectionState = PlaybackConnectionState.CONNECTED,
-            currentTrackId = QueueMediaIdCodec.decode(player.currentMediaItem?.mediaId.orEmpty())?.trackId
-                ?: playbackQueue.currentItem?.trackId,
+            currentTrackId = effectiveTrackId,
             playbackStatus = playbackStatus,
             playbackFailure = playbackFailure,
-            isPlaying = player.isPlaying,
+            isPlaying = effectiveIsPlaying,
             isBuffering = playbackStatus == PlaybackStatus.BUFFERING,
-            positionMs = player.currentPosition.coerceAtLeast(0),
+            positionMs = if (isPending) 0 else player.currentPosition.coerceAtLeast(0),
             durationMs = duration,
             canSkipPrevious = playbackQueue.originalQueue.size > 1,
             canSkipNext = playbackQueue.originalQueue.size > 1,
@@ -357,4 +417,9 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         mainHandler.removeCallbacks(refreshPosition)
         positionUpdateScheduled = false
     }
+
+    private companion object {
+        const val PENDING_TRACK_TIMEOUT_MS = 5000L
+    }
 }
+

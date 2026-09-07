@@ -54,7 +54,6 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.localizedArtistName
@@ -357,7 +356,6 @@ private fun MiniPlayer(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (state.loadState == PlayerLoadState.BUFFERING) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
         val playbackDescription = stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
         BareIconButton(
@@ -983,16 +981,12 @@ private fun PlayerStatus(status: PlayerLoadState, @androidx.annotation.StringRes
                 modifier = Modifier.padding(start = MusicTheme.dimensions.spaceSmall),
             )
         }
-        PlayerLoadState.BUFFERING -> Text(
-            stringResource(R.string.player_buffering),
-            style = MusicTheme.typography.bodyMedium,
-            color = MusicTheme.colors.onSurface,
-        )
         PlayerLoadState.ERROR -> Text(
             stringResource(errorMessageRes ?: R.string.player_error_unknown),
             color = MusicTheme.colors.error,
         )
-        PlayerLoadState.EMPTY, PlayerLoadState.READY -> Spacer(Modifier.height(MusicTheme.dimensions.spaceSmall))
+        PlayerLoadState.BUFFERING, PlayerLoadState.EMPTY, PlayerLoadState.READY ->
+            Spacer(Modifier.height(MusicTheme.dimensions.spaceSmall))
     }
 }
 
