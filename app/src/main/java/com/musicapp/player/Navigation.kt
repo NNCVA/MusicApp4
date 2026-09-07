@@ -544,6 +544,7 @@ fun MainNavigation(
                     aeroMode = aeroMode,
                     aeroSignals = aeroSignals,
                     contentInsets = contentInsets,
+                    isExpanded = playerExpanded,
                     onExpansionChanged = { playerExpanded = it },
                 )
             },

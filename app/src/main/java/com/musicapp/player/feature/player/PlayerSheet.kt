@@ -137,11 +137,14 @@ fun PlayerSheetRoute(
     aeroMode: AeroMode,
     aeroSignals: AeroRuntimeSignals,
     contentInsets: WindowInsets,
+    isExpanded: Boolean = false,
     onExpansionChanged: (Boolean) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.currentTrack) {
-        if (state.currentTrack == null) onExpansionChanged(false)
+        if (state.currentTrack == null && state.loadState == PlayerLoadState.EMPTY) {
+            onExpansionChanged(false)
+        }
         lyricsViewModel.load(state.currentTrack)
     }
     LaunchedEffect(state.positionMs) { lyricsViewModel.updatePlaybackPosition(state.positionMs) }
@@ -154,6 +157,7 @@ fun PlayerSheetRoute(
         aeroMode = aeroMode,
         aeroSignals = aeroSignals,
         contentInsets = contentInsets,
+        initialExpanded = isExpanded,
         onTogglePlayback = viewModel::togglePlayback,
         onPrevious = viewModel::skipPrevious,
         onNext = viewModel::skipNext,
@@ -178,6 +182,7 @@ fun PlayerSheet(
     aeroMode: AeroMode,
     aeroSignals: AeroRuntimeSignals,
     contentInsets: WindowInsets,
+    initialExpanded: Boolean = false,
     onTogglePlayback: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -193,11 +198,13 @@ fun PlayerSheet(
     onExpansionChanged: (Boolean) -> Unit,
     expandRequests: SharedFlow<Unit>? = null,
 ) {
+    var progress by rememberSaveable {
+        mutableFloatStateOf(if (initialExpanded) 1f else 0f)
+    }
     val track = state.currentTrack ?: return
     val dimensions = MusicTheme.dimensions
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
-    var progress by rememberSaveable { mutableFloatStateOf(0f) }
     var sheetAnimationJob by remember { mutableStateOf<Job?>(null) }
     val springSpec = remember {
         spring<Float>(
