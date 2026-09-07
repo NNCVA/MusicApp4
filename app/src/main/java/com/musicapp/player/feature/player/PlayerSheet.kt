@@ -431,151 +431,228 @@ private fun FullPlayer(
     LaunchedEffect(pager.currentPage) { onPageChanged(FullPlayerPage.entries[pager.currentPage]) }
 
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(feedbackMessage) {
-        if (feedbackMessage != null) {
+    var feedbackJob by remember { mutableStateOf<Job?>(null) }
+    val showFeedback: (String) -> Unit = { msg ->
+        feedbackMessage = msg
+        feedbackJob?.cancel()
+        feedbackJob = coroutineScope.launch {
             kotlinx.coroutines.delay(2000L)
             feedbackMessage = null
         }
     }
 
-    Column(
+    Box(
         modifier = modifier.fillMaxSize().windowInsetsPadding(contentInsets),
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    start = dimensions.topBarHorizontalPadding,
-                    end = dimensions.topBarHorizontalPadding,
-                    top = dimensions.spaceMedium,
-                    bottom = dimensions.spaceSmall,
-                )
-                .draggable(
-                    state = backgroundDragState,
-                    orientation = Orientation.Vertical,
-                    onDragStopped = { velocityY -> onSheetSettle(velocityY) },
-                ),
-            horizontalAlignment = Alignment.Start,
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = track.title,
-                style = MusicTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MusicTheme.colors.onSurface,
-                maxLines = 1,
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .basicMarquee(iterations = Int.MAX_VALUE),
+                    .padding(
+                        start = dimensions.topBarHorizontalPadding,
+                        end = dimensions.topBarHorizontalPadding,
+                        top = dimensions.spaceMedium,
+                        bottom = dimensions.spaceSmall,
+                    )
+                    .draggable(
+                        state = backgroundDragState,
+                        orientation = Orientation.Vertical,
+                        onDragStopped = { velocityY -> onSheetSettle(velocityY) },
+                    ),
+                horizontalAlignment = Alignment.Start,
+            ) {
+                Text(
+                    text = track.title,
+                    style = MusicTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MusicTheme.colors.onSurface,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .basicMarquee(iterations = Int.MAX_VALUE),
+                )
+                Spacer(Modifier.height(dimensions.spaceExtraSmall))
+                Text(
+                    text = track.artistName.localizedArtistName(),
+                    style = MusicTheme.typography.bodyMedium,
+                    color = MusicTheme.colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            HorizontalPager(
+                state = pager,
+                modifier = Modifier.fillMaxWidth().weight(1f)
+                    .padding(horizontal = dimensions.contentHorizontalPadding)
+                    .draggable(
+                        state = pagerVerticalDragState,
+                        orientation = Orientation.Vertical,
+                        enabled = pager.currentPage != FullPlayerPage.QUEUE.ordinal,
+                        onDragStopped = { velocityY -> onSheetSettle(velocityY) },
+                    ),
+            ) { page ->
+                when (FullPlayerPage.entries[page]) {
+                    FullPlayerPage.ARTWORK -> ArtworkPage(
+                        state = state,
+                        track = track,
+                        isVisible = pager.currentPage == FullPlayerPage.ARTWORK.ordinal,
+                    )
+                    FullPlayerPage.LYRICS -> LyricsPaneRoute(
+                        viewModel = lyricsViewModel,
+                        missingText = stringResource(R.string.lyrics_not_found),
+                        loadingText = stringResource(R.string.lyrics_loading),
+                        returnToCurrentText = stringResource(R.string.lyrics_return_to_current),
+                    )
+                    FullPlayerPage.QUEUE -> QueuePage(
+                        rows = state.queue,
+                        playbackMode = state.playbackMode,
+                        onCycleMode = onCycleMode,
+                        onJump = onJumpToQueueItem,
+                        onRemove = onRemoveQueueItem,
+                        onSheetDrag = onSheetDrag,
+                        onSheetSettle = onSheetSettle,
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
+            ) {
+                PlayerStatus(state.loadState, state.errorMessageRes)
+            }
+            InteractiveThinProgressBar(
+                positionMs = state.positionMs,
+                durationMs = state.durationMs,
+                enabled = state.durationMs > 0,
+                onSeek = onSeek,
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
             )
-            Spacer(Modifier.height(dimensions.spaceExtraSmall))
-            Text(
-                text = track.artistName.localizedArtistName(),
-                style = MusicTheme.typography.bodyMedium,
-                color = MusicTheme.colors.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        HorizontalPager(
-            state = pager,
-            modifier = Modifier.fillMaxWidth().weight(1f)
-                .padding(horizontal = dimensions.contentHorizontalPadding)
-                .draggable(
-                    state = pagerVerticalDragState,
-                    orientation = Orientation.Vertical,
-                    enabled = pager.currentPage != FullPlayerPage.QUEUE.ordinal,
-                    onDragStopped = { velocityY -> onSheetSettle(velocityY) },
-                ),
-        ) { page ->
-            when (FullPlayerPage.entries[page]) {
-                FullPlayerPage.ARTWORK -> ArtworkPage(
-                    state = state,
-                    track = track,
-                    isVisible = pager.currentPage == FullPlayerPage.ARTWORK.ordinal,
-                )
-                FullPlayerPage.LYRICS -> LyricsPaneRoute(
-                    viewModel = lyricsViewModel,
-                    missingText = stringResource(R.string.lyrics_not_found),
-                    loadingText = stringResource(R.string.lyrics_loading),
-                    returnToCurrentText = stringResource(R.string.lyrics_return_to_current),
-                )
-                FullPlayerPage.QUEUE -> QueuePage(
-                    rows = state.queue,
-                    playbackMode = state.playbackMode,
-                    onCycleMode = onCycleMode,
-                    onJump = onJumpToQueueItem,
-                    onRemove = onRemoveQueueItem,
-                    onSheetDrag = onSheetDrag,
-                    onSheetSettle = onSheetSettle,
-                )
-            }
-        }
-        Box(
-            modifier = Modifier.fillMaxWidth()
-                .padding(horizontal = dimensions.contentHorizontalPadding),
-        ) {
-            PlayerStatus(state.loadState, state.errorMessageRes)
-        }
-        InteractiveThinProgressBar(
-            positionMs = state.positionMs,
-            durationMs = state.durationMs,
-            enabled = state.durationMs > 0,
-            onSeek = onSeek,
-            modifier = Modifier.fillMaxWidth()
-                .padding(horizontal = dimensions.contentHorizontalPadding),
-        )
-        Spacer(Modifier.height(dimensions.spaceSmall))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = dimensions.contentHorizontalPadding),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            val previousDescription = stringResource(R.string.playback_previous)
-            BareIconButton(
-                onClick = onPrevious,
-                enabled = state.canSkipPrevious,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
+            Spacer(Modifier.height(dimensions.spaceSmall))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_playback_skip_previous),
-                    contentDescription = previousDescription,
-                    modifier = Modifier.size(36.dp),
-                )
+                val previousDescription = stringResource(R.string.playback_previous)
+                BareIconButton(
+                    onClick = onPrevious,
+                    enabled = state.canSkipPrevious,
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_playback_skip_previous),
+                        contentDescription = previousDescription,
+                        modifier = Modifier.size(36.dp),
+                    )
+                }
+                val playbackDescription =
+                    stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
+                BareIconButton(
+                    onClick = onTogglePlayback,
+                    modifier = Modifier.size(64.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(if (state.isPlaying) R.drawable.ic_playback_pause else R.drawable.ic_playback_play),
+                        contentDescription = playbackDescription,
+                        modifier = Modifier.size(48.dp),
+                    )
+                }
+                val nextDescription = stringResource(R.string.playback_next)
+                BareIconButton(
+                    onClick = onNext,
+                    enabled = state.canSkipNext,
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_playback_skip_next),
+                        contentDescription = nextDescription,
+                        modifier = Modifier.size(36.dp),
+                    )
+                }
             }
-            val playbackDescription =
-                stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
-            BareIconButton(
-                onClick = onTogglePlayback,
-                modifier = Modifier.size(64.dp),
+            Spacer(Modifier.height(dimensions.spaceSmall))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = dimensions.contentHorizontalPadding,
+                        vertical = dimensions.spaceSmall,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceAround,
             ) {
-                Icon(
-                    painter = painterResource(if (state.isPlaying) R.drawable.ic_playback_pause else R.drawable.ic_playback_play),
-                    contentDescription = playbackDescription,
-                    modifier = Modifier.size(48.dp),
-                )
-            }
-            val nextDescription = stringResource(R.string.playback_next)
-            BareIconButton(
-                onClick = onNext,
-                enabled = state.canSkipNext,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_playback_skip_next),
-                    contentDescription = nextDescription,
-                    modifier = Modifier.size(36.dp),
-                )
+                BareIconButton(
+                    onClick = onCycleMode,
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(state.playbackMode.iconRes()),
+                        contentDescription = stringResource(state.playbackMode.labelRes()),
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
+                val sleepTimerComingSoon = stringResource(R.string.playback_sleep_timer_coming_soon)
+                BareIconButton(
+                    onClick = { showFeedback(sleepTimerComingSoon) },
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_playback_sleep_timer),
+                        contentDescription = stringResource(R.string.playback_sleep_timer),
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
+                val equalizerComingSoon = stringResource(R.string.playback_equalizer_coming_soon)
+                BareIconButton(
+                    onClick = { showFeedback(equalizerComingSoon) },
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_sidebar_equalizer),
+                        contentDescription = stringResource(R.string.playback_equalizer),
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
+                BareIconButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            pager.animateScrollToPage(FullPlayerPage.QUEUE.ordinal)
+                        }
+                    },
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_view_list),
+                        contentDescription = stringResource(R.string.playback_queue),
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
+                BareIconButton(
+                    onClick = onShowInfo,
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_more_horizontal),
+                        contentDescription = stringResource(R.string.playback_more_options),
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
             }
         }
-        Spacer(Modifier.height(dimensions.spaceSmall))
         AnimatedVisibility(
             visible = feedbackMessage != null,
             enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
             exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = dimensions.minimumTouchTarget + dimensions.spaceSmall),
         ) {
             feedbackMessage?.let { msg ->
                 Surface(
@@ -593,73 +670,6 @@ private fun FullPlayer(
                         ),
                     )
                 }
-            }
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = dimensions.contentHorizontalPadding,
-                    vertical = dimensions.spaceSmall,
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceAround,
-        ) {
-            BareIconButton(
-                onClick = onCycleMode,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(state.playbackMode.iconRes()),
-                    contentDescription = stringResource(state.playbackMode.labelRes()),
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
-            val sleepTimerComingSoon = stringResource(R.string.playback_sleep_timer_coming_soon)
-            BareIconButton(
-                onClick = { feedbackMessage = sleepTimerComingSoon },
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_playback_sleep_timer),
-                    contentDescription = stringResource(R.string.playback_sleep_timer),
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
-            val equalizerComingSoon = stringResource(R.string.playback_equalizer_coming_soon)
-            BareIconButton(
-                onClick = { feedbackMessage = equalizerComingSoon },
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_sidebar_equalizer),
-                    contentDescription = stringResource(R.string.playback_equalizer),
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
-            BareIconButton(
-                onClick = {
-                    coroutineScope.launch {
-                        pager.animateScrollToPage(FullPlayerPage.QUEUE.ordinal)
-                    }
-                },
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_common_view_list),
-                    contentDescription = stringResource(R.string.playback_queue),
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
-            BareIconButton(
-                onClick = onShowInfo,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_common_more_horizontal),
-                    contentDescription = stringResource(R.string.playback_more_options),
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
             }
         }
     }
