@@ -28,6 +28,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.musicapp.player.feature.player.rememberPlayerSheetNestedScrollConnection
 import com.musicapp.player.theme.MusicTheme
 
 @Composable
@@ -37,6 +38,9 @@ fun LyricsPaneRoute(
     loadingText: String,
     returnToCurrentText: String,
     modifier: Modifier = Modifier,
+    onSheetDrag: (Float) -> Float = { 0f },
+    onSheetSettle: (Float) -> Unit = {},
+    sheetProgress: () -> Float = { 1f },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LyricsPane(
@@ -47,6 +51,9 @@ fun LyricsPaneRoute(
         onManualScroll = viewModel::onManualScroll,
         onReturnToCurrent = viewModel::returnToCurrentLine,
         onLineClick = viewModel::onLineClick,
+        onSheetDrag = onSheetDrag,
+        onSheetSettle = onSheetSettle,
+        sheetProgress = sheetProgress,
         modifier = modifier,
     )
 }
@@ -61,6 +68,9 @@ fun LyricsPane(
     onReturnToCurrent: () -> Unit,
     onLineClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    onSheetDrag: (Float) -> Float = { 0f },
+    onSheetSettle: (Float) -> Unit = {},
+    sheetProgress: () -> Float = { 1f },
 ) {
     val dimensions = MusicTheme.dimensions
     when (state.mode) {
@@ -90,14 +100,13 @@ fun LyricsPane(
 
         LyricsDisplayMode.SYNCHRONIZED -> {
             val listState = rememberLazyListState()
-            val manualScrollConnection = remember(onManualScroll) {
-                object : NestedScrollConnection {
-                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                        if (source == NestedScrollSource.UserInput && available.y != 0f) onManualScroll()
-                        return Offset.Zero
-                    }
-                }
-            }
+            val sheetNestedScrollConnection = rememberPlayerSheetNestedScrollConnection(
+                canScrollBackward = { listState.canScrollBackward },
+                sheetProgress = sheetProgress,
+                onSheetDrag = onSheetDrag,
+                onSheetSettle = onSheetSettle,
+                onPreUserScroll = onManualScroll,
+            )
             LaunchedEffect(state.activeLineIndex, state.autoCenterEnabled, state.autoCenterRequest) {
                 val index = state.activeLineIndex ?: return@LaunchedEffect
                 if (!state.autoCenterEnabled) return@LaunchedEffect
@@ -114,7 +123,7 @@ fun LyricsPane(
                     .coerceAtLeast(dimensions.spaceLarge)
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().nestedScroll(manualScrollConnection),
+                    modifier = Modifier.fillMaxSize().nestedScroll(sheetNestedScrollConnection),
                     contentPadding = PaddingValues(vertical = centerableEdgePadding),
                     verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
                 ) {

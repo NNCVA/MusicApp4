@@ -113,4 +113,86 @@ class PlayerGesturePolicyTest {
             ),
         )
     }
+
+    @Test
+    fun `lyrics content shares content ownership with slider and queue`() {
+        assertEquals(PlayerGestureOwner.CONTENT, PlayerGesturePolicy.owner(PlayerGestureRegion.LYRICS_CONTENT, 0f, 40f))
+        assertEquals(PlayerGestureOwner.CONTENT, PlayerGesturePolicy.owner(PlayerGestureRegion.LYRICS_CONTENT, 40f, 0f))
+    }
+
+    @Test
+    fun `partially expanded sheet hands both downward and upward drag to sheet`() {
+        // 下拉折叠
+        val downward = PlayerGesturePolicy.scrollableContentDecision(
+            deltaX = 0f,
+            deltaY = 30f,
+            canScrollBackward = false,
+            isSheetExpanded = false,
+        )
+        assertEquals(QueueEdgeBehavior.DRAG_SHEET, downward.behavior)
+
+        // 上推恢复展开
+        val upward = PlayerGesturePolicy.scrollableContentDecision(
+            deltaX = 0f,
+            deltaY = -30f,
+            canScrollBackward = false,
+            isSheetExpanded = false,
+        )
+        assertEquals(QueueEdgeBehavior.DRAG_SHEET, upward.behavior)
+
+        // 处于活跃拖拽状态时同样接管
+        val activeDrag = PlayerGesturePolicy.scrollableContentDecision(
+            deltaX = 0f,
+            deltaY = -20f,
+            canScrollBackward = true,
+            isSheetExpanded = true,
+            isSheetDragging = true,
+        )
+        assertEquals(QueueEdgeBehavior.DRAG_SHEET, activeDrag.behavior)
+    }
+
+    @Test
+    fun `partially expanded sheet or active drag settles sheet on zero velocity and reverse velocity`() {
+        // 慢速松手（速度为 0）
+        assertEquals(
+            QueueEdgeBehavior.DRAG_SHEET,
+            PlayerGesturePolicy.scrollableContentFlingDecision(
+                velocityY = 0f,
+                canScrollBackward = false,
+                isSheetExpanded = false,
+            ),
+        )
+
+        // 上推释放（反向速度）
+        assertEquals(
+            QueueEdgeBehavior.DRAG_SHEET,
+            PlayerGesturePolicy.scrollableContentFlingDecision(
+                velocityY = -400f,
+                canScrollBackward = false,
+                isSheetExpanded = false,
+            ),
+        )
+
+        // 活跃拖拽释放（速度为 0）
+        assertEquals(
+            QueueEdgeBehavior.DRAG_SHEET,
+            PlayerGesturePolicy.scrollableContentFlingDecision(
+                velocityY = 0f,
+                canScrollBackward = true,
+                isSheetExpanded = true,
+                isSheetDragging = true,
+            ),
+        )
+
+        // 完全展开且未驱动抽屉时，列表内部零速不影响内容
+        assertEquals(
+            QueueEdgeBehavior.SCROLL_CONTENT,
+            PlayerGesturePolicy.scrollableContentFlingDecision(
+                velocityY = 0f,
+                canScrollBackward = false,
+                isSheetExpanded = true,
+                isSheetDragging = false,
+            ),
+        )
+    }
 }

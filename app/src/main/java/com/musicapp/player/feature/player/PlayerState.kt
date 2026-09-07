@@ -50,7 +50,7 @@ data class FullPlayerState(val page: FullPlayerPage = FullPlayerPage.ARTWORK) {
     fun previous() = copy(page = FullPlayerPage.entries[(page.ordinal - 1).coerceAtLeast(0)])
 }
 
-enum class PlayerGestureRegion { SHEET_BACKGROUND, HORIZONTAL_PAGER, PROGRESS_SLIDER, QUEUE_CONTENT }
+enum class PlayerGestureRegion { SHEET_BACKGROUND, HORIZONTAL_PAGER, PROGRESS_SLIDER, QUEUE_CONTENT, LYRICS_CONTENT }
 enum class PlayerGestureOwner { SHEET, CONTENT }
 enum class QueueEdgeBehavior { SCROLL_CONTENT, DRAG_SHEET }
 
@@ -63,6 +63,7 @@ object PlayerGesturePolicy {
         when (region) {
             PlayerGestureRegion.PROGRESS_SLIDER,
             PlayerGestureRegion.QUEUE_CONTENT,
+            PlayerGestureRegion.LYRICS_CONTENT,
             -> PlayerGestureOwner.CONTENT
             PlayerGestureRegion.HORIZONTAL_PAGER ->
                 if (abs(deltaY) > abs(deltaX)) PlayerGestureOwner.SHEET else PlayerGestureOwner.CONTENT
@@ -70,26 +71,57 @@ object PlayerGesturePolicy {
                 if (abs(deltaY) >= abs(deltaX)) PlayerGestureOwner.SHEET else PlayerGestureOwner.CONTENT
         }
 
-    fun queueDecision(
+    fun scrollableContentDecision(
         deltaX: Float,
         deltaY: Float,
         canScrollBackward: Boolean,
+        isSheetExpanded: Boolean = true,
+        isSheetDragging: Boolean = false,
     ): QueueGestureDecision =
         when {
             abs(deltaX) > abs(deltaY) -> QueueGestureDecision(QueueEdgeBehavior.SCROLL_CONTENT)
+            !isSheetExpanded || isSheetDragging -> QueueGestureDecision(QueueEdgeBehavior.DRAG_SHEET)
             deltaY > 0f && !canScrollBackward -> QueueGestureDecision(QueueEdgeBehavior.DRAG_SHEET)
             else -> QueueGestureDecision(QueueEdgeBehavior.SCROLL_CONTENT)
         }
 
+    fun scrollableContentFlingDecision(
+        velocityY: Float,
+        canScrollBackward: Boolean,
+        isSheetExpanded: Boolean = true,
+        isSheetDragging: Boolean = false,
+    ): QueueEdgeBehavior =
+        when {
+            !isSheetExpanded || isSheetDragging -> QueueEdgeBehavior.DRAG_SHEET
+            velocityY > 0f && !canScrollBackward -> QueueEdgeBehavior.DRAG_SHEET
+            else -> QueueEdgeBehavior.SCROLL_CONTENT
+        }
+
+    fun queueDecision(
+        deltaX: Float,
+        deltaY: Float,
+        canScrollBackward: Boolean,
+        isSheetExpanded: Boolean = true,
+        isSheetDragging: Boolean = false,
+    ): QueueGestureDecision = scrollableContentDecision(
+        deltaX = deltaX,
+        deltaY = deltaY,
+        canScrollBackward = canScrollBackward,
+        isSheetExpanded = isSheetExpanded,
+        isSheetDragging = isSheetDragging,
+    )
+
     fun queueFlingDecision(
         velocityY: Float,
         canScrollBackward: Boolean,
-    ): QueueEdgeBehavior =
-        if (velocityY > 0f && !canScrollBackward) {
-            QueueEdgeBehavior.DRAG_SHEET
-        } else {
-            QueueEdgeBehavior.SCROLL_CONTENT
-        }
+        isSheetExpanded: Boolean = true,
+        isSheetDragging: Boolean = false,
+    ): QueueEdgeBehavior = scrollableContentFlingDecision(
+        velocityY = velocityY,
+        canScrollBackward = canScrollBackward,
+        isSheetExpanded = isSheetExpanded,
+        isSheetDragging = isSheetDragging,
+    )
 }
 
 object PlayerGestureRouter {
@@ -109,16 +141,20 @@ object PlayerGestureRouter {
         deltaX: Float,
         deltaY: Float,
         canScrollBackward: Boolean,
+        isSheetExpanded: Boolean = true,
+        isSheetDragging: Boolean = false,
         dragSheet: (Float) -> Float,
     ): Float {
         val decision = PlayerGesturePolicy.queueDecision(
             deltaX = deltaX,
             deltaY = deltaY,
             canScrollBackward = canScrollBackward,
+            isSheetExpanded = isSheetExpanded,
+            isSheetDragging = isSheetDragging,
         )
         return when (decision.behavior) {
-                QueueEdgeBehavior.SCROLL_CONTENT -> 0f
-                QueueEdgeBehavior.DRAG_SHEET -> dragSheet(deltaY)
+            QueueEdgeBehavior.SCROLL_CONTENT -> 0f
+            QueueEdgeBehavior.DRAG_SHEET -> dragSheet(deltaY)
         }
     }
 }

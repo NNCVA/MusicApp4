@@ -113,6 +113,7 @@ import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
+import com.musicapp.player.feature.lyrics.LyricsDisplayMode
 import com.musicapp.player.feature.lyrics.LyricsPaneRoute
 import com.musicapp.player.feature.lyrics.LyricsViewModel
 import com.musicapp.player.feature.aero.AeroBackground
@@ -305,6 +306,7 @@ fun PlayerSheet(
                             onPageChanged = onPageChanged,
                             onSheetDrag = dragSheet,
                             onSheetSettle = settleSheet,
+                            sheetProgress = { progress },
                         )
                     }
                 }
@@ -402,11 +404,18 @@ private fun FullPlayer(
     onPageChanged: (FullPlayerPage) -> Unit,
     onSheetDrag: (Float) -> Float,
     onSheetSettle: (Float) -> Unit,
+    sheetProgress: () -> Float = { 1f },
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
     val pager = rememberPagerState(initialPage = initialPage.ordinal, pageCount = { FullPlayerPage.entries.size })
+    val lyricsUiState by lyricsViewModel.uiState.collectAsStateWithLifecycle()
+    val isScrollableContentActive = when (FullPlayerPage.entries[pager.currentPage]) {
+        FullPlayerPage.QUEUE -> true
+        FullPlayerPage.LYRICS -> lyricsUiState.mode == LyricsDisplayMode.SYNCHRONIZED
+        FullPlayerPage.ARTWORK -> false
+    }
     val backgroundDragState = rememberDraggableState { deltaY ->
         PlayerGestureRouter.routeSheetDrag(
             region = PlayerGestureRegion.SHEET_BACKGROUND,
@@ -491,7 +500,7 @@ private fun FullPlayer(
                     .draggable(
                         state = pagerVerticalDragState,
                         orientation = Orientation.Vertical,
-                        enabled = pager.currentPage != FullPlayerPage.QUEUE.ordinal,
+                        enabled = !isScrollableContentActive,
                         onDragStopped = { velocityY -> onSheetSettle(velocityY) },
                     ),
             ) { page ->
@@ -506,6 +515,9 @@ private fun FullPlayer(
                         missingText = stringResource(R.string.lyrics_not_found),
                         loadingText = stringResource(R.string.lyrics_loading),
                         returnToCurrentText = stringResource(R.string.lyrics_return_to_current),
+                        onSheetDrag = onSheetDrag,
+                        onSheetSettle = onSheetSettle,
+                        sheetProgress = sheetProgress,
                     )
                     FullPlayerPage.QUEUE -> QueuePage(
                         rows = state.queue,
@@ -515,6 +527,7 @@ private fun FullPlayer(
                         onRemove = onRemoveQueueItem,
                         onSheetDrag = onSheetDrag,
                         onSheetSettle = onSheetSettle,
+                        sheetProgress = sheetProgress,
                     )
                 }
             }
@@ -834,6 +847,7 @@ private fun QueuePage(
     onRemove: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
     onSheetDrag: (Float) -> Float,
     onSheetSettle: (Float) -> Unit,
+    sheetProgress: () -> Float = { 1f },
 ) {
     val dimensions = MusicTheme.dimensions
     val listState = rememberLazyListState()
@@ -842,42 +856,12 @@ private fun QueuePage(
             state = listState,
             allowStartEdge = false,
         )
-    val nestedScrollConnection = remember(listState, onSheetDrag, onSheetSettle) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source != NestedScrollSource.UserInput || available.y == 0f) return Offset.Zero
-                val consumedY = PlayerGestureRouter.routeQueueDrag(
-                    deltaX = available.x,
-                    deltaY = available.y,
-                    canScrollBackward = listState.canScrollBackward,
-                    dragSheet = onSheetDrag,
-                )
-                return if (consumedY == 0f) Offset.Zero else Offset(0f, consumedY)
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                return if (
-                    PlayerGesturePolicy.queueFlingDecision(
-                        velocityY = available.y,
-                        canScrollBackward = listState.canScrollBackward,
-                    ) == QueueEdgeBehavior.DRAG_SHEET
-                ) {
-                    onSheetSettle(available.y)
-                    available
-                } else {
-                    Velocity.Zero
-                }
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (available.y > 0f && !listState.canScrollBackward) {
-                    onSheetSettle(available.y)
-                    return available
-                }
-                return super.onPostFling(consumed, available)
-            }
-        }
-    }
+    val nestedScrollConnection = rememberPlayerSheetNestedScrollConnection(
+        canScrollBackward = { listState.canScrollBackward },
+        sheetProgress = sheetProgress,
+        onSheetDrag = onSheetDrag,
+        onSheetSettle = onSheetSettle,
+    )
     val headerDragState = rememberDraggableState { deltaY ->
         PlayerGestureRouter.routeSheetDrag(
             region = PlayerGestureRegion.SHEET_BACKGROUND,
@@ -1016,3 +1000,79 @@ private fun formatDuration(milliseconds: Long): String {
     val seconds = milliseconds.coerceAtLeast(0) / 1_000
     return String.format(Locale.getDefault(), "%d:%02d", seconds / 60, seconds % 60)
 }
+
+@Composable
+internal fun rememberPlayerSheetNestedScrollConnection(
+    canScrollBackward: () -> Boolean,
+    sheetProgress: () -> Float,
+    onSheetDrag: (Float) -> Float,
+    onSheetSettle: (Float) -> Unit,
+    onPreUserScroll: (() -> Unit)? = null,
+): NestedScrollConnection {
+    return remember(canScrollBackward, sheetProgress, onSheetDrag, onSheetSettle, onPreUserScroll) {
+        object : NestedScrollConnection {
+            private var isSheetDragging = false
+
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput || available.y == 0f) return Offset.Zero
+                onPreUserScroll?.invoke()
+
+                val progress = sheetProgress()
+                val isExpanded = progress >= 1f
+                val canBackward = canScrollBackward()
+
+                val decision = PlayerGesturePolicy.scrollableContentDecision(
+                    deltaX = available.x,
+                    deltaY = available.y,
+                    canScrollBackward = canBackward,
+                    isSheetExpanded = isExpanded,
+                    isSheetDragging = isSheetDragging,
+                )
+
+                return when (decision.behavior) {
+                    QueueEdgeBehavior.SCROLL_CONTENT -> {
+                        isSheetDragging = false
+                        Offset.Zero
+                    }
+                    QueueEdgeBehavior.DRAG_SHEET -> {
+                        isSheetDragging = true
+                        val consumedY = onSheetDrag(available.y)
+                        if (consumedY == 0f) Offset.Zero else Offset(0f, consumedY)
+                    }
+                }
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                val progress = sheetProgress()
+                val isExpanded = progress >= 1f
+                val canBackward = canScrollBackward()
+
+                val decision = PlayerGesturePolicy.scrollableContentFlingDecision(
+                    velocityY = available.y,
+                    canScrollBackward = canBackward,
+                    isSheetExpanded = isExpanded,
+                    isSheetDragging = isSheetDragging,
+                )
+
+                isSheetDragging = false
+                return if (decision == QueueEdgeBehavior.DRAG_SHEET) {
+                    onSheetSettle(available.y)
+                    available
+                } else {
+                    Velocity.Zero
+                }
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                isSheetDragging = false
+                val canBackward = canScrollBackward()
+                if (available.y > 0f && !canBackward) {
+                    onSheetSettle(available.y)
+                    return available
+                }
+                return super.onPostFling(consumed, available)
+            }
+        }
+    }
+}
+
