@@ -195,13 +195,15 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         }
     }
 
-    override fun play() = dispatchPreparing(mutableState.value.currentTrackId, playWhenReady = true, command = MediaController::play)
+    override fun play() {
+        pendingPlayWhenReady = true
+        mutableState.value = mutableState.value.copy(isPlaying = true)
+        dispatch(MediaController::play)
+    }
 
     override fun pause() {
         pendingPlayWhenReady = false
-        if (pendingTrackId != null) {
-            mutableState.value = mutableState.value.copy(isPlaying = false)
-        }
+        mutableState.value = mutableState.value.copy(isPlaying = false)
         dispatch(MediaController::pause)
     }
 

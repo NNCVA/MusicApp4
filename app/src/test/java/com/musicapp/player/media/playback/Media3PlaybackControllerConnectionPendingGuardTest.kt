@@ -75,14 +75,14 @@ class Media3PlaybackControllerConnectionPendingGuardTest {
     }
 
     @Test
-    fun playCommandImmediatelyPublishesPreparingWithPlayingTrue() {
+    fun playCommandImmediatelyReflectsPlayingStateWithoutDowngradingToPreparing() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val connection = Media3PlaybackControllerConnection(context)
 
         connection.play()
         val state = connection.state.value
         assertTrue(state.isPlaying)
-        assertEquals(PlaybackStatus.PREPARING, state.playbackStatus)
+        assertEquals(PlaybackStatus.IDLE, state.playbackStatus)
     }
 
 
