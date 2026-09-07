@@ -87,7 +87,7 @@ fun TrackInfoContent(
     ) {
         Text(
             text = stringResource(R.string.track_info_title),
-            style = MusicTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+            style = MusicTheme.typography.titleLarge,
             color = MusicTheme.colors.onSurface,
         )
         if (loading) {
@@ -143,12 +143,12 @@ fun TrackInfoContent(
 private fun TrackInfoCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = MusicTheme.shapes.extraLarge,
+        shape = MusicTheme.shapes.large,
         color = MusicTheme.colors.surfaceContainer,
         content = {
             Column(
-                modifier = Modifier.padding(MusicTheme.dimensions.spaceLarge),
-                verticalArrangement = Arrangement.spacedBy(MusicTheme.dimensions.spaceMedium),
+                modifier = Modifier.padding(MusicTheme.dimensions.spaceMedium),
+                verticalArrangement = Arrangement.spacedBy(MusicTheme.dimensions.spaceLarge),
                 content = content,
             )
         },

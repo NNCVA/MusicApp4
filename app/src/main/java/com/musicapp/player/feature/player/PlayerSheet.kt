@@ -461,9 +461,9 @@ private fun FullPlayer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(
-                        start = dimensions.topBarHorizontalPadding,
-                        end = dimensions.topBarHorizontalPadding,
-                        top = dimensions.spaceMedium,
+                        start = dimensions.spaceLarge,
+                        end = dimensions.spaceLarge,
+                        top = dimensions.spaceLarge,
                         bottom = dimensions.spaceSmall,
                     )
                     .draggable(
@@ -476,7 +476,7 @@ private fun FullPlayer(
                 Text(
                     text = track.title,
                     style = MusicTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     color = MusicTheme.colors.onSurface,
                     maxLines = 1,
                     modifier = Modifier
