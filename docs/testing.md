@@ -12,6 +12,8 @@ Android Runtime 集成测试 = 在真实 Android 运行时的设备或模拟器�
 
 `src/test` 不以覆盖 Android Runtime 为目标，也不把 Room/Hilt/Service 的真实行为强行放回 Robolectric。设备、视觉与完整交互验收仍由人工执行。
 
+播放详情进度条的 pending、确认、超时和取消状态属于不依赖平台的 feature 规则，放在 `app/src/test`；进度条 Compose 手势、重组后的语义和显示优先级放在 `app/src/androidTest`。两层分别验证状态决策和真实触控渲染，不把 MediaController 或设备回执伪装成 JVM 通过。
+
 ## Android Runtime 测试归属
 
 以下测试归 `app/src/androidTest/java/com/musicapp/player`：

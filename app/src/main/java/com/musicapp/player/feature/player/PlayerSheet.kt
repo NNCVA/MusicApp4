@@ -70,6 +70,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -95,6 +96,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -109,6 +112,7 @@ import com.musicapp.player.core.aero.AeroRuntimeSignals
 import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.Track
+import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
@@ -121,6 +125,7 @@ import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
 import kotlin.math.roundToInt
 import java.util.Locale
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -151,7 +156,7 @@ fun PlayerSheetRoute(
         onTogglePlayback = viewModel::togglePlayback,
         onPrevious = viewModel::skipPrevious,
         onNext = viewModel::skipNext,
-        onSeek = viewModel::seekToFraction,
+        onSeek = viewModel::seekToPosition,
         onRewind = viewModel::rewind,
         onFastForward = viewModel::fastForward,
         onCycleMode = viewModel::cyclePlaybackMode,
@@ -175,7 +180,7 @@ fun PlayerSheet(
     onTogglePlayback: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
-    onSeek: (Float) -> Unit,
+    onSeek: (Long) -> Unit,
     onRewind: () -> Unit,
     onFastForward: () -> Unit,
     onCycleMode: () -> Unit,
@@ -393,7 +398,7 @@ private fun FullPlayer(
     onTogglePlayback: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
-    onSeek: (Float) -> Unit,
+    onSeek: (Long) -> Unit,
     onRewind: () -> Unit,
     onFastForward: () -> Unit,
     onCycleMode: () -> Unit,
@@ -538,6 +543,7 @@ private fun FullPlayer(
                 PlayerStatus(state.loadState, state.errorMessageRes)
             }
             InteractiveThinProgressBar(
+                trackId = track.id,
                 positionMs = state.positionMs,
                 durationMs = state.durationMs,
                 enabled = state.durationMs > 0,
@@ -689,22 +695,46 @@ private fun FullPlayer(
 }
 
 @Composable
-private fun InteractiveThinProgressBar(
+internal fun InteractiveThinProgressBar(
+    trackId: TrackId,
     positionMs: Long,
     durationMs: Long,
     enabled: Boolean,
-    onSeek: (Float) -> Unit,
+    onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hapticFeedback = LocalHapticFeedback.current
-    var isDragging by remember { mutableStateOf(false) }
-    var dragFraction by remember { mutableFloatStateOf(0f) }
+    var seekState by remember(trackId, durationMs) { mutableStateOf(PlayerSeekState()) }
+    val latestPositionMs by rememberUpdatedState(positionMs)
+    val latestOnSeek by rememberUpdatedState(onSeek)
+    val isDragging = seekState.dragFraction != null
+    val pending = seekState.pending?.takeIf {
+        it.trackId == trackId && it.durationMs == durationMs
+    }
+    val pendingRequestId = seekState.pending?.requestId
 
-    val currentFraction = if (durationMs > 0) {
-        (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
+    LaunchedEffect(trackId, durationMs, positionMs, pendingRequestId) {
+        pendingRequestId?.let { requestId ->
+            seekState = seekState.acknowledgePosition(requestId, trackId, durationMs, positionMs)
+        }
+    }
+    LaunchedEffect(trackId, durationMs, pendingRequestId) {
+        val requestId = pendingRequestId ?: return@LaunchedEffect
+        delay(PlayerSeekPolicy.TIMEOUT_MS)
+        seekState = seekState.timeout(requestId)
+    }
+
+    val currentPositionMs = positionMs.coerceIn(0, durationMs.coerceAtLeast(0))
+    val currentDragFraction = seekState.dragFraction
+    val displayedPositionMs = when {
+        currentDragFraction != null && durationMs > 0 ->
+            kotlin.math.round(currentDragFraction.toDouble() * durationMs).toLong().coerceIn(0, durationMs)
+        pending != null -> pending.targetMs
+        else -> currentPositionMs
+    }
+    val displayFraction = if (durationMs > 0) {
+        (displayedPositionMs.toFloat() / durationMs).coerceIn(0f, 1f)
     } else 0f
-
-    val displayFraction = if (isDragging) dragFraction else currentFraction
 
     val trackHeight by animateDpAsState(
         targetValue = if (isDragging) 5.dp else 2.5.dp,
@@ -725,36 +755,50 @@ private fun InteractiveThinProgressBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(36.dp)
-                .pointerInput(enabled, durationMs) {
+                .semantics {
+                    progressBarRangeInfo = ProgressBarRangeInfo(displayFraction, 0f..1f)
+                }
+                .pointerInput(enabled, durationMs, trackId) {
                     if (!enabled || durationMs <= 0) return@pointerInput
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         val width = size.width
                         if (width <= 0) return@awaitEachGesture
-                        isDragging = true
-                        dragFraction = (down.position.x / width).coerceIn(0f, 1f)
+                        val downFraction = (down.position.x / width).coerceIn(0f, 1f)
+                        seekState = seekState.beginDrag(downFraction)
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
 
-                        var lastHapticFraction = dragFraction
+                        var lastHapticFraction = downFraction
                         val pointer = down.id
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == pointer } ?: break
-                            if (change.pressed) {
-                                val newFraction = (change.position.x / width).coerceIn(0f, 1f)
-                                if (kotlin.math.abs(newFraction - lastHapticFraction) >= 0.015f) {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    lastHapticFraction = newFraction
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == pointer } ?: break
+                                if (change.pressed) {
+                                    val newFraction = (change.position.x / width).coerceIn(0f, 1f)
+                                    if (kotlin.math.abs(newFraction - lastHapticFraction) >= 0.015f) {
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        lastHapticFraction = newFraction
+                                    }
+                                    seekState = seekState.updateDrag(newFraction)
+                                    change.consume()
+                                } else {
+                                    change.consume()
+                                    seekState.dragFraction?.let {
+                                        val commit = seekState.commit(
+                                            trackId = trackId,
+                                            durationMs = durationMs,
+                                            baselineMs = latestPositionMs,
+                                        )
+                                        seekState = commit.state
+                                        latestOnSeek(commit.targetMs)
+                                    }
+                                    break
                                 }
-                                dragFraction = newFraction
-                                change.consume()
-                            } else {
-                                change.consume()
-                                onSeek(dragFraction)
-                                break
                             }
+                        } finally {
+                            seekState = seekState.cancelDrag()
                         }
-                        isDragging = false
                     }
                 },
             contentAlignment = Alignment.Center,
@@ -799,13 +843,8 @@ private fun InteractiveThinProgressBar(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            val displayedPosition = if (isDragging) {
-                (dragFraction * durationMs).toLong()
-            } else {
-                positionMs
-            }
             Text(
-                text = formatDuration(displayedPosition),
+                text = formatDuration(displayedPositionMs),
                 style = MusicTheme.typography.labelMedium,
                 color = MusicTheme.colors.onSurfaceVariant,
             )
