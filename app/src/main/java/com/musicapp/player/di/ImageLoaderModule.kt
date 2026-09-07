@@ -59,7 +59,7 @@ object ImageLoaderModule {
             }
             .diskCache {
                 DiskCache.Builder()
-                    .directory(context.cacheDir.resolve("artwork_cache").toOkioPath())
+                    .directory(context.cacheDir.resolve("artwork_cache_v2").toOkioPath())
                     .maxSizeBytes(128L * 1024 * 1024)
                     .build()
             }

@@ -73,27 +73,19 @@ fun interface ArtworkExtractor {
 }
 
 /**
- * Default [ArtworkExtractor] prioritizing Android Q+ [android.content.ContentResolver.loadThumbnail]
- * with fallback to native [MediaMetadataRetriever] with strict try-finally cleanup.
+ * Default [ArtworkExtractor] prioritizing native [MediaMetadataRetriever] for high-resolution embedded artwork,
+ * with fallback to Android Q+ [android.content.ContentResolver.loadThumbnail] at 1024x1024.
  */
 val DefaultArtworkExtractor = ArtworkExtractor { context, uri ->
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        try {
-            val bitmap = context.contentResolver.loadThumbnail(uri, android.util.Size(256, 256), null)
-            val stream = java.io.ByteArrayOutputStream()
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, stream)
-            val bytes = stream.toByteArray()
-            if (bytes.isNotEmpty()) {
-                return@ArtworkExtractor bytes
-            }
-        } catch (_: Throwable) {
-            // Fall back to MediaMetadataRetriever
-        }
-    }
     val retriever = MediaMetadataRetriever()
     try {
         retriever.setDataSource(context, uri)
-        retriever.embeddedPicture
+        val picture = retriever.embeddedPicture
+        if (picture != null && picture.isNotEmpty()) {
+            return@ArtworkExtractor picture
+        }
+    } catch (_: Throwable) {
+        // Fall through to ContentResolver thumbnail fallback
     } finally {
         try {
             retriever.release()
@@ -101,6 +93,21 @@ val DefaultArtworkExtractor = ArtworkExtractor { context, uri ->
             // Defensively suppress native release exceptions
         }
     }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        try {
+            val bitmap = context.contentResolver.loadThumbnail(uri, android.util.Size(1024, 1024), null)
+            val stream = java.io.ByteArrayOutputStream()
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, stream)
+            val bytes = stream.toByteArray()
+            if (bytes.isNotEmpty()) {
+                return@ArtworkExtractor bytes
+            }
+        } catch (_: Throwable) {
+            // No fallback available
+        }
+    }
+    null
 }
 
 /**
