@@ -97,10 +97,27 @@ internal class PlaybackQueueCoordinator(
 
     fun setMode(mode: PlaybackMode) {
         if (state.mode == mode) return
+        val previousOrder = state.queue.playbackOrder
         val position = player.currentPositionMs
-        val shouldPlay = player.playWhenReady
         state = reducer.setMode(state, mode)
-        applyTimeline(position, shouldPlay)
+        player.repeatMode = when (state.mode) {
+            PlaybackMode.LIST_REPEAT -> Player.REPEAT_MODE_ALL
+            PlaybackMode.SINGLE_REPEAT -> Player.REPEAT_MODE_ONE
+            PlaybackMode.SHUFFLE -> Player.REPEAT_MODE_OFF
+        }
+        player.shuffleModeEnabled = false
+        val newOrder = state.queue.playbackOrder
+        if (previousOrder != newOrder && state.queue.originalQueue.isNotEmpty()) {
+            val targetIndex = newOrder.indexOfFirst { it.id == state.queue.currentItemId }
+            if (targetIndex >= 0) {
+                player.setMediaItems(
+                    newOrder.map { mediaItemsById.getValue(it.id) },
+                    targetIndex,
+                    position,
+                )
+            }
+        }
+        publish()
     }
 
     fun addToQueue(tracks: List<PlaybackTrackPayload>) {

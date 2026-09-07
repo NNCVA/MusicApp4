@@ -47,14 +47,18 @@ class PlaybackStateProtocolTest {
 
 
     @Test
-    fun `buffering remains preparing until the visibility threshold is reached`() {
+    fun `short buffering remains ready or playing until the visibility threshold is reached`() {
         assertEquals(
-            PlaybackStatus.PREPARING,
-            resolve(playerState = Player.STATE_BUFFERING, bufferingVisible = false),
+            PlaybackStatus.READY,
+            resolve(playerState = Player.STATE_BUFFERING, isPlaying = false, playWhenReady = true, bufferingVisible = false),
+        )
+        assertEquals(
+            PlaybackStatus.PLAYING,
+            resolve(playerState = Player.STATE_BUFFERING, isPlaying = true, playWhenReady = true, bufferingVisible = false),
         )
         assertEquals(
             PlaybackStatus.BUFFERING,
-            resolve(playerState = Player.STATE_BUFFERING, bufferingVisible = true),
+            resolve(playerState = Player.STATE_BUFFERING, isPlaying = true, playWhenReady = true, bufferingVisible = true),
         )
     }
 

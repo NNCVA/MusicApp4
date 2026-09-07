@@ -71,7 +71,69 @@ class PlaybackQueueCoordinatorTest {
         assertEquals(previousRound + 1, coordinator.currentState.queue.shuffleRound)
         assertEquals(0, player.currentIndex)
         assertTrue(player.playWhenReady)
-        assertTrue(player.prepareCount >= 3)
+        assertTrue(player.prepareCount >= 2)
+    }
+
+    @Test
+    fun `mode change between list repeat and single repeat updates repeatMode without prepare or item reset`() {
+        coordinator.replaceQueue(tracks(1, 2, 3), startIndex = 1, playWhenReady = true)
+        val initialPrepareCount = player.prepareCount
+        val initialItems = player.items
+
+        coordinator.setMode(PlaybackMode.SINGLE_REPEAT)
+
+        assertEquals(Player.REPEAT_MODE_ONE, player.repeatMode)
+        assertEquals(initialPrepareCount, player.prepareCount)
+        assertEquals(initialItems, player.items)
+
+        coordinator.setMode(PlaybackMode.LIST_REPEAT)
+
+        assertEquals(Player.REPEAT_MODE_ALL, player.repeatMode)
+        assertEquals(initialPrepareCount, player.prepareCount)
+        assertEquals(initialItems, player.items)
+    }
+
+    @Test
+    fun `mode change to shuffle updates items smoothly without calling prepare and keeps playing current track`() {
+        coordinator.replaceQueue(tracks(1, 2, 3), startIndex = 1, playWhenReady = true)
+        val initialPrepareCount = player.prepareCount
+        val initialTrackId = coordinator.currentState.queue.currentItem?.trackId
+
+        coordinator.setMode(PlaybackMode.SHUFFLE)
+
+        assertEquals(Player.REPEAT_MODE_OFF, player.repeatMode)
+        assertEquals(initialPrepareCount, player.prepareCount)
+        assertEquals(0, player.currentIndex)
+        assertEquals(
+            initialTrackId,
+            QueueMediaIdCodec.decode(player.items[player.currentIndex].mediaId)?.trackId,
+        )
+        assertEquals(
+            coordinator.currentState.queue.playbackOrder.map { it.trackId },
+            player.items.map { QueueMediaIdCodec.decode(it.mediaId)?.trackId },
+        )
+    }
+
+    @Test
+    fun `mode change from shuffle back to list repeat restores original index and preserves current track`() {
+        coordinator.replaceQueue(tracks(1, 2, 3), startIndex = 1, playWhenReady = true)
+        val initialTrackId = coordinator.currentState.queue.currentItem?.trackId
+        coordinator.setMode(PlaybackMode.SHUFFLE)
+        val prepareCountAfterShuffle = player.prepareCount
+
+        coordinator.setMode(PlaybackMode.LIST_REPEAT)
+
+        assertEquals(Player.REPEAT_MODE_ALL, player.repeatMode)
+        assertEquals(prepareCountAfterShuffle, player.prepareCount)
+        assertEquals(1, player.currentIndex)
+        assertEquals(
+            initialTrackId,
+            QueueMediaIdCodec.decode(player.items[player.currentIndex].mediaId)?.trackId,
+        )
+        assertEquals(
+            listOf(1L, 2L, 3L),
+            player.items.map { QueueMediaIdCodec.decode(it.mediaId)?.trackId?.mediaStoreId },
+        )
     }
 
     @Test

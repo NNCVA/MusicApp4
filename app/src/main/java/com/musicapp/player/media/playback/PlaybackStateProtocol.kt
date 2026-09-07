@@ -52,8 +52,10 @@ internal object Media3PlaybackStatusResolver {
         return when (playerState) {
             Player.STATE_BUFFERING -> when {
                 bufferingVisible -> PlaybackStatus.BUFFERING
-                playWhenReady -> PlaybackStatus.PREPARING
-                else -> PlaybackStatus.PAUSED
+                isPlaying -> PlaybackStatus.PLAYING
+                playWhenReady -> PlaybackStatus.READY
+                hasCurrentItem -> PlaybackStatus.PAUSED
+                else -> PlaybackStatus.IDLE
             }
 
             Player.STATE_READY -> when {
