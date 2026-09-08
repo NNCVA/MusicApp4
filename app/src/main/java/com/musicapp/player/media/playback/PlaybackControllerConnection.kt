@@ -39,5 +39,9 @@ internal interface PlaybackControllerConnection {
 
     fun removeFromQueue(queueItemId: QueueItemId) = Unit
 
+    fun startSleepTimer(durationMinutes: Int, extendToEndOfTrack: Boolean) = Unit
+
+    fun stopSleepTimer() = Unit
+
     suspend fun requestFullExit(): Boolean = false
 }

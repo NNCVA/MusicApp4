@@ -45,6 +45,8 @@ data class AppSettings(
     val scanMode: ScanMode = ScanMode.ALL,
     val skipShortAudio: Boolean = true,
     val albumGridColumns: Int = DEFAULT_ALBUM_GRID_COLUMNS,
+    val sleepTimerDurationMinutes: Int = DEFAULT_SLEEP_TIMER_DURATION_MINUTES,
+    val sleepTimerExtendToEndOfTrack: Boolean = false,
 ) {
     init {
         require(fadeThroughDurationMs in MIN_FADE_THROUGH_DURATION_MS..MAX_FADE_THROUGH_DURATION_MS) {
@@ -56,6 +58,9 @@ data class AppSettings(
         require(albumGridColumns in MIN_ALBUM_GRID_COLUMNS..MAX_ALBUM_GRID_COLUMNS) {
             "albumGridColumns must be between $MIN_ALBUM_GRID_COLUMNS and $MAX_ALBUM_GRID_COLUMNS"
         }
+        require(sleepTimerDurationMinutes in MIN_SLEEP_TIMER_DURATION_MINUTES..MAX_SLEEP_TIMER_DURATION_MINUTES) {
+            "sleepTimerDurationMinutes must be between $MIN_SLEEP_TIMER_DURATION_MINUTES and $MAX_SLEEP_TIMER_DURATION_MINUTES"
+        }
     }
 
     companion object {
@@ -66,5 +71,8 @@ data class AppSettings(
         const val MIN_ALBUM_GRID_COLUMNS: Int = 2
         const val MAX_ALBUM_GRID_COLUMNS: Int = 4
         const val DEFAULT_ALBUM_GRID_COLUMNS: Int = 2
+        const val MIN_SLEEP_TIMER_DURATION_MINUTES: Int = 1
+        const val MAX_SLEEP_TIMER_DURATION_MINUTES: Int = 120
+        const val DEFAULT_SLEEP_TIMER_DURATION_MINUTES: Int = 15
     }
 }

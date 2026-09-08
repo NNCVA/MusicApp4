@@ -82,6 +82,11 @@ internal class DefaultPlaybackControllerFacade @Inject constructor(
 
     override fun removeFromQueue(queueItemId: QueueItemId) = connection.removeFromQueue(queueItemId)
 
+    override fun startSleepTimer(durationMinutes: Int, extendToEndOfTrack: Boolean) =
+        connection.startSleepTimer(durationMinutes, extendToEndOfTrack)
+
+    override fun stopSleepTimer() = connection.stopSleepTimer()
+
     override suspend fun requestFullExit(): Boolean = connection.requestFullExit()
 
     private fun loadTracks(

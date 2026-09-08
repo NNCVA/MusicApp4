@@ -18,7 +18,11 @@ import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.core.playback.PlaybackFailure
 import com.musicapp.player.core.playback.PlaybackFailureCode
 import com.musicapp.player.core.playback.PlaybackStatus
+import com.musicapp.player.core.playback.timer.SleepTimerStatus
+import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.FakeMediaLibraryRepository
+import com.musicapp.player.data.repository.FakeSettingsRepository
+import com.musicapp.player.data.settings.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +35,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -365,20 +370,151 @@ class PlayerViewModelTest {
         assertEquals(1, controller.nextCalls)
     }
 
+    @Test
+    fun `progress reuses library index and queue rows and does not emit shell changes`() = runTest(dispatcher) {
+        val library = List(1_000) { track(it.toLong() + 1) }
+        var reads = 0
+        val counted = object : AbstractList<Track>() {
+            override val size get() = library.size
+            override fun get(index: Int): Track { reads++; return library[index] }
+        }
+        val source = MutableStateFlow<List<Track>>(counted)
+        val repository = object : MediaLibraryRepository by FakeMediaLibraryRepository() {
+            override fun observeTracks(includeHidden: Boolean) = source
+        }
+        val controller = RecordingController(PlaybackControllerState(
+            currentTrackId = library.first().id,
+            queue = PlaybackQueue(items(1, 2, 3), currentItemId = id(1)),
+        ))
+        val viewModel = subject(controller, library, repository = repository)
+        val shells = mutableListOf<PlayerShellState>()
+        val collection = backgroundScope.launch { viewModel.shellState.collect { shells += it } }
+        advanceUntilIdle()
+        val rows = viewModel.uiState.value.queue
+        val shellCount = shells.size
+        reads = 0
+        repeat(20) { tick ->
+            controller.update { copy(positionMs = (tick + 1) * 100L) }
+            advanceUntilIdle()
+            assertSame(rows, viewModel.uiState.value.queue)
+        }
+        assertEquals(0, reads)
+        assertEquals(shellCount, shells.size)
+        assertEquals(2_000L, viewModel.uiState.value.positionMs)
+        collection.cancel()
+    }
+
+    @Test
+    fun `queue and same-id metadata changes refresh projections and artwork`() = runTest(dispatcher) {
+        val first = track(1)
+        val second = track(2)
+        val source = MutableStateFlow(listOf(first, second))
+        val repository = object : MediaLibraryRepository by FakeMediaLibraryRepository() {
+            override fun observeTracks(includeHidden: Boolean) = source
+        }
+        val artworkRequests = mutableListOf<Track>()
+        val controller = RecordingController(PlaybackControllerState(
+            currentTrackId = first.id,
+            queue = PlaybackQueue(items(1, 2), currentItemId = id(1)),
+        ))
+        val viewModel = subject(controller, source.value, repository = repository,
+            artworkRepository = object : ArtworkRepository {
+                override suspend fun artwork(track: Track, targetPx: Int): ArtworkResult {
+                    artworkRequests += track
+                    return ArtworkResult.Placeholder
+                }
+            },
+        )
+        advanceUntilIdle()
+        controller.update { copy(positionMs = 500) }
+        advanceUntilIdle()
+        assertEquals(listOf(first), artworkRequests)
+
+        val renamed = first.copy(title = "Updated", dateModifiedMs = 99)
+        source.value = listOf(renamed, second)
+        advanceUntilIdle()
+        assertEquals(renamed, viewModel.uiState.value.currentTrack)
+        assertEquals(renamed, viewModel.uiState.value.queue.first().track)
+        assertEquals(listOf(first, renamed), artworkRequests)
+
+        controller.update { copy(currentTrackId = second.id,
+            queue = PlaybackQueue(items(2, 1), currentItemId = id(2))) }
+        advanceUntilIdle()
+        assertEquals(listOf(id(2), id(1)), viewModel.uiState.value.queue.map { it.queueItemId })
+        assertTrue(viewModel.uiState.value.queue.first().isCurrent)
+        assertEquals(second.id, viewModel.shellState.value.currentTrackId)
+        source.value = listOf(renamed)
+        advanceUntilIdle()
+        assertEquals(null, viewModel.uiState.value.queue.first().track)
+        assertEquals(PlayerShellState(), viewModel.shellState.value)
+    }
+
+    @Test
+    fun `sleep timer visibility and commands reflect in UI and controller`() = runTest(dispatcher) {
+        val tracks = listOf(track(1))
+        val controller = RecordingController(
+            PlaybackControllerState(
+                currentTrackId = tracks[0].id,
+            ),
+        )
+        val settingsRepo = FakeSettingsRepository()
+        val viewModel = subject(controller, tracks, settingsRepository = settingsRepo)
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.showSleepTimer)
+        assertEquals(null, viewModel.uiState.value.sleepTimer)
+
+        viewModel.showSleepTimer()
+        advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.showSleepTimer)
+
+        viewModel.dismissSleepTimer()
+        advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.showSleepTimer)
+
+        viewModel.startSleepTimer(30, true)
+        advanceUntilIdle()
+        assertEquals(1, controller.startSleepTimerCalls)
+        assertEquals(30, controller.lastSleepTimerDuration)
+        assertEquals(true, controller.lastSleepTimerExtend)
+        assertEquals(30, settingsRepo.settings.value.sleepTimerDurationMinutes)
+        assertEquals(true, settingsRepo.settings.value.sleepTimerExtendToEndOfTrack)
+
+        val timerStatus = SleepTimerStatus(
+            remainingMs = 1800_000L,
+            totalDurationMs = 1800_000L,
+            extendToEndOfTrack = true,
+        )
+        controller.update { copy(sleepTimer = timerStatus) }
+        advanceUntilIdle()
+        assertEquals(timerStatus, viewModel.uiState.value.sleepTimer)
+
+        viewModel.stopSleepTimer()
+        advanceUntilIdle()
+        assertEquals(1, controller.stopSleepTimerCalls)
+
+        collection.cancel()
+    }
+
     private fun subject(
         controller: RecordingController,
         tracks: List<Track>,
         clock: Clock = Clock { 10_000L },
-    ) = PlayerViewModel(
-        playbackController = controller,
-        mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
-        artworkRepository = object : ArtworkRepository {
+        repository: MediaLibraryRepository = FakeMediaLibraryRepository(tracks),
+        artworkRepository: ArtworkRepository = object : ArtworkRepository {
             override suspend fun artwork(track: Track, targetPx: Int) = ArtworkResult.Placeholder
         },
+        settingsRepository: SettingsRepository = FakeSettingsRepository(),
+    ) = PlayerViewModel(
+        playbackController = controller,
+        mediaLibraryRepository = repository,
+        artworkRepository = artworkRepository,
         metadataRepository = object : TrackMetadataRepository {
             override suspend fun read(track: Track) =
                 AdvancedTrackMetadata("audio/flac", 1_000, 48_000, track.sizeBytes, true)
         },
+        settingsRepository = settingsRepository,
         clock = clock,
     )
 
@@ -407,6 +543,10 @@ private class RecordingController(initial: PlaybackControllerState) : PlaybackCo
     var mode: PlaybackMode? = null
     var removed: QueueItemId? = null
     var jumped: QueueItemId? = null
+    var startSleepTimerCalls = 0
+    var stopSleepTimerCalls = 0
+    var lastSleepTimerDuration: Int? = null
+    var lastSleepTimerExtend: Boolean? = null
     override fun connect() = Unit
     override fun disconnect() = Unit
     override fun play(context: com.musicapp.player.core.domain.model.PlaybackContext) = Unit
@@ -418,6 +558,14 @@ private class RecordingController(initial: PlaybackControllerState) : PlaybackCo
     override fun setPlaybackMode(mode: PlaybackMode) { this.mode = mode }
     override fun jumpToQueueItem(queueItemId: QueueItemId) { jumped = queueItemId }
     override fun removeFromQueue(queueItemId: QueueItemId) { removed = queueItemId }
+    override fun startSleepTimer(durationMinutes: Int, extendToEndOfTrack: Boolean) {
+        startSleepTimerCalls++
+        lastSleepTimerDuration = durationMinutes
+        lastSleepTimerExtend = extendToEndOfTrack
+    }
+    override fun stopSleepTimer() {
+        stopSleepTimerCalls++
+    }
     fun update(transform: PlaybackControllerState.() -> PlaybackControllerState) {
         mutableState.value = mutableState.value.transform()
     }

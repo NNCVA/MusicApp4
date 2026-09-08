@@ -74,6 +74,7 @@ internal fun PlayerLandscapeContent(
     onJumpToQueueItem: (QueueItemId) -> Unit,
     onRemoveQueueItem: (QueueItemId) -> Unit,
     onShowInfo: () -> Unit,
+    onShowSleepTimer: () -> Unit = {},
     showFeedback: (String) -> Unit,
     onSheetDrag: (Float) -> Float,
     onSheetSettle: (Float) -> Unit,
@@ -163,6 +164,7 @@ internal fun PlayerLandscapeContent(
                                 }
                             },
                             onShowInfo = onShowInfo,
+                            onShowSleepTimer = onShowSleepTimer,
                             showFeedback = showFeedback,
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -226,6 +228,7 @@ internal fun LandscapeControlsPage(
     onCycleMode: () -> Unit,
     onOpenQueue: () -> Unit,
     onShowInfo: () -> Unit,
+    onShowSleepTimer: () -> Unit = {},
     showFeedback: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -362,14 +365,34 @@ internal fun LandscapeControlsPage(
             }
             item {
                 BareIconButton(
-                    onClick = { showFeedback(sleepTimerComingSoon) },
+                    onClick = onShowSleepTimer,
                     modifier = Modifier.size(dimensions.minimumTouchTarget),
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_playback_sleep_timer),
-                        contentDescription = stringResource(R.string.playback_sleep_timer),
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                    )
+                    if (state.sleepTimer != null) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_playback_sleep_timer),
+                                contentDescription = stringResource(R.string.playback_sleep_timer),
+                                tint = MusicTheme.colors.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                text = state.sleepTimer.formatRemainingTime(),
+                                style = MusicTheme.typography.labelSmall,
+                                color = MusicTheme.colors.primary,
+                                maxLines = 1,
+                            )
+                        }
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_playback_sleep_timer),
+                            contentDescription = stringResource(R.string.playback_sleep_timer),
+                            modifier = Modifier.size(dimensions.spaceLarge),
+                        )
+                    }
                 }
             }
             item {

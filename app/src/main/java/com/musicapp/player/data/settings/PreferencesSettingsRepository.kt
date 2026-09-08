@@ -114,6 +114,18 @@ class PreferencesSettingsRepository @Inject constructor(
         }
     }
 
+    override suspend fun setSleepTimerPreferences(durationMinutes: Int, extendToEndOfTrack: Boolean) {
+        require(
+            durationMinutes in AppSettings.MIN_SLEEP_TIMER_DURATION_MINUTES..AppSettings.MAX_SLEEP_TIMER_DURATION_MINUTES,
+        ) {
+            "durationMinutes must be between ${AppSettings.MIN_SLEEP_TIMER_DURATION_MINUTES} and ${AppSettings.MAX_SLEEP_TIMER_DURATION_MINUTES}"
+        }
+        dataStore.edit { preferences ->
+            preferences[Keys.SLEEP_TIMER_DURATION_MINUTES] = durationMinutes
+            preferences[Keys.SLEEP_TIMER_EXTEND_TO_END_OF_TRACK] = extendToEndOfTrack
+        }
+    }
+
     override suspend fun markLibrarySyncPending(): Long {
         var markedRevision = 0L
         dataStore.edit { preferences ->
@@ -150,6 +162,8 @@ class PreferencesSettingsRepository @Inject constructor(
             preferences.remove(Keys.SCAN_MODE)
             preferences.remove(Keys.SKIP_SHORT_AUDIO)
             preferences.remove(Keys.ALBUM_GRID_COLUMNS)
+            preferences.remove(Keys.SLEEP_TIMER_DURATION_MINUTES)
+            preferences.remove(Keys.SLEEP_TIMER_EXTEND_TO_END_OF_TRACK)
         }
     }
 
@@ -179,6 +193,11 @@ class PreferencesSettingsRepository @Inject constructor(
             albumGridColumns = preferences[Keys.ALBUM_GRID_COLUMNS]
                 ?.takeIf { it in AppSettings.MIN_ALBUM_GRID_COLUMNS..AppSettings.MAX_ALBUM_GRID_COLUMNS }
                 ?: defaults.albumGridColumns,
+            sleepTimerDurationMinutes = preferences[Keys.SLEEP_TIMER_DURATION_MINUTES]
+                ?.takeIf { it in AppSettings.MIN_SLEEP_TIMER_DURATION_MINUTES..AppSettings.MAX_SLEEP_TIMER_DURATION_MINUTES }
+                ?: defaults.sleepTimerDurationMinutes,
+            sleepTimerExtendToEndOfTrack = preferences[Keys.SLEEP_TIMER_EXTEND_TO_END_OF_TRACK]
+                ?: defaults.sleepTimerExtendToEndOfTrack,
         )
     }
 
@@ -197,6 +216,8 @@ class PreferencesSettingsRepository @Inject constructor(
         val SCAN_MODE = stringPreferencesKey("scan_mode")
         val SKIP_SHORT_AUDIO = booleanPreferencesKey("skip_short_audio")
         val ALBUM_GRID_COLUMNS = intPreferencesKey("album_grid_columns")
+        val SLEEP_TIMER_DURATION_MINUTES = intPreferencesKey("sleep_timer_duration_minutes")
+        val SLEEP_TIMER_EXTEND_TO_END_OF_TRACK = booleanPreferencesKey("sleep_timer_extend_to_end_of_track")
         val LIBRARY_SYNC_PENDING = booleanPreferencesKey("library_sync_pending")
         val LIBRARY_SYNC_REVISION = longPreferencesKey("library_sync_revision")
     }

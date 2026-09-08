@@ -6,7 +6,9 @@ import androidx.annotation.StringRes
 import com.musicapp.player.R
 import com.musicapp.player.core.common.time.Clock
 import com.musicapp.player.core.common.time.SystemClock
+import com.musicapp.player.core.domain.model.AppSettings
 import com.musicapp.player.core.domain.model.PlaybackMode
+import com.musicapp.player.core.domain.model.PlaybackQueue
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
@@ -17,7 +19,9 @@ import com.musicapp.player.core.metadata.TrackMetadataRepository
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.core.playback.PlaybackFailureCode
 import com.musicapp.player.core.playback.PlaybackStatus
+import com.musicapp.player.core.playback.timer.SleepTimerStatus
 import com.musicapp.player.data.repository.MediaLibraryRepository
+import com.musicapp.player.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -26,6 +30,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
@@ -59,7 +64,17 @@ data class PlayerUiState(
     val metadata: AdvancedTrackMetadata? = null,
     val metadataLoading: Boolean = false,
     val fullPlayerPage: FullPlayerPage = FullPlayerPage.ARTWORK,
+    val sleepTimer: SleepTimerStatus? = null,
+    val showSleepTimer: Boolean = false,
+    val savedSleepTimerDurationMinutes: Int = AppSettings.DEFAULT_SLEEP_TIMER_DURATION_MINUTES,
+    val savedSleepTimerExtendToEndOfTrack: Boolean = false,
 )
+
+data class PlayerShellState(
+    val currentTrackId: TrackId? = null,
+) {
+    val isPlayerVisible: Boolean get() = currentTrackId != null
+}
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -67,6 +82,7 @@ class PlayerViewModel @Inject constructor(
     mediaLibraryRepository: MediaLibraryRepository,
     private val artworkRepository: ArtworkRepository,
     private val metadataRepository: TrackMetadataRepository,
+    private val settingsRepository: SettingsRepository,
     private val clock: Clock = SystemClock(),
 ) : ViewModel() {
     private val tracks = mediaLibraryRepository.observeTracks(includeHidden = true)
@@ -79,6 +95,19 @@ class PlayerViewModel @Inject constructor(
     private val metadataLoading = MutableStateFlow(false)
     private val fullPlayerPage = MutableStateFlow(FullPlayerPage.ARTWORK)
     private val infoState = combine(showTrackInfo, metadata, metadataLoading, fullPlayerPage, ::PlayerInfoState)
+    private val showSleepTimer = MutableStateFlow(false)
+    private val sleepTimerDialogState = combine(
+        showSleepTimer,
+        settingsRepository.settings,
+    ) { show, settings ->
+        Triple(show, settings.sleepTimerDurationMinutes, settings.sleepTimerExtendToEndOfTrack)
+    }
+    private val dialogsState = combine(
+        infoState,
+        sleepTimerDialogState,
+    ) { info, timerDialog ->
+        info to timerDialog
+    }
     private var metadataJob: Job? = null
     private val _expandRequests = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
@@ -90,14 +119,52 @@ class PlayerViewModel @Inject constructor(
         _expandRequests.tryEmit(Unit)
     }
 
+    private var cachedLibraryForIndex: List<Track>? = null
+    private var cachedById: Map<TrackId, Track> = emptyMap()
+    private var cachedLibraryForQueue: List<Track>? = null
+    private var cachedQueue: PlaybackQueue? = null
+    private var cachedQueueRows: List<PlayerQueueRow> = emptyList()
+
+    private fun getOrBuildTrackIndex(library: List<Track>): Map<TrackId, Track> {
+        if (cachedLibraryForIndex !== library) {
+            cachedLibraryForIndex = library
+            cachedById = library.associateBy(Track::id)
+        }
+        return cachedById
+    }
+
+    private fun getOrBuildQueueRows(
+        queue: PlaybackQueue,
+        byId: Map<TrackId, Track>,
+        library: List<Track>,
+    ): List<PlayerQueueRow> {
+        if (cachedQueue != queue || cachedLibraryForQueue !== library) {
+            cachedQueue = queue
+            cachedLibraryForQueue = library
+            cachedQueueRows = queue.playbackOrder.map { item ->
+                PlayerQueueRow(item.id, byId[item.trackId], item.id == queue.currentItemId)
+            }
+        }
+        return cachedQueueRows
+    }
+
+    val shellState: StateFlow<PlayerShellState> = combine(
+        playbackController.state.map { it.currentTrackId }.distinctUntilChanged(),
+        tracks,
+    ) { currentId, library ->
+        val exists = currentId != null && getOrBuildTrackIndex(library).containsKey(currentId)
+        PlayerShellState(currentTrackId = if (exists) currentId else null)
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, PlayerShellState())
+
     val uiState = combine(
         playbackController.state,
         tracks,
         artwork,
         artworkTrackId,
-        infoState,
-    ) { playback, library, currentArtwork, loadedArtworkTrackId, info ->
-        val byId = library.associateBy(Track::id)
+        dialogsState,
+    ) { playback, library, currentArtwork, loadedArtworkTrackId, (info, timerDialog) ->
+        val byId = getOrBuildTrackIndex(library)
         val currentTrack = playback.currentTrackId?.let(byId::get)
         PlayerUiState(
             loadState = playback.playbackStatus.toPlayerLoadState(),
@@ -111,19 +178,21 @@ class PlayerViewModel @Inject constructor(
             canSkipPrevious = playback.canSkipPrevious,
             canSkipNext = playback.canSkipNext,
             playbackMode = playback.playbackMode,
-            queue = playback.queue.playbackOrder.map { item ->
-                PlayerQueueRow(item.id, byId[item.trackId], item.id == playback.queue.currentItemId)
-            },
+            queue = getOrBuildQueueRows(playback.queue, byId, library),
             showTrackInfo = info.visible,
             metadata = info.metadata,
             metadataLoading = info.loading,
             fullPlayerPage = info.page,
+            sleepTimer = playback.sleepTimer,
+            showSleepTimer = timerDialog.first,
+            savedSleepTimerDurationMinutes = timerDialog.second,
+            savedSleepTimerExtendToEndOfTrack = timerDialog.third,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, PlayerUiState())
 
     init {
         viewModelScope.launch {
-            combine(playbackController.state.map { it.currentTrackId }, tracks) { id, library ->
+            combine(playbackController.state.map { it.currentTrackId }.distinctUntilChanged(), tracks) { id, library ->
                 id?.let { current -> library.firstOrNull { it.id == current } }
             }.distinctUntilChanged().collectLatest { track ->
                 artworkTrackId.value = null
@@ -203,6 +272,25 @@ class PlayerViewModel @Inject constructor(
 
     fun dismissTrackInfo() {
         showTrackInfo.value = false
+    }
+
+    fun showSleepTimer() {
+        showSleepTimer.value = true
+    }
+
+    fun dismissSleepTimer() {
+        showSleepTimer.value = false
+    }
+
+    fun startSleepTimer(durationMinutes: Int, extendToEndOfTrack: Boolean) {
+        playbackController.startSleepTimer(durationMinutes, extendToEndOfTrack)
+        viewModelScope.launch {
+            settingsRepository.setSleepTimerPreferences(durationMinutes, extendToEndOfTrack)
+        }
+    }
+
+    fun stopSleepTimer() {
+        playbackController.stopSleepTimer()
     }
 
     fun selectFullPlayerPage(page: FullPlayerPage) {

@@ -44,6 +44,8 @@ interface SettingsRepository {
 
     suspend fun setAlbumGridColumns(value: Int)
 
+    suspend fun setSleepTimerPreferences(durationMinutes: Int, extendToEndOfTrack: Boolean)
+
     suspend fun markLibrarySyncPending(): Long = pendingLibrarySync.value.revision
 
     suspend fun clearLibrarySyncPending(expectedRevision: Long): Boolean = false

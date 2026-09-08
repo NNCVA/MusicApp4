@@ -10,6 +10,7 @@ import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.playback.PlaybackFailure
 import com.musicapp.player.core.playback.PlaybackFailureCode
+import com.musicapp.player.core.playback.timer.SleepTimerStatus
 
 internal object PlaybackSessionProtocol {
     private const val PREFIX = "com.musicapp.player.session.v1"
@@ -21,6 +22,8 @@ internal object PlaybackSessionProtocol {
     val jumpToQueueItemCommand = SessionCommand("$PREFIX.JUMP_TO_QUEUE_ITEM", Bundle.EMPTY)
     val removeFromQueueCommand = SessionCommand("$PREFIX.REMOVE_FROM_QUEUE", Bundle.EMPTY)
     val fullExitCommand = SessionCommand("$PREFIX.FULL_EXIT", Bundle.EMPTY)
+    val startSleepTimerCommand = SessionCommand("$PREFIX.START_SLEEP_TIMER", Bundle.EMPTY)
+    val stopSleepTimerCommand = SessionCommand("$PREFIX.STOP_SLEEP_TIMER", Bundle.EMPTY)
 
     val applicationCommands = listOf(
         replaceQueueCommand,
@@ -30,6 +33,8 @@ internal object PlaybackSessionProtocol {
         jumpToQueueItemCommand,
         removeFromQueueCommand,
         fullExitCommand,
+        startSleepTimerCommand,
+        stopSleepTimerCommand,
     )
 
     fun tracksArgs(
@@ -66,10 +71,22 @@ internal object PlaybackSessionProtocol {
     fun decodeQueueItemId(args: Bundle): QueueItemId? =
         args.getLong(KEY_QUEUE_ITEM_ID).takeIf { it > 0 }?.let(::QueueItemId)
 
+    fun startSleepTimerArgs(durationMinutes: Int, extendToEndOfTrack: Boolean): Bundle = Bundle().apply {
+        putInt(KEY_SLEEP_TIMER_DURATION_MINUTES, durationMinutes)
+        putBoolean(KEY_SLEEP_TIMER_EXTEND_TO_END_OF_TRACK, extendToEndOfTrack)
+    }
+
+    fun decodeSleepTimerDurationMinutes(args: Bundle): Int =
+        args.getInt(KEY_SLEEP_TIMER_DURATION_MINUTES, -1)
+
+    fun decodeSleepTimerExtendToEndOfTrack(args: Bundle): Boolean =
+        args.getBoolean(KEY_SLEEP_TIMER_EXTEND_TO_END_OF_TRACK, false)
+
     fun stateExtras(
         mode: PlaybackMode,
         queue: PlaybackQueue,
         playbackFailure: PlaybackFailure? = null,
+        sleepTimer: SleepTimerStatus? = null,
     ): Bundle = Bundle().apply {
         putString(KEY_MODE, mode.name)
         putLongArray(KEY_QUEUE_ITEM_IDS, queue.originalQueue.map { it.id.value }.toLongArray())
@@ -86,6 +103,27 @@ internal object PlaybackSessionProtocol {
         putLong(KEY_SHUFFLE_ROUND, queue.shuffleRound)
         putInt(KEY_SHUFFLE_CURSOR, queue.shuffleCursor ?: -1)
         playbackFailure?.let { putString(KEY_PLAYBACK_FAILURE_CODE, it.code.name) }
+        if (sleepTimer != null) {
+            putBoolean(KEY_SLEEP_TIMER_ACTIVE, true)
+            putLong(KEY_SLEEP_TIMER_REMAINING_MS, sleepTimer.remainingMs)
+            putLong(KEY_SLEEP_TIMER_TOTAL_DURATION_MS, sleepTimer.totalDurationMs)
+            putBoolean(KEY_SLEEP_TIMER_EXTEND_TO_END_OF_TRACK, sleepTimer.extendToEndOfTrack)
+            putBoolean(KEY_SLEEP_TIMER_IS_WAITING_FOR_TRACK_END, sleepTimer.isWaitingForTrackEnd)
+            putLong(KEY_SLEEP_TIMER_EXTENDED_ELAPSED_MS, sleepTimer.extendedElapsedMs)
+        } else {
+            putBoolean(KEY_SLEEP_TIMER_ACTIVE, false)
+        }
+    }
+
+    fun decodeSleepTimer(extras: Bundle): SleepTimerStatus? {
+        if (!extras.getBoolean(KEY_SLEEP_TIMER_ACTIVE, false)) return null
+        return SleepTimerStatus(
+            remainingMs = extras.getLong(KEY_SLEEP_TIMER_REMAINING_MS, 0L),
+            totalDurationMs = extras.getLong(KEY_SLEEP_TIMER_TOTAL_DURATION_MS, 0L),
+            extendToEndOfTrack = extras.getBoolean(KEY_SLEEP_TIMER_EXTEND_TO_END_OF_TRACK, false),
+            isWaitingForTrackEnd = extras.getBoolean(KEY_SLEEP_TIMER_IS_WAITING_FOR_TRACK_END, false),
+            extendedElapsedMs = extras.getLong(KEY_SLEEP_TIMER_EXTENDED_ELAPSED_MS, 0L),
+        )
     }
 
     fun decodePlaybackFailure(extras: Bundle): PlaybackFailure? {
@@ -161,6 +199,13 @@ internal object PlaybackSessionProtocol {
     private const val KEY_SHUFFLE_ROUND = "$PREFIX.shuffle_round"
     private const val KEY_SHUFFLE_CURSOR = "$PREFIX.shuffle_cursor"
     private const val KEY_PLAYBACK_FAILURE_CODE = "$PREFIX.playback_failure_code"
+    private const val KEY_SLEEP_TIMER_ACTIVE = "$PREFIX.sleep_timer_active"
+    private const val KEY_SLEEP_TIMER_DURATION_MINUTES = "$PREFIX.sleep_timer_duration_minutes"
+    private const val KEY_SLEEP_TIMER_EXTEND_TO_END_OF_TRACK = "$PREFIX.sleep_timer_extend_to_end_of_track"
+    private const val KEY_SLEEP_TIMER_REMAINING_MS = "$PREFIX.sleep_timer_remaining_ms"
+    private const val KEY_SLEEP_TIMER_TOTAL_DURATION_MS = "$PREFIX.sleep_timer_total_duration_ms"
+    private const val KEY_SLEEP_TIMER_IS_WAITING_FOR_TRACK_END = "$PREFIX.sleep_timer_is_waiting_for_track_end"
+    private const val KEY_SLEEP_TIMER_EXTENDED_ELAPSED_MS = "$PREFIX.sleep_timer_extended_elapsed_ms"
 }
 
 internal data class PlaybackTrackPayload(

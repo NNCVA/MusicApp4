@@ -5,6 +5,7 @@ import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.PlaybackQueue
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.playback.timer.SleepTimerStatus
 import kotlinx.coroutines.flow.StateFlow
 
 enum class PlaybackConnectionState {
@@ -53,6 +54,7 @@ data class PlaybackControllerState(
     val canSkipNext: Boolean = false,
     val playbackMode: PlaybackMode = PlaybackMode.DEFAULT,
     val queue: PlaybackQueue = PlaybackQueue(),
+    val sleepTimer: SleepTimerStatus? = null,
 ) {
     init {
         require(positionMs >= 0) { "positionMs must not be negative" }
@@ -92,6 +94,10 @@ interface PlaybackControllerFacade {
     fun jumpToQueueItem(queueItemId: QueueItemId) = Unit
 
     fun removeFromQueue(queueItemId: QueueItemId) = Unit
+
+    fun startSleepTimer(durationMinutes: Int, extendToEndOfTrack: Boolean) = Unit
+
+    fun stopSleepTimer() = Unit
 
     /**
      * Persists the final playback snapshot and stops the playback service.

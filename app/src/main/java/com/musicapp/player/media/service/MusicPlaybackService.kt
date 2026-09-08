@@ -98,6 +98,7 @@ class MusicPlaybackService : MediaLibraryService() {
     private val interruptionPolicy = AudioInterruptionPolicy()
     private val dismissIntentAuthenticator = NotificationDismissIntentAuthenticator.create()
     private val shutdownCoordinator = PlaybackServiceShutdownCoordinator()
+    private var sleepTimerCoordinator: SleepTimerCoordinator? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -148,11 +149,34 @@ class MusicPlaybackService : MediaLibraryService() {
                 FadeThroughDuration.of(settingsRepository.settings.value.fadeThroughDurationMs)
             },
         )
+        val sleepTimer = SleepTimerCoordinator(
+            scope = serviceScope,
+            isCurrentlyPlaying = { servicePlayer.isPlaying },
+            onFadeAndPause = {
+                val initialVolume = servicePlayer.volume.takeIf { it > 0f } ?: 1f
+                val steps = 15
+                for (i in 1..steps) {
+                    delay(100L)
+                    servicePlayer.volume = (initialVolume * (1f - i.toFloat() / steps)).coerceAtLeast(0f)
+                }
+                servicePlayer.pause()
+                servicePlayer.volume = initialVolume
+            },
+            onStatusChanged = {
+                coordinator.publishCurrentState()
+            },
+        )
+        sleepTimerCoordinator = sleepTimer
+        coordinator.sleepTimerProvider = { sleepTimer.currentStatus }
         val managedPlayer = QueueManagedPlayer(
             player = servicePlayer,
             coordinator = coordinator,
-            requestNext = { requestFade(FadeNavigationAction.MANUAL_NEXT, FadeSwitchReason.MANUAL_NEXT) },
+            requestNext = {
+                sleepTimer.onManualInterruption()
+                requestFade(FadeNavigationAction.MANUAL_NEXT, FadeSwitchReason.MANUAL_NEXT)
+            },
             requestPrevious = {
+                sleepTimer.onManualInterruption()
                 requestFade(FadeNavigationAction.MANUAL_PREVIOUS, FadeSwitchReason.MANUAL_PREVIOUS)
             },
         )
@@ -184,6 +208,14 @@ class MusicPlaybackService : MediaLibraryService() {
                 }
             },
             onFullExit = ::requestFullExit,
+            onStartSleepTimer = { duration, extend ->
+                sleepTimer.start(duration, extend)
+                true
+            },
+            onStopSleepTimer = {
+                sleepTimer.stop()
+                true
+            },
         )
         val listener = object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
@@ -191,6 +223,9 @@ class MusicPlaybackService : MediaLibraryService() {
                 startHistoryInstance(servicePlayer, mediaItem, reason)
                 snapshots.onTrackChanged()
                 scheduleNaturalTransition(servicePlayer)
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                    sleepTimer.onTrackEndedNaturally()
+                }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -206,10 +241,13 @@ class MusicPlaybackService : MediaLibraryService() {
                     }
 
                     Player.STATE_BUFFERING -> recorder.updateIsPlaying(false)
-                    Player.STATE_ENDED -> requestFade(
-                        FadeNavigationAction.NATURAL_NEXT,
-                        FadeSwitchReason.NATURAL_END,
-                    )
+                    Player.STATE_ENDED -> {
+                        sleepTimer.onTrackEndedNaturally()
+                        requestFade(
+                            FadeNavigationAction.NATURAL_NEXT,
+                            FadeSwitchReason.NATURAL_END,
+                        )
+                    }
                 }
             }
 
@@ -271,6 +309,7 @@ class MusicPlaybackService : MediaLibraryService() {
                     else -> {
                         interruptionPolicy.onUserPause()
                         interruptFade(FadePlaybackEvent.PAUSE, servicePlayer)
+                        sleepTimer.onManualInterruption()
                     }
                 }
             }
@@ -393,6 +432,8 @@ class MusicPlaybackService : MediaLibraryService() {
         mediaLibrarySession = null
         playerListener?.let { listener -> player?.removeListener(listener) }
         playerListener = null
+        sleepTimerCoordinator?.stop(notify = false)
+        sleepTimerCoordinator = null
         queueCoordinator = null
         player?.release()
         player = null

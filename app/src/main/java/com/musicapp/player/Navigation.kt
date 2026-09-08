@@ -146,7 +146,7 @@ fun MainNavigation(
     val navigator = remember(navigationState) { Navigator(navigationState) }
     val playerViewModel = viewModel<PlayerViewModel>()
     val lyricsViewModel = viewModel<LyricsViewModel>()
-    val playerState by playerViewModel.uiState.collectAsStateWithLifecycle()
+    val playerShellState by playerViewModel.shellState.collectAsStateWithLifecycle()
     var playerExpanded by rememberSaveable { mutableStateOf(false) }
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
     var pageTransitionDirection by remember { mutableStateOf(PageTransitionDirection.FORWARD) }
@@ -199,13 +199,13 @@ fun MainNavigation(
         ) {
           AppShell(
             drawerGesturesEnabled = !playerExpanded,
-            playerSheetVisible = playerState.currentTrack != null,
+            playerSheetVisible = playerShellState.isPlayerVisible,
             navigationContent = { policy, closeDrawer ->
                 SidebarNavigation(
                     policy = policy,
                     selectedRoute = navigationState.currentTopLevelRoute,
                     themeMode = themeMode,
-                    playerSheetVisible = playerState.currentTrack != null,
+                    playerSheetVisible = playerShellState.isPlayerVisible,
                     onSelect = { route ->
                         commitNavigation { navigate(route) }
                         closeDrawer()
@@ -232,9 +232,9 @@ fun MainNavigation(
             },
             content = { contentInsets, policy, openDrawer ->
                 val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
-                val bottomPadding = bottomInset + if (playerState.currentTrack != null) MusicTheme.dimensions.miniPlayerHeight else 0.dp
+                val bottomPadding = bottomInset + if (playerShellState.isPlayerVisible) MusicTheme.dimensions.miniPlayerHeight else 0.dp
                 val currentTopRoute = navigationState.currentBackStack.lastOrNull()
-                val currentPlayingTrackId: TrackId? = playerState.currentTrack?.id
+                val currentPlayingTrackId: TrackId? = playerShellState.currentTrackId
                 val onOpenPlayer: () -> Unit = playerViewModel::expandPlayer
                 val navigateToArtist: (String) -> Unit = { artistName ->
                     commitNavigation { navigate(ArtistDetailRoute(ArtistRouteKey.encode(artistName))) }
@@ -566,7 +566,7 @@ fun MainNavigation(
                 Modifier.align(Alignment.BottomCenter)
                     .padding(
                         bottom =
-                            (if (playerState.currentTrack != null) {
+                            (if (playerShellState.isPlayerVisible) {
                                 MusicTheme.dimensions.miniPlayerHeight
                             } else {
                                 MusicTheme.dimensions.spaceMedium

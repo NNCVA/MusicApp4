@@ -16,6 +16,7 @@ import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.playback.PlaybackQueueReducer
 import com.musicapp.player.core.playback.PlaybackQueueState
 import com.musicapp.player.core.playback.PlaybackFailure
+import com.musicapp.player.core.playback.timer.SleepTimerStatus
 import com.musicapp.player.media.playback.PlaybackSessionProtocol
 import com.musicapp.player.media.playback.PlaybackTrackPayload
 import com.musicapp.player.media.playback.QueueMediaIdCodec
@@ -251,10 +252,17 @@ internal class PlaybackQueueCoordinator(
         }
     }
 
+    var sleepTimerProvider: (() -> SleepTimerStatus?)? = null
+
+    fun publishCurrentState() {
+        publishState(stateExtras())
+    }
+
     fun stateExtras() = PlaybackSessionProtocol.stateExtras(
         mode = state.mode,
         queue = state.queue,
         playbackFailure = playbackFailure,
+        sleepTimer = sleepTimerProvider?.invoke(),
     )
 
     private fun createQueueItems(tracks: List<PlaybackTrackPayload>): List<QueueItem> =

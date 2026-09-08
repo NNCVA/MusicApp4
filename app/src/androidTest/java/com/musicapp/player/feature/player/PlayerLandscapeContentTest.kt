@@ -5,9 +5,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -58,6 +62,7 @@ class PlayerLandscapeContentTest {
         val playDescription = appContext.getString(R.string.playback_play)
         val previousDescription = appContext.getString(R.string.playback_previous)
         val nextDescription = appContext.getString(R.string.playback_next)
+        val sleepTimerDescription = appContext.getString(R.string.playback_sleep_timer)
 
         val lyricsViewModel = LyricsViewModel(fakeLyricsRepository)
         var pagerCurrentPage = 0
@@ -105,6 +110,12 @@ class PlayerLandscapeContentTest {
         composeRule.onNodeWithContentDescription(playDescription).assertExists()
         composeRule.onNodeWithContentDescription(previousDescription).assertExists()
         composeRule.onNodeWithContentDescription(nextDescription).assertExists()
+        composeRule.onNodeWithContentDescription(sleepTimerDescription).assertExists()
+
+        // In portrait testing window, scroll secondary controls LazyRow to make queue button visible
+        composeRule.onAllNodes(hasScrollToIndexAction() and hasAnyDescendant(hasContentDescription(sleepTimerDescription)))[1]
+            .performScrollToIndex(3)
+        composeRule.waitForIdle()
 
         // Verify queue button exists and click jumps to Page 2
         composeRule.onNodeWithContentDescription(queueDescription).performClick()

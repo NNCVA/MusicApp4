@@ -122,6 +122,7 @@ import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkResult
+import com.musicapp.player.core.playback.timer.formatRemainingTime
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.feature.lyrics.LyricsDisplayMode
@@ -175,6 +176,10 @@ fun PlayerSheetRoute(
         onRemoveQueueItem = viewModel::removeFromQueue,
         onShowInfo = viewModel::showTrackInfo,
         onDismissInfo = viewModel::dismissTrackInfo,
+        onShowSleepTimer = viewModel::showSleepTimer,
+        onDismissSleepTimer = viewModel::dismissSleepTimer,
+        onStartSleepTimer = viewModel::startSleepTimer,
+        onStopSleepTimer = viewModel::stopSleepTimer,
         onPageChanged = viewModel::selectFullPlayerPage,
         onExpansionChanged = onExpansionChanged,
         expandRequests = viewModel.expandRequests,
@@ -200,6 +205,10 @@ fun PlayerSheet(
     onRemoveQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
     onShowInfo: () -> Unit,
     onDismissInfo: () -> Unit,
+    onShowSleepTimer: () -> Unit = {},
+    onDismissSleepTimer: () -> Unit = {},
+    onStartSleepTimer: (durationMinutes: Int, extendToEndOfTrack: Boolean) -> Unit = { _, _ -> },
+    onStopSleepTimer: () -> Unit = {},
     onPageChanged: (FullPlayerPage) -> Unit,
     onExpansionChanged: (Boolean) -> Unit,
     expandRequests: SharedFlow<Unit>? = null,
@@ -322,6 +331,7 @@ fun PlayerSheet(
                             onJumpToQueueItem = onJumpToQueueItem,
                             onRemoveQueueItem = onRemoveQueueItem,
                             onShowInfo = onShowInfo,
+                            onShowSleepTimer = onShowSleepTimer,
                             initialPage = state.fullPlayerPage,
                             onPageChanged = onPageChanged,
                             onSheetDrag = dragSheet,
@@ -335,6 +345,16 @@ fun PlayerSheet(
     }
     if (state.showTrackInfo) {
         TrackInfoViewer(track, state.metadata, state.metadataLoading, onDismissInfo)
+    }
+    if (state.showSleepTimer) {
+        SleepTimerSheet(
+            sleepTimerStatus = state.sleepTimer,
+            initialDurationMinutes = state.savedSleepTimerDurationMinutes,
+            initialExtendToEndOfTrack = state.savedSleepTimerExtendToEndOfTrack,
+            onStart = onStartSleepTimer,
+            onStop = onStopSleepTimer,
+            onDismiss = onDismissSleepTimer,
+        )
     }
 }
 
@@ -424,6 +444,7 @@ private fun FullPlayer(
     onJumpToQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
     onRemoveQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
     onShowInfo: () -> Unit,
+    onShowSleepTimer: () -> Unit = {},
     initialPage: FullPlayerPage,
     onPageChanged: (FullPlayerPage) -> Unit,
     onSheetDrag: (Float) -> Float,
@@ -504,6 +525,7 @@ private fun FullPlayer(
                 onJumpToQueueItem = onJumpToQueueItem,
                 onRemoveQueueItem = onRemoveQueueItem,
                 onShowInfo = onShowInfo,
+                onShowSleepTimer = onShowSleepTimer,
                 showFeedback = showFeedback,
                 onSheetDrag = onSheetDrag,
                 onSheetSettle = onSheetSettle,
@@ -527,6 +549,7 @@ private fun FullPlayer(
                 onJumpToQueueItem = onJumpToQueueItem,
                 onRemoveQueueItem = onRemoveQueueItem,
                 onShowInfo = onShowInfo,
+                onShowSleepTimer = onShowSleepTimer,
                 showFeedback = showFeedback,
                 onSheetDrag = onSheetDrag,
                 onSheetSettle = onSheetSettle,
@@ -580,6 +603,7 @@ private fun PortraitFullPlayer(
     onJumpToQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
     onRemoveQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
     onShowInfo: () -> Unit,
+    onShowSleepTimer: () -> Unit,
     showFeedback: (String) -> Unit,
     onSheetDrag: (Float) -> Float,
     onSheetSettle: (Float) -> Unit,
@@ -749,16 +773,35 @@ private fun PortraitFullPlayer(
                     modifier = Modifier.size(dimensions.spaceLarge),
                 )
             }
-            val sleepTimerComingSoon = stringResource(R.string.playback_sleep_timer_coming_soon)
             BareIconButton(
-                onClick = { showFeedback(sleepTimerComingSoon) },
+                onClick = onShowSleepTimer,
                 modifier = Modifier.size(dimensions.minimumTouchTarget),
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_playback_sleep_timer),
-                    contentDescription = stringResource(R.string.playback_sleep_timer),
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
+                if (state.sleepTimer != null) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_playback_sleep_timer),
+                            contentDescription = stringResource(R.string.playback_sleep_timer),
+                            tint = MusicTheme.colors.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            text = state.sleepTimer.formatRemainingTime(),
+                            style = MusicTheme.typography.labelSmall,
+                            color = MusicTheme.colors.primary,
+                            maxLines = 1,
+                        )
+                    }
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_playback_sleep_timer),
+                        contentDescription = stringResource(R.string.playback_sleep_timer),
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
             }
             val equalizerComingSoon = stringResource(R.string.playback_equalizer_coming_soon)
             BareIconButton(

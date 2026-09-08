@@ -46,6 +46,8 @@ internal class MusicLibrarySessionCallbackFactory @Inject constructor(
         queueCoordinator: PlaybackQueueCoordinator,
         onSnapshotRestored: (PlaybackSnapshot, Long) -> Unit,
         onFullExit: () -> ListenableFuture<SessionResult>,
+        onStartSleepTimer: (Int, Boolean) -> Boolean = { _, _ -> false },
+        onStopSleepTimer: () -> Boolean = { false },
     ): MusicLibrarySessionCallback =
         MusicLibrarySessionCallback(
             connectionPolicy = ControllerConnectionPolicy(context.packageName, Process.myUid()),
@@ -56,6 +58,8 @@ internal class MusicLibrarySessionCallbackFactory @Inject constructor(
             applicationScope = applicationScope,
             onSnapshotRestored = onSnapshotRestored,
             onFullExit = onFullExit,
+            onStartSleepTimer = onStartSleepTimer,
+            onStopSleepTimer = onStopSleepTimer,
         )
 }
 
@@ -69,6 +73,8 @@ internal class MusicLibrarySessionCallback(
     private val applicationScope: CoroutineScope,
     private val onSnapshotRestored: (PlaybackSnapshot, Long) -> Unit,
     private val onFullExit: () -> ListenableFuture<SessionResult>,
+    private val onStartSleepTimer: (Int, Boolean) -> Boolean = { _, _ -> false },
+    private val onStopSleepTimer: () -> Boolean = { false },
 ) : MediaLibrarySession.Callback {
     private val applicationControllers = linkedSetOf<MediaSession.ControllerInfo>()
     private val libraryRoot =
@@ -156,6 +162,13 @@ internal class MusicLibrarySessionCallback(
                 PlaybackSessionProtocol.decodeQueueItemId(args)?.let(queueCoordinator::jumpToQueueItem) ?: false
             PlaybackSessionProtocol.removeFromQueueCommand.customAction ->
                 PlaybackSessionProtocol.decodeQueueItemId(args)?.let { queueCoordinator.remove(it); true } ?: false
+            PlaybackSessionProtocol.startSleepTimerCommand.customAction -> {
+                val duration = PlaybackSessionProtocol.decodeSleepTimerDurationMinutes(args)
+                val extend = PlaybackSessionProtocol.decodeSleepTimerExtendToEndOfTrack(args)
+                if (duration > 0) onStartSleepTimer(duration, extend) else false
+            }
+            PlaybackSessionProtocol.stopSleepTimerCommand.customAction ->
+                onStopSleepTimer()
             else -> false
         }
         return if (accepted) {

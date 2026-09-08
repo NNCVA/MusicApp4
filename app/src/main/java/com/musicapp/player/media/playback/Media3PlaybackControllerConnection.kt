@@ -23,6 +23,7 @@ import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.core.playback.PlaybackFailure
 import com.musicapp.player.core.playback.PlaybackStatus
 import com.musicapp.player.core.playback.BufferingVisibilityPolicy
+import com.musicapp.player.core.playback.timer.SleepTimerStatus
 import com.musicapp.player.media.service.MusicPlaybackService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.ArrayDeque
@@ -51,6 +52,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     private var playbackMode = PlaybackMode.DEFAULT
     private var playbackQueue = PlaybackQueue()
     private var serviceFailure: PlaybackFailure? = null
+    private var sleepTimer: SleepTimerStatus? = null
     private var pendingTrackId: TrackId? = null
     private var pendingPlayWhenReady: Boolean? = null
     private val pendingTimeout = Runnable {
@@ -101,6 +103,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
                 pendingTrackId = null
                 pendingPlayWhenReady = null
                 serviceFailure = null
+                sleepTimer = null
                 this@Media3PlaybackControllerConnection.controller = null
                 val disconnectedFuture = controllerFuture
                 controllerFuture = null
@@ -254,6 +257,20 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         )
     }
 
+    override fun startSleepTimer(durationMinutes: Int, extendToEndOfTrack: Boolean) = dispatch {
+        it.sendCustomCommand(
+            PlaybackSessionProtocol.startSleepTimerCommand,
+            PlaybackSessionProtocol.startSleepTimerArgs(durationMinutes, extendToEndOfTrack),
+        )
+    }
+
+    override fun stopSleepTimer() = dispatch {
+        it.sendCustomCommand(
+            PlaybackSessionProtocol.stopSleepTimerCommand,
+            Bundle.EMPTY,
+        )
+    }
+
     override suspend fun requestFullExit(): Boolean =
         suspendCancellableCoroutine { continuation ->
             mainExecutor.execute {
@@ -373,6 +390,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             canSkipNext = playbackQueue.originalQueue.size > 1,
             playbackMode = playbackMode,
             queue = playbackQueue,
+            sleepTimer = sleepTimer,
         )
     }
 
@@ -382,6 +400,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             playbackMode = mode
             playbackQueue = queue
         }
+        sleepTimer = PlaybackSessionProtocol.decodeSleepTimer(extras)
     }
 
     private fun updateBuffering(player: Player) {
