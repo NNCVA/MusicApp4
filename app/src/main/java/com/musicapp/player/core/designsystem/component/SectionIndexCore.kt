@@ -46,7 +46,7 @@ private fun isAllAscii(text: String): Boolean {
 
 private const val NO_PINYIN_INITIAL: Char = '\u0000'
 private const val PINYIN_CACHE_MAGIC = 0x50494E59 // "PINY"
-private const val PINYIN_CACHE_VERSION = 1
+private const val PINYIN_CACHE_VERSION = 2
 
 private val pinyinInitialCache = java.util.concurrent.ConcurrentHashMap<String, Char>()
 private val pinyinSortKeyCache = java.util.concurrent.ConcurrentHashMap<String, String>()
@@ -247,7 +247,7 @@ fun <T> List<T>.sortedBySectionText(
 }
 
 private val HAN_TO_LATIN: Transliterator by lazy {
-    Transliterator.getInstance("Han-Latin")
+    Transliterator.getInstance("Han-Latin; Latin-Ascii")
 }
 
 private fun pinyinInitial(text: String): Char? {

@@ -158,6 +158,48 @@ class TrackSectionIndexTest {
         assertEquals("B", sectionLabelAtPosition(sections, 4, leadingItemCount = 1))
     }
 
+    @Test
+    fun `zero initial pinyin tracks like love songs precede later alphabets and order correctly`() {
+        val aiAiAi = track(1, "爱爱爱")
+        val aiZaiXiYuanQian = track(2, "爱在西元前")
+        val buWeiShui = track(3, "不为谁而作的歌")
+        val callingYou = track(4, "Calling You")
+        val drown = track(5, "Drown")
+        val eyeWater = track(6, "eye-water")
+        val huoNiao = track(7, "火鸟")
+        val jiangNan = track(8, "江南")
+
+        val list = listOf(
+            buWeiShui,
+            callingYou,
+            drown,
+            eyeWater,
+            huoNiao,
+            aiZaiXiYuanQian,
+            aiAiAi,
+            jiangNan,
+        )
+
+        val comparator = TrackSort(field = TrackSortField.TITLE, direction = TrackSortDirection.ASCENDING).comparator()
+        val sorted = list.sortedWith(comparator)
+
+        val expectedTitles = listOf(
+            "爱爱爱",
+            "爱在西元前",
+            "不为谁而作的歌",
+            "Calling You",
+            "Drown",
+            "eye-water",
+            "火鸟",
+            "江南",
+        )
+        assertEquals(expectedTitles, sorted.map(Track::title))
+
+        val sections = groupTracksIntoSections(sorted, TrackSortField.TITLE)
+        assertEquals(listOf("A", "B", "C", "D", "E", "H", "J"), sections.map(TrackSection::label))
+        assertEquals(listOf("爱爱爱", "爱在西元前"), sections.first().tracks.map(Track::title))
+    }
+
     private fun track(
         id: Long = 1,
         title: String,

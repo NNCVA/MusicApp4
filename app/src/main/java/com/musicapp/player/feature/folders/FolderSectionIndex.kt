@@ -110,5 +110,5 @@ private fun sectionOrder(label: String): Int =
     FOLDER_SECTION_INDEX_LABELS.indexOf(label).takeIf { it >= 0 } ?: FOLDER_SECTION_INDEX_LABELS.lastIndex
 
 private val HAN_TO_LATIN: Transliterator by lazy {
-    Transliterator.getInstance("Han-Latin")
+    Transliterator.getInstance("Han-Latin; Latin-Ascii")
 }

@@ -24,10 +24,24 @@ class SectionIndexCoreTest {
         assertEquals("B", classifySectionLabel("bravo"))
         assertEquals("Z", classifySectionLabel("周杰伦"))
         assertEquals("F", classifySectionLabel("方大同"))
+        assertEquals("A", classifySectionLabel("爱爱爱"))
+        assertEquals("A", classifySectionLabel("爱在西元前"))
+        assertEquals("A", classifySectionLabel("安静"))
+        assertEquals("A", classifySectionLabel("阿妹"))
+        assertEquals("O", classifySectionLabel("欧阳修"))
+        assertEquals("E", classifySectionLabel("恩惠"))
         assertEquals("#", classifySectionLabel("!Special"))
         assertEquals("#", classifySectionLabel("@Music"))
         assertEquals("#", classifySectionLabel(""))
         assertEquals("#", classifySectionLabel(null))
+    }
+
+    @Test
+    fun `pinyinSortKey produces pure ascii letters without tone diacritics`() {
+        assertEquals("ai ai ai", pinyinSortKey("爱爱爱"))
+        assertEquals("ai zai xi yuan qian", pinyinSortKey("爱在西元前"))
+        assertEquals("huo niao", pinyinSortKey("火鸟"))
+        assertEquals("jiang nan", pinyinSortKey("江南"))
     }
 
     @Test
