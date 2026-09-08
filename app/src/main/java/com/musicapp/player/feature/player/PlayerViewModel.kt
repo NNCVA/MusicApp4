@@ -9,6 +9,7 @@ import com.musicapp.player.core.common.time.SystemClock
 import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.Track
+import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkRepository
 import com.musicapp.player.core.metadata.ArtworkResult
@@ -46,6 +47,7 @@ data class PlayerUiState(
     @param:StringRes val errorMessageRes: Int? = null,
     val currentTrack: Track? = null,
     val artwork: ArtworkResult = ArtworkResult.Placeholder,
+    val artworkTrackId: TrackId? = null,
     val isPlaying: Boolean = false,
     val positionMs: Long = 0,
     val durationMs: Long = 0,
@@ -70,6 +72,8 @@ class PlayerViewModel @Inject constructor(
     private val tracks = mediaLibraryRepository.observeTracks(includeHidden = true)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     private val artwork = MutableStateFlow<ArtworkResult>(ArtworkResult.Placeholder)
+    /** Track ID whose artwork result has completed loading. */
+    private val artworkTrackId = MutableStateFlow<TrackId?>(null)
     private val showTrackInfo = MutableStateFlow(false)
     private val metadata = MutableStateFlow<AdvancedTrackMetadata?>(null)
     private val metadataLoading = MutableStateFlow(false)
@@ -90,8 +94,9 @@ class PlayerViewModel @Inject constructor(
         playbackController.state,
         tracks,
         artwork,
+        artworkTrackId,
         infoState,
-    ) { playback, library, currentArtwork, info ->
+    ) { playback, library, currentArtwork, loadedArtworkTrackId, info ->
         val byId = library.associateBy(Track::id)
         val currentTrack = playback.currentTrackId?.let(byId::get)
         PlayerUiState(
@@ -99,6 +104,7 @@ class PlayerViewModel @Inject constructor(
             errorMessageRes = playback.playbackFailure?.code?.messageRes(),
             currentTrack = currentTrack,
             artwork = currentArtwork,
+            artworkTrackId = loadedArtworkTrackId,
             isPlaying = playback.isPlaying,
             positionMs = playback.positionMs,
             durationMs = playback.durationMs ?: currentTrack?.durationMs ?: 0,
@@ -120,12 +126,16 @@ class PlayerViewModel @Inject constructor(
             combine(playbackController.state.map { it.currentTrackId }, tracks) { id, library ->
                 id?.let { current -> library.firstOrNull { it.id == current } }
             }.distinctUntilChanged().collectLatest { track ->
+                artworkTrackId.value = null
                 artwork.value = ArtworkResult.Placeholder
                 metadataJob?.cancel()
                 metadata.value = null
                 metadataLoading.value = false
                 showTrackInfo.value = false
-                if (track != null) artwork.value = artworkRepository.artwork(track, ARTWORK_TARGET_PX)
+                if (track != null) {
+                    artwork.value = artworkRepository.artwork(track, ARTWORK_TARGET_PX)
+                    artworkTrackId.value = track.id
+                }
             }
         }
     }

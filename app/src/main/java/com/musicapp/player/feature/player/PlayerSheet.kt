@@ -3,10 +3,13 @@ package com.musicapp.player.feature.player
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -16,7 +19,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
-import coil3.compose.AsyncImage
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -78,9 +80,12 @@ import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
@@ -272,6 +277,7 @@ fun PlayerSheet(
                 MiniPlayer(
                     state = state,
                     track = track,
+                    isVisible = PlayerLayerAlpha.mini(progress) > 0f,
                     onExpand = {
                         animateSheetTo(1f, 0f)
                     },
@@ -338,6 +344,7 @@ private fun Modifier.offsetPx(y: Float): Modifier =
 private fun MiniPlayer(
     state: PlayerUiState,
     track: Track,
+    isVisible: Boolean,
     onExpand: () -> Unit,
     onTogglePlayback: () -> Unit,
     onOpenQueue: () -> Unit,
@@ -352,7 +359,10 @@ private fun MiniPlayer(
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {
         PlayerArtwork(
-            track = track,
+            artwork = state.artwork,
+            trackId = track.id,
+            artworkTrackId = state.artworkTrackId,
+            isVisible = isVisible,
             shape = RoundedCornerShape(dimensions.spaceExtraSmall),
             modifier = Modifier.size(dimensions.trackArtworkSize),
         )
@@ -1083,18 +1093,223 @@ internal fun QueuePage(
 }
 
 @Composable
-private fun PlayerArtwork(track: Track?, shape: Shape, modifier: Modifier) {
+private fun PlayerArtwork(
+    artwork: ArtworkResult,
+    trackId: TrackId,
+    artworkTrackId: TrackId?,
+    isVisible: Boolean,
+    shape: Shape,
+    modifier: Modifier,
+) {
     val artworkDescription = stringResource(R.string.player_artwork_description)
-    AsyncImage(
-        model = track,
-        contentDescription = artworkDescription,
+    val animationScope = rememberCoroutineScope()
+    val animationsEnabled = animationScope.coroutineContext[MotionDurationScale]?.scaleFactor != 0f
+    val transitionProgress = remember { Animatable(1f) }
+
+    var observedTrackId by remember { mutableStateOf<TrackId?>(null) }
+    var observedArtwork by remember { mutableStateOf<ArtworkResult?>(null) }
+    var observedArtworkTrackId by remember { mutableStateOf<TrackId?>(null) }
+    var displayedTrackId by remember { mutableStateOf(trackId) }
+    var displayedArtwork by remember {
+        mutableStateOf(
+            if (artworkTrackId == trackId) artwork else ArtworkResult.Placeholder,
+        )
+    }
+    var pendingTrackId by remember { mutableStateOf<TrackId?>(null) }
+    var pendingArtwork by remember { mutableStateOf<ArtworkResult?>(null) }
+
+    LaunchedEffect(trackId, artwork, artworkTrackId, isVisible, animationsEnabled) {
+        val previousTrackId = observedTrackId
+        val previousArtworkTrackId = observedArtworkTrackId
+        val artworkChanged = observedArtwork !== artwork || previousArtworkTrackId != artworkTrackId
+        val artworkReady = artworkTrackId == trackId
+        val isInitialComposition = previousTrackId == null
+        val isTrackChange = previousTrackId != null && previousTrackId != trackId
+
+        observedTrackId = trackId
+        observedArtwork = artwork
+        observedArtworkTrackId = artworkTrackId
+
+        suspend fun commitPending() {
+            val nextArtwork = pendingArtwork ?: return
+            val nextTrackId = pendingTrackId ?: return
+            displayedTrackId = nextTrackId
+            displayedArtwork = nextArtwork
+            pendingTrackId = null
+            pendingArtwork = null
+            transitionProgress.snapTo(1f)
+        }
+
+        suspend fun animatePending() {
+            val nextArtwork = pendingArtwork ?: return
+            val nextTrackId = pendingTrackId ?: return
+            if (!MiniArtworkMotion.shouldAnimate(
+                    previousTrackId = displayedTrackId,
+                    targetTrackId = nextTrackId,
+                    artworkReady = true,
+                    isVisible = isVisible,
+                    animationsEnabled = animationsEnabled,
+                )
+            ) {
+                commitPending()
+                return
+            }
+
+            transitionProgress.stop()
+            transitionProgress.snapTo(0f)
+            transitionProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = MiniArtworkMotion.DURATION_MS,
+                    easing = FastOutSlowInEasing,
+                ),
+            )
+            // LaunchedEffect cancellation prevents a stale target from being committed
+            // after a newer song or visibility state arrives.
+            if (pendingTrackId == nextTrackId && pendingArtwork === nextArtwork) {
+                commitPending()
+            }
+        }
+
+        if (isInitialComposition) {
+            displayedTrackId = trackId
+            displayedArtwork = if (artworkReady) artwork else ArtworkResult.Placeholder
+            pendingTrackId = null
+            pendingArtwork = null
+            transitionProgress.snapTo(1f)
+            return@LaunchedEffect
+        }
+
+        if (isTrackChange) {
+            // Promote the previous target before retargeting so a rapid skip never
+            // flashes back to an older base image.
+            if (pendingTrackId != null && pendingArtwork != null) {
+                commitPending()
+            }
+            pendingTrackId = trackId
+            pendingArtwork = artwork.takeIf { artworkReady }
+            transitionProgress.stop()
+            if (pendingArtwork != null) {
+                animatePending()
+            }
+            return@LaunchedEffect
+        }
+
+        if (pendingTrackId == trackId) {
+            if (artworkReady) {
+                pendingArtwork = artwork
+            }
+            if (pendingArtwork != null) {
+                if (!isVisible || !animationsEnabled) {
+                    commitPending()
+                } else {
+                    animatePending()
+                }
+            }
+            return@LaunchedEffect
+        }
+
+        // The first artwork load for the currently displayed song is not a song
+        // change, so make it available without animating the mini player.
+        if (displayedTrackId == trackId && artworkReady && artworkChanged) {
+            displayedArtwork = artwork
+        }
+    }
+
+    val incomingArtwork = pendingArtwork
+    val progress = transitionProgress.value
+    Box(
         modifier = modifier
             .clip(shape)
-            .background(MusicTheme.colors.secondaryContainer),
-        contentScale = ContentScale.Crop,
-        error = painterResource(R.drawable.ic_playlist_album),
-        placeholder = painterResource(R.drawable.ic_playlist_album),
-    )
+            .background(MusicTheme.colors.secondaryContainer)
+            .semantics { contentDescription = artworkDescription },
+    ) {
+        MiniArtworkImage(
+            artwork = displayedArtwork,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    alpha = if (incomingArtwork == null) 1f else MiniArtworkMotion.outgoingAlpha(progress)
+                    compositingStrategy = CompositingStrategy.Offscreen
+                },
+        )
+        if (incomingArtwork != null) {
+            MiniArtworkImage(
+                artwork = incomingArtwork,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (MiniArtworkMotion.blurRadiusDp(progress) > 0f) {
+                            Modifier.blur(MiniArtworkMotion.blurRadiusDp(progress).dp)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .graphicsLayer {
+                        alpha = MiniArtworkMotion.incomingAlpha(progress)
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    },
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiniArtworkImage(
+    artwork: ArtworkResult,
+    modifier: Modifier,
+) {
+    val placeholder = painterResource(R.drawable.ic_playlist_album)
+    val embeddedImage = (artwork as? ArtworkResult.Embedded)?.image
+    val imageBitmap = remember(embeddedImage) {
+        embeddedImage?.let { image ->
+            Bitmap.createBitmap(
+                image.argbPixels,
+                image.width,
+                image.height,
+                Bitmap.Config.ARGB_8888,
+            ).asImageBitmap()
+        }
+    }
+    if (imageBitmap != null) {
+        Image(
+            bitmap = imageBitmap,
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Image(
+            painter = placeholder,
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+        )
+    }
+}
+
+internal object MiniArtworkMotion {
+    const val DURATION_MS = 500
+    const val MAX_BLUR_DP = 20f
+
+    fun shouldAnimate(
+        previousTrackId: TrackId?,
+        targetTrackId: TrackId,
+        artworkReady: Boolean,
+        isVisible: Boolean,
+        animationsEnabled: Boolean,
+    ): Boolean =
+        previousTrackId != null &&
+            previousTrackId != targetTrackId &&
+            artworkReady &&
+            isVisible &&
+            animationsEnabled
+
+    fun incomingAlpha(progress: Float): Float = progress.coerceIn(0f, 1f)
+
+    fun outgoingAlpha(progress: Float): Float = 1f - incomingAlpha(progress)
+
+    fun blurRadiusDp(progress: Float): Float = MAX_BLUR_DP * (1f - incomingAlpha(progress))
 }
 
 @Composable

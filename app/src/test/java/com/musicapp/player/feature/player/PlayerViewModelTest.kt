@@ -64,6 +64,7 @@ class PlayerViewModelTest {
 
         assertEquals(PlayerLoadState.BUFFERING, viewModel.uiState.value.loadState)
         assertEquals("Track 2", viewModel.uiState.value.currentTrack?.title)
+        assertEquals(tracks[1].id, viewModel.uiState.value.artworkTrackId)
         assertEquals(listOf(id(2), id(1)), viewModel.uiState.value.queue.map { it.queueItemId })
         assertTrue(viewModel.uiState.value.queue.first().isCurrent)
         collection.cancel()
