@@ -81,6 +81,67 @@ data class QueueGestureDecision(
     val behavior: QueueEdgeBehavior,
 )
 
+class ScrollableContentDebounceState(
+    private val debounceDurationMs: Long = DEFAULT_DEBOUNCE_MS,
+    private val timeProvider: () -> Long = { System.currentTimeMillis() },
+) {
+    companion object {
+        const val DEFAULT_DEBOUNCE_MS = 1000L
+    }
+
+    var lastSettledTimeMs: Long = timeProvider()
+        private set
+
+    var isIdle: Boolean = true
+        private set
+
+    var isGestureActive: Boolean = false
+        private set
+
+    var wasPreIdleSufficient: Boolean = false
+        private set
+
+    fun onMovementChanged(isMoving: Boolean) {
+        if (!isMoving) {
+            isIdle = true
+            lastSettledTimeMs = timeProvider()
+            wasPreIdleSufficient = false
+        } else {
+            isIdle = false
+        }
+    }
+
+    fun onScrollDelta(deltaY: Float) {
+        if (!isGestureActive) {
+            isGestureActive = true
+            val now = timeProvider()
+            wasPreIdleSufficient = isIdle && (now - lastSettledTimeMs >= debounceDurationMs)
+            isIdle = false
+        }
+    }
+
+    fun onGestureEnd() {
+        isGestureActive = false
+    }
+
+    fun canDragSheet(
+        isSheetExpanded: Boolean,
+        canScrollBackward: Boolean,
+        isSheetDragging: Boolean,
+    ): Boolean {
+        if (!isSheetExpanded || isSheetDragging) return true
+        if (canScrollBackward) return false
+        return wasPreIdleSufficient
+    }
+
+    fun reset(now: Long = timeProvider()) {
+        isIdle = true
+        isGestureActive = false
+        wasPreIdleSufficient = false
+        lastSettledTimeMs = now
+    }
+}
+
 object PlayerGesturePolicy {
     fun owner(region: PlayerGestureRegion, deltaX: Float, deltaY: Float): PlayerGestureOwner =
         when (region) {
@@ -100,11 +161,12 @@ object PlayerGesturePolicy {
         canScrollBackward: Boolean,
         isSheetExpanded: Boolean = true,
         isSheetDragging: Boolean = false,
+        canDragSheetFromContent: Boolean = false,
     ): QueueGestureDecision =
         when {
             abs(deltaX) > abs(deltaY) -> QueueGestureDecision(QueueEdgeBehavior.SCROLL_CONTENT)
             !isSheetExpanded || isSheetDragging -> QueueGestureDecision(QueueEdgeBehavior.DRAG_SHEET)
-            deltaY > 0f && !canScrollBackward -> QueueGestureDecision(QueueEdgeBehavior.DRAG_SHEET)
+            deltaY > 0f && !canScrollBackward && canDragSheetFromContent -> QueueGestureDecision(QueueEdgeBehavior.DRAG_SHEET)
             else -> QueueGestureDecision(QueueEdgeBehavior.SCROLL_CONTENT)
         }
 
@@ -116,7 +178,6 @@ object PlayerGesturePolicy {
     ): QueueEdgeBehavior =
         when {
             !isSheetExpanded || isSheetDragging -> QueueEdgeBehavior.DRAG_SHEET
-            velocityY > 0f && !canScrollBackward -> QueueEdgeBehavior.DRAG_SHEET
             else -> QueueEdgeBehavior.SCROLL_CONTENT
         }
 
@@ -126,12 +187,14 @@ object PlayerGesturePolicy {
         canScrollBackward: Boolean,
         isSheetExpanded: Boolean = true,
         isSheetDragging: Boolean = false,
+        canDragSheetFromContent: Boolean = false,
     ): QueueGestureDecision = scrollableContentDecision(
         deltaX = deltaX,
         deltaY = deltaY,
         canScrollBackward = canScrollBackward,
         isSheetExpanded = isSheetExpanded,
         isSheetDragging = isSheetDragging,
+        canDragSheetFromContent = canDragSheetFromContent,
     )
 
     fun queueFlingDecision(
@@ -166,6 +229,7 @@ object PlayerGestureRouter {
         canScrollBackward: Boolean,
         isSheetExpanded: Boolean = true,
         isSheetDragging: Boolean = false,
+        canDragSheetFromContent: Boolean = false,
         dragSheet: (Float) -> Float,
     ): Float {
         val decision = PlayerGesturePolicy.queueDecision(
@@ -174,6 +238,7 @@ object PlayerGestureRouter {
             canScrollBackward = canScrollBackward,
             isSheetExpanded = isSheetExpanded,
             isSheetDragging = isSheetDragging,
+            canDragSheetFromContent = canDragSheetFromContent,
         )
         return when (decision.behavior) {
             QueueEdgeBehavior.SCROLL_CONTENT -> 0f

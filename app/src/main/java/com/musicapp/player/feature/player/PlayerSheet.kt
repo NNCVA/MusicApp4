@@ -1072,13 +1072,15 @@ internal fun QueuePage(
     val overscrollEffect =
         rememberBounceOverscrollEffect(
             state = listState,
-            allowStartEdge = false,
+            allowStartEdge = true,
         )
     val nestedScrollConnection = rememberPlayerSheetNestedScrollConnection(
         canScrollBackward = { listState.canScrollBackward },
         sheetProgress = sheetProgress,
         onSheetDrag = onSheetDrag,
         onSheetSettle = onSheetSettle,
+        isScrollInProgress = { listState.isScrollInProgress },
+        isOverscrollInProgress = { overscrollEffect.isInProgress },
     )
     val headerDragState = rememberDraggableState { deltaY ->
         PlayerGestureRouter.routeSheetDrag(
@@ -1524,8 +1526,19 @@ internal fun rememberPlayerSheetNestedScrollConnection(
     onSheetDrag: (Float) -> Float,
     onSheetSettle: (Float) -> Unit,
     onPreUserScroll: (() -> Unit)? = null,
+    isScrollInProgress: () -> Boolean = { false },
+    isOverscrollInProgress: () -> Boolean = { false },
 ): NestedScrollConnection {
-    return remember(canScrollBackward, sheetProgress, onSheetDrag, onSheetSettle, onPreUserScroll) {
+    val coordinator = remember { ScrollableContentDebounceState() }
+    val currentIsScrollInProgress by rememberUpdatedState(isScrollInProgress)
+    val currentIsOverscrollInProgress by rememberUpdatedState(isOverscrollInProgress)
+
+    val isMoving = currentIsScrollInProgress() || currentIsOverscrollInProgress()
+    LaunchedEffect(isMoving) {
+        coordinator.onMovementChanged(isMoving)
+    }
+
+    return remember(canScrollBackward, sheetProgress, onSheetDrag, onSheetSettle, onPreUserScroll, coordinator) {
         object : NestedScrollConnection {
             private var isSheetDragging = false
 
@@ -1533,9 +1546,17 @@ internal fun rememberPlayerSheetNestedScrollConnection(
                 if (source != NestedScrollSource.UserInput || available.y == 0f) return Offset.Zero
                 onPreUserScroll?.invoke()
 
+                coordinator.onScrollDelta(available.y)
+
                 val progress = sheetProgress()
                 val isExpanded = progress >= 1f
                 val canBackward = canScrollBackward()
+
+                val canDragSheetFromContent = coordinator.canDragSheet(
+                    isSheetExpanded = isExpanded,
+                    canScrollBackward = canBackward,
+                    isSheetDragging = isSheetDragging,
+                )
 
                 val decision = PlayerGesturePolicy.scrollableContentDecision(
                     deltaX = available.x,
@@ -1543,6 +1564,7 @@ internal fun rememberPlayerSheetNestedScrollConnection(
                     canScrollBackward = canBackward,
                     isSheetExpanded = isExpanded,
                     isSheetDragging = isSheetDragging,
+                    canDragSheetFromContent = canDragSheetFromContent,
                 )
 
                 return when (decision.behavior) {
@@ -1559,6 +1581,10 @@ internal fun rememberPlayerSheetNestedScrollConnection(
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
+                val wasSheetDragging = isSheetDragging
+                isSheetDragging = false
+                coordinator.onGestureEnd()
+
                 val progress = sheetProgress()
                 val isExpanded = progress >= 1f
                 val canBackward = canScrollBackward()
@@ -1567,10 +1593,9 @@ internal fun rememberPlayerSheetNestedScrollConnection(
                     velocityY = available.y,
                     canScrollBackward = canBackward,
                     isSheetExpanded = isExpanded,
-                    isSheetDragging = isSheetDragging,
+                    isSheetDragging = wasSheetDragging,
                 )
 
-                isSheetDragging = false
                 return if (decision == QueueEdgeBehavior.DRAG_SHEET) {
                     onSheetSettle(available.y)
                     available
@@ -1581,11 +1606,7 @@ internal fun rememberPlayerSheetNestedScrollConnection(
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 isSheetDragging = false
-                val canBackward = canScrollBackward()
-                if (available.y > 0f && !canBackward) {
-                    onSheetSettle(available.y)
-                    return available
-                }
+                coordinator.onGestureEnd()
                 return super.onPostFling(consumed, available)
             }
         }

@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.bounceOverscroll
+import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.lyrics.LyricsSource
 import com.musicapp.player.feature.player.rememberPlayerSheetNestedScrollConnection
 import com.musicapp.player.theme.MusicTheme
@@ -140,12 +142,18 @@ fun LyricsPane(
 
             LyricsDisplayMode.SYNCHRONIZED -> {
                 val listState = rememberLazyListState()
+                val overscrollEffect = rememberBounceOverscrollEffect(
+                    state = listState,
+                    allowStartEdge = true,
+                )
                 val sheetNestedScrollConnection = rememberPlayerSheetNestedScrollConnection(
                     canScrollBackward = { listState.canScrollBackward },
                     sheetProgress = sheetProgress,
                     onSheetDrag = onSheetDrag,
                     onSheetSettle = onSheetSettle,
                     onPreUserScroll = onManualScroll,
+                    isScrollInProgress = { listState.isScrollInProgress },
+                    isOverscrollInProgress = { overscrollEffect.isInProgress },
                 )
                 LaunchedEffect(state.activeLineIndex, state.autoCenterEnabled, state.autoCenterRequest) {
                     val index = state.activeLineIndex ?: return@LaunchedEffect
@@ -172,8 +180,10 @@ fun LyricsPane(
                         .coerceAtLeast(dimensions.spaceLarge)
                     LazyColumn(
                         state = listState,
+                        overscrollEffect = overscrollEffect,
                         modifier = Modifier
                             .fillMaxSize()
+                            .bounceOverscroll(overscrollEffect)
                             .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                             .drawWithContent {
                                 drawContent()

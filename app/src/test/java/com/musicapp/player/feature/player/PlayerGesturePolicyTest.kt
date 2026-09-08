@@ -22,10 +22,24 @@ class PlayerGesturePolicyTest {
     }
 
     @Test
-    fun `queue top hands downward drag to sheet`() {
+    fun `queue top hands downward drag to sheet only when allowed by debounce coordinator`() {
+        assertEquals(
+            QueueEdgeBehavior.SCROLL_CONTENT,
+            PlayerGesturePolicy.queueDecision(
+                deltaX = 0f,
+                deltaY = 40f,
+                canScrollBackward = false,
+                canDragSheetFromContent = false,
+            ).behavior,
+        )
         assertEquals(
             QueueEdgeBehavior.DRAG_SHEET,
-            PlayerGesturePolicy.queueDecision(0f, 40f, canScrollBackward = false).behavior,
+            PlayerGesturePolicy.queueDecision(
+                deltaX = 0f,
+                deltaY = 40f,
+                canScrollBackward = false,
+                canDragSheetFromContent = true,
+            ).behavior,
         )
     }
 
@@ -69,33 +83,55 @@ class PlayerGesturePolicyTest {
     }
 
     @Test
-    fun `gesture router transfers queue top and leaves queue end to content`() {
+    fun `gesture router transfers queue top only when debounce coordinator allows it`() {
         var sheetDelta = 0f
-        val topConsumed = PlayerGestureRouter.routeQueueDrag(
+        val lockedConsumed = PlayerGestureRouter.routeQueueDrag(
             deltaX = 0f,
             deltaY = 40f,
             canScrollBackward = false,
+            canDragSheetFromContent = false,
             dragSheet = { delta -> sheetDelta = delta; delta },
         )
+        assertEquals(0f, lockedConsumed)
+        assertEquals(0f, sheetDelta)
+
+        val allowedConsumed = PlayerGestureRouter.routeQueueDrag(
+            deltaX = 0f,
+            deltaY = 40f,
+            canScrollBackward = false,
+            canDragSheetFromContent = true,
+            dragSheet = { delta -> sheetDelta = delta; delta },
+        )
+        assertEquals(40f, allowedConsumed)
+        assertEquals(40f, sheetDelta)
+
         val endConsumed = PlayerGestureRouter.routeQueueDrag(
             deltaX = 0f,
             deltaY = -40f,
             canScrollBackward = true,
             dragSheet = { it },
         )
-
-        assertEquals(40f, topConsumed)
-        assertEquals(40f, sheetDelta)
         assertEquals(0f, endConsumed)
     }
 
     @Test
-    fun `queue fling transfers only downward velocity at the top`() {
+    fun `content fling never settles sheet unless user is already actively dragging sheet`() {
+        // 列表内部冲顶（未处于主动拖拽详情页状态），坚决不拉动详情页，留给阻尼回弹吸收
+        assertEquals(
+            QueueEdgeBehavior.SCROLL_CONTENT,
+            PlayerGesturePolicy.queueFlingDecision(
+                velocityY = 800f,
+                canScrollBackward = false,
+                isSheetDragging = false,
+            ),
+        )
+        // 处于主动拖拽详情页状态时的松手，正常触发详情页 Settle
         assertEquals(
             QueueEdgeBehavior.DRAG_SHEET,
             PlayerGesturePolicy.queueFlingDecision(
                 velocityY = 800f,
                 canScrollBackward = false,
+                isSheetDragging = true,
             ),
         )
         assertEquals(
@@ -103,6 +139,7 @@ class PlayerGesturePolicyTest {
             PlayerGesturePolicy.queueFlingDecision(
                 velocityY = -800f,
                 canScrollBackward = false,
+                isSheetDragging = false,
             ),
         )
         assertEquals(
@@ -110,6 +147,7 @@ class PlayerGesturePolicyTest {
             PlayerGesturePolicy.queueFlingDecision(
                 velocityY = 800f,
                 canScrollBackward = true,
+                isSheetDragging = false,
             ),
         )
     }
@@ -194,5 +232,114 @@ class PlayerGesturePolicyTest {
                 isSheetDragging = false,
             ),
         )
+    }
+
+    @Test
+    fun `debounce coordinator blocks collapse when pre-idle time is less than 1000ms`() {
+        var simulatedTime = 10_000L
+        val coordinator = ScrollableContentDebounceState(
+            debounceDurationMs = 1_000L,
+            timeProvider = { simulatedTime },
+        )
+
+        // 刚刚进入页面 300ms，在顶部向下拉
+        simulatedTime += 300L
+        coordinator.onScrollDelta(40f)
+
+        // 前置静止不足 1000ms，禁止拖动抽屉
+        assertEquals(false, coordinator.canDragSheet(isSheetExpanded = true, canScrollBackward = false, isSheetDragging = false))
+        assertEquals(
+            QueueEdgeBehavior.SCROLL_CONTENT,
+            PlayerGesturePolicy.queueDecision(
+                deltaX = 0f,
+                deltaY = 40f,
+                canScrollBackward = false,
+                canDragSheetFromContent = coordinator.canDragSheet(isSheetExpanded = true, canScrollBackward = false, isSheetDragging = false),
+            ).behavior,
+        )
+    }
+
+    @Test
+    fun `debounce coordinator allows collapse when pre-idle time is at least 1000ms`() {
+        var simulatedTime = 10_000L
+        val coordinator = ScrollableContentDebounceState(
+            debounceDurationMs = 1_000L,
+            timeProvider = { simulatedTime },
+        )
+
+        // 已经静止了 1500ms
+        simulatedTime += 1_500L
+        coordinator.onScrollDelta(40f)
+
+        // 允许拉动抽屉收起
+        assertEquals(true, coordinator.canDragSheet(isSheetExpanded = true, canScrollBackward = false, isSheetDragging = false))
+        assertEquals(
+            QueueEdgeBehavior.DRAG_SHEET,
+            PlayerGesturePolicy.queueDecision(
+                deltaX = 0f,
+                deltaY = 40f,
+                canScrollBackward = false,
+                canDragSheetFromContent = coordinator.canDragSheet(isSheetExpanded = true, canScrollBackward = false, isSheetDragging = false),
+            ).behavior,
+        )
+    }
+
+    @Test
+    fun `debounce coordinator allows continuous drag from list body to top when pre-idle was sufficient`() {
+        var simulatedTime = 10_000L
+        val coordinator = ScrollableContentDebounceState(
+            debounceDurationMs = 1_000L,
+            timeProvider = { simulatedTime },
+        )
+
+        // 用户在列表内容中间静止了 2000ms
+        simulatedTime += 2_000L
+
+        // 开始向下滑动手势（此时列表还在中间，canScrollBackward = true）
+        coordinator.onScrollDelta(20f)
+        assertEquals(false, coordinator.canDragSheet(isSheetExpanded = true, canScrollBackward = true, isSheetDragging = false))
+
+        // 顺势滑动达到最顶部（canScrollBackward = false），但同一次触摸手势未抬手继续向下拉
+        coordinator.onScrollDelta(20f)
+        assertEquals(true, coordinator.canDragSheet(isSheetExpanded = true, canScrollBackward = false, isSheetDragging = false))
+    }
+
+    @Test
+    fun `debounce coordinator resets cooldown whenever bounce settles`() {
+        var simulatedTime = 10_000L
+        val coordinator = ScrollableContentDebounceState(
+            debounceDurationMs = 1_000L,
+            timeProvider = { simulatedTime },
+        )
+
+        // 冲顶触发回弹，此时处于运动状态
+        coordinator.onMovementChanged(isMoving = true)
+        simulatedTime += 300L
+
+        // 回弹完成归零（isMoving = false）
+        coordinator.onMovementChanged(isMoving = false)
+
+        // 500ms 后再次下拉（距离回弹归零不足 1000ms）
+        simulatedTime += 500L
+        coordinator.onScrollDelta(30f)
+        assertEquals(false, coordinator.canDragSheet(isSheetExpanded = true, canScrollBackward = false, isSheetDragging = false))
+        coordinator.onGestureEnd()
+
+        // 再次触发回弹并归零，重新开始计时 1000ms
+        coordinator.onMovementChanged(isMoving = true)
+        simulatedTime += 200L
+        coordinator.onMovementChanged(isMoving = false)
+
+        // 600ms 后下拉依然不足 1000ms
+        simulatedTime += 600L
+        coordinator.onScrollDelta(30f)
+        assertEquals(false, coordinator.canDragSheet(isSheetExpanded = true, canScrollBackward = false, isSheetDragging = false))
+        coordinator.onGestureEnd()
+        coordinator.onMovementChanged(isMoving = false)
+
+        // 静止超过 1000ms 后，再次下拉放行
+        simulatedTime += 1_100L
+        coordinator.onScrollDelta(30f)
+        assertEquals(true, coordinator.canDragSheet(isSheetExpanded = true, canScrollBackward = false, isSheetDragging = false))
     }
 }
