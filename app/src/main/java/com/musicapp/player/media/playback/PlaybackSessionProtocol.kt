@@ -24,6 +24,7 @@ internal object PlaybackSessionProtocol {
     val fullExitCommand = SessionCommand("$PREFIX.FULL_EXIT", Bundle.EMPTY)
     val startSleepTimerCommand = SessionCommand("$PREFIX.START_SLEEP_TIMER", Bundle.EMPTY)
     val stopSleepTimerCommand = SessionCommand("$PREFIX.STOP_SLEEP_TIMER", Bundle.EMPTY)
+    val sleepTimerExpiredCommand = SessionCommand("$PREFIX.SLEEP_TIMER_EXPIRED", Bundle.EMPTY)
 
     val applicationCommands = listOf(
         replaceQueueCommand,
@@ -35,6 +36,7 @@ internal object PlaybackSessionProtocol {
         fullExitCommand,
         startSleepTimerCommand,
         stopSleepTimerCommand,
+        sleepTimerExpiredCommand,
     )
 
     fun tracksArgs(
@@ -87,6 +89,7 @@ internal object PlaybackSessionProtocol {
         queue: PlaybackQueue,
         playbackFailure: PlaybackFailure? = null,
         sleepTimer: SleepTimerStatus? = null,
+        sleepTimerExpiredTimestampMs: Long? = null,
     ): Bundle = Bundle().apply {
         putString(KEY_MODE, mode.name)
         putLongArray(KEY_QUEUE_ITEM_IDS, queue.originalQueue.map { it.id.value }.toLongArray())
@@ -113,7 +116,11 @@ internal object PlaybackSessionProtocol {
         } else {
             putBoolean(KEY_SLEEP_TIMER_ACTIVE, false)
         }
+        sleepTimerExpiredTimestampMs?.let { putLong(KEY_SLEEP_TIMER_EXPIRED_TIMESTAMP_MS, it) }
     }
+
+    fun decodeSleepTimerExpiredTimestampMs(extras: Bundle): Long? =
+        extras.getLong(KEY_SLEEP_TIMER_EXPIRED_TIMESTAMP_MS, 0L).takeIf { it > 0 }
 
     fun decodeSleepTimer(extras: Bundle): SleepTimerStatus? {
         if (!extras.getBoolean(KEY_SLEEP_TIMER_ACTIVE, false)) return null
@@ -206,6 +213,7 @@ internal object PlaybackSessionProtocol {
     private const val KEY_SLEEP_TIMER_TOTAL_DURATION_MS = "$PREFIX.sleep_timer_total_duration_ms"
     private const val KEY_SLEEP_TIMER_IS_WAITING_FOR_TRACK_END = "$PREFIX.sleep_timer_is_waiting_for_track_end"
     private const val KEY_SLEEP_TIMER_EXTENDED_ELAPSED_MS = "$PREFIX.sleep_timer_extended_elapsed_ms"
+    private const val KEY_SLEEP_TIMER_EXPIRED_TIMESTAMP_MS = "$PREFIX.sleep_timer_expired_timestamp_ms"
 }
 
 internal data class PlaybackTrackPayload(

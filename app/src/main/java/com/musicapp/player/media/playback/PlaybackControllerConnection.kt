@@ -4,10 +4,14 @@ import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.playback.PlaybackControllerState
+import com.musicapp.player.core.playback.PlaybackEvent
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 
 internal interface PlaybackControllerConnection {
     val state: StateFlow<PlaybackControllerState>
+    val events: Flow<PlaybackEvent> get() = emptyFlow()
 
     fun connect()
 

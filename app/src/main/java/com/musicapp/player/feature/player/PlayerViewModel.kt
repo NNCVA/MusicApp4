@@ -16,6 +16,7 @@ import com.musicapp.player.core.metadata.ArtworkRepository
 import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.metadata.TrackMetadataRepository
 import com.musicapp.player.core.playback.PlaybackControllerFacade
+import com.musicapp.player.core.playback.PlaybackEvent
 import com.musicapp.player.core.playback.PlaybackFailureCode
 import com.musicapp.player.core.playback.PlaybackStatus
 import com.musicapp.player.core.playback.timer.SleepTimerStatus
@@ -27,6 +28,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -143,6 +145,7 @@ class PlayerViewModel(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     val expandRequests: SharedFlow<Unit> = _expandRequests.asSharedFlow()
+    val events: Flow<PlaybackEvent> = playbackController.events
 
     fun expandPlayer() {
         _expandRequests.tryEmit(Unit)

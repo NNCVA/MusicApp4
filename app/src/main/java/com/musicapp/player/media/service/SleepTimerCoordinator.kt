@@ -11,6 +11,7 @@ internal class SleepTimerCoordinator(
     private val isCurrentlyPlaying: () -> Boolean,
     private val onFadeAndPause: suspend () -> Unit,
     private val onStatusChanged: (SleepTimerStatus?) -> Unit,
+    private val onTimerExpired: (() -> Unit)? = null,
     private val onManualCancellationNotice: (() -> Unit)? = null,
     private val tickIntervalMs: Long = TICK_INTERVAL_MS,
 ) {
@@ -53,6 +54,7 @@ internal class SleepTimerCoordinator(
                             currentStatus = null
                             onStatusChanged(null)
                             onFadeAndPause()
+                            onTimerExpired?.invoke()
                             break
                         }
                     } else {
@@ -85,6 +87,7 @@ internal class SleepTimerCoordinator(
             stop(notify = true)
             scope.launch {
                 onFadeAndPause()
+                onTimerExpired?.invoke()
             }
         }
     }

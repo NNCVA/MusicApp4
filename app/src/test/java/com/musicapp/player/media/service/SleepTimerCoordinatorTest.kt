@@ -176,4 +176,93 @@ class SleepTimerCoordinatorTest {
         val nullStatus: SleepTimerStatus? = null
         assertEquals("", nullStatus.formatRemainingTime())
     }
+
+    @Test
+    fun `expires without extend triggers onTimerExpired callback`() = runTest {
+        var pauseCount = 0
+        var expiredCount = 0
+
+        val coordinator = SleepTimerCoordinator(
+            scope = backgroundScope,
+            isCurrentlyPlaying = { true },
+            onFadeAndPause = { pauseCount++ },
+            onStatusChanged = {},
+            onTimerExpired = { expiredCount++ },
+            tickIntervalMs = 100L,
+        )
+
+        coordinator.start(durationMinutes = 1, extendToEndOfTrack = false)
+        runCurrent()
+        assertEquals(0, expiredCount)
+
+        advanceTimeBy(60_100L)
+        runCurrent()
+
+        assertEquals(1, pauseCount)
+        assertEquals(1, expiredCount)
+        assertNull(coordinator.currentStatus)
+    }
+
+    @Test
+    fun `expires with extend triggers onTimerExpired only after natural track end`() = runTest {
+        var pauseCount = 0
+        var expiredCount = 0
+
+        val coordinator = SleepTimerCoordinator(
+            scope = backgroundScope,
+            isCurrentlyPlaying = { true },
+            onFadeAndPause = { pauseCount++ },
+            onStatusChanged = {},
+            onTimerExpired = { expiredCount++ },
+            tickIntervalMs = 100L,
+        )
+
+        coordinator.start(durationMinutes = 1, extendToEndOfTrack = true)
+        runCurrent()
+
+        // Initial timer duration finishes -> waiting for track end
+        advanceTimeBy(60_000L)
+        runCurrent()
+        assertEquals(0, expiredCount)
+        assertEquals(0, pauseCount)
+
+        // Naturally ends track
+        coordinator.onTrackEndedNaturally()
+        runCurrent()
+
+        assertEquals(1, pauseCount)
+        assertEquals(1, expiredCount)
+        assertNull(coordinator.currentStatus)
+    }
+
+    @Test
+    fun `manual stop and interruption do not trigger onTimerExpired`() = runTest {
+        var expiredCount = 0
+
+        val coordinator = SleepTimerCoordinator(
+            scope = backgroundScope,
+            isCurrentlyPlaying = { true },
+            onFadeAndPause = {},
+            onStatusChanged = {},
+            onTimerExpired = { expiredCount++ },
+            tickIntervalMs = 100L,
+        )
+
+        // 1. Manual stop before expiry
+        coordinator.start(durationMinutes = 1, extendToEndOfTrack = false)
+        runCurrent()
+        advanceTimeBy(30_000L)
+        coordinator.stop()
+        runCurrent()
+        assertEquals(0, expiredCount)
+
+        // 2. Manual interruption during waiting for track end
+        coordinator.start(durationMinutes = 1, extendToEndOfTrack = true)
+        runCurrent()
+        advanceTimeBy(60_000L)
+        runCurrent()
+        coordinator.onManualInterruption()
+        runCurrent()
+        assertEquals(0, expiredCount)
+    }
 }

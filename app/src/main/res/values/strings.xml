@@ -26,6 +26,7 @@
     <string name="playback_sleep_timer_extend_desc">Extended time is shown like +5:20; affected by playback speed; manual pause or track change will cancel timer (notified via dialog).</string>
     <string name="playback_sleep_timer_advice">When used for sleep, lower the volume and avoid setting excessive duration to protect hearing.</string>
     <string name="playback_sleep_timer_manual_interruption_notice">Manual action has cancelled the sleep timer</string>
+    <string name="playback_sleep_timer_expired">Sleep timer ended</string>
     <string name="playback_equalizer">Equalizer</string>
     <string name="playback_equalizer_coming_soon">Equalizer is coming soon</string>
     <string name="playback_more_options">More options</string>

@@ -6,12 +6,17 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionToken
 import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.PlaybackMode
@@ -20,6 +25,7 @@ import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.playback.PlaybackConnectionState
 import com.musicapp.player.core.playback.PlaybackControllerState
+import com.musicapp.player.core.playback.PlaybackEvent
 import com.musicapp.player.core.playback.PlaybackFailure
 import com.musicapp.player.core.playback.PlaybackStatus
 import com.musicapp.player.core.playback.BufferingVisibilityPolicy
@@ -29,8 +35,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.ArrayDeque
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -42,6 +51,9 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     private val mainExecutor = ContextCompat.getMainExecutor(context)
     private val pendingCommands = ArrayDeque<(MediaController) -> Unit>()
     private val mutableState = MutableStateFlow(PlaybackControllerState())
+    private val _events = MutableSharedFlow<PlaybackEvent>(extraBufferCapacity = 16)
+    override val events: Flow<PlaybackEvent> = _events.asSharedFlow()
+    private var lastConsumedExpiredTimestampMs: Long = 0L
     private val mainHandler = Handler(Looper.getMainLooper())
     private val bufferingPolicy = BufferingVisibilityPolicy()
     private var bufferingUpdateScheduled = false
@@ -88,6 +100,20 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     }
 
     private val controllerListener = object : MediaController.Listener {
+        @OptIn(UnstableApi::class)
+        override fun onCustomCommand(
+            controller: MediaController,
+            command: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            if (command.customAction == PlaybackSessionProtocol.sleepTimerExpiredCommand.customAction) {
+                lastConsumedExpiredTimestampMs = System.currentTimeMillis()
+                _events.tryEmit(PlaybackEvent.SleepTimerExpired)
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
+        }
+
         override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
             updateQueueState(extras)
             updateState(controller)
@@ -401,6 +427,14 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             playbackQueue = queue
         }
         sleepTimer = PlaybackSessionProtocol.decodeSleepTimer(extras)
+        val expiredTimestamp = PlaybackSessionProtocol.decodeSleepTimerExpiredTimestampMs(extras)
+        if (expiredTimestamp != null && expiredTimestamp != lastConsumedExpiredTimestampMs) {
+            val nowMs = System.currentTimeMillis()
+            if (nowMs - expiredTimestamp in 0..RECENT_EXPIRED_WINDOW_MS) {
+                lastConsumedExpiredTimestampMs = expiredTimestamp
+                _events.tryEmit(PlaybackEvent.SleepTimerExpired)
+            }
+        }
     }
 
     private fun updateBuffering(player: Player) {
@@ -441,6 +475,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
 
     private companion object {
         const val PENDING_TRACK_TIMEOUT_MS = 5000L
+        const val RECENT_EXPIRED_WINDOW_MS = 5000L
     }
 }
 

@@ -243,6 +243,14 @@ internal class MusicLibrarySessionCallback(
         applicationControllers.forEach { session.setSessionExtras(it, extras) }
     }
 
+    fun broadcastCustomCommand(
+        session: MediaSession,
+        command: SessionCommand,
+        args: Bundle = Bundle.EMPTY,
+    ) {
+        applicationControllers.forEach { session.sendCustomCommand(it, command, args) }
+    }
+
     override fun onGetLibraryRoot(
         session: MediaLibrarySession,
         browser: MediaSession.ControllerInfo,

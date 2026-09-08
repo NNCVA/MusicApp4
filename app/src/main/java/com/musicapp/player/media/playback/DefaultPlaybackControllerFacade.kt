@@ -12,6 +12,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import com.musicapp.player.core.playback.PlaybackEvent
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -26,6 +28,9 @@ internal class DefaultPlaybackControllerFacade @Inject constructor(
 
     override val state: StateFlow<PlaybackControllerState>
         get() = connection.state
+
+    override val events: Flow<PlaybackEvent>
+        get() = connection.events
 
     @Synchronized
     override fun connect() {

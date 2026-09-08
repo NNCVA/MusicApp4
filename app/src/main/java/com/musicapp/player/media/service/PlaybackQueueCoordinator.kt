@@ -253,6 +253,7 @@ internal class PlaybackQueueCoordinator(
     }
 
     var sleepTimerProvider: (() -> SleepTimerStatus?)? = null
+    var sleepTimerExpiredTimestampProvider: (() -> Long?)? = null
 
     fun publishCurrentState() {
         publishState(stateExtras())
@@ -263,6 +264,7 @@ internal class PlaybackQueueCoordinator(
         queue = state.queue,
         playbackFailure = playbackFailure,
         sleepTimer = sleepTimerProvider?.invoke(),
+        sleepTimerExpiredTimestampMs = sleepTimerExpiredTimestampProvider?.invoke(),
     )
 
     private fun createQueueItems(tracks: List<PlaybackTrackPayload>): List<QueueItem> =

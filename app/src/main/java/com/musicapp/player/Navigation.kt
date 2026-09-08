@@ -71,6 +71,7 @@ import com.musicapp.player.core.designsystem.snackbar.MessageBubbleHost
 import com.musicapp.player.core.designsystem.snackbar.MessageBubbleQueue
 import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.ThemeMode
+import com.musicapp.player.core.playback.PlaybackEvent
 import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
 import com.musicapp.player.feature.about.AboutScreenRoute
 import com.musicapp.player.feature.about.AboutViewModel
@@ -153,6 +154,15 @@ fun MainNavigation(
     var pageTransitionDirection by remember { mutableStateOf(PageTransitionDirection.FORWARD) }
     val messageBubbleQueue = remember { MessageBubbleQueue() }
     val messageBubbleRequest by messageBubbleQueue.current.collectAsStateWithLifecycle()
+    LaunchedEffect(playerViewModel) {
+        playerViewModel.events.collect { event ->
+            when (event) {
+                is PlaybackEvent.SleepTimerExpired -> {
+                    messageBubbleQueue.enqueue(R.string.playback_sleep_timer_expired)
+                }
+            }
+        }
+    }
     val coroutineScope = rememberCoroutineScope()
     val nextThemeMode = themeMode.nextSidebarMode()
     val nextThemeMessageRes =

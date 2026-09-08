@@ -6,7 +6,13 @@ import com.musicapp.player.core.domain.model.PlaybackQueue
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.playback.timer.SleepTimerStatus
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
+
+sealed interface PlaybackEvent {
+    data object SleepTimerExpired : PlaybackEvent
+}
 
 enum class PlaybackConnectionState {
     DISCONNECTED,
@@ -65,6 +71,7 @@ data class PlaybackControllerState(
 /** Platform-free command and state boundary consumed by Activity and ViewModel code. */
 interface PlaybackControllerFacade {
     val state: StateFlow<PlaybackControllerState>
+    val events: Flow<PlaybackEvent> get() = emptyFlow()
 
     /** Connects a started application UI. Every call must be paired with [disconnect]. */
     fun connect()

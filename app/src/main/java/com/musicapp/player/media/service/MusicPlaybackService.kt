@@ -43,6 +43,7 @@ import com.musicapp.player.data.repository.HistoryRepository
 import com.musicapp.player.data.repository.PlaybackSnapshotRepository
 import com.musicapp.player.data.settings.SettingsRepository
 import com.musicapp.player.media.playback.Media3PlaybackFailureMapper
+import com.musicapp.player.media.playback.PlaybackSessionProtocol
 import com.musicapp.player.media.playback.QueueMediaIdCodec
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -99,6 +100,8 @@ class MusicPlaybackService : MediaLibraryService() {
     private val dismissIntentAuthenticator = NotificationDismissIntentAuthenticator.create()
     private val shutdownCoordinator = PlaybackServiceShutdownCoordinator()
     private var sleepTimerCoordinator: SleepTimerCoordinator? = null
+    private var lastSleepTimerExpiredTimestampMs: Long? = null
+    private var sessionCallback: MusicLibrarySessionCallback? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -165,9 +168,20 @@ class MusicPlaybackService : MediaLibraryService() {
             onStatusChanged = {
                 coordinator.publishCurrentState()
             },
+            onTimerExpired = {
+                lastSleepTimerExpiredTimestampMs = clock.currentTimeMillis()
+                mediaLibrarySession?.let { session ->
+                    sessionCallback?.broadcastCustomCommand(
+                        session,
+                        PlaybackSessionProtocol.sleepTimerExpiredCommand,
+                    )
+                }
+                coordinator.publishCurrentState()
+            },
         )
         sleepTimerCoordinator = sleepTimer
         coordinator.sleepTimerProvider = { sleepTimer.currentStatus }
+        coordinator.sleepTimerExpiredTimestampProvider = { lastSleepTimerExpiredTimestampMs }
         val managedPlayer = QueueManagedPlayer(
             player = servicePlayer,
             coordinator = coordinator,
@@ -209,14 +223,17 @@ class MusicPlaybackService : MediaLibraryService() {
             },
             onFullExit = ::requestFullExit,
             onStartSleepTimer = { duration, extend ->
+                lastSleepTimerExpiredTimestampMs = null
                 sleepTimer.start(duration, extend)
                 true
             },
             onStopSleepTimer = {
+                lastSleepTimerExpiredTimestampMs = null
                 sleepTimer.stop()
                 true
             },
         )
+        sessionCallback = callback
         val listener = object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
                 coordinator.onMediaItemTransition(mediaItem)
@@ -430,6 +447,7 @@ class MusicPlaybackService : MediaLibraryService() {
         fadeCoordinator = null
         mediaLibrarySession?.release()
         mediaLibrarySession = null
+        sessionCallback = null
         playerListener?.let { listener -> player?.removeListener(listener) }
         playerListener = null
         sleepTimerCoordinator?.stop(notify = false)
