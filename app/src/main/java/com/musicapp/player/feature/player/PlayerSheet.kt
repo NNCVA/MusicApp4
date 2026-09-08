@@ -57,6 +57,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.CircularRippleIconButton
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.localizedArtistName
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -691,7 +692,7 @@ private fun PortraitFullPlayer(
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             val previousDescription = stringResource(R.string.playback_previous)
-            BareIconButton(
+            CircularRippleIconButton(
                 onClick = onPrevious,
                 enabled = state.canSkipPrevious,
                 modifier = Modifier.size(dimensions.minimumTouchTarget),
@@ -704,7 +705,7 @@ private fun PortraitFullPlayer(
             }
             val playbackDescription =
                 stringResource(if (state.isPlaying) R.string.playback_pause else R.string.playback_play)
-            BareIconButton(
+            CircularRippleIconButton(
                 onClick = onTogglePlayback,
                 modifier = Modifier.size(64.dp),
             ) {
@@ -715,7 +716,7 @@ private fun PortraitFullPlayer(
                 )
             }
             val nextDescription = stringResource(R.string.playback_next)
-            BareIconButton(
+            CircularRippleIconButton(
                 onClick = onNext,
                 enabled = state.canSkipNext,
                 modifier = Modifier.size(dimensions.minimumTouchTarget),

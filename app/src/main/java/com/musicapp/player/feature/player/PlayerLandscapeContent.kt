@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
+import com.musicapp.player.core.designsystem.component.CircularRippleIconButton
 import com.musicapp.player.core.designsystem.component.localizedArtistName
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.Track
@@ -297,7 +298,7 @@ internal fun LandscapeControlsPage(
             ),
         ) {
             item {
-                BareIconButton(
+                CircularRippleIconButton(
                     onClick = onPrevious,
                     enabled = state.canSkipPrevious,
                     modifier = Modifier.size(dimensions.minimumTouchTarget),
@@ -310,7 +311,7 @@ internal fun LandscapeControlsPage(
                 }
             }
             item {
-                BareIconButton(
+                CircularRippleIconButton(
                     onClick = onTogglePlayback,
                     modifier = Modifier.size(64.dp),
                 ) {
@@ -322,7 +323,7 @@ internal fun LandscapeControlsPage(
                 }
             }
             item {
-                BareIconButton(
+                CircularRippleIconButton(
                     onClick = onNext,
                     enabled = state.canSkipNext,
                     modifier = Modifier.size(dimensions.minimumTouchTarget),
