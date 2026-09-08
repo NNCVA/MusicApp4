@@ -47,6 +47,9 @@ data class AppSettings(
     val albumGridColumns: Int = DEFAULT_ALBUM_GRID_COLUMNS,
     val sleepTimerDurationMinutes: Int = DEFAULT_SLEEP_TIMER_DURATION_MINUTES,
     val sleepTimerExtendToEndOfTrack: Boolean = false,
+    val lyricsFontSizeSp: Int = DEFAULT_LYRICS_FONT_SIZE_SP,
+    val lyricsTextCentered: Boolean = false,
+    val lyricsFontWeight: Int = DEFAULT_LYRICS_FONT_WEIGHT,
 ) {
     init {
         require(fadeThroughDurationMs in MIN_FADE_THROUGH_DURATION_MS..MAX_FADE_THROUGH_DURATION_MS) {
@@ -61,6 +64,15 @@ data class AppSettings(
         require(sleepTimerDurationMinutes in MIN_SLEEP_TIMER_DURATION_MINUTES..MAX_SLEEP_TIMER_DURATION_MINUTES) {
             "sleepTimerDurationMinutes must be between $MIN_SLEEP_TIMER_DURATION_MINUTES and $MAX_SLEEP_TIMER_DURATION_MINUTES"
         }
+        require(lyricsFontSizeSp in MIN_LYRICS_FONT_SIZE_SP..MAX_LYRICS_FONT_SIZE_SP) {
+            "lyricsFontSizeSp must be between $MIN_LYRICS_FONT_SIZE_SP and $MAX_LYRICS_FONT_SIZE_SP"
+        }
+        require(lyricsFontWeight in MIN_LYRICS_FONT_WEIGHT..MAX_LYRICS_FONT_WEIGHT) {
+            "lyricsFontWeight must be between $MIN_LYRICS_FONT_WEIGHT and $MAX_LYRICS_FONT_WEIGHT"
+        }
+        require((lyricsFontWeight - MIN_LYRICS_FONT_WEIGHT) % LYRICS_FONT_WEIGHT_STEP == 0) {
+            "lyricsFontWeight must use $LYRICS_FONT_WEIGHT_STEP steps"
+        }
     }
 
     companion object {
@@ -74,5 +86,12 @@ data class AppSettings(
         const val MIN_SLEEP_TIMER_DURATION_MINUTES: Int = 1
         const val MAX_SLEEP_TIMER_DURATION_MINUTES: Int = 120
         const val DEFAULT_SLEEP_TIMER_DURATION_MINUTES: Int = 15
+        const val MIN_LYRICS_FONT_SIZE_SP: Int = 14
+        const val MAX_LYRICS_FONT_SIZE_SP: Int = 32
+        const val DEFAULT_LYRICS_FONT_SIZE_SP: Int = 20
+        const val MIN_LYRICS_FONT_WEIGHT: Int = 300
+        const val MAX_LYRICS_FONT_WEIGHT: Int = 800
+        const val DEFAULT_LYRICS_FONT_WEIGHT: Int = 600
+        const val LYRICS_FONT_WEIGHT_STEP: Int = 100
     }
 }

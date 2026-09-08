@@ -165,7 +165,15 @@
     <string name="player_artwork_description">专辑封面</string>
     <string name="lyrics_not_found">未找到歌词</string>
     <string name="lyrics_loading">正在加载歌词</string>
-    <string name="lyrics_return_to_current">回到当前行</string>
+    <string name="lyrics_settings_title">歌词设置</string>
+    <string name="lyrics_font_size">歌词视图字体大小</string>
+    <string name="lyrics_text_center">歌词视图文本居中对齐</string>
+    <string name="lyrics_font_weight">字体粗细</string>
+    <string name="lyrics_source_embedded">EMBEDDED</string>
+    <string name="lyrics_source_lrc">LRC</string>
+    <string name="lyrics_source_default">LYRICS</string>
+    <string name="lyrics_icon_text">词</string>
+    <string name="lyrics_settings_cd">歌词设置</string>
     <string name="player_queue_title">播放队列</string>
     <string name="player_queue_empty">播放队列为空</string>
     <string name="player_unknown_track">未知曲目</string>

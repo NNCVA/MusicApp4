@@ -46,6 +46,12 @@ interface SettingsRepository {
 
     suspend fun setSleepTimerPreferences(durationMinutes: Int, extendToEndOfTrack: Boolean)
 
+    suspend fun setLyricsFontSizeSp(value: Int)
+
+    suspend fun setLyricsTextCentered(value: Boolean)
+
+    suspend fun setLyricsFontWeight(value: Int)
+
     suspend fun markLibrarySyncPending(): Long = pendingLibrarySync.value.revision
 
     suspend fun clearLibrarySyncPending(expectedRevision: Long): Boolean = false

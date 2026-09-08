@@ -357,6 +357,9 @@ class FakeSettingsRepository(
     override suspend fun setAlbumGridColumns(value: Int) = update { copy(albumGridColumns = value) }
     override suspend fun setSleepTimerPreferences(durationMinutes: Int, extendToEndOfTrack: Boolean) =
         update { copy(sleepTimerDurationMinutes = durationMinutes, sleepTimerExtendToEndOfTrack = extendToEndOfTrack) }
+    override suspend fun setLyricsFontSizeSp(value: Int) = update { copy(lyricsFontSizeSp = value) }
+    override suspend fun setLyricsTextCentered(value: Boolean) = update { copy(lyricsTextCentered = value) }
+    override suspend fun setLyricsFontWeight(value: Int) = update { copy(lyricsFontWeight = value) }
 
     override suspend fun markLibrarySyncPending(): Long = pendingMutex.withLock {
         val revision = mutablePendingLibrarySync.value.revision + 1

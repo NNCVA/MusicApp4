@@ -196,6 +196,20 @@ class SettingsRepositoryTest {
         )
     }
 
+    @Test
+    fun lyricsSettingsRoundTripImmediately() = runTest {
+        val repository = createRepository()
+
+        repository.setLyricsFontSizeSp(24)
+        assertEquals(24, repository.settings.first { it.lyricsFontSizeSp == 24 }.lyricsFontSizeSp)
+
+        repository.setLyricsTextCentered(true)
+        assertTrue(repository.settings.first { it.lyricsTextCentered }.lyricsTextCentered)
+
+        repository.setLyricsFontWeight(400)
+        assertEquals(400, repository.settings.first { it.lyricsFontWeight == 400 }.lyricsFontWeight)
+    }
+
     private fun TestScope.createRepository(): SettingsRepository {
         val dataStore = InMemoryDataStore()
         return PreferencesSettingsRepository(

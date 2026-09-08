@@ -126,6 +126,33 @@ class PreferencesSettingsRepository @Inject constructor(
         }
     }
 
+    override suspend fun setLyricsFontSizeSp(value: Int) {
+        require(value in AppSettings.MIN_LYRICS_FONT_SIZE_SP..AppSettings.MAX_LYRICS_FONT_SIZE_SP) {
+            "lyricsFontSizeSp must be between ${AppSettings.MIN_LYRICS_FONT_SIZE_SP} and ${AppSettings.MAX_LYRICS_FONT_SIZE_SP}"
+        }
+        dataStore.edit { preferences ->
+            preferences[Keys.LYRICS_FONT_SIZE_SP] = value
+        }
+    }
+
+    override suspend fun setLyricsTextCentered(value: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.LYRICS_TEXT_CENTERED] = value
+        }
+    }
+
+    override suspend fun setLyricsFontWeight(value: Int) {
+        require(value in AppSettings.MIN_LYRICS_FONT_WEIGHT..AppSettings.MAX_LYRICS_FONT_WEIGHT) {
+            "lyricsFontWeight must be between ${AppSettings.MIN_LYRICS_FONT_WEIGHT} and ${AppSettings.MAX_LYRICS_FONT_WEIGHT}"
+        }
+        require((value - AppSettings.MIN_LYRICS_FONT_WEIGHT) % AppSettings.LYRICS_FONT_WEIGHT_STEP == 0) {
+            "lyricsFontWeight must use ${AppSettings.LYRICS_FONT_WEIGHT_STEP} steps"
+        }
+        dataStore.edit { preferences ->
+            preferences[Keys.LYRICS_FONT_WEIGHT] = value
+        }
+    }
+
     override suspend fun markLibrarySyncPending(): Long {
         var markedRevision = 0L
         dataStore.edit { preferences ->
@@ -164,6 +191,9 @@ class PreferencesSettingsRepository @Inject constructor(
             preferences.remove(Keys.ALBUM_GRID_COLUMNS)
             preferences.remove(Keys.SLEEP_TIMER_DURATION_MINUTES)
             preferences.remove(Keys.SLEEP_TIMER_EXTEND_TO_END_OF_TRACK)
+            preferences.remove(Keys.LYRICS_FONT_SIZE_SP)
+            preferences.remove(Keys.LYRICS_TEXT_CENTERED)
+            preferences.remove(Keys.LYRICS_FONT_WEIGHT)
         }
     }
 
@@ -198,6 +228,16 @@ class PreferencesSettingsRepository @Inject constructor(
                 ?: defaults.sleepTimerDurationMinutes,
             sleepTimerExtendToEndOfTrack = preferences[Keys.SLEEP_TIMER_EXTEND_TO_END_OF_TRACK]
                 ?: defaults.sleepTimerExtendToEndOfTrack,
+            lyricsFontSizeSp = preferences[Keys.LYRICS_FONT_SIZE_SP]
+                ?.takeIf { it in AppSettings.MIN_LYRICS_FONT_SIZE_SP..AppSettings.MAX_LYRICS_FONT_SIZE_SP }
+                ?: defaults.lyricsFontSizeSp,
+            lyricsTextCentered = preferences[Keys.LYRICS_TEXT_CENTERED] ?: defaults.lyricsTextCentered,
+            lyricsFontWeight = preferences[Keys.LYRICS_FONT_WEIGHT]
+                ?.takeIf {
+                    it in AppSettings.MIN_LYRICS_FONT_WEIGHT..AppSettings.MAX_LYRICS_FONT_WEIGHT &&
+                        (it - AppSettings.MIN_LYRICS_FONT_WEIGHT) % AppSettings.LYRICS_FONT_WEIGHT_STEP == 0
+                }
+                ?: defaults.lyricsFontWeight,
         )
     }
 
@@ -218,6 +258,9 @@ class PreferencesSettingsRepository @Inject constructor(
         val ALBUM_GRID_COLUMNS = intPreferencesKey("album_grid_columns")
         val SLEEP_TIMER_DURATION_MINUTES = intPreferencesKey("sleep_timer_duration_minutes")
         val SLEEP_TIMER_EXTEND_TO_END_OF_TRACK = booleanPreferencesKey("sleep_timer_extend_to_end_of_track")
+        val LYRICS_FONT_SIZE_SP = intPreferencesKey("lyrics_font_size_sp")
+        val LYRICS_TEXT_CENTERED = booleanPreferencesKey("lyrics_text_centered")
+        val LYRICS_FONT_WEIGHT = intPreferencesKey("lyrics_font_weight")
         val LIBRARY_SYNC_PENDING = booleanPreferencesKey("library_sync_pending")
         val LIBRARY_SYNC_REVISION = longPreferencesKey("library_sync_revision")
     }

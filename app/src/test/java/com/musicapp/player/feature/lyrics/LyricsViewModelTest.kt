@@ -5,6 +5,7 @@ import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.lyrics.LyricsRepository
 import com.musicapp.player.core.lyrics.LyricsSource
+import com.musicapp.player.core.lyrics.MissingLyrics
 import com.musicapp.player.core.lyrics.StaticLyrics
 import com.musicapp.player.core.lyrics.SynchronizedLyrics
 import com.musicapp.player.core.lyrics.TimedLyricLine
@@ -73,6 +74,56 @@ class LyricsViewModelTest {
     }
 
     @Test
+    fun `manual scroll pauses auto center but focus switch to new line recovers auto center immediately`() = runTest(dispatcher) {
+        val viewModel = LyricsViewModel(
+            LyricsRepository {
+                SynchronizedLyrics(
+                    LyricsSource.EXTERNAL_LRC,
+                    listOf(TimedLyricLine(1_000, "one"), TimedLyricLine(2_000, "two")),
+                )
+            },
+        )
+        viewModel.load(track())
+        advanceUntilIdle()
+        viewModel.updatePlaybackPosition(1_100)
+        assertEquals(0, viewModel.uiState.value.activeLineIndex)
+        assertEquals(1L, viewModel.uiState.value.autoCenterRequest)
+
+        viewModel.onManualScroll()
+        assertFalse(viewModel.uiState.value.autoCenterEnabled)
+
+        // Advancing position to next line (focus switch)
+        viewModel.updatePlaybackPosition(2_100)
+        assertEquals(1, viewModel.uiState.value.activeLineIndex)
+        assertTrue(viewModel.uiState.value.autoCenterEnabled)
+        assertEquals(2L, viewModel.uiState.value.autoCenterRequest)
+
+        // 5s timer should have been canceled, so autoCenterRequest does not increment again
+        advanceTimeBy(5_000)
+        runCurrent()
+        assertEquals(2L, viewModel.uiState.value.autoCenterRequest)
+    }
+
+    @Test
+    fun `manual scroll pauses auto center but clicking a line recovers auto center immediately`() = runTest(dispatcher) {
+        val viewModel = synchronizedSubject()
+        viewModel.load(track())
+        advanceUntilIdle()
+
+        viewModel.onManualScroll()
+        assertFalse(viewModel.uiState.value.autoCenterEnabled)
+
+        viewModel.onLineClick(0)
+        assertTrue(viewModel.uiState.value.autoCenterEnabled)
+        assertEquals(1L, viewModel.uiState.value.autoCenterRequest)
+
+        // 5s timer should have been canceled
+        advanceTimeBy(5_000)
+        runCurrent()
+        assertEquals(1L, viewModel.uiState.value.autoCenterRequest)
+    }
+
+    @Test
     fun `static fallback exposes text and keeps synchronized window empty`() = runTest(dispatcher) {
         val viewModel = LyricsViewModel(
             LyricsRepository { StaticLyrics(LyricsSource.EMBEDDED_USLT, "plain") },
@@ -87,6 +138,43 @@ class LyricsViewModelTest {
         assertEquals("", viewModel.uiState.value.previousLine)
         assertEquals("", viewModel.uiState.value.currentLine)
         assertEquals("", viewModel.uiState.value.nextLine)
+    }
+
+    @Test
+    fun `settings updates modify state and persist to settings repository`() = runTest(dispatcher) {
+        val fakeSettings = com.musicapp.player.feature.settings.FakeSettingsRepository()
+        val viewModel = LyricsViewModel(
+            repository = LyricsRepository { MissingLyrics },
+            settingsRepository = fakeSettings,
+        )
+        advanceUntilIdle()
+
+        viewModel.setFontSizeSp(26)
+        advanceUntilIdle()
+        assertEquals(26, viewModel.uiState.value.fontSizeSp)
+        assertEquals(26, fakeSettings.currentSettings().lyricsFontSizeSp)
+
+        viewModel.setTextCentered(true)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isTextCentered)
+        assertTrue(fakeSettings.currentSettings().lyricsTextCentered)
+
+        viewModel.setFontWeight(700)
+        advanceUntilIdle()
+        assertEquals(700, viewModel.uiState.value.fontWeight)
+        assertEquals(700, fakeSettings.currentSettings().lyricsFontWeight)
+    }
+
+    @Test
+    fun `settings sheet visibility toggles correctly`() = runTest(dispatcher) {
+        val viewModel = LyricsViewModel(LyricsRepository { MissingLyrics })
+        assertFalse(viewModel.uiState.value.isSettingsSheetVisible)
+
+        viewModel.showSettings()
+        assertTrue(viewModel.uiState.value.isSettingsSheetVisible)
+
+        viewModel.dismissSettings()
+        assertFalse(viewModel.uiState.value.isSettingsSheetVisible)
     }
 
     private fun synchronizedSubject() = LyricsViewModel(

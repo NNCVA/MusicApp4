@@ -148,6 +148,9 @@ class AndroidMediaLibraryScanSourceTest {
         override suspend fun setSkipShortAudio(value: Boolean) = Unit
         override suspend fun setAlbumGridColumns(value: Int) = Unit
         override suspend fun setSleepTimerPreferences(durationMinutes: Int, extendToEndOfTrack: Boolean) = Unit
+        override suspend fun setLyricsFontSizeSp(value: Int) = Unit
+        override suspend fun setLyricsTextCentered(value: Boolean) = Unit
+        override suspend fun setLyricsFontWeight(value: Int) = Unit
         override suspend fun reset() = Unit
     }
 

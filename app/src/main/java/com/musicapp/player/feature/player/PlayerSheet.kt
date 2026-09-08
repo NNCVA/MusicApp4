@@ -706,7 +706,6 @@ private fun PortraitFullPlayer(
                     viewModel = lyricsViewModel,
                     missingText = stringResource(R.string.lyrics_not_found),
                     loadingText = stringResource(R.string.lyrics_loading),
-                    returnToCurrentText = stringResource(R.string.lyrics_return_to_current),
                     onSheetDrag = onSheetDrag,
                     onSheetSettle = onSheetSettle,
                     sheetProgress = sheetProgress,
