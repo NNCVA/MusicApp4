@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.annotation.StringRes
 import com.musicapp.player.R
+import com.musicapp.player.core.common.time.Clock
+import com.musicapp.player.core.common.time.SystemClock
 import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.Track
@@ -63,6 +65,7 @@ class PlayerViewModel @Inject constructor(
     mediaLibraryRepository: MediaLibraryRepository,
     private val artworkRepository: ArtworkRepository,
     private val metadataRepository: TrackMetadataRepository,
+    private val clock: Clock = SystemClock(),
 ) : ViewModel() {
     private val tracks = mediaLibraryRepository.observeTracks(includeHidden = true)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -127,12 +130,36 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    private var lastTogglePlaybackTimeMs = -THROTTLE_WINDOW_MS
+    private var lastSkipNextClickTimeMs = -SKIP_DEBOUNCE_WINDOW_MS
+    private var lastSkipPreviousClickTimeMs = -SKIP_DEBOUNCE_WINDOW_MS
+
     fun togglePlayback() {
+        val now = clock.currentTimeMillis()
+        if (now - lastTogglePlaybackTimeMs in 0 until THROTTLE_WINDOW_MS) return
+        lastTogglePlaybackTimeMs = now
         if (uiState.value.isPlaying) playbackController.pause() else playbackController.play()
     }
 
-    fun skipPrevious() = playbackController.skipToPrevious()
-    fun skipNext() = playbackController.skipToNext()
+    fun skipPrevious() {
+        val now = clock.currentTimeMillis()
+        if (now - lastSkipPreviousClickTimeMs in 0 until SKIP_DEBOUNCE_WINDOW_MS) {
+            lastSkipPreviousClickTimeMs = now
+            return
+        }
+        lastSkipPreviousClickTimeMs = now
+        playbackController.skipToPrevious()
+    }
+
+    fun skipNext() {
+        val now = clock.currentTimeMillis()
+        if (now - lastSkipNextClickTimeMs in 0 until SKIP_DEBOUNCE_WINDOW_MS) {
+            lastSkipNextClickTimeMs = now
+            return
+        }
+        lastSkipNextClickTimeMs = now
+        playbackController.skipToNext()
+    }
 
     fun seekToFraction(fraction: Float) {
         val duration = uiState.value.durationMs
@@ -187,9 +214,11 @@ class PlayerViewModel @Inject constructor(
         playbackController.seekTo(targetPositionMs)
     }
 
-    private companion object {
-        const val ARTWORK_TARGET_PX = 1_024
-        const val SEEK_INTERVAL_MS = 10_000L
+    companion object {
+        const val THROTTLE_WINDOW_MS = 300L
+        const val SKIP_DEBOUNCE_WINDOW_MS = 500L
+        private const val ARTWORK_TARGET_PX = 1_024
+        private const val SEEK_INTERVAL_MS = 10_000L
     }
 }
 

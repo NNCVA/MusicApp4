@@ -1,6 +1,7 @@
 package com.musicapp.player.feature.player
 
 import com.musicapp.player.R
+import com.musicapp.player.core.common.time.Clock
 import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.PlaybackQueue
 import com.musicapp.player.core.domain.model.QueueItem
@@ -251,7 +252,123 @@ class PlayerViewModelTest {
         collection.cancel()
     }
 
-    private fun subject(controller: RecordingController, tracks: List<Track>) = PlayerViewModel(
+    @Test
+    fun `togglePlayback suppresses repeated clicks within 300ms window`() = runTest(dispatcher) {
+        val clock = MutableClock(10_000L)
+        val controller = RecordingController(PlaybackControllerState(isPlaying = false))
+        val viewModel = subject(controller, emptyList(), clock)
+
+        // First click executes immediately
+        viewModel.togglePlayback()
+        assertEquals(1, controller.playCalls)
+
+        // Second click within 300ms is throttled
+        clock.currentTime = 10_150L
+        viewModel.togglePlayback()
+        assertEquals(1, controller.playCalls)
+
+        // Third click at 299ms is still throttled
+        clock.currentTime = 10_299L
+        viewModel.togglePlayback()
+        assertEquals(1, controller.playCalls)
+
+        // Fourth click at exactly 300ms window expiry executes
+        clock.currentTime = 10_300L
+        viewModel.togglePlayback()
+        assertEquals(2, controller.playCalls)
+    }
+
+    @Test
+    fun `skipNext suppresses rapid clicks within 500ms and extends suppression on continuous clicks`() = runTest(dispatcher) {
+        val clock = MutableClock(10_000L)
+        val controller = RecordingController(PlaybackControllerState())
+        val viewModel = subject(controller, emptyList(), clock)
+
+        // First click executes immediately
+        viewModel.skipNext()
+        assertEquals(1, controller.nextCalls)
+
+        // Continuous click at +200ms (<500ms) is ignored and extends last click time to 10_200L
+        clock.currentTime = 10_200L
+        viewModel.skipNext()
+        assertEquals(1, controller.nextCalls)
+
+        // Continuous click at 10_500L (300ms from 10_200L) is ignored because interval < 500ms,
+        // even though 500ms elapsed since first click (10_000L)
+        clock.currentTime = 10_500L
+        viewModel.skipNext()
+        assertEquals(1, controller.nextCalls)
+
+        // Another continuous click at 10_800L (300ms from 10_500L) is still ignored
+        clock.currentTime = 10_800L
+        viewModel.skipNext()
+        assertEquals(1, controller.nextCalls)
+
+        // Pause / wait for more than 500ms since last click (10_800L + 501ms = 11_301L)
+        clock.currentTime = 11_301L
+        viewModel.skipNext()
+        assertEquals(2, controller.nextCalls)
+    }
+
+    @Test
+    fun `skipPrevious suppresses rapid clicks within 500ms and extends suppression on continuous clicks`() = runTest(dispatcher) {
+        val clock = MutableClock(10_000L)
+        val controller = RecordingController(PlaybackControllerState())
+        val viewModel = subject(controller, emptyList(), clock)
+
+        // First click executes immediately
+        viewModel.skipPrevious()
+        assertEquals(1, controller.previousCalls)
+
+        // Continuous clicks at intervals < 500ms are all ignored
+        clock.currentTime = 10_300L
+        viewModel.skipPrevious()
+        assertEquals(1, controller.previousCalls)
+
+        clock.currentTime = 10_600L
+        viewModel.skipPrevious()
+        assertEquals(1, controller.previousCalls)
+
+        clock.currentTime = 10_900L
+        viewModel.skipPrevious()
+        assertEquals(1, controller.previousCalls)
+
+        // Next click after >= 500ms interval (10_900L + 500ms = 11_400L) executes
+        clock.currentTime = 11_400L
+        viewModel.skipPrevious()
+        assertEquals(2, controller.previousCalls)
+    }
+
+    @Test
+    fun `different playback actions have independent throttle windows and do not block each other`() = runTest(dispatcher) {
+        val clock = MutableClock(10_000L)
+        val controller = RecordingController(PlaybackControllerState(isPlaying = false))
+        val viewModel = subject(controller, emptyList(), clock)
+
+        viewModel.togglePlayback()
+        assertEquals(1, controller.playCalls)
+
+        // Immediately (50ms later) invoke skipNext, must not be blocked by togglePlayback
+        clock.currentTime = 10_050L
+        viewModel.skipNext()
+        assertEquals(1, controller.nextCalls)
+
+        // Immediately (100ms later) invoke skipPrevious, must not be blocked by skipNext
+        clock.currentTime = 10_100L
+        viewModel.skipPrevious()
+        assertEquals(1, controller.previousCalls)
+
+        // But rapid repeat of skipNext (50ms after previous skipNext) is blocked and extends window
+        clock.currentTime = 10_100L
+        viewModel.skipNext()
+        assertEquals(1, controller.nextCalls)
+    }
+
+    private fun subject(
+        controller: RecordingController,
+        tracks: List<Track>,
+        clock: Clock = Clock { 10_000L },
+    ) = PlayerViewModel(
         playbackController = controller,
         mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
         artworkRepository = object : ArtworkRepository {
@@ -261,6 +378,7 @@ class PlayerViewModelTest {
             override suspend fun read(track: Track) =
                 AdvancedTrackMetadata("audio/flac", 1_000, 48_000, track.sizeBytes, true)
         },
+        clock = clock,
     )
 
     private fun track(value: Long) = Track(
@@ -273,10 +391,15 @@ class PlayerViewModelTest {
     private fun id(value: Long) = QueueItemId(value)
 }
 
+private class MutableClock(var currentTime: Long = 10_000L) : Clock {
+    override fun currentTimeMillis(): Long = currentTime
+}
+
 private class RecordingController(initial: PlaybackControllerState) : PlaybackControllerFacade {
     private val mutableState = MutableStateFlow(initial)
     override val state: StateFlow<PlaybackControllerState> = mutableState
     var playCalls = 0
+    var pauseCalls = 0
     var previousCalls = 0
     var nextCalls = 0
     var seekPosition: Long? = null
@@ -287,7 +410,7 @@ private class RecordingController(initial: PlaybackControllerState) : PlaybackCo
     override fun disconnect() = Unit
     override fun play(context: com.musicapp.player.core.domain.model.PlaybackContext) = Unit
     override fun play() { playCalls++ }
-    override fun pause() = Unit
+    override fun pause() { pauseCalls++ }
     override fun skipToPrevious() { previousCalls++ }
     override fun skipToNext() { nextCalls++ }
     override fun seekTo(positionMs: Long) { seekPosition = positionMs }
