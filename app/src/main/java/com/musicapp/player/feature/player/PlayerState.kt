@@ -34,11 +34,11 @@ data class PlayerSheetState(
     companion object {
         const val SETTLE_THRESHOLD = 0.5f
         const val MIN_SETTLE_VELOCITY = 600f
-        const val BASE_SETTLE_MIN_DURATION_MS = 180f
-        const val BASE_SETTLE_VARIABLE_DURATION_MS = 120f
-        const val VELOCITY_DAMPING_FACTOR = 0.4f
-        const val MIN_SETTLE_DURATION_MS = 160
-        const val MAX_SETTLE_DURATION_MS = 320
+        const val BASE_SETTLE_MIN_DURATION_MS = 250f
+        const val BASE_SETTLE_VARIABLE_DURATION_MS = 250f
+        const val VELOCITY_DAMPING_FACTOR = 0.3f
+        const val MIN_SETTLE_DURATION_MS = 200
+        const val MAX_SETTLE_DURATION_MS = 500
 
         fun calculateSettleDurationMs(
             currentProgress: Float,
@@ -54,7 +54,7 @@ data class PlayerSheetState(
                 0f
             }
             val baseDuration = BASE_SETTLE_MIN_DURATION_MS + BASE_SETTLE_VARIABLE_DURATION_MS * distance
-            val velocityFactor = (1f / (1f + velocityProgressPerSec * VELOCITY_DAMPING_FACTOR)).coerceIn(0.5f, 1f)
+            val velocityFactor = (1f / (1f + velocityProgressPerSec * VELOCITY_DAMPING_FACTOR)).coerceIn(0.35f, 1f)
             return (baseDuration * velocityFactor).toInt().coerceIn(MIN_SETTLE_DURATION_MS, MAX_SETTLE_DURATION_MS)
         }
     }

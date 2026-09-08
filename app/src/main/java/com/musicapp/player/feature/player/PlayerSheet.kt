@@ -142,7 +142,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharedFlow
 
-private val PlayerSheetDecelerateEasing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
+private val PlayerSheetEmphasizedEasing = CubicBezierEasing(0.2f, 0.0f, 0.2f, 1.0f)
 
 @Composable
 fun PlayerSheetRoute(
@@ -255,7 +255,7 @@ fun PlayerSheet(
             val animationSpec = if (settleDurationMs > 0) {
                 tween<Float>(
                     durationMillis = settleDurationMs,
-                    easing = PlayerSheetDecelerateEasing,
+                    easing = PlayerSheetEmphasizedEasing,
                 )
             } else {
                 tween<Float>(durationMillis = 0)

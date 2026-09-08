@@ -35,7 +35,7 @@ class PlayerSheetStateTest {
             velocityYPxPerSecond = 0f,
             travelPx = 1000f,
         )
-        assertEquals(300, fullTravelDuration)
+        assertEquals(500, fullTravelDuration)
 
         // Partial travel with zero velocity
         val partialTravelDuration = PlayerSheetState.calculateSettleDurationMs(
@@ -44,7 +44,8 @@ class PlayerSheetStateTest {
             velocityYPxPerSecond = 0f,
             travelPx = 1000f,
         )
-        assertTrue(partialTravelDuration in 200..260)
+        assertEquals(375, partialTravelDuration)
+        assertTrue(partialTravelDuration in 350..400)
         assertTrue(partialTravelDuration < fullTravelDuration)
 
         // High fling velocity reduces duration smoothly
