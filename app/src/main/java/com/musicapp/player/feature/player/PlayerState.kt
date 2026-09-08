@@ -34,6 +34,29 @@ data class PlayerSheetState(
     companion object {
         const val SETTLE_THRESHOLD = 0.5f
         const val MIN_SETTLE_VELOCITY = 600f
+        const val BASE_SETTLE_MIN_DURATION_MS = 180f
+        const val BASE_SETTLE_VARIABLE_DURATION_MS = 120f
+        const val VELOCITY_DAMPING_FACTOR = 0.4f
+        const val MIN_SETTLE_DURATION_MS = 160
+        const val MAX_SETTLE_DURATION_MS = 320
+
+        fun calculateSettleDurationMs(
+            currentProgress: Float,
+            targetProgress: Float,
+            velocityYPxPerSecond: Float = 0f,
+            travelPx: Float = 1000f,
+        ): Int {
+            val distance = abs(targetProgress - currentProgress).coerceIn(0f, 1f)
+            if (distance <= 0.0001f) return 0
+            val velocityProgressPerSec = if (travelPx > 0f) {
+                abs(velocityYPxPerSecond) / travelPx
+            } else {
+                0f
+            }
+            val baseDuration = BASE_SETTLE_MIN_DURATION_MS + BASE_SETTLE_VARIABLE_DURATION_MS * distance
+            val velocityFactor = (1f / (1f + velocityProgressPerSec * VELOCITY_DAMPING_FACTOR)).coerceIn(0.5f, 1f)
+            return (baseDuration * velocityFactor).toInt().coerceIn(MIN_SETTLE_DURATION_MS, MAX_SETTLE_DURATION_MS)
+        }
     }
 }
 

@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
@@ -68,6 +69,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -131,11 +133,14 @@ import com.musicapp.player.feature.lyrics.LyricsViewModel
 import com.musicapp.player.feature.aero.AeroBackground
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharedFlow
+
+private val PlayerSheetDecelerateEasing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
 
 @Composable
 fun PlayerSheetRoute(
@@ -216,18 +221,17 @@ fun PlayerSheet(
     var progress by rememberSaveable {
         mutableFloatStateOf(if (initialExpanded) 1f else 0f)
     }
+    var isContentMounted by rememberSaveable {
+        mutableStateOf(initialExpanded)
+    }
     val track = state.currentTrack ?: return
     val dimensions = MusicTheme.dimensions
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
     var sheetAnimationJob by remember { mutableStateOf<Job?>(null) }
-    val springSpec = remember {
-        spring<Float>(
-            stiffness = Spring.StiffnessMediumLow,
-            dampingRatio = Spring.DampingRatioNoBouncy,
-        )
+    val isExpanded by remember {
+        derivedStateOf { progress > 0f }
     }
-    val isExpanded = progress > 0f
     LaunchedEffect(isExpanded) { onExpansionChanged(isExpanded) }
 
     val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
@@ -235,16 +239,38 @@ fun PlayerSheet(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val travelPx = with(density) { (maxHeight - totalCollapsedHeight).toPx().coerceAtLeast(1f) }
-        val animateSheetTo: (Float, Float) -> Unit = { targetProgress, initialVelocity ->
+        val animateSheetTo: (Float, Float) -> Unit = { targetProgress, velocityY ->
             sheetAnimationJob?.cancel()
+            if (targetProgress > 0f || progress > 0f) {
+                isContentMounted = true
+            }
+            val settleDurationMs = PlayerSheetState.calculateSettleDurationMs(
+                currentProgress = progress,
+                targetProgress = targetProgress,
+                velocityYPxPerSecond = velocityY,
+                travelPx = travelPx,
+            )
+            val animationSpec = if (settleDurationMs > 0) {
+                tween<Float>(
+                    durationMillis = settleDurationMs,
+                    easing = PlayerSheetDecelerateEasing,
+                )
+            } else {
+                tween<Float>(durationMillis = 0)
+            }
             sheetAnimationJob = coroutineScope.launch {
                 animate(
                     initialValue = progress,
                     targetValue = targetProgress,
-                    initialVelocity = initialVelocity,
-                    animationSpec = springSpec,
+                    animationSpec = animationSpec,
                 ) { value, _ ->
                     progress = value.coerceIn(0f, 1f)
+                }
+                if (progress == 0f) {
+                    delay(64)
+                    if (progress == 0f && sheetAnimationJob?.isActive != true) {
+                        isContentMounted = false
+                    }
                 }
             }
         }
@@ -256,6 +282,7 @@ fun PlayerSheet(
         val dragSheet: (Float) -> Float = { deltaY ->
             sheetAnimationJob?.cancel()
             sheetAnimationJob = null
+            isContentMounted = true
             val previous = progress
             val targetProgress = PlayerSheetState(previous).dragBy(deltaY, travelPx).expansionProgress
             progress = targetProgress
@@ -263,10 +290,9 @@ fun PlayerSheet(
         }
         val settleSheet: (Float) -> Unit = { velocityY ->
             val targetProgress = PlayerSheetState(progress).settle(velocityY).expansionProgress
-            val initialVelocity = if (travelPx > 0f) -velocityY / travelPx else 0f
-            animateSheetTo(targetProgress, initialVelocity)
+            animateSheetTo(targetProgress, velocityY)
         }
-        BackHandler(enabled = progress > 0f) { animateSheetTo(0f, 0f) }
+        BackHandler(enabled = isExpanded) { animateSheetTo(0f, 0f) }
         val miniDragState = rememberDraggableState { deltaY ->
             PlayerGestureRouter.routeSheetDrag(
                 region = PlayerGestureRegion.SHEET_BACKGROUND,
@@ -278,7 +304,7 @@ fun PlayerSheet(
         Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .offsetPx((1f - progress) * travelPx),
+                .offsetPx { (1f - progress) * travelPx },
             shape = RectangleShape,
             color = MusicTheme.colors.surfaceContainer,
             tonalElevation = dimensions.playerSheetElevation,
@@ -304,7 +330,7 @@ fun PlayerSheet(
                             onDragStopped = { velocityY -> settleSheet(velocityY) },
                         ),
                 )
-                if (progress > 0f) {
+                if (isContentMounted || progress > 0f) {
                     AeroBackground(
                         preferredMode = aeroMode,
                         signals = aeroSignals,
@@ -358,8 +384,8 @@ fun PlayerSheet(
     }
 }
 
-private fun Modifier.offsetPx(y: Float): Modifier =
-    this.then(Modifier.offset { IntOffset(0, y.roundToInt()) })
+private fun Modifier.offsetPx(y: () -> Float): Modifier =
+    this.offset { IntOffset(0, y().roundToInt()) }
 
 @Composable
 private fun MiniPlayer(
@@ -374,8 +400,11 @@ private fun MiniPlayer(
     val dimensions = MusicTheme.dimensions
     val compact = dimensions.windowWidthTier == MusicWindowWidthTier.COMPACT
     Row(
-        modifier = modifier.fillMaxWidth().height(dimensions.miniPlayerHeight)
-            .clickable(onClick = onExpand).padding(horizontal = dimensions.contentHorizontalPadding),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(dimensions.miniPlayerHeight)
+            .clickable(onClick = onExpand)
+            .padding(horizontal = dimensions.contentHorizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
     ) {

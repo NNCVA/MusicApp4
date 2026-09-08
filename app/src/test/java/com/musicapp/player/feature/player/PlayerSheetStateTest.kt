@@ -21,4 +21,49 @@ class PlayerSheetStateTest {
         assertTrue(PlayerLayerAlpha.mini(0f) > PlayerLayerAlpha.full(0f))
         assertTrue(PlayerLayerAlpha.full(1f) > PlayerLayerAlpha.mini(1f))
     }
+
+    @Test
+    fun `calculate settle duration scales with distance and velocity`() {
+        // Zero distance
+        assertEquals(0, PlayerSheetState.calculateSettleDurationMs(0f, 0f))
+        assertEquals(0, PlayerSheetState.calculateSettleDurationMs(1f, 1f))
+
+        // Full travel with zero velocity
+        val fullTravelDuration = PlayerSheetState.calculateSettleDurationMs(
+            currentProgress = 0f,
+            targetProgress = 1f,
+            velocityYPxPerSecond = 0f,
+            travelPx = 1000f,
+        )
+        assertEquals(300, fullTravelDuration)
+
+        // Partial travel with zero velocity
+        val partialTravelDuration = PlayerSheetState.calculateSettleDurationMs(
+            currentProgress = 0f,
+            targetProgress = 0.5f,
+            velocityYPxPerSecond = 0f,
+            travelPx = 1000f,
+        )
+        assertTrue(partialTravelDuration in 200..260)
+        assertTrue(partialTravelDuration < fullTravelDuration)
+
+        // High fling velocity reduces duration smoothly
+        val highVelocityDuration = PlayerSheetState.calculateSettleDurationMs(
+            currentProgress = 0.5f,
+            targetProgress = 1f,
+            velocityYPxPerSecond = -2500f,
+            travelPx = 1000f,
+        )
+        assertTrue(highVelocityDuration < partialTravelDuration)
+        assertTrue(highVelocityDuration >= PlayerSheetState.MIN_SETTLE_DURATION_MS)
+
+        // Extreme velocity is clamped
+        val extremeVelocityDuration = PlayerSheetState.calculateSettleDurationMs(
+            currentProgress = 0f,
+            targetProgress = 1f,
+            velocityYPxPerSecond = -100_000f,
+            travelPx = 1000f,
+        )
+        assertEquals(PlayerSheetState.MIN_SETTLE_DURATION_MS, extremeVelocityDuration)
+    }
 }
