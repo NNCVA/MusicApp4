@@ -122,6 +122,11 @@
     <string name="playlist_total_duration_hours_minutes">%1$d小时%2$d分钟</string>
     <string name="playlist_search_placeholder">搜索歌单内的歌曲</string>
     <string name="playlist_search_action">搜索</string>
+    <string name="playlist_import">导入歌单</string>
+    <string name="playlist_export">导出歌单</string>
+    <string name="playlist_import_result">已导入 %1$s：匹配 %2$d 首，跳过 %3$d 首，重复 %4$d 首。</string>
+    <string name="playlist_export_result">已导出 %1$s：写入 %2$d 首，跳过 %3$d 首。</string>
+    <string name="playlist_transfer_failed">歌单文件操作失败。</string>
     <string name="playlist_remove_from_playlist">移出歌单</string>
     <string name="selection_close">完成</string>
     <string name="selection_cancel">退出多选</string>

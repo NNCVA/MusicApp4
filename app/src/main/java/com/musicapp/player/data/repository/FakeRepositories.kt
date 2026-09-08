@@ -177,6 +177,28 @@ class FakePlaylistRepository(
         id
     }
 
+    override suspend fun createPlaylistWithTracks(
+        displayName: String,
+        normalizedName: String,
+        trackIds: List<TrackId>,
+        createdAtMs: Long,
+    ): PlaylistId = mutex.withLock {
+        validatePlaylistNames(displayName, normalizedName)
+        require(createdAtMs >= 0) { "createdAtMs must not be negative" }
+        require(trackIds.distinct().size == trackIds.size) { "trackIds must be unique" }
+        require(trackIds.all(existingTrackIds::contains)) { "every referenced track must exist" }
+        require(playlists.value.values.none { it.normalizedName.equals(normalizedName, ignoreCase = true) })
+        val id = PlaylistId(nextPlaylistId++)
+        playlists.value += id to Playlist(
+            id = id,
+            displayName = displayName,
+            normalizedName = normalizedName,
+            trackIds = trackIds,
+            createdAtMs = createdAtMs,
+        )
+        id
+    }
+
     override suspend fun renamePlaylist(
         playlistId: PlaylistId,
         displayName: String,

@@ -1,6 +1,8 @@
 package com.musicapp.player.feature.playlists
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
@@ -138,6 +140,11 @@ fun PlaylistDetailScreenRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val hapticFeedback = LocalHapticFeedback.current
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain"),
+    ) { uri ->
+        uri?.let(viewModel::exportTo)
+    }
 
     LaunchedEffect(isActive) {
         if (!isActive && state.isSelectionMode) {
@@ -174,6 +181,12 @@ fun PlaylistDetailScreenRoute(
             BatchTrackActionResult.EmptySelection -> Unit
         }
         viewModel.acknowledgeBatchResult()
+    }
+
+    LaunchedEffect(state.transferFeedback) {
+        val feedback = state.transferFeedback ?: return@LaunchedEffect
+        onShowMessage(feedback.messageResId(), feedback.messageArgs())
+        viewModel.acknowledgeTransferFeedback()
     }
 
     PlaylistDetailScreen(
@@ -231,6 +244,11 @@ fun PlaylistDetailScreenRoute(
         onDeletePlaylist = {
             viewModel.deletePlaylist(onDeleted = onBack)
         },
+        onExportPlaylist = {
+            exportLauncher.launch(
+                PlaylistTextCodec.suggestedFileName(state.playlist?.displayName ?: "playlist"),
+            )
+        },
         onCreatePlaylist = viewModel::createPlaylist,
         onAcknowledgePlaybackFeedback = viewModel::acknowledgePlaybackFeedback,
     )
@@ -271,6 +289,7 @@ fun PlaylistDetailScreen(
     onNavigateToAlbum: (AlbumId) -> Unit = {},
     onRenamePlaylist: (String) -> Unit,
     onDeletePlaylist: () -> Unit,
+    onExportPlaylist: () -> Unit,
     onCreatePlaylist: (String) -> Unit = {},
     onAcknowledgePlaybackFeedback: () -> Unit,
 ) {
@@ -420,6 +439,19 @@ fun PlaylistDetailScreen(
                                         onClearSelection()
                                     }
                                     onSearchClick()
+                                },
+                            )
+                            AppDropdownMenuItem(
+                                text = { Text(stringResource(R.string.playlist_export)) },
+                                trailingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_common_download),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    pageMenuExpanded = false
+                                    onExportPlaylist()
                                 },
                             )
                             AppDropdownMenuItem(

@@ -28,7 +28,7 @@ object PlaylistNameNormalizer {
     }
 }
 
-private const val MAX_PLAYLIST_NAME_CODE_POINTS = 50
+internal const val MAX_PLAYLIST_NAME_CODE_POINTS = 50
 
 class PlaylistUseCase @Inject constructor(
     private val repository: PlaylistRepository,

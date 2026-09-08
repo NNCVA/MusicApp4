@@ -81,6 +81,41 @@ data class PlaylistPlaybackPreparation(
     val skippedCount: Int,
 )
 
+enum class PlaylistTransferOperation {
+    IMPORTED,
+    EXPORTED,
+    FAILED,
+}
+
+data class PlaylistTransferFeedback(
+    val operation: PlaylistTransferOperation,
+    val playlistName: String? = null,
+    val matchedCount: Int = 0,
+    val skippedCount: Int = 0,
+    val duplicateCount: Int = 0,
+)
+
+fun PlaylistTransferFeedback.messageResId(): Int = when (operation) {
+    PlaylistTransferOperation.IMPORTED -> R.string.playlist_import_result
+    PlaylistTransferOperation.EXPORTED -> R.string.playlist_export_result
+    PlaylistTransferOperation.FAILED -> R.string.playlist_transfer_failed
+}
+
+fun PlaylistTransferFeedback.messageArgs(): List<Any> = when (operation) {
+    PlaylistTransferOperation.IMPORTED -> listOf(
+        playlistName.orEmpty(),
+        matchedCount,
+        skippedCount,
+        duplicateCount,
+    )
+    PlaylistTransferOperation.EXPORTED -> listOf(
+        playlistName.orEmpty(),
+        matchedCount,
+        skippedCount,
+    )
+    PlaylistTransferOperation.FAILED -> emptyList()
+}
+
 data class PlaylistDetailUiState(
     val playlist: Playlist? = null,
     val tracks: List<Track> = emptyList(),
@@ -96,6 +131,7 @@ data class PlaylistDetailUiState(
     val isLibraryLoaded: Boolean = false,
     val allPlaylists: List<Playlist> = emptyList(),
     val operationMessage: PlaylistOperationMessage? = null,
+    val transferFeedback: PlaylistTransferFeedback? = null,
     val lastRemovalResult: PlaylistTrackChangeResult? = null,
     val batchResult: BatchTrackActionResult? = null,
     val isBatchActionRunning: Boolean = false,

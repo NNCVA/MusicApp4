@@ -1,5 +1,7 @@
 package com.musicapp.player.feature.playlists
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +24,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -66,15 +69,39 @@ fun PlaylistsScreenRoute(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onPlaylistClick: (PlaylistId) -> Unit,
+    onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var pendingExportPlaylistId by rememberSaveable { mutableLongStateOf(NO_PLAYLIST_ID) }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(viewModel::importFrom)
+    }
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain"),
+    ) { uri ->
+        val playlistId = pendingExportPlaylistId
+        pendingExportPlaylistId = NO_PLAYLIST_ID
+        if (uri != null && playlistId != NO_PLAYLIST_ID) {
+            viewModel.exportTo(PlaylistId(playlistId), uri)
+        }
+    }
+    LaunchedEffect(state.transferFeedback) {
+        val feedback = state.transferFeedback ?: return@LaunchedEffect
+        onShowMessage(feedback.messageResId(), feedback.messageArgs())
+        viewModel.acknowledgeTransferFeedback()
+    }
     PlaylistsScreen(
         state = state,
         contentInsets = contentInsets,
         policy = policy,
         openDrawer = openDrawer,
         onPlaylistClick = onPlaylistClick,
+        onImport = { importLauncher.launch(arrayOf("text/plain")) },
+        onExportPlaylist = { playlist ->
+            pendingExportPlaylistId = playlist.id.value
+            exportLauncher.launch(PlaylistTextCodec.suggestedFileName(playlist.displayName))
+        },
         bottomPadding = bottomPadding,
         onCreate = viewModel::create,
         onRename = viewModel::rename,
@@ -90,6 +117,8 @@ private fun PlaylistsScreen(
     policy: WindowLayoutPolicy,
     openDrawer: () -> Unit,
     onPlaylistClick: (PlaylistId) -> Unit,
+    onImport: () -> Unit,
+    onExportPlaylist: (Playlist) -> Unit,
     onCreate: (String) -> Unit,
     onRename: (PlaylistId, String) -> Unit,
     onDelete: (PlaylistId) -> Unit,
@@ -137,6 +166,19 @@ private fun PlaylistsScreen(
                         expanded = pageMenuExpanded,
                         onDismissRequest = { pageMenuExpanded = false },
                     ) {
+                        AppDropdownMenuItem(
+                            text = { Text(stringResource(R.string.playlist_import)) },
+                            trailingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_common_download),
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                pageMenuExpanded = false
+                                onImport()
+                            },
+                        )
                         AppDropdownMenuItem(
                             text = { Text(stringResource(R.string.playlist_create)) },
                             iconTint = MenuIconPalette.Add,
@@ -191,6 +233,7 @@ private fun PlaylistsScreen(
                             editorInitialName = playlist.displayName
                         },
                         onDelete = { deletePlaylistId = playlist.id.value },
+                        onExport = { onExportPlaylist(playlist) },
                     )
                 }
             }
@@ -249,6 +292,7 @@ private fun PlaylistRow(
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    onExport: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
     Row(
@@ -315,6 +359,19 @@ private fun PlaylistRow(
                     onClick = {
                         menuExpanded = false
                         onRename()
+                    },
+                )
+                AppDropdownMenuItem(
+                    text = { Text(stringResource(R.string.playlist_export)) },
+                    trailingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_common_download),
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = {
+                        menuExpanded = false
+                        onExport()
                     },
                 )
                 AppDropdownMenuItem(

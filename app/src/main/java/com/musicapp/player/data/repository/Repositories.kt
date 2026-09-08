@@ -53,6 +53,12 @@ interface PlaylistRepository {
         normalizedName: String,
         createdAtMs: Long,
     ): PlaylistId
+    suspend fun createPlaylistWithTracks(
+        displayName: String,
+        normalizedName: String,
+        trackIds: List<TrackId>,
+        createdAtMs: Long,
+    ): PlaylistId
     suspend fun renamePlaylist(
         playlistId: PlaylistId,
         displayName: String,

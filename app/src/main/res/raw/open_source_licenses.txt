@@ -142,6 +142,14 @@ Bundled visual asset notices:
   Modifications: 24 px rounded SVG paths were converted to Android VectorDrawable XML
   with neutral fill color for runtime Compose tinting.
 
+- Google Material Design Icon `ic_common_download.xml`, source revision
+  50f0603134ce7b70b2d71b686cc13e8b57ccb74c.
+  Source: https://github.com/google/material-design-icons
+  Source file: src/file/download/materialiconsround/24px.svg
+  License: Apache License 2.0.
+  Modifications: the rounded 24 px SVG path was converted to Android VectorDrawable XML
+  with a neutral fill color for runtime Compose tinting.
+
 The complete common license text follows. Component-specific NOTICE attribution is retained above.
 
 Apache License

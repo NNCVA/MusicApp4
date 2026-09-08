@@ -73,6 +73,7 @@
 | `ic_common_playlist_add.xml` | `src/av/playlist_add/materialiconsround/24px.svg` | 加入歌单操作；列表横线与加号圆角化 |
 | `ic_common_queue_add.xml` | `src/av/queue_music/materialiconsround/24px.svg` | 加入队列操作；列表横线与音符圆角化 |
 | `ic_common_open_in_new.xml` | `src/action/open_in_new/materialiconsround/24px.svg` | 外部打开；外链边框与箭头圆角化 |
+| `ic_common_download.xml` | `src/file/download/materialiconsround/24px.svg` | 歌单 TXT 导入与导出；下载箭头与底部托盘圆角化 |
 | `ic_common_search.xml` | `src/action/search/materialiconsround/24px.svg` | 搜索；放大镜轮廓平滑圆角化 |
 | `ic_common_view_list.xml` | `src/action/view_list/materialiconsround/24px.svg` | 列表视图与迷你播放器播放队列直达；圆角列表块与横线条目 |
 | `ic_common_list.xml` | `src/editor/format_list_bulleted/materialiconsround/24px.svg` | 通用列表项；圆点与横线条目圆角化 |

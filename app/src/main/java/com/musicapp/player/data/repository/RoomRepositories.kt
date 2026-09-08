@@ -213,6 +213,43 @@ class RoomPlaylistRepository @Inject constructor(
         )
     }
 
+    override suspend fun createPlaylistWithTracks(
+        displayName: String,
+        normalizedName: String,
+        trackIds: List<TrackId>,
+        createdAtMs: Long,
+    ): PlaylistId {
+        validatePlaylistNames(displayName, normalizedName)
+        require(createdAtMs >= 0) { "createdAtMs must not be negative" }
+        require(trackIds.distinct().size == trackIds.size) { "trackIds must be unique" }
+        return PlaylistId(
+            database.withTransaction {
+                requireTracksExist(trackIds)
+                val playlistId = playlistDao.insert(
+                    PlaylistEntity(
+                        displayName = displayName,
+                        normalizedName = normalizedName,
+                        createdAtMs = createdAtMs,
+                        updatedAtMs = createdAtMs,
+                    ),
+                )
+                if (trackIds.isNotEmpty()) {
+                    playlistTrackDao.insert(
+                        trackIds.mapIndexed { index, trackId ->
+                            PlaylistTrackEntity(
+                                playlistId = playlistId,
+                                trackVolumeName = trackId.volumeName,
+                                trackMediaStoreId = trackId.mediaStoreId,
+                                position = index,
+                            )
+                        },
+                    )
+                }
+                playlistId
+            },
+        )
+    }
+
     override suspend fun renamePlaylist(
         playlistId: PlaylistId,
         displayName: String,

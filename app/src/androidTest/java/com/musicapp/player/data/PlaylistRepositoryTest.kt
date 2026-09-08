@@ -94,6 +94,32 @@ class PlaylistRepositoryTest {
     }
 
     @Test
+    fun createPlaylistWithTracksIsAtomicAndPreservesOrder() = runTest {
+        val first = track(mediaStoreId = 1)
+        val second = track(mediaStoreId = 2)
+        mediaRepository.mergeTracks(listOf(first, second))
+
+        val playlistId = repository.createPlaylistWithTracks(
+            displayName = "Imported",
+            normalizedName = "imported",
+            trackIds = listOf(second.id, first.id),
+            createdAtMs = 10,
+        )
+        assertEquals(listOf(second.id, first.id), repository.observePlaylist(playlistId).first()?.trackIds)
+
+        val failure = runCatching {
+            repository.createPlaylistWithTracks(
+                displayName = "Broken",
+                normalizedName = "broken",
+                trackIds = listOf(first.id, TrackId("external_primary", 999)),
+                createdAtMs = 11,
+            )
+        }.exceptionOrNull()
+        assertTrue(failure is IllegalArgumentException)
+        assertEquals(null, repository.observePlaylists().first().firstOrNull { it.displayName == "Broken" })
+    }
+
+    @Test
     fun failedBatchRemovalRollsBackDeletedRelations() = runTest {
         val existing = track(mediaStoreId = 1)
         mediaRepository.mergeTracks(listOf(existing))

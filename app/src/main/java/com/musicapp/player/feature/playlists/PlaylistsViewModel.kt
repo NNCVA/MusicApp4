@@ -1,7 +1,9 @@
 package com.musicapp.player.feature.playlists
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.musicapp.player.core.common.time.Clock
 import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -13,6 +15,7 @@ import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.metadata.TrackMetadataRepository
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
+import com.musicapp.player.data.repository.FakeMediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
 import com.musicapp.player.data.repository.PlaylistTrackChangeResult
 import com.musicapp.player.data.sort.InMemorySortPreferencesRepository
@@ -45,6 +48,7 @@ enum class PlaylistOperationMessage {
 data class PlaylistsUiState(
     val playlists: List<Playlist> = emptyList(),
     val operationMessage: PlaylistOperationMessage? = null,
+    val transferFeedback: PlaylistTransferFeedback? = null,
     val isLoaded: Boolean = false,
 ) {
     @Deprecated("Decoupled in M2 (R3). Replaced by Coil AsyncImage in M3.")
@@ -55,22 +59,49 @@ data class PlaylistsUiState(
 class PlaylistsViewModel @Inject constructor(
     repository: PlaylistRepository,
     private val useCase: PlaylistUseCase,
+    private val transferUseCase: PlaylistTransferUseCase,
+    private val fileGateway: PlaylistFileGateway,
 ) : ViewModel() {
     constructor(
         repository: PlaylistRepository,
         useCase: PlaylistUseCase,
         mediaLibraryRepository: MediaLibraryRepository,
         artworkRepository: ArtworkRepository,
-    ) : this(repository, useCase)
+    ) : this(
+        repository = repository,
+        useCase = useCase,
+        transferUseCase = PlaylistTransferUseCase(
+            playlistRepository = repository,
+            mediaLibraryRepository = mediaLibraryRepository,
+            clock = Clock { System.currentTimeMillis() },
+        ),
+        fileGateway = UnsupportedPlaylistFileGateway,
+    )
+
+    constructor(
+        repository: PlaylistRepository,
+        useCase: PlaylistUseCase,
+    ) : this(
+        repository = repository,
+        useCase = useCase,
+        transferUseCase = PlaylistTransferUseCase(
+            playlistRepository = repository,
+            mediaLibraryRepository = FakeMediaLibraryRepository(),
+            clock = Clock { System.currentTimeMillis() },
+        ),
+        fileGateway = UnsupportedPlaylistFileGateway,
+    )
 
     private val operationMessage = MutableStateFlow<PlaylistOperationMessage?>(null)
+    private val transferFeedback = MutableStateFlow<PlaylistTransferFeedback?>(null)
     private val playlists = repository.observePlaylists()
 
     val uiState: StateFlow<PlaylistsUiState> =
-        combine(playlists, operationMessage) { currentPlaylists, message ->
+        combine(playlists, operationMessage, transferFeedback) { currentPlaylists, message, feedback ->
             PlaylistsUiState(
                 playlists = currentPlaylists,
                 operationMessage = message,
+                transferFeedback = feedback,
                 isLoaded = true,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlaylistsUiState(isLoaded = false))
@@ -87,6 +118,48 @@ class PlaylistsViewModel @Inject constructor(
 
     fun delete(playlistId: PlaylistId) =
         mutate(PlaylistOperationMessage.DELETED) { useCase.delete(playlistId) }
+
+    fun importFrom(uri: Uri) {
+        viewModelScope.launch {
+            transferFeedback.value = try {
+                val result = transferUseCase.import(fileGateway.read(uri))
+                PlaylistTransferFeedback(
+                    operation = PlaylistTransferOperation.IMPORTED,
+                    playlistName = result.playlistName,
+                    matchedCount = result.matchedCount,
+                    skippedCount = result.skippedCount,
+                    duplicateCount = result.duplicateCount,
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                PlaylistTransferFeedback(PlaylistTransferOperation.FAILED)
+            }
+        }
+    }
+
+    fun exportTo(playlistId: PlaylistId, uri: Uri) {
+        viewModelScope.launch {
+            transferFeedback.value = try {
+                val result = transferUseCase.export(playlistId)
+                fileGateway.write(uri, result.content)
+                PlaylistTransferFeedback(
+                    operation = PlaylistTransferOperation.EXPORTED,
+                    playlistName = result.playlistName,
+                    matchedCount = result.exportedCount,
+                    skippedCount = result.skippedCount,
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                PlaylistTransferFeedback(PlaylistTransferOperation.FAILED)
+            }
+        }
+    }
+
+    fun acknowledgeTransferFeedback() {
+        transferFeedback.value = null
+    }
 
     fun clearMessage() {
         operationMessage.value = null
@@ -117,6 +190,12 @@ class PlaylistDetailViewModel internal constructor(
     private val trackMetadataRepository: TrackMetadataRepository,
     private val sortPreferencesRepository: SortPreferencesRepository = InMemorySortPreferencesRepository(),
     private val computationDispatcher: CoroutineDispatcher,
+    private val transferUseCase: PlaylistTransferUseCase = PlaylistTransferUseCase(
+        playlistRepository = playlistRepository,
+        mediaLibraryRepository = mediaLibraryRepository,
+        clock = Clock { System.currentTimeMillis() },
+    ),
+    private val fileGateway: PlaylistFileGateway = UnsupportedPlaylistFileGateway,
 ) : ViewModel() {
     @Inject
     constructor(
@@ -127,6 +206,8 @@ class PlaylistDetailViewModel internal constructor(
         batchActionExecutor: BatchTrackActionExecutor,
         trackMetadataRepository: TrackMetadataRepository,
         sortPreferencesRepository: SortPreferencesRepository,
+        transferUseCase: PlaylistTransferUseCase,
+        fileGateway: PlaylistFileGateway,
     ) : this(
         playlistRepository = playlistRepository,
         mediaLibraryRepository = mediaLibraryRepository,
@@ -136,6 +217,8 @@ class PlaylistDetailViewModel internal constructor(
         trackMetadataRepository = trackMetadataRepository,
         sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = Dispatchers.Default,
+        transferUseCase = transferUseCase,
+        fileGateway = fileGateway,
     )
 
     constructor(
@@ -181,6 +264,7 @@ class PlaylistDetailViewModel internal constructor(
     private val infoTrack = MutableStateFlow<Track?>(null)
     private val infoMetadata = MutableStateFlow<AdvancedTrackMetadata?>(null)
     private val isInfoLoading = MutableStateFlow(false)
+    private val transferFeedback = MutableStateFlow<PlaylistTransferFeedback?>(null)
 
     val uiState: StateFlow<PlaylistDetailUiState> =
         combine(
@@ -200,6 +284,7 @@ class PlaylistDetailViewModel internal constructor(
             infoTrack,
             infoMetadata,
             isInfoLoading,
+            transferFeedback,
         ) { args ->
             @Suppress("UNCHECKED_CAST")
             val playlists = args[0] as List<Playlist>
@@ -220,6 +305,7 @@ class PlaylistDetailViewModel internal constructor(
             val iTrack = args[13] as? Track
             val iMeta = args[14] as? AdvancedTrackMetadata
             val iLoading = args[15] as Boolean
+            val transfer = args[16] as? PlaylistTransferFeedback
 
             val playlist = playlists.firstOrNull { it.id == playlistId }
             val tracksById = tracks.associateBy(Track::id)
@@ -259,6 +345,7 @@ class PlaylistDetailViewModel internal constructor(
                 infoTrack = iTrack,
                 infoMetadata = iMeta,
                 isInfoLoading = iLoading,
+                transferFeedback = transfer,
             )
         }
             .flowOn(computationDispatcher)
@@ -513,8 +600,32 @@ class PlaylistDetailViewModel internal constructor(
         }
     }
 
+    fun exportTo(uri: Uri) {
+        val playlistId = selectedPlaylistId.value ?: return
+        viewModelScope.launch {
+            transferFeedback.value = try {
+                val result = transferUseCase.export(playlistId)
+                fileGateway.write(uri, result.content)
+                PlaylistTransferFeedback(
+                    operation = PlaylistTransferOperation.EXPORTED,
+                    playlistName = result.playlistName,
+                    matchedCount = result.exportedCount,
+                    skippedCount = result.skippedCount,
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                PlaylistTransferFeedback(PlaylistTransferOperation.FAILED)
+            }
+        }
+    }
+
     fun clearMessage() {
         operationMessage.value = null
+    }
+
+    fun acknowledgeTransferFeedback() {
+        transferFeedback.value = null
     }
 
     fun acknowledgeBatchResult() {

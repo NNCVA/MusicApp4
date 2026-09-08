@@ -332,6 +332,9 @@ fun MainNavigation(
                                 onPlaylistClick = { playlistId ->
                                     commitNavigation { navigate(PlaylistDetailRoute(playlistId.value)) }
                                 },
+                                onShowMessage = { messageResId, formatArgs ->
+                                    messageBubbleQueue.enqueue(messageResId, formatArgs)
+                                },
                                 bottomPadding = bottomPadding,
                             )
                         }
@@ -450,6 +453,9 @@ fun MainNavigation(
                                     commitNavigation {
                                         navigate(SearchRoute(SearchScopeType.PLAYLIST, key.playlistId))
                                     }
+                                },
+                                onShowMessage = { messageResId, formatArgs ->
+                                    messageBubbleQueue.enqueue(messageResId, formatArgs)
                                 },
                                 bottomPadding = bottomPadding,
                                 isActive = currentTopRoute == key,

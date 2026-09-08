@@ -125,6 +125,11 @@
     <string name="playlist_total_duration_hours_minutes">%1$d hr %2$d mins</string>
     <string name="playlist_search_placeholder">Search playlist</string>
     <string name="playlist_search_action">Search</string>
+    <string name="playlist_import">Import playlist</string>
+    <string name="playlist_export">Export playlist</string>
+    <string name="playlist_import_result">Imported %1$s: %2$d matched, %3$d skipped, %4$d duplicates.</string>
+    <string name="playlist_export_result">Exported %1$s: %2$d tracks, %3$d skipped.</string>
+    <string name="playlist_transfer_failed">The playlist file operation could not be completed.</string>
     <string name="playlist_remove_from_playlist">Remove from playlist</string>
     <string name="selection_close">Done</string>
     <string name="selection_cancel">Exit selection</string>
