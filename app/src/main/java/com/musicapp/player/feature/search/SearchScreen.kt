@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -91,6 +93,7 @@ fun SearchScreenRoute(
     onAlbumClick: (AlbumId) -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     bottomPadding: Dp = 0.dp,
+    persistentBottomPadding: Dp? = null,
     currentPlayingTrackId: TrackId? = null,
     onOpenPlayer: () -> Unit = {},
 ) {
@@ -131,6 +134,7 @@ fun SearchScreenRoute(
         state = state,
         contentInsets = contentInsets,
         bottomPadding = bottomPadding,
+        persistentBottomPadding = persistentBottomPadding,
         currentPlayingTrackId = currentPlayingTrackId,
         onBack = onBack,
         onQueryChange = viewModel::onQueryChange,
@@ -165,6 +169,7 @@ fun SearchScreen(
     state: SearchUiState,
     contentInsets: WindowInsets,
     bottomPadding: Dp,
+    persistentBottomPadding: Dp? = null,
     currentPlayingTrackId: TrackId? = null,
     onBack: () -> Unit,
     onQueryChange: (String) -> Unit,
@@ -254,6 +259,11 @@ fun SearchScreen(
 
     val selectionBarHeight = dimensions.minimumTouchTarget
     val dynamicBottomPadding = bottomPadding + if (state.isSelectionMode) selectionBarHeight else 0.dp
+    val resolvedPersistentBottomPadding = persistentBottomPadding ?: run {
+        val systemBottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+        val miniPlayerPadding = (bottomPadding - contentInsets.asPaddingValues().calculateBottomPadding()).coerceAtLeast(0.dp)
+        systemBottomInset + miniPlayerPadding
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -356,7 +366,7 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .padding(bottom = dynamicBottomPadding),
+                        .padding(bottom = resolvedPersistentBottomPadding),
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(

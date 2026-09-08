@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Button
@@ -232,7 +233,10 @@ fun MainNavigation(
             },
             content = { contentInsets, policy, openDrawer ->
                 val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
-                val bottomPadding = bottomInset + if (playerShellState.isPlayerVisible) MusicTheme.dimensions.miniPlayerHeight else 0.dp
+                val miniPlayerPadding = if (playerShellState.isPlayerVisible) MusicTheme.dimensions.miniPlayerHeight else 0.dp
+                val bottomPadding = bottomInset + miniPlayerPadding
+                val systemBottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+                val persistentBottomPadding = systemBottomInset + miniPlayerPadding
                 val currentTopRoute = navigationState.currentBackStack.lastOrNull()
                 val currentPlayingTrackId: TrackId? = playerShellState.currentTrackId
                 val onOpenPlayer: () -> Unit = playerViewModel::expandPlayer
@@ -478,6 +482,7 @@ fun MainNavigation(
                                     messageBubbleQueue.enqueue(messageResId, formatArgs)
                                 },
                                 bottomPadding = bottomPadding,
+                                persistentBottomPadding = persistentBottomPadding,
                                 currentPlayingTrackId = currentPlayingTrackId,
                                 onOpenPlayer = onOpenPlayer,
                             )
