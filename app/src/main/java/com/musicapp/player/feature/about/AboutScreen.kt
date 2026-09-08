@@ -285,11 +285,13 @@ private fun AboutInfoItem(
     ) {
         Text(
             text = title,
+            fontWeight = FontWeight.Normal,
             style = MusicTheme.typography.titleMedium,
             color = MusicTheme.colors.onSurface,
         )
         Text(
             text = body,
+            fontWeight = FontWeight.Normal,
             style = MusicTheme.typography.bodyMedium,
             color = MusicTheme.colors.onSurfaceVariant,
         )

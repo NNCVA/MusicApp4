@@ -35,10 +35,10 @@ data class MusicTypography(val material: Typography = MaterialTypography) {
     val headlineMedium: TextStyle get() = material.headlineMedium
     val headlineSmall: TextStyle get() = material.headlineSmall
     val titleLarge: TextStyle get() = material.titleLarge
-    val titleMedium: TextStyle get() = material.titleMedium
+    val titleMedium: TextStyle get() = material.titleMedium.copy(fontWeight = FontWeight.Normal)
     val titleSmall: TextStyle get() = material.titleSmall
     val bodyLarge: TextStyle get() = material.bodyLarge
-    val bodyMedium: TextStyle get() = material.bodyMedium
+    val bodyMedium: TextStyle get() = material.bodyMedium.copy(fontWeight = FontWeight.Normal)
     val bodySmall: TextStyle get() = material.bodySmall
     val labelLarge: TextStyle get() = material.labelLarge
     val labelMedium: TextStyle get() = material.labelMedium
