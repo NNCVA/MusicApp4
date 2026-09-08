@@ -8,7 +8,6 @@ import com.musicapp.player.core.common.time.Clock
 import com.musicapp.player.core.common.time.SystemClock
 import com.musicapp.player.core.domain.model.AppSettings
 import com.musicapp.player.core.domain.model.PlaybackMode
-import com.musicapp.player.core.domain.model.PlaybackQueue
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
@@ -24,6 +23,8 @@ import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -77,15 +79,42 @@ data class PlayerShellState(
 }
 
 @HiltViewModel
-class PlayerViewModel @Inject constructor(
+class PlayerViewModel(
     private val playbackController: PlaybackControllerFacade,
     mediaLibraryRepository: MediaLibraryRepository,
     private val artworkRepository: ArtworkRepository,
     private val metadataRepository: TrackMetadataRepository,
     private val settingsRepository: SettingsRepository,
     private val clock: Clock = SystemClock(),
+    private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
-    private val tracks = mediaLibraryRepository.observeTracks(includeHidden = true)
+    @Inject
+    constructor(
+        playbackController: PlaybackControllerFacade,
+        mediaLibraryRepository: MediaLibraryRepository,
+        artworkRepository: ArtworkRepository,
+        metadataRepository: TrackMetadataRepository,
+        settingsRepository: SettingsRepository,
+    ) : this(playbackController, mediaLibraryRepository, artworkRepository, metadataRepository,
+        settingsRepository, SystemClock(), Dispatchers.Default)
+
+    private val tracksById = mediaLibraryRepository.observeTracks(includeHidden = true)
+        .distinctUntilChanged()
+        .map { it.associateBy(Track::id) }
+        .flowOn(computationDispatcher)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+    private val currentTrack = combine(
+        playbackController.state.map { it.currentTrackId }.distinctUntilChanged(),
+        tracksById,
+    ) { id, byId -> id?.let(byId::get) }.distinctUntilChanged()
+    private val queueRows = combine(
+        playbackController.state.map { it.queue }.distinctUntilChanged(),
+        tracksById,
+    ) { queue, byId ->
+        queue.playbackOrder.map { item ->
+            PlayerQueueRow(item.id, byId[item.trackId], item.id == queue.currentItemId)
+        }
+    }.flowOn(computationDispatcher)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     private val artwork = MutableStateFlow<ArtworkResult>(ArtworkResult.Placeholder)
     /** Track ID whose artwork result has completed loading. */
@@ -119,52 +148,18 @@ class PlayerViewModel @Inject constructor(
         _expandRequests.tryEmit(Unit)
     }
 
-    private var cachedLibraryForIndex: List<Track>? = null
-    private var cachedById: Map<TrackId, Track> = emptyMap()
-    private var cachedLibraryForQueue: List<Track>? = null
-    private var cachedQueue: PlaybackQueue? = null
-    private var cachedQueueRows: List<PlayerQueueRow> = emptyList()
-
-    private fun getOrBuildTrackIndex(library: List<Track>): Map<TrackId, Track> {
-        if (cachedLibraryForIndex !== library) {
-            cachedLibraryForIndex = library
-            cachedById = library.associateBy(Track::id)
-        }
-        return cachedById
-    }
-
-    private fun getOrBuildQueueRows(
-        queue: PlaybackQueue,
-        byId: Map<TrackId, Track>,
-        library: List<Track>,
-    ): List<PlayerQueueRow> {
-        if (cachedQueue != queue || cachedLibraryForQueue !== library) {
-            cachedQueue = queue
-            cachedLibraryForQueue = library
-            cachedQueueRows = queue.playbackOrder.map { item ->
-                PlayerQueueRow(item.id, byId[item.trackId], item.id == queue.currentItemId)
-            }
-        }
-        return cachedQueueRows
-    }
-
-    val shellState: StateFlow<PlayerShellState> = combine(
-        playbackController.state.map { it.currentTrackId }.distinctUntilChanged(),
-        tracks,
-    ) { currentId, library ->
-        val exists = currentId != null && getOrBuildTrackIndex(library).containsKey(currentId)
-        PlayerShellState(currentTrackId = if (exists) currentId else null)
-    }.distinctUntilChanged()
+    val shellState: StateFlow<PlayerShellState> = currentTrack
+        .map { PlayerShellState(currentTrackId = it?.id) }
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, PlayerShellState())
 
     val uiState = combine(
         playbackController.state,
-        tracks,
+        combine(tracksById, queueRows) { byId, rows -> byId to rows },
         artwork,
         artworkTrackId,
         dialogsState,
-    ) { playback, library, currentArtwork, loadedArtworkTrackId, (info, timerDialog) ->
-        val byId = getOrBuildTrackIndex(library)
+    ) { playback, (byId, rows), currentArtwork, loadedArtworkTrackId, (info, timerDialog) ->
         val currentTrack = playback.currentTrackId?.let(byId::get)
         PlayerUiState(
             loadState = playback.playbackStatus.toPlayerLoadState(),
@@ -178,7 +173,7 @@ class PlayerViewModel @Inject constructor(
             canSkipPrevious = playback.canSkipPrevious,
             canSkipNext = playback.canSkipNext,
             playbackMode = playback.playbackMode,
-            queue = getOrBuildQueueRows(playback.queue, byId, library),
+            queue = rows,
             showTrackInfo = info.visible,
             metadata = info.metadata,
             metadataLoading = info.loading,
@@ -192,9 +187,7 @@ class PlayerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            combine(playbackController.state.map { it.currentTrackId }.distinctUntilChanged(), tracks) { id, library ->
-                id?.let { current -> library.firstOrNull { it.id == current } }
-            }.distinctUntilChanged().collectLatest { track ->
+            currentTrack.collectLatest { track ->
                 artworkTrackId.value = null
                 artwork.value = ArtworkResult.Placeholder
                 metadataJob?.cancel()

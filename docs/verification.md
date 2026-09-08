@@ -58,3 +58,8 @@ Debug APK 输出为 `app/build/outputs/apk/debug/app-debug.apk`。`assembleDebug
 - 依赖解析、SDK 或 JDK 缺失时，记录缺失项和命令输出；不要用历史快照替代本次验证。
 
 测试分层、目录归属和 Runner 规则见 [`testing.md`](testing.md)。
+
+## 性能验证记录
+
+- [2026-09-08 歌曲列表与侧边栏第一批优化](performance/2026-09-08-list-navigation.md)：实现范围、模拟器对照、实际门禁及限制。
+- 在承载个人数据的模拟器运行 `connectedDebugAndroidTest` 前先备份应用私有数据；本次环境已观察到测试安装流程重建应用数据，不能假定只替换 APK。

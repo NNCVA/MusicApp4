@@ -516,6 +516,7 @@ class PlayerViewModelTest {
         },
         settingsRepository = settingsRepository,
         clock = clock,
+        computationDispatcher = dispatcher,
     )
 
     private fun track(value: Long) = Track(

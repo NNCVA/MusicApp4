@@ -30,12 +30,17 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -70,19 +75,32 @@ data class FolderDetailUiState(
 )
 
 @HiltViewModel
-class FoldersViewModel @Inject constructor(
+class FoldersViewModel(
     mediaLibraryRepository: MediaLibraryRepository,
     private val volumeMetadataSource: FolderVolumeMetadataSource,
     private val playbackController: PlaybackControllerFacade,
     private val sortPreferencesRepository: SortPreferencesRepository,
+    private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
+    @Inject
+    constructor(
+        mediaLibraryRepository: MediaLibraryRepository,
+        volumeMetadataSource: FolderVolumeMetadataSource,
+        playbackController: PlaybackControllerFacade,
+        sortPreferencesRepository: SortPreferencesRepository,
+    ) : this(mediaLibraryRepository, volumeMetadataSource, playbackController, sortPreferencesRepository, Dispatchers.Default)
+
+    private val roots = mediaLibraryRepository.observeTracks()
+        .distinctUntilChanged()
+        .map(FolderTree::build)
+        .flowOn(computationDispatcher)
+
     val uiState: StateFlow<FoldersUiState> =
         combine(
-            mediaLibraryRepository.observeTracks(),
+            roots,
             volumeMetadataSource.observe().catch { emit(emptyList()) },
             sortPreferencesRepository.folderSort,
-        ) { tracks, metadata, currentFolderSort ->
-            val roots = FolderTree.build(tracks)
+        ) { roots, metadata, currentFolderSort ->
             val metadataByVolume = metadata.associateBy(FolderVolumeMetadata::volumeName)
             val volumeItems =
                 roots.map { root -> metadataByVolume[root.id.volumeName].toVolumeItem(root) }
@@ -99,7 +117,7 @@ class FoldersViewModel @Inject constructor(
                 volumes = volumeItems,
                 musicFolders = FolderTree.sorted(FolderTree.musicFolders(roots), currentFolderSort),
             )
-        }.stateIn(
+        }.flowOn(computationDispatcher).stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             FoldersUiState(),
@@ -119,7 +137,7 @@ class FoldersViewModel @Inject constructor(
 }
 
 @HiltViewModel
-class FolderDetailViewModel @Inject constructor(
+class FolderDetailViewModel(
     mediaLibraryRepository: MediaLibraryRepository,
     private val playbackController: PlaybackControllerFacade,
     private val volumeMetadataSource: FolderVolumeMetadataSource,
@@ -128,11 +146,28 @@ class FolderDetailViewModel @Inject constructor(
     private val trackMetadataRepository: TrackMetadataRepository,
     private val batchActionExecutor: BatchTrackActionExecutor,
     private val sortPreferencesRepository: SortPreferencesRepository,
+    private val computationDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
+    @Inject
+    constructor(
+        mediaLibraryRepository: MediaLibraryRepository,
+        playbackController: PlaybackControllerFacade,
+        volumeMetadataSource: FolderVolumeMetadataSource,
+        playlistRepository: PlaylistRepository,
+        playlistUseCase: PlaylistUseCase,
+        trackMetadataRepository: TrackMetadataRepository,
+        batchActionExecutor: BatchTrackActionExecutor,
+        sortPreferencesRepository: SortPreferencesRepository,
+    ) : this(
+        mediaLibraryRepository, playbackController, volumeMetadataSource, playlistRepository,
+        playlistUseCase, trackMetadataRepository, batchActionExecutor, sortPreferencesRepository, Dispatchers.Default,
+    )
+
     constructor(
         mediaLibraryRepository: MediaLibraryRepository,
         playbackController: PlaybackControllerFacade,
         sortPreferencesRepository: SortPreferencesRepository = InMemorySortPreferencesRepository(),
+        computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playbackController = playbackController,
@@ -147,6 +182,7 @@ class FolderDetailViewModel @Inject constructor(
             com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() },
         ),
         sortPreferencesRepository = sortPreferencesRepository,
+        computationDispatcher = computationDispatcher,
     )
 
     constructor(
@@ -154,6 +190,7 @@ class FolderDetailViewModel @Inject constructor(
         playbackController: PlaybackControllerFacade,
         volumeMetadataSource: FolderVolumeMetadataSource,
         sortPreferencesRepository: SortPreferencesRepository = InMemorySortPreferencesRepository(),
+        computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playbackController = playbackController,
@@ -168,6 +205,7 @@ class FolderDetailViewModel @Inject constructor(
             com.musicapp.player.core.common.time.Clock { System.currentTimeMillis() },
         ),
         sortPreferencesRepository = sortPreferencesRepository,
+        computationDispatcher = computationDispatcher,
     )
 
     constructor(
@@ -175,6 +213,7 @@ class FolderDetailViewModel @Inject constructor(
         playbackController: PlaybackControllerFacade,
         batchActionExecutor: BatchTrackActionExecutor,
         sortPreferencesRepository: SortPreferencesRepository = InMemorySortPreferencesRepository(),
+        computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playbackController = playbackController,
@@ -184,6 +223,7 @@ class FolderDetailViewModel @Inject constructor(
         trackMetadataRepository = DefaultFolderTrackMetadataRepository,
         batchActionExecutor = batchActionExecutor,
         sortPreferencesRepository = sortPreferencesRepository,
+        computationDispatcher = computationDispatcher,
     )
 
     private val selectedFolderId = MutableStateFlow<FolderId?>(null)
@@ -195,13 +235,18 @@ class FolderDetailViewModel @Inject constructor(
     private val batchResult = MutableStateFlow<BatchTrackActionResult?>(null)
     private val isBatchActionRunning = MutableStateFlow(false)
 
+    private val roots = mediaLibraryRepository.observeTracks()
+        .distinctUntilChanged()
+        .map(FolderTree::build)
+        .flowOn(computationDispatcher)
+
     private val coreState =
         combine(
-            mediaLibraryRepository.observeTracks(),
+            roots,
             volumeMetadataSource.observe().catch { emit(emptyList()) },
             selectedFolderId,
-        ) { tracks, metadata, folderId ->
-            Triple(tracks, metadata, folderId)
+        ) { roots, metadata, folderId ->
+            Triple(roots, metadata, folderId)
         }
 
     private val infoState =
@@ -214,55 +259,59 @@ class FolderDetailViewModel @Inject constructor(
             SelectionState(selectionMode, selectedIds, bResult, batchRunning)
         }
 
-    val uiState: StateFlow<FolderDetailUiState> =
-        combine(
-            coreState,
-            sortPreferencesRepository.folderSort,
-            sortPreferencesRepository.folderTrackSort,
-            playlistRepository.observePlaylists().onStart { emit(emptyList()) }.catch { emit(emptyList()) },
-            combine(infoState, selectionState) { info, selection -> Pair(info, selection) },
-        ) { (tracks, metadata, folderId), currentFolderSort, currentTrackSort, playlists, (info, selection) ->
-            val (currentInfoTrack, currentInfoMeta, loadingInfo) = info
-            val (selectionMode, currentSelectedIds, currentBatchResult, batchRunning) = selection
-            val roots = FolderTree.build(tracks)
-            val node = folderId?.let { FolderTree.find(roots, it) }
-            val volumeMetadata = node?.let { metadata.associateBy(FolderVolumeMetadata::volumeName)[it.id.volumeName] }
-            val isVolumeRoot = node?.isVolumeRoot == true
-            val isMusicFolder = node?.hasDirectTracks == true
-            val sortedDirectTracks = sortCategoryTracks(node?.directTracks.orEmpty(), currentTrackSort)
-            val directTrackIds = sortedDirectTracks.mapTo(mutableSetOf(), Track::id)
-            val validSelectedIds = currentSelectedIds.intersect(directTrackIds)
+    // Only library/location/sort inputs can rebuild the expensive presentation.
+    private val folderPresentation = combine(
+        coreState,
+        sortPreferencesRepository.folderSort,
+        sortPreferencesRepository.folderTrackSort,
+    ) { (roots, metadata, folderId), currentFolderSort, currentTrackSort ->
+        val node = folderId?.let { FolderTree.find(roots, it) }
+        val volumeMetadata = node?.let { metadata.associateBy(FolderVolumeMetadata::volumeName)[it.id.volumeName] }
+        val isVolumeRoot = node?.isVolumeRoot == true
+        val isMusicFolder = node?.hasDirectTracks == true
+        val sortedDirectTracks = sortCategoryTracks(node?.directTracks.orEmpty(), currentTrackSort)
 
-            FolderDetailUiState(
-                isLoaded = true,
-                folderId = folderId,
-                displayName = when {
-                    node == null -> null
-                    isVolumeRoot -> volumeMetadata?.displayName ?: node.displayName
-                    else -> node.displayName
-                },
-                childFolders = FolderTree.sorted(
-                    node?.children.orEmpty(),
-                    FolderSort(field = FolderSortField.NAME, direction = CategorySortDirection.ASCENDING),
-                ),
-                directTracks = sortedDirectTracks,
-                recursiveTracks = sortCategoryTracks(node?.recursiveTracks.orEmpty(), currentTrackSort),
-                folderSort = currentFolderSort,
-                trackSort = currentTrackSort,
-                isBrowserOnly = node != null && !isMusicFolder && node.children.isNotEmpty(),
-                isVolumeRoot = isVolumeRoot,
-                isMusicFolder = isMusicFolder,
-                volumeIsPrimary = volumeMetadata?.isPrimary ?: node?.id?.volumeName.isPrimaryMediaVolumeName(),
-                playlists = playlists,
-                infoTrack = currentInfoTrack,
-                infoMetadata = currentInfoMeta,
-                isInfoLoading = loadingInfo,
-                isSelectionMode = selectionMode,
-                selectedTrackIds = validSelectedIds,
-                batchResult = currentBatchResult,
-                isBatchActionRunning = batchRunning,
-            )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), FolderDetailUiState())
+        FolderDetailUiState(
+            isLoaded = true,
+            folderId = folderId,
+            displayName = when {
+                node == null -> null
+                isVolumeRoot -> volumeMetadata?.displayName ?: node.displayName
+                else -> node.displayName
+            },
+            childFolders = FolderTree.sorted(
+                node?.children.orEmpty(),
+                FolderSort(field = FolderSortField.NAME, direction = CategorySortDirection.ASCENDING),
+            ),
+            directTracks = sortedDirectTracks,
+            recursiveTracks = sortCategoryTracks(node?.recursiveTracks.orEmpty(), currentTrackSort),
+            folderSort = currentFolderSort,
+            trackSort = currentTrackSort,
+            isBrowserOnly = node != null && !isMusicFolder && node.children.isNotEmpty(),
+            isVolumeRoot = isVolumeRoot,
+            isMusicFolder = isMusicFolder,
+            volumeIsPrimary = volumeMetadata?.isPrimary ?: node?.id?.volumeName.isPrimaryMediaVolumeName(),
+        )
+    }.map { state -> state to state.directTracks.mapTo(hashSetOf(), Track::id) }
+        .flowOn(computationDispatcher)
+
+    val uiState: StateFlow<FolderDetailUiState> = combine(
+        folderPresentation,
+        playlistRepository.observePlaylists().onStart { emit(emptyList()) }.catch { emit(emptyList()) },
+        infoState,
+        selectionState,
+    ) { (folder, directTrackIds), playlists, info, selection ->
+        folder.copy(
+            playlists = playlists,
+            infoTrack = info.first,
+            infoMetadata = info.second,
+            isInfoLoading = info.third,
+            isSelectionMode = selection.isSelectionMode,
+            selectedTrackIds = selection.selectedTrackIds.intersect(directTrackIds),
+            batchResult = selection.batchResult,
+            isBatchActionRunning = selection.isBatchActionRunning,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), FolderDetailUiState())
 
     fun open(folderId: FolderId) {
         selectedFolderId.value = folderId

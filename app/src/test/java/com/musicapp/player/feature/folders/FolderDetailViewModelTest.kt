@@ -25,6 +25,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -49,6 +50,7 @@ class FolderDetailViewModelTest {
             track(3, title = "Charlie", artist = "Bravo", dateAddedMs = 200, durationMs = 2_000),
         )
         val viewModel = FolderDetailViewModel(
+            computationDispatcher = dispatcher,
             mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
             playbackController = NoOpPlaybackController(),
         )
@@ -80,6 +82,7 @@ class FolderDetailViewModelTest {
         )
         val sortRepo = com.musicapp.player.fakes.FakeSortPreferencesRepository()
         val viewModel = FolderDetailViewModel(
+            computationDispatcher = dispatcher,
             mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
             playbackController = NoOpPlaybackController(),
             sortPreferencesRepository = sortRepo,
@@ -105,6 +108,7 @@ class FolderDetailViewModelTest {
     fun `volume root without direct tracks is browser only and uses friendly title`() = runTest(dispatcher) {
         val viewModel =
             FolderDetailViewModel(
+                computationDispatcher = dispatcher,
                 mediaLibraryRepository = FakeMediaLibraryRepository(
                     listOf(track(1, title = "Nested", artist = "Artist", dateAddedMs = 1, durationMs = 1_000).copy(relativePath = "Music/Live")),
                 ),
@@ -140,6 +144,7 @@ class FolderDetailViewModelTest {
     fun `volume root with direct track remains a playable music detail`() = runTest(dispatcher) {
         val viewModel =
             FolderDetailViewModel(
+                computationDispatcher = dispatcher,
                 mediaLibraryRepository = FakeMediaLibraryRepository(
                     listOf(
                         track(1, title = "Root", artist = "Artist", dateAddedMs = 1, durationMs = 1_000).copy(relativePath = ""),
@@ -163,6 +168,7 @@ class FolderDetailViewModelTest {
     fun `metadata source failure preserves volume navigation fallback`() = runTest(dispatcher) {
         val viewModel =
             FolderDetailViewModel(
+                computationDispatcher = dispatcher,
                 mediaLibraryRepository = FakeMediaLibraryRepository(
                     listOf(track(1, title = "Nested", artist = "Artist", dateAddedMs = 1, durationMs = 1_000).copy(relativePath = "Music")),
                 ),
@@ -189,6 +195,7 @@ class FolderDetailViewModelTest {
             track(3, title = "M", artist = "A", dateAddedMs = 3, durationMs = 1_000).copy(relativePath = "Root/Beta"),
         )
         val viewModel = FolderDetailViewModel(
+            computationDispatcher = dispatcher,
             mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
             playbackController = NoOpPlaybackController(),
         )
@@ -205,6 +212,7 @@ class FolderDetailViewModelTest {
         val targetTrack = track(10, title = "Single", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
         val controller = RecordingDetailPlaybackController()
         val viewModel = FolderDetailViewModel(
+            computationDispatcher = dispatcher,
             mediaLibraryRepository = FakeMediaLibraryRepository(listOf(targetTrack)),
             playbackController = controller,
         )
@@ -224,6 +232,7 @@ class FolderDetailViewModelTest {
     fun `showTrackInfo and dismissTrackInfo update metadata state`() = runTest(dispatcher) {
         val targetTrack = track(10, title = "Single", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
         val viewModel = FolderDetailViewModel(
+            computationDispatcher = dispatcher,
             mediaLibraryRepository = FakeMediaLibraryRepository(listOf(targetTrack)),
             playbackController = NoOpPlaybackController(),
         )
@@ -250,6 +259,7 @@ class FolderDetailViewModelTest {
     fun `startSelection activates selection mode and selects track`() = runTest(dispatcher) {
         val targetTrack = track(10, title = "Single", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
         val viewModel = FolderDetailViewModel(
+            computationDispatcher = dispatcher,
             mediaLibraryRepository = FakeMediaLibraryRepository(listOf(targetTrack)),
             playbackController = NoOpPlaybackController(),
         )
@@ -270,6 +280,7 @@ class FolderDetailViewModelTest {
         val t1 = track(1, title = "Track 1", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
         val t2 = track(2, title = "Track 2", artist = "Artist", dateAddedMs = 2, durationMs = 1_000)
         val viewModel = FolderDetailViewModel(
+            computationDispatcher = dispatcher,
             mediaLibraryRepository = FakeMediaLibraryRepository(listOf(t1, t2)),
             playbackController = NoOpPlaybackController(),
         )
@@ -307,6 +318,7 @@ class FolderDetailViewModelTest {
         val t2 = track(2, title = "Direct 2", artist = "Artist", dateAddedMs = 2, durationMs = 1_000)
         val t3 = track(3, title = "Subtrack", artist = "Artist", dateAddedMs = 3, durationMs = 1_000).copy(relativePath = "Music/Sub")
         val viewModel = FolderDetailViewModel(
+            computationDispatcher = dispatcher,
             mediaLibraryRepository = FakeMediaLibraryRepository(listOf(t1, t2, t3)),
             playbackController = NoOpPlaybackController(),
         )
@@ -337,6 +349,7 @@ class FolderDetailViewModelTest {
     fun `clearSelection and exitSelection clear selection and exit mode`() = runTest(dispatcher) {
         val t1 = track(1, title = "Track 1", artist = "Artist", dateAddedMs = 1, durationMs = 1_000)
         val viewModel = FolderDetailViewModel(
+            computationDispatcher = dispatcher,
             mediaLibraryRepository = FakeMediaLibraryRepository(listOf(t1)),
             playbackController = NoOpPlaybackController(),
         )
@@ -368,6 +381,7 @@ class FolderDetailViewModelTest {
         val t2 = track(2, title = "Track 2", artist = "Artist", dateAddedMs = 2, durationMs = 1_000)
         val batchExecutor = RecordingBatchTrackActionExecutor()
         val viewModel = FolderDetailViewModel(
+            computationDispatcher = dispatcher,
             mediaLibraryRepository = FakeMediaLibraryRepository(listOf(t1, t2)),
             playbackController = NoOpPlaybackController(),
             batchActionExecutor = batchExecutor,
@@ -410,6 +424,7 @@ class FolderDetailViewModelTest {
     fun `initial detail state is not loaded and becomes loaded after flow emits`() = runTest(dispatcher) {
         val viewModel =
             FolderDetailViewModel(
+                computationDispatcher = dispatcher,
                 mediaLibraryRepository = FakeMediaLibraryRepository(emptyList()),
                 playbackController = NoOpPlaybackController(),
             )
@@ -422,6 +437,46 @@ class FolderDetailViewModelTest {
         assertTrue(viewModel.uiState.value.isLoaded)
         assertTrue(viewModel.uiState.value.directTracks.isEmpty())
         assertTrue(viewModel.uiState.value.childFolders.isEmpty())
+        collection.cancel()
+    }
+
+    @Test
+    fun `selection and info changes reuse sorted presentation while library changes refresh it`() = runTest(dispatcher) {
+        val first = track(1, "Bravo", "Artist", 1, 1_000)
+        val second = track(2, "Alpha", "Artist", 2, 2_000)
+        val repository = FakeMediaLibraryRepository(listOf(first, second))
+        val viewModel = FolderDetailViewModel(
+            mediaLibraryRepository = repository,
+            playbackController = NoOpPlaybackController(),
+            computationDispatcher = dispatcher,
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(FolderId("external", "Music"))
+        advanceUntilIdle()
+        val original = viewModel.uiState.value
+        viewModel.startSelection(first.id)
+        advanceUntilIdle()
+        viewModel.showTrackInfo(first)
+        advanceUntilIdle()
+        val selected = viewModel.uiState.value
+        assertSame(original.directTracks, selected.directTracks)
+        assertSame(original.recursiveTracks, selected.recursiveTracks)
+        assertSame(original.childFolders, selected.childFolders)
+        assertEquals(setOf(first.id), selected.selectedTrackIds)
+        assertEquals(first, selected.infoTrack)
+
+        repository.mergeTracks(listOf(first.copy(title = "Aardvark")))
+        advanceUntilIdle()
+        assertEquals(listOf(first.id, second.id), viewModel.uiState.value.directTracks.map { it.id })
+        repository.setHidden(listOf(first.id), hidden = true, changedAtMs = 1L)
+        advanceUntilIdle()
+        assertEquals(listOf(second.id), viewModel.uiState.value.directTracks.map { it.id })
+        assertTrue(viewModel.uiState.value.selectedTrackIds.isEmpty())
+        viewModel.open(FolderId("external", "Missing"))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isLoaded)
+        assertEquals(null, viewModel.uiState.value.displayName)
+        assertTrue(viewModel.uiState.value.directTracks.isEmpty())
         collection.cancel()
     }
 

@@ -20,6 +20,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -172,12 +173,38 @@ class FoldersViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `sort and volume metadata updates reuse folder tree nodes`() = runTest(dispatcher) {
+        val metadata = MutableStateFlow(emptyList<FolderVolumeMetadata>())
+        val sort = com.musicapp.player.fakes.FakeSortPreferencesRepository()
+        val viewModel = createViewModel(
+            tracks = listOf(track("external", 1, "Music", "One")),
+            volumeMetadataSource = FolderVolumeMetadataSource { metadata },
+            sortPreferencesRepository = sort,
+        )
+        val collection = backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        val root = viewModel.uiState.value.volumes.single().folder
+        sort.setFolderSort(FolderSort(field = FolderSortField.TRACK_COUNT))
+        advanceUntilIdle()
+        assertSame(root, viewModel.uiState.value.volumes.single().folder)
+        metadata.value = listOf(FolderVolumeMetadata(
+            volumeName = "external", displayName = "Updated volume", rootPath = "/storage/emulated/0",
+            isPrimary = true, usedBytes = 10, totalBytes = 100,
+        ))
+        advanceUntilIdle()
+        assertSame(root, viewModel.uiState.value.volumes.single().folder)
+        assertEquals("Updated volume", viewModel.uiState.value.volumes.single().displayName)
+        collection.cancel()
+    }
+
     private fun createViewModel(
         tracks: List<Track>,
         volumeMetadataSource: FolderVolumeMetadataSource = FolderVolumeMetadataSource { flowOf(emptyList()) },
         playbackController: PlaybackControllerFacade = RecordingPlaybackController(),
         sortPreferencesRepository: com.musicapp.player.data.sort.SortPreferencesRepository = com.musicapp.player.fakes.FakeSortPreferencesRepository(),
     ) = FoldersViewModel(
+        computationDispatcher = dispatcher,
         mediaLibraryRepository = FakeMediaLibraryRepository(tracks),
         volumeMetadataSource = volumeMetadataSource,
         playbackController = playbackController,
