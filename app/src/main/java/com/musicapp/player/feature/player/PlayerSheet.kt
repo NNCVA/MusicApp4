@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -88,6 +89,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
@@ -1087,9 +1089,29 @@ internal fun QueuePage(
             dragSheet = onSheetDrag,
         )
     }
+
+    val currentIndex = remember(rows) { rows.indexOfFirst { it.isCurrent } }
+    LaunchedEffect(currentIndex) {
+        if (currentIndex >= 0) {
+            listState.animateScrollToItem(currentIndex)
+        }
+    }
+
+    val counterText = remember(rows.size, currentIndex) {
+        if (rows.isEmpty()) {
+            "- / 0"
+        } else if (currentIndex >= 0) {
+            "${currentIndex + 1} / ${rows.size}"
+        } else {
+            "- / ${rows.size}"
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().height(dimensions.minimumTouchTarget)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(dimensions.minimumTouchTarget)
                 .draggable(
                     state = headerDragState,
                     orientation = Orientation.Vertical,
@@ -1097,27 +1119,50 @@ internal fun QueuePage(
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = stringResource(R.string.player_queue_title),
-                style = MusicTheme.typography.titleLarge,
-                color = MusicTheme.colors.onSurface,
+            Box(
                 modifier = Modifier.weight(1f),
-            )
-            BareIconButton(
-                onClick = onCycleMode,
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
+                contentAlignment = Alignment.CenterStart,
             ) {
-                Icon(
-                    painter = painterResource(playbackMode.iconRes()),
-                    contentDescription = stringResource(playbackMode.labelRes()),
-                    modifier = Modifier.size(dimensions.spaceLarge),
+                Text(
+                    text = counterText,
+                    style = MusicTheme.typography.bodyMedium,
+                    color = MusicTheme.colors.onSurfaceVariant,
                 )
             }
+            Text(
+                text = stringResource(R.string.player_queue_title),
+                style = MusicTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = MusicTheme.colors.onSurface,
+            )
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                BareIconButton(
+                    onClick = onCycleMode,
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(playbackMode.iconRes()),
+                        contentDescription = stringResource(playbackMode.labelRes()),
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                        tint = MusicTheme.colors.onSurface,
+                    )
+                }
+            }
         }
+
+        Spacer(Modifier.height(dimensions.spaceExtraSmall))
+
         LazyColumn(
             state = listState,
             overscrollEffect = overscrollEffect,
-            modifier = Modifier.fillMaxWidth().weight(1f)
+            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
+            contentPadding = PaddingValues(vertical = dimensions.spaceExtraSmall),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
                 .bounceOverscroll(overscrollEffect)
                 .nestedScroll(nestedScrollConnection),
         ) {
@@ -1128,39 +1173,89 @@ internal fun QueuePage(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            stringResource(R.string.player_queue_empty),
+                            text = stringResource(R.string.player_queue_empty),
                             color = MusicTheme.colors.onSurfaceVariant,
                         )
                     }
                 }
             } else {
                 items(rows, key = { it.queueItemId.value }) { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(dimensions.trackListItemHeight)
-                            .clickable { onJump(row.queueItemId) }
-                            .padding(horizontal = dimensions.spaceSmall),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                row.track?.title ?: stringResource(R.string.player_unknown_track),
-                                style = MusicTheme.typography.titleMedium,
-                                color = MusicTheme.colors.onSurface,
-                                maxLines = 1,
-                            )
-                            if (row.isCurrent) {
-                                Text(
-                                    stringResource(R.string.player_queue_current),
-                                    style = MusicTheme.typography.labelSmall,
-                                    color = MusicTheme.colors.onSurfaceVariant,
-                                )
-                            }
-                        }
-                        TextButton(onClick = { onRemove(row.queueItemId) }) { Text(stringResource(R.string.player_queue_remove)) }
-                    }
-                    HorizontalDivider()
+                    QueueItemRow(
+                        row = row,
+                        onJump = { onJump(row.queueItemId) },
+                        onRemove = { onRemove(row.queueItemId) },
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun QueueItemRow(
+    row: PlayerQueueRow,
+    onJump: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dimensions = MusicTheme.dimensions
+    val backgroundColor = if (row.isCurrent) {
+        MusicTheme.colors.onSurface.copy(alpha = 0.12f)
+    } else {
+        Color.Transparent
+    }
+    val itemShape = RoundedCornerShape(dimensions.spaceSmallMedium)
+
+    val artist = row.track?.artistName?.localizedArtistName() ?: stringResource(R.string.unknown_artist)
+    val album = row.track?.albumTitle
+    val subtitle = if (!album.isNullOrBlank()) {
+        "$artist - $album"
+    } else {
+        artist
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(itemShape)
+            .background(backgroundColor)
+            .clickable(onClick = onJump)
+            .padding(
+                start = dimensions.spaceMedium,
+                end = dimensions.spaceSmall,
+                top = dimensions.spaceSmall,
+                bottom = dimensions.spaceSmall,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = row.track?.title ?: stringResource(R.string.player_unknown_track),
+                style = MusicTheme.typography.bodyLarge,
+                fontWeight = if (row.isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                color = MusicTheme.colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                style = MusicTheme.typography.bodySmall,
+                color = MusicTheme.colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        BareIconButton(
+            onClick = onRemove,
+            modifier = Modifier.size(dimensions.minimumTouchTarget),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_common_remove),
+                contentDescription = stringResource(R.string.player_queue_remove),
+                tint = MusicTheme.colors.onSurfaceVariant,
+                modifier = Modifier.size(dimensions.spaceLarge),
+            )
         }
     }
 }
