@@ -45,6 +45,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
@@ -60,6 +63,7 @@ import com.musicapp.player.core.designsystem.component.localizedArtistName
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.image.AudioArtworkRequest
+import com.musicapp.player.core.image.ArtworkRendition
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryNavigationIconButton
 import com.musicapp.player.feature.category.labelRes
@@ -364,15 +368,23 @@ private fun ArtistArtwork(
     modifier: Modifier,
 ) {
     val repTrack = remember(artist.id) { artist.sortedArtworkCandidates().firstOrNull() }
+    val platformContext = LocalPlatformContext.current
     val request = remember(artist.id, repTrack?.id, repTrack?.dateModifiedMs) {
         AudioArtworkRequest.ArtistArtworkRequest(
             artistName = artist.id.name,
             representativeTrackId = repTrack?.id,
             dateModifiedMs = repTrack?.dateModifiedMs ?: 0L,
+            rendition = ArtworkRendition.LIST_THUMBNAIL,
         )
     }
+    val imageRequest = remember(platformContext, request) {
+        ImageRequest.Builder(platformContext)
+            .data(request)
+            .crossfade(false)
+            .build()
+    }
     AsyncImage(
-        model = request,
+        model = imageRequest,
         contentDescription = stringResource(R.string.artist_artwork_description, artist.displayName.localizedArtistName()),
         modifier = modifier.clip(CircleShape).background(MusicTheme.colors.secondaryContainer),
         contentScale = ContentScale.Crop,

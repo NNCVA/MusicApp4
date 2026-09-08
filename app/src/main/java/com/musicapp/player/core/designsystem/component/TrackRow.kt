@@ -33,6 +33,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.Availability
@@ -40,6 +43,8 @@ import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.image.ArtworkRendition
+import com.musicapp.player.core.image.toArtworkRequest
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicTheme
 import android.content.Context
@@ -105,8 +110,18 @@ fun TrackArtwork(
 ) {
     val shape = MusicTheme.shapes.extraSmall
     val artworkDescription = stringResource(R.string.track_artwork_description, track.title)
+    val platformContext = LocalPlatformContext.current
+    val request = remember(track.id, track.dateModifiedMs) {
+        track.toArtworkRequest(rendition = ArtworkRendition.LIST_THUMBNAIL)
+    }
+    val imageRequest = remember(platformContext, request) {
+        ImageRequest.Builder(platformContext)
+            .data(request)
+            .crossfade(false)
+            .build()
+    }
     AsyncImage(
-        model = track,
+        model = imageRequest,
         contentDescription = artworkDescription,
         modifier = modifier
             .clip(shape)

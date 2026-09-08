@@ -81,6 +81,38 @@ class AudioArtworkFetcherTest {
     }
 
     @Test
+    fun fetch_passesRequestRenditionToRenditionAwareExtractor() = runTest {
+        var requestedRendition: ArtworkRendition? = null
+        val extractor = object : ArtworkExtractor {
+            override suspend fun extract(context: Context, uri: android.net.Uri): ByteArray =
+                byteArrayOf(1)
+
+            override suspend fun extract(
+                context: Context,
+                uri: android.net.Uri,
+                rendition: ArtworkRendition,
+            ): ByteArray {
+                requestedRendition = rendition
+                return byteArrayOf(1)
+            }
+        }
+        val request = AudioArtworkRequest.TrackArtworkRequest(
+            trackId = TrackId("external", 103L),
+            dateModifiedMs = 1_000L,
+            rendition = ArtworkRendition.LIST_THUMBNAIL,
+        )
+        val fetcher = AudioArtworkFetcher(
+            data = request,
+            options = options,
+            extractor = extractor,
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        assertNotNull(fetcher.fetch())
+        assertEquals(ArtworkRendition.LIST_THUMBNAIL, requestedRendition)
+    }
+
+    @Test
     fun factory_createsFetcherForTrack() {
         val factory = TrackArtworkFetcherFactory(context, uriResolver, limiter)
         val track = createSampleTrack(id = 102L)
@@ -243,6 +275,7 @@ class AudioArtworkFetcherTest {
     @Test
     fun fetch_throttlesConcurrency_underHighLoad() = runTest {
         val maxConcurrency = ArtworkReadLimiter.MAX_CONCURRENT_READS
+        assertEquals(2, maxConcurrency)
         val sharedLimiter = ArtworkReadLimiter()
         var activeWorkers = 0
         var peakWorkers = 0
@@ -263,5 +296,27 @@ class AudioArtworkFetcherTest {
         jobs.joinAll()
 
         assertTrue("Peak workers ($peakWorkers) must not exceed max allowed ($maxConcurrency)", peakWorkers <= maxConcurrency)
+    }
+
+    @Test
+    fun artworkReadOrder_prefersListThumbnailAndKeepsFullSizeEmbeddedFirst() {
+        assertEquals(256, LIST_THUMBNAIL_PX)
+        assertEquals(512, GRID_THUMBNAIL_PX)
+        assertEquals(
+            listOf(ArtworkReadPath.THUMBNAIL, ArtworkReadPath.EMBEDDED),
+            artworkReadOrder(ArtworkRendition.LIST_THUMBNAIL, android.os.Build.VERSION_CODES.Q),
+        )
+        assertEquals(
+            listOf(ArtworkReadPath.THUMBNAIL, ArtworkReadPath.EMBEDDED),
+            artworkReadOrder(ArtworkRendition.GRID_THUMBNAIL, android.os.Build.VERSION_CODES.Q),
+        )
+        assertEquals(
+            listOf(ArtworkReadPath.EMBEDDED, ArtworkReadPath.THUMBNAIL),
+            artworkReadOrder(ArtworkRendition.FULL_SIZE, android.os.Build.VERSION_CODES.Q),
+        )
+        assertEquals(
+            listOf(ArtworkReadPath.EMBEDDED),
+            artworkReadOrder(ArtworkRendition.LIST_THUMBNAIL, android.os.Build.VERSION_CODES.P),
+        )
     }
 }

@@ -148,11 +148,11 @@ class AdversarialArtworkPipelineStressTest {
     fun keyer_boundaryValues_LongMaxAndZero() {
         val trackZero = sampleTrack(id = 1L, modified = 0L)
         val keyZero = keyer.key(trackZero, options)
-        assertEquals("artwork:track:external:1:0", keyZero)
+        assertEquals("artwork:track:external:1:0:full_size", keyZero)
 
         val trackMax = sampleTrack(id = Long.MAX_VALUE, modified = Long.MAX_VALUE)
         val keyMax = keyer.key(trackMax, options)
-        assertEquals("artwork:track:external:${Long.MAX_VALUE}:${Long.MAX_VALUE}", keyMax)
+        assertEquals("artwork:track:external:${Long.MAX_VALUE}:${Long.MAX_VALUE}:full_size", keyMax)
     }
 
     @Test
@@ -378,4 +378,3 @@ class AdversarialArtworkPipelineStressTest {
         }
     }
 }
-

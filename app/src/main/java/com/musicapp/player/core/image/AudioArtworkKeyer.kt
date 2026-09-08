@@ -15,21 +15,21 @@ class AudioArtworkKeyer @Inject constructor() : Keyer<AudioArtworkRequest> {
     override fun key(data: AudioArtworkRequest, options: Options): String =
         when (data) {
             is AudioArtworkRequest.TrackArtworkRequest ->
-                "artwork:track:${data.trackId.volumeName}:${data.trackId.mediaStoreId}:${data.dateModifiedMs}"
+                "artwork:track:${data.trackId.volumeName}:${data.trackId.mediaStoreId}:${data.dateModifiedMs}:${data.rendition.cacheKey}"
 
             is AudioArtworkRequest.AlbumArtworkRequest -> {
                 val repPart = data.representativeTrackId?.let { "${it.volumeName}:${it.mediaStoreId}" } ?: "none"
-                "artwork:album:${data.albumId.volumeName}:${data.albumId.mediaStoreId}:$repPart:${data.dateModifiedMs}"
+                "artwork:album:${data.albumId.volumeName}:${data.albumId.mediaStoreId}:$repPart:${data.dateModifiedMs}:${data.rendition.cacheKey}"
             }
 
             is AudioArtworkRequest.ArtistArtworkRequest -> {
                 val repPart = data.representativeTrackId?.let { "${it.volumeName}:${it.mediaStoreId}" } ?: "none"
-                "artwork:artist:${data.artistName}:$repPart:${data.dateModifiedMs}"
+                "artwork:artist:${data.artistName}:$repPart:${data.dateModifiedMs}:${data.rendition.cacheKey}"
             }
 
             is AudioArtworkRequest.PlaylistArtworkRequest -> {
                 val repPart = data.representativeTrackId?.let { "${it.volumeName}:${it.mediaStoreId}" } ?: "none"
-                "artwork:playlist:${data.playlistId.value}:$repPart:${data.dateModifiedMs}"
+                "artwork:playlist:${data.playlistId.value}:$repPart:${data.dateModifiedMs}:${data.rendition.cacheKey}"
             }
         }
 
@@ -37,7 +37,7 @@ class AudioArtworkKeyer @Inject constructor() : Keyer<AudioArtworkRequest> {
      * Overload for direct [Track] instances.
      */
     fun key(track: Track, options: Options): String =
-        "artwork:track:${track.id.volumeName}:${track.id.mediaStoreId}:${track.dateModifiedMs}"
+        "artwork:track:${track.id.volumeName}:${track.id.mediaStoreId}:${track.dateModifiedMs}:${ArtworkRendition.FULL_SIZE.cacheKey}"
 
     /**
      * Polymorphic key generation helper with safe fallback for unsupported data models.
@@ -56,5 +56,5 @@ class AudioArtworkKeyer @Inject constructor() : Keyer<AudioArtworkRequest> {
 @Singleton
 class TrackArtworkKeyer @Inject constructor() : Keyer<Track> {
     override fun key(data: Track, options: Options): String =
-        "artwork:track:${data.id.volumeName}:${data.id.mediaStoreId}:${data.dateModifiedMs}"
+        "artwork:track:${data.id.volumeName}:${data.id.mediaStoreId}:${data.dateModifiedMs}:${ArtworkRendition.FULL_SIZE.cacheKey}"
 }

@@ -66,6 +66,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
@@ -74,6 +77,7 @@ import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.domain.model.Availability
+import com.musicapp.player.core.image.ArtworkRendition
 import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryNavigationIconButton
@@ -365,15 +369,23 @@ private fun AlbumArtwork(
         -> MusicTheme.shapes.large
     }
     val artworkDescription = stringResource(R.string.album_artwork_description, album.title.localizedAlbumTitle())
+    val platformContext = LocalPlatformContext.current
     val request = remember(album.id, album.representativeTrack.id, album.representativeTrack.dateModifiedMs) {
         AudioArtworkRequest.AlbumArtworkRequest(
             albumId = album.id,
             representativeTrackId = album.representativeTrack.id,
             dateModifiedMs = album.representativeTrack.dateModifiedMs,
+            rendition = ArtworkRendition.GRID_THUMBNAIL,
         )
     }
+    val imageRequest = remember(platformContext, request) {
+        ImageRequest.Builder(platformContext)
+            .data(request)
+            .crossfade(false)
+            .build()
+    }
     AsyncImage(
-        model = request,
+        model = imageRequest,
         contentDescription = artworkDescription,
         modifier = modifier
             .clip(shape)
@@ -546,15 +558,23 @@ private fun AlbumRowArtwork(
     modifier: Modifier = Modifier,
 ) {
     val artworkDescription = stringResource(R.string.album_artwork_description, album.title.localizedAlbumTitle())
+    val platformContext = LocalPlatformContext.current
     val request = remember(album.id, album.representativeTrack.id, album.representativeTrack.dateModifiedMs) {
         AudioArtworkRequest.AlbumArtworkRequest(
             albumId = album.id,
             representativeTrackId = album.representativeTrack.id,
             dateModifiedMs = album.representativeTrack.dateModifiedMs,
+            rendition = ArtworkRendition.LIST_THUMBNAIL,
         )
     }
+    val imageRequest = remember(platformContext, request) {
+        ImageRequest.Builder(platformContext)
+            .data(request)
+            .crossfade(false)
+            .build()
+    }
     AsyncImage(
-        model = request,
+        model = imageRequest,
         contentDescription = artworkDescription,
         modifier = modifier
             .clip(MusicTheme.shapes.small)

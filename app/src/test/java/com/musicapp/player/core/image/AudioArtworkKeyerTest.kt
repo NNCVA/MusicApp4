@@ -58,7 +58,7 @@ class AudioArtworkKeyerTest {
 
         val key = keyer.key(track, options)
 
-        assertEquals("artwork:track:external_primary:1001:1700000000", key)
+        assertEquals("artwork:track:external_primary:1001:1700000000:full_size", key)
     }
 
     @Test
@@ -108,7 +108,7 @@ class AudioArtworkKeyerTest {
 
         val key = keyer.key(request, options)
 
-        assertEquals("artwork:track:external:5005:9999", key)
+        assertEquals("artwork:track:external:5005:9999:full_size", key)
     }
 
     @Test
@@ -123,7 +123,7 @@ class AudioArtworkKeyerTest {
 
         val key = keyer.key(request, options)
 
-        assertEquals("artwork:album:external:301:external:1002:8888", key)
+        assertEquals("artwork:album:external:301:external:1002:8888:full_size", key)
 
         val requestNoRep = AudioArtworkRequest.AlbumArtworkRequest(
             albumId = albumId,
@@ -131,7 +131,7 @@ class AudioArtworkKeyerTest {
             dateModifiedMs = 8_888L,
         )
         val keyNoRep = keyer.key(requestNoRep, options)
-        assertEquals("artwork:album:external:301:none:8888", keyNoRep)
+        assertEquals("artwork:album:external:301:none:8888:full_size", keyNoRep)
     }
 
     @Test
@@ -145,7 +145,7 @@ class AudioArtworkKeyerTest {
 
         val key = keyer.key(request, options)
 
-        assertEquals("artwork:artist:Radiohead:external:1003:7777", key)
+        assertEquals("artwork:artist:Radiohead:external:1003:7777:full_size", key)
     }
 
     @Test
@@ -159,7 +159,7 @@ class AudioArtworkKeyerTest {
 
         val key = keyer.key(request, options)
 
-        assertEquals("artwork:playlist:42:external:1004:6666", key)
+        assertEquals("artwork:playlist:42:external:1004:6666:full_size", key)
     }
 
     @Test
@@ -187,6 +187,27 @@ class AudioArtworkKeyerTest {
 
         val key = keyer.key(track, options)
 
-        assertEquals("artwork:track:external:6006:0", key)
+        assertEquals("artwork:track:external:6006:0:full_size", key)
+    }
+
+    @Test
+    fun key_includesRenditionAndSeparatesListThumbnailFromFullSize() {
+        val fullSizeRequest = AudioArtworkRequest.TrackArtworkRequest(
+            trackId = TrackId("external", 7007L),
+            dateModifiedMs = 4_000L,
+            rendition = ArtworkRendition.FULL_SIZE,
+        )
+        val listRequest = fullSizeRequest.copy(rendition = ArtworkRendition.LIST_THUMBNAIL)
+        val gridRequest = fullSizeRequest.copy(rendition = ArtworkRendition.GRID_THUMBNAIL)
+
+        val fullSizeKey = keyer.key(fullSizeRequest, options)
+        val listKey = keyer.key(listRequest, options)
+        val gridKey = keyer.key(gridRequest, options)
+
+        assertEquals("artwork:track:external:7007:4000:full_size", fullSizeKey)
+        assertEquals("artwork:track:external:7007:4000:list_thumbnail", listKey)
+        assertEquals("artwork:track:external:7007:4000:grid_thumbnail", gridKey)
+        assertNotEquals(fullSizeKey, listKey)
+        assertNotEquals(listKey, gridKey)
     }
 }
