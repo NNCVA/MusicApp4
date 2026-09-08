@@ -1,6 +1,7 @@
 package com.musicapp.player.feature.lyrics
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
@@ -27,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +37,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
@@ -49,6 +52,7 @@ import com.musicapp.player.R
 import com.musicapp.player.core.lyrics.LyricsSource
 import com.musicapp.player.feature.player.rememberPlayerSheetNestedScrollConnection
 import com.musicapp.player.theme.MusicTheme
+import kotlin.math.abs
 
 @Composable
 fun LyricsPaneRoute(
@@ -147,13 +151,21 @@ fun LyricsPane(
                     val index = state.activeLineIndex ?: return@LaunchedEffect
                     if (!state.autoCenterEnabled) return@LaunchedEffect
                     if (listState.isScrollInProgress) return@LaunchedEffect
-                    listState.animateScrollToItem(index)
-                    val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
-                        ?: return@LaunchedEffect
-                    val viewportCenter = (
-                        listState.layoutInfo.viewportStartOffset + listState.layoutInfo.viewportEndOffset
-                    ) / 2f
-                    listState.animateScrollBy(item.offset + item.size / 2f - viewportCenter)
+                    val visibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+                    if (visibleItem != null) {
+                        val viewportCenter = (
+                            listState.layoutInfo.viewportStartOffset + listState.layoutInfo.viewportEndOffset
+                        ) / 2f
+                        val offsetFromCenter = (visibleItem.offset + visibleItem.size / 2f) - viewportCenter
+                        if (abs(offsetFromCenter) > 0.5f) {
+                            listState.animateScrollBy(
+                                value = offsetFromCenter,
+                                animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                            )
+                        }
+                    } else {
+                        listState.scrollToItem(index = index, scrollOffset = 0)
+                    }
                 }
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val centerableEdgePadding = ((maxHeight - dimensions.minimumTouchTarget) / 2)
@@ -188,12 +200,21 @@ fun LyricsPane(
                         contentPadding = PaddingValues(vertical = centerableEdgePadding),
                         //verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
                     ) {
-                        itemsIndexed(state.lines) { index, line ->
+                        itemsIndexed(
+                            items = state.lines,
+                            key = { index, line -> "${index}_${line.timestampMs}" },
+                        ) { index, line ->
                             val isActive = index == state.activeLineIndex
-                            val animatedFontSize by animateFloatAsState(
-                                targetValue = if (isActive) state.fontSizeSp + 2f else state.fontSizeSp.toFloat(),
-                                animationSpec = tween(durationMillis = 200),
-                                label = "lyricFontSize_$index",
+                            val baseFontSize = state.fontSizeSp.toFloat()
+                            val targetScale = if (isActive && baseFontSize > 0f) {
+                                (baseFontSize + 2f) / baseFontSize
+                            } else {
+                                1f
+                            }
+                            val animatedScale by animateFloatAsState(
+                                targetValue = targetScale,
+                                animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                                label = "lyricScale_$index",
                             )
                             val animatedColor by animateColorAsState(
                                 targetValue = if (isActive) {
@@ -201,15 +222,21 @@ fun LyricsPane(
                                 } else {
                                     MusicTheme.colors.onSurfaceVariant.copy(alpha = 0.5f)
                                 },
-                                animationSpec = tween(durationMillis = 200),
+                                animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
                                 label = "lyricColor_$index",
                             )
+                            val transformOrigin = remember(state.isTextCentered) {
+                                TransformOrigin(
+                                    pivotFractionX = if (state.isTextCentered) 0.5f else 0f,
+                                    pivotFractionY = 0.5f,
+                                )
+                            }
                             Text(
                                 text = line.text,
                                 style = MusicTheme.typography.bodyLarge.copy(
-                                    fontSize = animatedFontSize.sp,
+                                    fontSize = state.fontSizeSp.sp,
                                     fontWeight = FontWeight(state.fontWeight),
-                                    lineHeight = (animatedFontSize * 1.45f).sp,
+                                    lineHeight = (state.fontSizeSp * 1.45f).sp,
                                 ),
                                 color = animatedColor,
                                 textAlign = if (state.isTextCentered) TextAlign.Center else TextAlign.Start,
@@ -220,7 +247,12 @@ fun LyricsPane(
                                     .padding(
                                         horizontal = dimensions.contentHorizontalPadding,
                                         vertical = dimensions.spaceSmall,
-                                    ),
+                                    )
+                                    .graphicsLayer {
+                                        scaleX = animatedScale
+                                        scaleY = animatedScale
+                                        this.transformOrigin = transformOrigin
+                                    },
                             )
                         }
                     }
