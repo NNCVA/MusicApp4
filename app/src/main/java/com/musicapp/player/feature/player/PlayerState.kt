@@ -65,6 +65,12 @@ object PlayerLayerAlpha {
     fun full(progress: Float): Float = ((progress - 0.25f) / 0.75f).coerceIn(0f, 1f)
 }
 
+enum class TrackSlideDirection {
+    FORWARD,
+    BACKWARD,
+    NONE,
+}
+
 enum class FullPlayerPage { ARTWORK, LYRICS, QUEUE }
 
 data class FullPlayerState(val page: FullPlayerPage = FullPlayerPage.ARTWORK) {

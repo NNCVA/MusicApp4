@@ -497,6 +497,122 @@ class PlayerViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `skipNext updates slideDirection to FORWARD`() = runTest(dispatcher) {
+        val tracks = listOf(track(1), track(2), track(3))
+        val queue = PlaybackQueue(originalQueue = items(1, 2, 3), currentItemId = id(1))
+        val controller = RecordingController(
+            PlaybackControllerState(
+                connectionState = PlaybackConnectionState.CONNECTED,
+                currentTrackId = tracks[0].id,
+                queue = queue,
+                canSkipNext = true,
+            ),
+        )
+        val viewModel = subject(controller, tracks)
+        val collection = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+        assertEquals(TrackSlideDirection.NONE, viewModel.uiState.value.slideDirection)
+
+        viewModel.skipNext()
+        controller.update { copy(currentTrackId = tracks[1].id, queue = queue.copy(currentItemId = id(2))) }
+        advanceUntilIdle()
+
+        assertEquals(TrackSlideDirection.FORWARD, viewModel.uiState.value.slideDirection)
+        collection.cancel()
+    }
+
+    @Test
+    fun `skipPrevious updates slideDirection to BACKWARD`() = runTest(dispatcher) {
+        val tracks = listOf(track(1), track(2), track(3))
+        val queue = PlaybackQueue(originalQueue = items(1, 2, 3), currentItemId = id(2))
+        val controller = RecordingController(
+            PlaybackControllerState(
+                connectionState = PlaybackConnectionState.CONNECTED,
+                currentTrackId = tracks[1].id,
+                queue = queue,
+                canSkipPrevious = true,
+            ),
+        )
+        val viewModel = subject(controller, tracks)
+        val collection = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+
+        viewModel.skipPrevious()
+        controller.update { copy(currentTrackId = tracks[0].id, queue = queue.copy(currentItemId = id(1))) }
+        advanceUntilIdle()
+
+        assertEquals(TrackSlideDirection.BACKWARD, viewModel.uiState.value.slideDirection)
+        collection.cancel()
+    }
+
+    @Test
+    fun `jumpToQueueItem forward updates slideDirection to FORWARD and backward to BACKWARD`() = runTest(dispatcher) {
+        val tracks = listOf(track(1), track(2), track(3))
+        val queue = PlaybackQueue(originalQueue = items(1, 2, 3), currentItemId = id(1))
+        val controller = RecordingController(
+            PlaybackControllerState(
+                connectionState = PlaybackConnectionState.CONNECTED,
+                currentTrackId = tracks[0].id,
+                queue = queue,
+            ),
+        )
+        val viewModel = subject(controller, tracks)
+        val collection = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+
+        // Jump forward from item 1 to item 3
+        viewModel.jumpToQueueItem(id(3))
+        controller.update { copy(currentTrackId = tracks[2].id, queue = queue.copy(currentItemId = id(3))) }
+        advanceUntilIdle()
+        assertEquals(TrackSlideDirection.FORWARD, viewModel.uiState.value.slideDirection)
+
+        // Jump backward from item 3 to item 2
+        viewModel.jumpToQueueItem(id(2))
+        controller.update { copy(currentTrackId = tracks[1].id, queue = queue.copy(currentItemId = id(2))) }
+        advanceUntilIdle()
+        assertEquals(TrackSlideDirection.BACKWARD, viewModel.uiState.value.slideDirection)
+
+        collection.cancel()
+    }
+
+    @Test
+    fun `natural playback advance in queue updates slideDirection based on position`() = runTest(dispatcher) {
+        val tracks = listOf(track(1), track(2))
+        val queue = PlaybackQueue(originalQueue = items(1, 2), currentItemId = id(1))
+        val controller = RecordingController(
+            PlaybackControllerState(
+                connectionState = PlaybackConnectionState.CONNECTED,
+                currentTrackId = tracks[0].id,
+                queue = queue,
+            ),
+        )
+        val viewModel = subject(controller, tracks)
+        val collection = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+        assertEquals(TrackSlideDirection.NONE, viewModel.uiState.value.slideDirection)
+
+        // Auto-advance to track 2 without clicking buttons
+        controller.update { copy(currentTrackId = tracks[1].id, queue = queue.copy(currentItemId = id(2))) }
+        advanceUntilIdle()
+        assertEquals(TrackSlideDirection.FORWARD, viewModel.uiState.value.slideDirection)
+
+        // Same track replay does not change trackId
+        controller.update { copy(positionMs = 0) }
+        advanceUntilIdle()
+        assertEquals(tracks[1].id, viewModel.uiState.value.currentTrack?.id)
+
+        collection.cancel()
+    }
+
     private fun subject(
         controller: RecordingController,
         tracks: List<Track>,

@@ -72,6 +72,7 @@ data class PlayerUiState(
     val showSleepTimer: Boolean = false,
     val savedSleepTimerDurationMinutes: Int = AppSettings.DEFAULT_SLEEP_TIMER_DURATION_MINUTES,
     val savedSleepTimerExtendToEndOfTrack: Boolean = false,
+    val slideDirection: TrackSlideDirection = TrackSlideDirection.NONE,
 )
 
 data class PlayerShellState(
@@ -151,6 +152,10 @@ class PlayerViewModel(
         _expandRequests.tryEmit(Unit)
     }
 
+    private var pendingExplicitDirection: TrackSlideDirection? = null
+    private var previousTrackId: TrackId? = null
+    private var currentSlideDirection: TrackSlideDirection = TrackSlideDirection.NONE
+
     val shellState: StateFlow<PlayerShellState> = currentTrack
         .map { PlayerShellState(currentTrackId = it?.id) }
         .distinctUntilChanged()
@@ -164,6 +169,42 @@ class PlayerViewModel(
         dialogsState,
     ) { playback, (byId, rows), currentArtwork, loadedArtworkTrackId, (info, timerDialog) ->
         val currentTrack = playback.currentTrackId?.let(byId::get)
+        val newTrackId = currentTrack?.id
+        if (newTrackId != previousTrackId) {
+            currentSlideDirection = when {
+                previousTrackId == null -> TrackSlideDirection.NONE
+                pendingExplicitDirection != null -> {
+                    val dir = pendingExplicitDirection!!
+                    pendingExplicitDirection = null
+                    dir
+                }
+                else -> {
+                    val oldIndex = rows.indexOfFirst { it.track?.id == previousTrackId }
+                    val newIndex = rows.indexOfFirst { it.track?.id == newTrackId }
+                    when {
+                        oldIndex != -1 && newIndex != -1 -> {
+                            if (newIndex > oldIndex) {
+                                TrackSlideDirection.FORWARD
+                            } else if (newIndex < oldIndex) {
+                                if (oldIndex == rows.lastIndex && newIndex == 0) {
+                                    TrackSlideDirection.FORWARD
+                                } else if (oldIndex == 0 && newIndex == rows.lastIndex) {
+                                    TrackSlideDirection.BACKWARD
+                                } else {
+                                    TrackSlideDirection.BACKWARD
+                                }
+                            } else {
+                                TrackSlideDirection.NONE
+                            }
+                        }
+                        else -> TrackSlideDirection.NONE
+                    }
+                }
+            }
+            previousTrackId = newTrackId
+        } else {
+            pendingExplicitDirection = null
+        }
         PlayerUiState(
             loadState = playback.playbackStatus.toPlayerLoadState(),
             errorMessageRes = playback.playbackFailure?.code?.messageRes(),
@@ -185,6 +226,7 @@ class PlayerViewModel(
             showSleepTimer = timerDialog.first,
             savedSleepTimerDurationMinutes = timerDialog.second,
             savedSleepTimerExtendToEndOfTrack = timerDialog.third,
+            slideDirection = currentSlideDirection,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, PlayerUiState())
 
@@ -225,6 +267,7 @@ class PlayerViewModel(
             return
         }
         lastSkipPreviousClickTimeMs = now
+        pendingExplicitDirection = TrackSlideDirection.BACKWARD
         playbackController.skipToPrevious()
     }
 
@@ -235,6 +278,7 @@ class PlayerViewModel(
             return
         }
         lastSkipNextClickTimeMs = now
+        pendingExplicitDirection = TrackSlideDirection.FORWARD
         playbackController.skipToNext()
     }
 
@@ -251,7 +295,17 @@ class PlayerViewModel(
     fun fastForward() = seekBy(SEEK_INTERVAL_MS)
 
     fun cyclePlaybackMode() = playbackController.setPlaybackMode(uiState.value.playbackMode.nextMode())
-    fun jumpToQueueItem(queueItemId: QueueItemId) = playbackController.jumpToQueueItem(queueItemId)
+    fun jumpToQueueItem(queueItemId: QueueItemId) {
+        val currentQueue = uiState.value.queue
+        val currentIndex = currentQueue.indexOfFirst { it.isCurrent }
+        val targetIndex = currentQueue.indexOfFirst { it.queueItemId == queueItemId }
+        pendingExplicitDirection = when {
+            currentIndex != -1 && targetIndex != -1 && targetIndex > currentIndex -> TrackSlideDirection.FORWARD
+            currentIndex != -1 && targetIndex != -1 && targetIndex < currentIndex -> TrackSlideDirection.BACKWARD
+            else -> TrackSlideDirection.NONE
+        }
+        playbackController.jumpToQueueItem(queueItemId)
+    }
     fun removeFromQueue(queueItemId: QueueItemId) = playbackController.removeFromQueue(queueItemId)
 
     fun showTrackInfo() {

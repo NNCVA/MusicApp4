@@ -246,30 +246,11 @@ internal fun LandscapeControlsPage(
         horizontalAlignment = Alignment.Start,
     ) {
         // 1. 歌曲标题与艺术家名称
-        Column(
+        PlayerTrackHeader(
+            track = track,
+            direction = state.slideDirection,
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.Start,
-        ) {
-            Text(
-                text = track.title,
-                style = MusicTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Medium,
-                color = MusicTheme.colors.onSurface,
-                maxLines = 1,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .basicMarquee(iterations = Int.MAX_VALUE),
-            )
-            Spacer(Modifier.height(dimensions.spaceExtraSmall))
-            Text(
-                text = track.artistName.localizedArtistName(),
-                style = MusicTheme.typography.bodyMedium,
-                color = MusicTheme.colors.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+        )
 
         // 2. 状态指示（准备中 / 错误等）
         Box(modifier = Modifier.fillMaxWidth()) {
