@@ -358,6 +358,9 @@
     <string name="settings_color_source">Color source</string>
     <string name="settings_color_dynamic">Material You</string>
     <string name="settings_color_preset">Preset colors</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <string name="settings_dynamic_color_summary">Material 3 dynamic palette based on system wallpaper</string>
+    <string name="settings_dynamic_color_unsupported">Dynamic color is not supported on this Android version</string>
     <string name="settings_preset_theme">Preset theme</string>
     <string name="settings_theme_blue">Default blue</string>
     <string name="settings_theme_emerald">Emerald green</string>

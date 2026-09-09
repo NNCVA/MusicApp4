@@ -345,6 +345,9 @@
     <string name="settings_color_source">颜色来源</string>
     <string name="settings_color_dynamic">Material You</string>
     <string name="settings_color_preset">预设颜色</string>
+    <string name="settings_dynamic_color">动态取色</string>
+    <string name="settings_dynamic_color_summary">基于系统壁纸的 Material 3 动态配色</string>
+    <string name="settings_dynamic_color_unsupported">当前系统版本不支持动态取色</string>
     <string name="settings_preset_theme">预设主题</string>
     <string name="settings_theme_blue">默认蓝</string>
     <string name="settings_theme_emerald">翡翠绿</string>

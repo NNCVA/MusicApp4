@@ -1,5 +1,6 @@
 package com.musicapp.player.feature.settings
 
+import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.BorderStroke
@@ -26,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.draw.clip
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -33,6 +36,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -192,13 +196,15 @@ private fun SettingsScreen(
 }
 
 @Composable
-private fun AppearanceSettings(
+internal fun AppearanceSettings(
     settings: AppSettings,
     onColorSourceChange: (ColorSource) -> Unit,
     onPresetThemeChange: (PresetTheme) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
+    supportsDynamicColor: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
 ) {
-    val isPresetThemeEnabled = settings.colorSource != ColorSource.DYNAMIC
+    val isDynamicColorActive = settings.colorSource == ColorSource.DYNAMIC && supportsDynamicColor
+    val isPresetThemeEnabled = !isDynamicColorActive
     val isDark = when (settings.themeMode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
         ThemeMode.LIGHT -> false
@@ -206,13 +212,21 @@ private fun AppearanceSettings(
     }
     SettingsSection(stringResource(R.string.settings_appearance)) {
         ChoiceCardGrid(
-            title = stringResource(R.string.settings_color_source),
-            values = ColorSource.entries,
-            selected = settings.colorSource,
-            columns = 2,
+            title = stringResource(R.string.settings_theme_mode),
+            values = ThemeMode.entries,
+            selected = settings.themeMode,
+            columns = 3,
             iconRes = { it.iconRes() },
             label = { stringResource(it.labelRes()) },
-            onSelect = onColorSourceChange,
+            onSelect = onThemeModeChange,
+        )
+        HorizontalDivider()
+        DynamicColorSwitchRow(
+            checked = isDynamicColorActive,
+            enabled = supportsDynamicColor,
+            onCheckedChange = { checked ->
+                onColorSourceChange(if (checked) ColorSource.DYNAMIC else ColorSource.PRESET)
+            },
         )
         HorizontalDivider()
         ChoiceCardGrid(
@@ -226,15 +240,62 @@ private fun AppearanceSettings(
             label = { stringResource(it.labelRes()) },
             onSelect = onPresetThemeChange,
         )
-        HorizontalDivider()
-        ChoiceCardGrid(
-            title = stringResource(R.string.settings_theme_mode),
-            values = ThemeMode.entries,
-            selected = settings.themeMode,
-            columns = 3,
-            iconRes = { it.iconRes() },
-            label = { stringResource(it.labelRes()) },
-            onSelect = onThemeModeChange,
+    }
+}
+
+@Composable
+internal fun DynamicColorSwitchRow(
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dimensions = MusicTheme.dimensions
+    val summaryRes = if (enabled) {
+        R.string.settings_dynamic_color_summary
+    } else {
+        R.string.settings_dynamic_color_unsupported
+    }
+    val contentAlpha = if (enabled) 1f else MusicAlpha.Disabled
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = dimensions.minimumTouchTarget)
+            .clip(MusicTheme.shapes.medium)
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                role = Role.Switch,
+                onValueChange = onCheckedChange,
+            )
+            .semantics(mergeDescendants = true) {}
+            .padding(horizontal = dimensions.spaceExtraSmall, vertical = dimensions.spaceSmall),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = dimensions.spaceMedium),
+            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
+        ) {
+            Text(
+                text = stringResource(R.string.settings_dynamic_color),
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface.copy(alpha = contentAlpha),
+            )
+            Text(
+                text = stringResource(summaryRes),
+                style = MusicTheme.typography.bodySmall,
+                color = MusicTheme.colors.onSurfaceVariant.copy(alpha = contentAlpha),
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            enabled = enabled,
+            modifier = Modifier.clearAndSetSemantics {},
         )
     }
 }
