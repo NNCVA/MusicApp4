@@ -23,6 +23,7 @@ import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.PlaybackQueue
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.domain.policy.PlaybackModePolicy
 import com.musicapp.player.core.playback.PlaybackConnectionState
 import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.core.playback.PlaybackEvent
@@ -70,6 +71,11 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
     private val pendingTimeout = Runnable {
         pendingTrackId = null
         pendingPlayWhenReady = null
+        controller?.let(::updateState)
+    }
+    private var optimisticTrackId: TrackId? = null
+    private val optimisticTimeout = Runnable {
+        optimisticTrackId = null
         controller?.let(::updateState)
     }
 
@@ -126,6 +132,8 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
                 resetBuffering()
                 stopPositionRefresh()
                 mainHandler.removeCallbacks(pendingTimeout)
+                mainHandler.removeCallbacks(optimisticTimeout)
+                optimisticTrackId = null
                 pendingTrackId = null
                 pendingPlayWhenReady = null
                 serviceFailure = null
@@ -196,6 +204,8 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             controller?.removeListener(playerListener)
             resetBuffering()
             stopPositionRefresh()
+            mainHandler.removeCallbacks(optimisticTimeout)
+            optimisticTrackId = null
             serviceFailure = null
             controller = null
             val future = controllerFuture
@@ -236,9 +246,25 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         dispatch(MediaController::pause)
     }
 
-    override fun skipToPrevious() = dispatch(MediaController::seekToPreviousMediaItem)
+    override fun skipToPrevious() {
+        val targetTrackId = resolvePreviousTrackId()
+        if (targetTrackId != null) {
+            setOptimisticTrack(targetTrackId)
+        }
+        dispatch {
+            it.sendCustomCommand(PlaybackSessionProtocol.skipPreviousCommand, Bundle.EMPTY)
+        }
+    }
 
-    override fun skipToNext() = dispatch(MediaController::seekToNextMediaItem)
+    override fun skipToNext() {
+        val targetTrackId = resolveNextTrackId()
+        if (targetTrackId != null) {
+            setOptimisticTrack(targetTrackId)
+        }
+        dispatch {
+            it.sendCustomCommand(PlaybackSessionProtocol.skipNextCommand, Bundle.EMPTY)
+        }
+    }
 
     override fun seekTo(positionMs: Long) = dispatch { it.seekTo(positionMs.coerceAtLeast(0)) }
 
@@ -350,6 +376,34 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         dispatch(command)
     }
 
+    private fun resolveNextTrackId(): TrackId? {
+        val order = playbackQueue.playbackOrder
+        if (order.size <= 1) return null
+        val currentIndex = order.indexOfFirst { it.id == playbackQueue.currentItemId }
+        if (currentIndex < 0) return null
+        val targetIndex = PlaybackModePolicy.indexAfterManualNext(playbackMode, currentIndex, order.size) ?: return null
+        return order.getOrNull(targetIndex)?.trackId
+    }
+
+    private fun resolvePreviousTrackId(): TrackId? {
+        val order = playbackQueue.playbackOrder
+        if (order.size <= 1) return null
+        val currentIndex = order.indexOfFirst { it.id == playbackQueue.currentItemId }
+        if (currentIndex < 0) return null
+        val targetIndex = PlaybackModePolicy.indexAfterManualPrevious(playbackMode, currentIndex, order.size) ?: return null
+        return order.getOrNull(targetIndex)?.trackId
+    }
+
+    private fun setOptimisticTrack(trackId: TrackId) {
+        mainHandler.removeCallbacks(optimisticTimeout)
+        optimisticTrackId = trackId
+        mainHandler.postDelayed(optimisticTimeout, PENDING_TRACK_TIMEOUT_MS)
+        mutableState.value = mutableState.value.copy(
+            currentTrackId = trackId,
+            positionMs = 0,
+        )
+    }
+
     private fun updateState(player: Player) {
         val duration = player.duration.takeUnless { it == C.TIME_UNSET }?.coerceAtLeast(0)
         val bufferingVisible = bufferingPolicy.update(
@@ -371,7 +425,15 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             }
         }
 
-        val effectiveTrackId = pendingTrackId ?: decodedTrackId
+        val activeOptimistic = optimisticTrackId
+        if (activeOptimistic != null) {
+            if (decodedTrackId == activeOptimistic || playbackFailure != null) {
+                mainHandler.removeCallbacks(optimisticTimeout)
+                optimisticTrackId = null
+            }
+        }
+
+        val effectiveTrackId = optimisticTrackId ?: pendingTrackId ?: decodedTrackId
         val isPending = pendingTrackId != null && playbackFailure == null
 
         val playbackStatus = if (isPending) {
@@ -410,7 +472,7 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
             playbackFailure = playbackFailure,
             isPlaying = effectiveIsPlaying,
             isBuffering = playbackStatus == PlaybackStatus.BUFFERING,
-            positionMs = if (isPending) 0 else player.currentPosition.coerceAtLeast(0),
+            positionMs = if (isPending || optimisticTrackId != null) 0 else player.currentPosition.coerceAtLeast(0),
             durationMs = duration,
             canSkipPrevious = playbackQueue.originalQueue.size > 1,
             canSkipNext = playbackQueue.originalQueue.size > 1,

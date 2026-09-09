@@ -232,6 +232,16 @@ class MusicPlaybackService : MediaLibraryService() {
                 sleepTimer.stop()
                 true
             },
+            onSkipNext = {
+                sleepTimer.onManualInterruption()
+                requestFade(FadeNavigationAction.MANUAL_NEXT, FadeSwitchReason.MANUAL_NEXT)
+                true
+            },
+            onSkipPrevious = {
+                sleepTimer.onManualInterruption()
+                requestFade(FadeNavigationAction.MANUAL_PREVIOUS, FadeSwitchReason.MANUAL_PREVIOUS)
+                true
+            },
         )
         sessionCallback = callback
         val listener = object : Player.Listener {

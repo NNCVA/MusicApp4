@@ -72,17 +72,26 @@ fun RotatingArtworkDisc(
             return@LaunchedEffect
         }
 
-        if (displayedTrack.id != track.id) {
-            if (!isVisible) {
-                // 不可见状态下直接更新，不耗费动画性能
-                displayedTrack = track
-                previousTrack = null
+        if (displayedTrack.id == track.id) {
+            if (isTransitioning) {
                 isTransitioning = false
-                rotationAngle.snapTo(0f)
+                previousTrack = null
                 revealProgress.snapTo(1f)
-                return@LaunchedEffect
             }
+            return@LaunchedEffect
+        }
 
+        if (!isVisible) {
+            // 不可见状态下直接更新，不耗费动画性能
+            displayedTrack = track
+            previousTrack = null
+            isTransitioning = false
+            rotationAngle.snapTo(0f)
+            revealProgress.snapTo(1f)
+            return@LaunchedEffect
+        }
+
+        try {
             isTransitioning = true
             previousTrack = displayedTrack
 
@@ -116,6 +125,12 @@ fun RotatingArtworkDisc(
             // 阶段三：过渡完成，重置状态
             previousTrack = null
             isTransitioning = false
+            revealProgress.snapTo(1f)
+        } finally {
+            if (isTransitioning) {
+                previousTrack = null
+                isTransitioning = false
+            }
         }
     }
 

@@ -1,9 +1,12 @@
 package com.musicapp.player.core.image
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.test.core.app.ApplicationProvider
+import coil3.BitmapImage
 import coil3.ImageLoader
 import coil3.decode.DataSource
+import coil3.fetch.ImageFetchResult
 import coil3.fetch.SourceFetchResult
 import coil3.request.Options
 import com.musicapp.player.core.domain.model.AlbumId
@@ -20,9 +23,11 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -110,6 +115,139 @@ class AudioArtworkFetcherTest {
 
         assertNotNull(fetcher.fetch())
         assertEquals(ArtworkRendition.LIST_THUMBNAIL, requestedRendition)
+    }
+
+    @Test
+    fun fetch_returnsImageResultForBitmapThumbnail_withoutByteFallback() = runTest {
+        val thumbnail = Bitmap.createBitmap(3, 2, Bitmap.Config.ARGB_8888)
+        var byteFallbackRequested = false
+        val extractor = object : ArtworkExtractor {
+            override suspend fun extract(context: Context, uri: android.net.Uri): ByteArray {
+                byteFallbackRequested = true
+                return byteArrayOf(1)
+            }
+
+            override suspend fun extractBitmap(
+                context: Context,
+                uri: android.net.Uri,
+                rendition: ArtworkRendition,
+            ): Bitmap = thumbnail
+        }
+        val request = AudioArtworkRequest.TrackArtworkRequest(
+            trackId = TrackId("external", 104L),
+            dateModifiedMs = 1_000L,
+            rendition = ArtworkRendition.LIST_THUMBNAIL,
+        )
+        val fetcher = AudioArtworkFetcher(
+            data = request,
+            options = options,
+            extractor = extractor,
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        val result = fetcher.fetch()
+
+        assertTrue(result is ImageFetchResult)
+        val imageResult = result as ImageFetchResult
+        assertEquals(DataSource.MEMORY, imageResult.dataSource)
+        assertTrue(imageResult.image is BitmapImage)
+        val bitmapImage = imageResult.image as BitmapImage
+        assertSame(thumbnail, bitmapImage.bitmap)
+        assertEquals(3, bitmapImage.width)
+        assertEquals(2, bitmapImage.height)
+        assertFalse(byteFallbackRequested)
+    }
+
+    @Test
+    fun fetch_fallsBackToBytesOnce_whenBitmapThumbnailIsMissing() = runTest {
+        val fallbackBytes = byteArrayOf(4, 5, 6)
+        var bitmapCalls = 0
+        var fallbackCalls = 0
+        val extractor = object : ArtworkExtractor {
+            override suspend fun extract(context: Context, uri: android.net.Uri): ByteArray =
+                error("byte fallback should use extractAfterBitmap")
+
+            override suspend fun extractBitmap(
+                context: Context,
+                uri: android.net.Uri,
+                rendition: ArtworkRendition,
+            ): Bitmap? {
+                bitmapCalls++
+                return null
+            }
+
+            override suspend fun extractAfterBitmap(
+                context: Context,
+                uri: android.net.Uri,
+                rendition: ArtworkRendition,
+            ): ByteArray {
+                fallbackCalls++
+                return fallbackBytes
+            }
+        }
+        val request = AudioArtworkRequest.TrackArtworkRequest(
+            trackId = TrackId("external", 105L),
+            dateModifiedMs = 1_000L,
+            rendition = ArtworkRendition.LIST_THUMBNAIL,
+        )
+        val fetcher = AudioArtworkFetcher(
+            data = request,
+            options = options,
+            extractor = extractor,
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        val result = fetcher.fetch()
+
+        assertTrue(result is SourceFetchResult)
+        assertEquals(1, bitmapCalls)
+        assertEquals(1, fallbackCalls)
+        val sourceResult = result as SourceFetchResult
+        assertArrayEquals(fallbackBytes, sourceResult.source.source().readByteArray())
+    }
+
+    @Test
+    fun fetch_fallsBackToSourceResult_whenBitmapExtractionThrows() = runTest {
+        val fallbackBytes = byteArrayOf(7, 8, 9)
+        var fallbackCalls = 0
+        val extractor = object : ArtworkExtractor {
+            override suspend fun extract(context: Context, uri: android.net.Uri): ByteArray =
+                error("byte fallback should use extractAfterBitmap")
+
+            override suspend fun extractBitmap(
+                context: Context,
+                uri: android.net.Uri,
+                rendition: ArtworkRendition,
+            ): Bitmap? = throw IllegalStateException("thumbnail provider unavailable")
+
+            override suspend fun extractAfterBitmap(
+                context: Context,
+                uri: android.net.Uri,
+                rendition: ArtworkRendition,
+            ): ByteArray {
+                fallbackCalls++
+                return fallbackBytes
+            }
+        }
+        val request = AudioArtworkRequest.TrackArtworkRequest(
+            trackId = TrackId("external", 106L),
+            dateModifiedMs = 1_000L,
+            rendition = ArtworkRendition.GRID_THUMBNAIL,
+        )
+        val fetcher = AudioArtworkFetcher(
+            data = request,
+            options = options,
+            extractor = extractor,
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        val result = fetcher.fetch()
+
+        assertTrue(result is SourceFetchResult)
+        assertEquals(1, fallbackCalls)
+        val sourceResult = result as SourceFetchResult
+        assertEquals(DataSource.DISK, sourceResult.dataSource)
+        assertArrayEquals(fallbackBytes, sourceResult.source.source().readByteArray())
     }
 
     @Test

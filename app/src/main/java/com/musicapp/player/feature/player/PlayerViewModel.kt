@@ -191,15 +191,17 @@ class PlayerViewModel(
     init {
         viewModelScope.launch {
             currentTrack.collectLatest { track ->
-                artworkTrackId.value = null
-                artwork.value = ArtworkResult.Placeholder
                 metadataJob?.cancel()
                 metadata.value = null
                 metadataLoading.value = false
                 showTrackInfo.value = false
                 if (track != null) {
-                    artwork.value = artworkRepository.artwork(track, ARTWORK_TARGET_PX)
+                    val result = artworkRepository.artwork(track, ARTWORK_TARGET_PX)
+                    artwork.value = result
                     artworkTrackId.value = track.id
+                } else {
+                    artwork.value = ArtworkResult.Placeholder
+                    artworkTrackId.value = null
                 }
             }
         }

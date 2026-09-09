@@ -10,10 +10,12 @@ import android.os.CancellationSignal
 import android.provider.MediaStore
 import android.util.Size
 import coil3.ImageLoader
+import coil3.asImage
 import coil3.decode.DataSource
 import coil3.decode.ImageSource
 import coil3.fetch.FetchResult
 import coil3.fetch.Fetcher
+import coil3.fetch.ImageFetchResult
 import coil3.fetch.SourceFetchResult
 import coil3.request.Options
 import com.musicapp.player.core.domain.model.Track
@@ -85,6 +87,26 @@ fun interface ArtworkExtractor {
         uri: Uri,
         rendition: ArtworkRendition,
     ): ByteArray? = extract(context, uri)
+
+    /**
+     * Optionally returns a decoded bitmap for thumbnail renditions to avoid a PNG round trip.
+     * Extractors that only support byte-based results keep the existing behavior by returning null.
+     */
+    suspend fun extractBitmap(
+        context: Context,
+        uri: Uri,
+        rendition: ArtworkRendition,
+    ): Bitmap? = null
+
+    /**
+     * Extracts bytes after the direct bitmap path is unavailable. The default keeps custom
+     * extractors source-compatible by delegating to their existing rendition-aware extraction.
+     */
+    suspend fun extractAfterBitmap(
+        context: Context,
+        uri: Uri,
+        rendition: ArtworkRendition,
+    ): ByteArray? = extract(context, uri, rendition)
 }
 
 /**
@@ -143,26 +165,20 @@ private fun extractEmbeddedArtwork(context: Context, uri: Uri): ByteArray? {
     return null
 }
 
-private fun extractThumbnailArtwork(
+private fun extractThumbnailBitmap(
     context: Context,
     uri: Uri,
     sizePx: Int,
-): ByteArray? {
+): Bitmap? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
 
     val cancellationSignal = CancellationSignal()
     return try {
-        val bitmap = context.contentResolver.loadThumbnail(
+        context.contentResolver.loadThumbnail(
             uri,
             Size(sizePx, sizePx),
             cancellationSignal,
         )
-        val stream = ByteArrayOutputStream()
-        if (bitmap.compress(Bitmap.CompressFormat.PNG, 90, stream)) {
-            stream.toByteArray().takeIf { it.isNotEmpty() }
-        } else {
-            null
-        }
     } catch (cancellation: CancellationException) {
         throw cancellation
     } catch (_: Throwable) {
@@ -172,10 +188,25 @@ private fun extractThumbnailArtwork(
     }
 }
 
+private fun extractThumbnailArtwork(
+    context: Context,
+    uri: Uri,
+    sizePx: Int,
+): ByteArray? {
+    val bitmap = extractThumbnailBitmap(context, uri, sizePx) ?: return null
+    val stream = ByteArrayOutputStream()
+    return if (bitmap.compress(Bitmap.CompressFormat.PNG, 90, stream)) {
+        stream.toByteArray().takeIf { it.isNotEmpty() }
+    } else {
+        null
+    }
+}
+
 private fun extractArtwork(
     context: Context,
     uri: Uri,
     rendition: ArtworkRendition,
+    includeThumbnail: Boolean = true,
 ): ByteArray? {
     val thumbnailSize = when (rendition) {
         ArtworkRendition.LIST_THUMBNAIL -> LIST_THUMBNAIL_PX
@@ -183,6 +214,7 @@ private fun extractArtwork(
         ArtworkRendition.FULL_SIZE -> FULL_SIZE_FALLBACK_THUMBNAIL_PX
     }
     for (path in artworkReadOrder(rendition, Build.VERSION.SDK_INT)) {
+        if (!includeThumbnail && path == ArtworkReadPath.THUMBNAIL) continue
         val bytes = when (path) {
             ArtworkReadPath.THUMBNAIL -> extractThumbnailArtwork(context, uri, thumbnailSize)
             ArtworkReadPath.EMBEDDED -> extractEmbeddedArtwork(context, uri)
@@ -205,6 +237,25 @@ val DefaultArtworkExtractor = object : ArtworkExtractor {
         uri: Uri,
         rendition: ArtworkRendition,
     ): ByteArray? = extractArtwork(context, uri, rendition)
+
+    override suspend fun extractAfterBitmap(
+        context: Context,
+        uri: Uri,
+        rendition: ArtworkRendition,
+    ): ByteArray? = extractArtwork(context, uri, rendition, includeThumbnail = false)
+
+    override suspend fun extractBitmap(
+        context: Context,
+        uri: Uri,
+        rendition: ArtworkRendition,
+    ): Bitmap? {
+        val thumbnailSize = when (rendition) {
+            ArtworkRendition.LIST_THUMBNAIL -> LIST_THUMBNAIL_PX
+            ArtworkRendition.GRID_THUMBNAIL -> GRID_THUMBNAIL_PX
+            ArtworkRendition.FULL_SIZE -> return null
+        }
+        return extractThumbnailBitmap(context, uri, thumbnailSize)
+    }
 }
 
 /**
@@ -266,7 +317,27 @@ class AudioArtworkFetcher(
             limiter.withPermit {
                 try {
                     val uri = uriResolver.resolve(targetTrackId)
-                    val pictureBytes = extractor.extract(context, uri, rendition)
+                    if (rendition != ArtworkRendition.FULL_SIZE) {
+                        val bitmap = try {
+                            extractor.extractBitmap(context, uri, rendition)
+                        } catch (cancellation: CancellationException) {
+                            throw cancellation
+                        } catch (_: Throwable) {
+                            null
+                        }
+                        bitmap?.let {
+                            return@withPermit ImageFetchResult(
+                                image = it.asImage(),
+                                isSampled = true,
+                                dataSource = DataSource.MEMORY,
+                            )
+                        }
+                    }
+                    val pictureBytes = if (rendition == ArtworkRendition.FULL_SIZE) {
+                        extractor.extract(context, uri, rendition)
+                    } else {
+                        extractor.extractAfterBitmap(context, uri, rendition)
+                    }
                     if (pictureBytes == null || pictureBytes.isEmpty() || pictureBytes.size > MAX_ARTWORK_BYTES) {
                         return@withPermit null
                     }

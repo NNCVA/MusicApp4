@@ -48,6 +48,8 @@ internal class MusicLibrarySessionCallbackFactory @Inject constructor(
         onFullExit: () -> ListenableFuture<SessionResult>,
         onStartSleepTimer: (Int, Boolean) -> Boolean = { _, _ -> false },
         onStopSleepTimer: () -> Boolean = { false },
+        onSkipNext: () -> Boolean = { false },
+        onSkipPrevious: () -> Boolean = { false },
     ): MusicLibrarySessionCallback =
         MusicLibrarySessionCallback(
             connectionPolicy = ControllerConnectionPolicy(context.packageName, Process.myUid()),
@@ -60,6 +62,8 @@ internal class MusicLibrarySessionCallbackFactory @Inject constructor(
             onFullExit = onFullExit,
             onStartSleepTimer = onStartSleepTimer,
             onStopSleepTimer = onStopSleepTimer,
+            onSkipNext = onSkipNext,
+            onSkipPrevious = onSkipPrevious,
         )
 }
 
@@ -75,6 +79,8 @@ internal class MusicLibrarySessionCallback(
     private val onFullExit: () -> ListenableFuture<SessionResult>,
     private val onStartSleepTimer: (Int, Boolean) -> Boolean = { _, _ -> false },
     private val onStopSleepTimer: () -> Boolean = { false },
+    private val onSkipNext: () -> Boolean = { false },
+    private val onSkipPrevious: () -> Boolean = { false },
 ) : MediaLibrarySession.Callback {
     private val applicationControllers = linkedSetOf<MediaSession.ControllerInfo>()
     private val libraryRoot =
@@ -162,6 +168,10 @@ internal class MusicLibrarySessionCallback(
                 PlaybackSessionProtocol.decodeQueueItemId(args)?.let(queueCoordinator::jumpToQueueItem) ?: false
             PlaybackSessionProtocol.removeFromQueueCommand.customAction ->
                 PlaybackSessionProtocol.decodeQueueItemId(args)?.let { queueCoordinator.remove(it); true } ?: false
+            PlaybackSessionProtocol.skipNextCommand.customAction ->
+                onSkipNext()
+            PlaybackSessionProtocol.skipPreviousCommand.customAction ->
+                onSkipPrevious()
             PlaybackSessionProtocol.startSleepTimerCommand.customAction -> {
                 val duration = PlaybackSessionProtocol.decodeSleepTimerDurationMinutes(args)
                 val extend = PlaybackSessionProtocol.decodeSleepTimerExtendToEndOfTrack(args)
