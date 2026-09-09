@@ -51,6 +51,8 @@ data class MusicDimensions(
     val messageBubbleElevation: Dp = 6.dp,
     val messageBubbleBottomLift: Dp = 16.dp,
     val statusIndicatorSize: Dp = 24.dp,
+    val sliderTrackHeight: Dp = 16.dp,
+    val sliderThumbDiameter: Dp = 16.dp,
     val trackInfoDialogMaxWidth: Dp = 640.dp,
     val settingsContentMaxWidth: Dp = 720.dp,
     val adaptiveGridMinimumCellWidth: Dp = 160.dp,

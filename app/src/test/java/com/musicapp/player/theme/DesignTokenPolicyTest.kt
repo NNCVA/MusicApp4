@@ -41,6 +41,8 @@ class DesignTokenPolicyTest {
             assertEquals(160.dp, dimensions.adaptiveGridMinimumCellWidth)
             assertEquals(48.dp, dimensions.categoryCardInfoHeight)
             assertEquals(48.dp, dimensions.minimumTouchTarget)
+            assertEquals(16.dp, dimensions.sliderTrackHeight)
+            assertEquals(16.dp, dimensions.sliderThumbDiameter)
             assertEquals(360.dp, dimensions.dialogListMaxHeight)
             assertEquals(8.dp, dimensions.spaceSmallMedium)
             assertEquals(31.dp, dimensions.topBarNavigationVisualStartPadding)
@@ -59,6 +61,22 @@ class DesignTokenPolicyTest {
             assertTrue(
                 "${tier.name} folder rows must remain accessible",
                 dimensions.folderListItemHeight >= dimensions.minimumTouchTarget,
+            )
+        }
+    }
+
+    @Test
+    fun `inset slider thumb stays inside its track`() {
+        MusicWindowWidthTier.entries.forEach { tier ->
+            val dimensions = MusicDimensions.forTier(tier)
+
+            assertTrue(
+                "${tier.name} slider thumb must not exceed track height",
+                dimensions.sliderThumbDiameter <= dimensions.sliderTrackHeight,
+            )
+            assertTrue(
+                "${tier.name} slider touch target must remain accessible",
+                dimensions.minimumTouchTarget >= 48.dp,
             )
         }
     }

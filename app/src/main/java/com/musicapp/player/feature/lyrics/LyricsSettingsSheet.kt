@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -34,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.InsetPillSlider
 import com.musicapp.player.core.domain.model.AppSettings
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
@@ -187,7 +186,7 @@ internal fun LyricsFontSizeSection(
                 color = MusicTheme.colors.onSurfaceVariant,
             )
         }
-        Slider(
+        InsetPillSlider(
             value = sliderValue,
             onValueChange = {
                 sliderValue = it
@@ -195,11 +194,6 @@ internal fun LyricsFontSizeSection(
             },
             valueRange = AppSettings.MIN_LYRICS_FONT_SIZE_SP.toFloat()..AppSettings.MAX_LYRICS_FONT_SIZE_SP.toFloat(),
             steps = AppSettings.MAX_LYRICS_FONT_SIZE_SP - AppSettings.MIN_LYRICS_FONT_SIZE_SP - 1,
-            colors = SliderDefaults.colors(
-                thumbColor = MusicTheme.colors.surface,
-                activeTrackColor = MusicTheme.colors.primary,
-                inactiveTrackColor = MusicTheme.colors.outlineVariant,
-            ),
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -271,7 +265,7 @@ internal fun LyricsFontWeightSection(
             )
         }
         val stepsCount = (AppSettings.MAX_LYRICS_FONT_WEIGHT - AppSettings.MIN_LYRICS_FONT_WEIGHT) / AppSettings.LYRICS_FONT_WEIGHT_STEP - 1
-        Slider(
+        InsetPillSlider(
             value = sliderValue,
             onValueChange = {
                 val step = AppSettings.LYRICS_FONT_WEIGHT_STEP
@@ -282,11 +276,6 @@ internal fun LyricsFontWeightSection(
             },
             valueRange = AppSettings.MIN_LYRICS_FONT_WEIGHT.toFloat()..AppSettings.MAX_LYRICS_FONT_WEIGHT.toFloat(),
             steps = stepsCount,
-            colors = SliderDefaults.colors(
-                thumbColor = MusicTheme.colors.surface,
-                activeTrackColor = MusicTheme.colors.primary,
-                inactiveTrackColor = MusicTheme.colors.outlineVariant,
-            ),
             modifier = Modifier.fillMaxWidth(),
         )
     }

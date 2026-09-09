@@ -18,8 +18,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -42,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.InsetPillSlider
 import com.musicapp.player.core.domain.model.AppSettings
 import com.musicapp.player.core.playback.timer.SleepTimerStatus
 import com.musicapp.player.theme.MusicTheme
@@ -218,16 +217,11 @@ internal fun SleepTimerContent(
                         )
                     }
 
-                    Slider(
+                    InsetPillSlider(
                         value = durationMinutes,
                         onValueChange = { durationMinutes = it },
                         valueRange = AppSettings.MIN_SLEEP_TIMER_DURATION_MINUTES.toFloat()..AppSettings.MAX_SLEEP_TIMER_DURATION_MINUTES.toFloat(),
                         steps = AppSettings.MAX_SLEEP_TIMER_DURATION_MINUTES - AppSettings.MIN_SLEEP_TIMER_DURATION_MINUTES - 1,
-                        colors = SliderDefaults.colors(
-                            thumbColor = MusicTheme.colors.surface,
-                            activeTrackColor = MusicTheme.colors.primary,
-                            inactiveTrackColor = MusicTheme.colors.outlineVariant,
-                        ),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

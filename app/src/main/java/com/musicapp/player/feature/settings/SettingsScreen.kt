@@ -30,10 +30,10 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.draw.clip
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
+import com.musicapp.player.core.designsystem.component.InsetPillSlider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -379,7 +379,7 @@ private fun FadeSettings(value: Long, onValueChange: (Long) -> Unit) {
             style = MusicTheme.typography.titleMedium,
             color = MusicTheme.colors.onSurface,
         )
-        Slider(
+        InsetPillSlider(
             value = draft,
             onValueChange = { raw ->
                 val step = AppSettings.FADE_THROUGH_STEP_MS.toFloat()
