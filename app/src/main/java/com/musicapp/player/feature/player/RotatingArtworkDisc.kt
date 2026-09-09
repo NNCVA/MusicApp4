@@ -177,7 +177,10 @@ fun RotatingArtworkDisc(
         transition.isRunning && pendingTrackId == track.id
     }
     val renderedBaseArtwork = terminalPendingArtwork ?: displayedArtwork
-    val rewindStart = if (transition.isRunning && progress <= 0f && rewindStartAngle == 0f) {
+    // The transition coroutine publishes isRunning before its LaunchedEffect can capture the
+    // current angle. Use the live angle at progress zero so the first composed frame cannot use
+    // the previous song's rewindStartAngle and visibly jump before settling back.
+    val rewindStart = if (transition.isRunning && progress <= 0f) {
         ArtworkDiscMotion.normalizeAngle(rotationAngle.value)
     } else {
         rewindStartAngle
