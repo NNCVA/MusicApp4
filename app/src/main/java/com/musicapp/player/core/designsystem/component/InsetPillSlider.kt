@@ -53,7 +53,9 @@ fun InsetPillSlider(
     Slider(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.heightIn(min = dimensions.minimumTouchTarget),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = dimensions.minimumTouchTarget),
         enabled = enabled,
         valueRange = valueRange,
         steps = steps,

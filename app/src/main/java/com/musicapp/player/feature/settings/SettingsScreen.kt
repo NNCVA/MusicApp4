@@ -382,13 +382,12 @@ private fun FadeSettings(value: Long, onValueChange: (Long) -> Unit) {
         InsetPillSlider(
             value = draft,
             onValueChange = { raw ->
-                val step = AppSettings.FADE_THROUGH_STEP_MS.toFloat()
-                draft = (raw / step).roundToInt() * step
+                draft = snapFadeThroughDurationMs(raw).toFloat()
             },
             onValueChangeFinished = { onValueChange(draft.toLong()) },
             valueRange = AppSettings.MIN_FADE_THROUGH_DURATION_MS.toFloat()..
                 AppSettings.MAX_FADE_THROUGH_DURATION_MS.toFloat(),
-            steps = FADE_SLIDER_STEPS,
+            steps = fadeThroughSliderSteps,
         )
         Text(
             text = stringResource(R.string.settings_fade_effective_next_transition),
@@ -594,6 +593,7 @@ internal fun <T> ChoiceGroup(
                 onClick = null,
                 modifier = Modifier.clearAndSetSemantics {},
             )
+            Spacer(modifier = Modifier.padding(MusicTheme.dimensions.spaceExtraSmall))
             Text(
                 text = label(value),
                 style = MusicTheme.typography.bodyLarge,
@@ -690,5 +690,3 @@ private fun AppLanguage.labelRes() = when (this) {
     AppLanguage.SIMPLIFIED_CHINESE -> R.string.settings_language_chinese
     AppLanguage.ENGLISH -> R.string.settings_language_english
 }
-
-private const val FADE_SLIDER_STEPS = 7

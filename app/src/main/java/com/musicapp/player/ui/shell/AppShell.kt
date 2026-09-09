@@ -254,7 +254,7 @@ private fun Modifier.compactDrawerDrag(
 
                     while (true) {
                         val change =
-                            awaitPointerEvent(pass = PointerEventPass.Initial)
+                            awaitPointerEvent(pass = PointerEventPass.Main)
                                 .changes
                                 .firstOrNull { it.id == pointerId }
                                 ?: break
@@ -280,6 +280,10 @@ private fun Modifier.compactDrawerDrag(
                             CompactDrawerDragDirection.UNDECIDED -> Unit
                             CompactDrawerDragDirection.VERTICAL -> return@awaitEachGesture
                             CompactDrawerDragDirection.HORIZONTAL -> {
+                                // Child controls (for example Slider) get the Main pass first.
+                                // Ignore their consumed movement, while still allowing a drawer
+                                // swipe after a child consumed only the initial down event.
+                                if (change.isConsumed) return@awaitEachGesture
                                 horizontalDragStarted = true
                                 change.consume()
                                 draggedOffset =

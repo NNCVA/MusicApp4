@@ -26,8 +26,8 @@ class InsetPillSliderTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun exposesRangeSemanticsAndPreservesDragCallbacks() {
-        var value by mutableFloatStateOf(0.25f)
+    fun exposesSteppedRangeAndPreservesDragCallbacks() {
+        var value by mutableFloatStateOf(500f)
         val changes = mutableListOf<Float>()
         val finished = mutableListOf<Unit>()
 
@@ -40,13 +40,15 @@ class InsetPillSliderTest {
                         changes += it
                     },
                     onValueChangeFinished = { finished += Unit },
+                    valueRange = 0f..2_000f,
+                    steps = 7,
                     modifier = Modifier.width(300.dp),
                 )
             }
         }
 
         val initialNode = composeRule.onNode(
-            hasProgressBarRangeInfo(ProgressBarRangeInfo(0.25f, 0f..1f)),
+            hasProgressBarRangeInfo(ProgressBarRangeInfo(500f, 0f..2_000f, 7)),
         )
         initialNode.assertExists()
         initialNode.performTouchInput {
@@ -59,7 +61,8 @@ class InsetPillSliderTest {
 
         composeRule.runOnIdle {
             assertTrue(changes.isNotEmpty())
-            assertTrue(changes.last() > 0.7f)
+            assertTrue(changes.all { it % 250f == 0f })
+            assertTrue(changes.last() >= 1_250f)
             assertEquals(1, finished.size)
         }
     }
