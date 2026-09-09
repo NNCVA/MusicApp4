@@ -1,6 +1,7 @@
 package com.musicapp.player.core.designsystem.component
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,7 +19,7 @@ class EmptyStateSemanticsTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun emptyStateWithoutActionDisplaysTitleAndDescription() {
+    fun emptyStateWithoutActionExposesAccessibleTitleAndDescription() {
         composeTestRule.setContent {
             MusicAppTheme {
                 EmptyState(
@@ -28,8 +29,11 @@ class EmptyStateSemanticsTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Empty Title").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Empty Description").assertIsDisplayed()
+        composeTestRule.onNode(
+            hasContentDescription("Empty Title\nEmpty Description"),
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Empty Title").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Empty Description").assertDoesNotExist()
     }
 
     @Test

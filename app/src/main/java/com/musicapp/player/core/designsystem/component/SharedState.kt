@@ -68,6 +68,10 @@ fun EmptyState(
   onAction: (() -> Unit)? = null,
 ) {
   val dimensions = MusicTheme.dimensions
+  val illustrationDescription = listOfNotNull(
+    title.takeIf(String::isNotBlank),
+    description?.takeIf(String::isNotBlank),
+  ).joinToString(separator = "\n").takeIf(String::isNotEmpty)
   if (actionLabel != null && onAction != null) {
     Box(
       modifier =
@@ -103,7 +107,7 @@ fun EmptyState(
       if (illustrationRes != null) {
         Image(
           painter = painterResource(illustrationRes),
-          contentDescription = title,
+          contentDescription = illustrationDescription,
           modifier = Modifier.size(dimensions.emptyStateIllustrationSize),
         )
       }

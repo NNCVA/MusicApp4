@@ -89,7 +89,7 @@ class TrackRowSemanticsTest {
             }
         }
 
-        val deleteButton = composeTestRule.onNode(hasText("Delete"), useUnmergedTree = true)
+        val deleteButton = composeTestRule.onNode(hasText("Delete"))
         deleteButton.assertIsNotEnabled()
     }
 }
