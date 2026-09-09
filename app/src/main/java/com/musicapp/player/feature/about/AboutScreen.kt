@@ -1,12 +1,10 @@
 package com.musicapp.player.feature.about
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -22,7 +20,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,14 +27,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.ActionCard
+import com.musicapp.player.core.designsystem.component.ActionCardStatus
+import com.musicapp.player.core.designsystem.component.InfoRow
 import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
@@ -112,14 +113,14 @@ fun AboutScreen(
                 if (state.loadFailed) {
                     item {
                         Box(
-                            modifier =
-                                Modifier.fillMaxWidth()
-                                    .padding(horizontal = dimensions.contentHorizontalPadding),
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = dimensions.contentHorizontalPadding),
                         ) {
-                            Text(
-                                text = stringResource(R.string.about_load_failed),
-                                color = MusicTheme.colors.error,
-                                style = MusicTheme.typography.bodyLarge,
+                            ActionCard(
+                                title = stringResource(R.string.about_load_failed),
+                                iconResId = R.drawable.ic_common_close_circle,
+                                status = ActionCardStatus.Warning,
+                                onClick = null,
                             )
                         }
                     }
@@ -246,88 +247,50 @@ private fun AboutCard(
                 .fillMaxWidth()
                 .padding(vertical = dimensions.spaceExtraSmall),
         ) {
-            AboutInfoItem(
+            InfoRow(
                 title = stringResource(R.string.about_developer),
-                body = stringResource(R.string.about_developer_name),
+                contentPadding = PaddingValues(
+                    horizontal = dimensions.spaceMedium,
+                    vertical = dimensions.spaceMedium,
+                ),
+                supportingContent = {
+                    Text(
+                        text = stringResource(R.string.about_developer_name),
+                        style = MusicTheme.typography.bodyMedium,
+                        color = MusicTheme.colors.onSurfaceVariant,
+                    )
+                },
             )
             HorizontalDivider(
                 modifier = Modifier.padding(horizontal = dimensions.spaceMedium),
                 color = MusicTheme.colors.outlineVariant.copy(alpha = 0.5f),
             )
-            AboutInfoItem(
+            InfoRow(
                 title = stringResource(R.string.about_acknowledgements),
-                body = stringResource(R.string.about_acknowledgements_body),
+                contentPadding = PaddingValues(
+                    horizontal = dimensions.spaceMedium,
+                    vertical = dimensions.spaceMedium,
+                ),
+                supportingContent = {
+                    Text(
+                        text = stringResource(R.string.about_acknowledgements_body),
+                        style = MusicTheme.typography.bodyMedium,
+                        color = MusicTheme.colors.onSurfaceVariant,
+                    )
+                },
             )
             HorizontalDivider(
                 modifier = Modifier.padding(horizontal = dimensions.spaceMedium),
                 color = MusicTheme.colors.outlineVariant.copy(alpha = 0.5f),
             )
-            AboutActionItem(
+            ActionCard(
                 title = stringResource(R.string.about_open_source_licenses),
+                trailingIconResId = R.drawable.ic_common_chevron_right,
+                containerColor = Color.Transparent,
+                contentColor = MusicTheme.colors.onSurface,
+                shape = RectangleShape,
                 onClick = onShowLicenses,
             )
         }
-    }
-}
-
-@Composable
-private fun AboutInfoItem(
-    title: String,
-    body: String,
-) {
-    val dimensions = MusicTheme.dimensions
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = dimensions.spaceMedium, vertical = dimensions.spaceMedium),
-        verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-    ) {
-        Text(
-            text = title,
-            fontWeight = FontWeight.Normal,
-            style = MusicTheme.typography.titleMedium,
-            color = MusicTheme.colors.onSurface,
-        )
-        Text(
-            text = body,
-            fontWeight = FontWeight.Normal,
-            style = MusicTheme.typography.bodyMedium,
-            color = MusicTheme.colors.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun AboutActionItem(
-    title: String,
-    onClick: () -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = dimensions.minimumTouchTarget)
-                .clickable(
-                    role = Role.Button,
-                    onClick = onClick,
-                )
-                .padding(horizontal = dimensions.spaceMedium, vertical = dimensions.spaceMedium),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            text = title,
-            style = MusicTheme.typography.titleMedium,
-            color = MusicTheme.colors.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-        Icon(
-            painter = painterResource(R.drawable.ic_common_chevron_right),
-            contentDescription = null,
-            tint = MusicTheme.colors.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
-        )
     }
 }

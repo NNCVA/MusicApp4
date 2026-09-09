@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,7 +43,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,6 +52,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.InfoRow
 import com.musicapp.player.core.designsystem.component.LockScrollOnChange
 import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import com.musicapp.player.core.designsystem.component.ListActionBar
@@ -477,27 +476,20 @@ internal fun BrowserFolderRow(
         shape = MusicTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth()
-                .heightIn(min = dimensions.minimumTouchTarget)
-                .padding(horizontal = dimensions.spaceMedium),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_common_folder),
-                contentDescription = null,
-                tint = MusicTheme.colors.onSurfaceVariant,
-                modifier = Modifier.size(dimensions.spaceLarge),
-            )
-            Text(
-                text = folder.displayName,
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        InfoRow(
+            title = folder.displayName,
+            minHeight = dimensions.minimumTouchTarget,
+            contentPadding = PaddingValues(horizontal = dimensions.spaceMedium),
+            titleMaxLines = 1,
+            leadingContent = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_folder),
+                    contentDescription = null,
+                    tint = MusicTheme.colors.onSurfaceVariant,
+                    modifier = Modifier.size(dimensions.spaceLarge),
+                )
+            },
+        )
     }
 }
 

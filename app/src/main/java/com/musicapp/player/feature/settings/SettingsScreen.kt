@@ -7,7 +7,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,9 +27,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.ui.draw.clip
+import com.musicapp.player.core.designsystem.component.ChoiceRow
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.core.designsystem.component.InsetPillSlider
+import com.musicapp.player.core.designsystem.component.SettingsSection
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.RadioButton
@@ -51,7 +51,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -256,54 +255,31 @@ internal fun DynamicColorSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dimensions = MusicTheme.dimensions
     val summaryRes = if (enabled) {
         R.string.settings_dynamic_color_summary
     } else {
         R.string.settings_dynamic_color_unsupported
     }
-    val contentAlpha = if (enabled) 1f else MusicAlpha.Disabled
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = dimensions.minimumTouchTarget)
-            .clip(MusicTheme.shapes.medium)
-            .toggleable(
-                value = checked,
-                enabled = enabled,
-                role = Role.Switch,
-                onValueChange = onCheckedChange,
-            )
-            .semantics(mergeDescendants = true) {}
-            .padding(horizontal = dimensions.spaceExtraSmall, vertical = dimensions.spaceSmall),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = dimensions.spaceMedium),
-            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-        ) {
-            Text(
-                text = stringResource(R.string.settings_dynamic_color),
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface.copy(alpha = contentAlpha),
-            )
-            Text(
-                text = stringResource(summaryRes),
-                style = MusicTheme.typography.bodySmall,
-                color = MusicTheme.colors.onSurfaceVariant.copy(alpha = contentAlpha),
-            )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = null,
+    ChoiceRow(
+        title = stringResource(R.string.settings_dynamic_color),
+        subtitle = stringResource(summaryRes),
+        modifier = modifier,
+        enabled = enabled,
+        interactionModifier = Modifier.toggleable(
+            value = checked,
             enabled = enabled,
-            modifier = Modifier.clearAndSetSemantics {},
-        )
-    }
+            role = Role.Switch,
+            onValueChange = onCheckedChange,
+        ),
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                enabled = enabled,
+                modifier = Modifier.clearAndSetSemantics {},
+            )
+        },
+    )
 }
 
 @Composable
@@ -351,45 +327,23 @@ internal fun AeroDynamicSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dimensions = MusicTheme.dimensions
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = dimensions.minimumTouchTarget)
-            .clip(MusicTheme.shapes.medium)
-            .toggleable(
-                value = checked,
-                role = Role.Switch,
-                onValueChange = onCheckedChange,
+    ChoiceRow(
+        title = stringResource(R.string.settings_aero_player_dynamic),
+        subtitle = stringResource(R.string.settings_aero_player_dynamic_summary),
+        modifier = modifier,
+        interactionModifier = Modifier.toggleable(
+            value = checked,
+            role = Role.Switch,
+            onValueChange = onCheckedChange,
+        ),
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                modifier = Modifier.clearAndSetSemantics {},
             )
-            .semantics(mergeDescendants = true) {}
-            .padding(horizontal = dimensions.spaceExtraSmall, vertical = dimensions.spaceSmall),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = dimensions.spaceMedium),
-            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-        ) {
-            Text(
-                text = stringResource(R.string.settings_aero_player_dynamic),
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.settings_aero_player_dynamic_summary),
-                style = MusicTheme.typography.bodySmall,
-                color = MusicTheme.colors.onSurfaceVariant,
-            )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = null,
-            modifier = Modifier.clearAndSetSemantics {},
-        )
-    }
+        },
+    )
 }
 
 @Composable
@@ -397,25 +351,26 @@ private fun FadeSettings(value: Long, onValueChange: (Long) -> Unit) {
     var draft by rememberSaveable { mutableFloatStateOf(value.toFloat()) }
     LaunchedEffect(value) { draft = value.toFloat() }
     SettingsSection(stringResource(R.string.settings_playback)) {
-        Text(
-            text = stringResource(R.string.settings_fade_duration, draft.roundToInt()),
-            style = MusicTheme.typography.titleMedium,
-            color = MusicTheme.colors.onSurface,
-        )
-        InsetPillSlider(
-            value = draft,
-            onValueChange = { raw ->
-                draft = snapFadeThroughDurationMs(raw).toFloat()
+        ChoiceRow(
+            title = stringResource(R.string.settings_fade_duration, draft.roundToInt()),
+            mergeDescendants = false,
+            supportingContent = {
+                InsetPillSlider(
+                    value = draft,
+                    onValueChange = { raw ->
+                        draft = snapFadeThroughDurationMs(raw).toFloat()
+                    },
+                    onValueChangeFinished = { onValueChange(draft.toLong()) },
+                    valueRange = AppSettings.MIN_FADE_THROUGH_DURATION_MS.toFloat()..
+                        AppSettings.MAX_FADE_THROUGH_DURATION_MS.toFloat(),
+                    steps = fadeThroughSliderSteps,
+                )
+                Text(
+                    text = stringResource(R.string.settings_fade_effective_next_transition),
+                    style = MusicTheme.typography.bodySmall,
+                    color = MusicTheme.colors.onSurfaceVariant,
+                )
             },
-            onValueChangeFinished = { onValueChange(draft.toLong()) },
-            valueRange = AppSettings.MIN_FADE_THROUGH_DURATION_MS.toFloat()..
-                AppSettings.MAX_FADE_THROUGH_DURATION_MS.toFloat(),
-            steps = fadeThroughSliderSteps,
-        )
-        Text(
-            text = stringResource(R.string.settings_fade_effective_next_transition),
-            style = MusicTheme.typography.bodySmall,
-            color = MusicTheme.colors.onSurfaceVariant,
         )
     }
 }
@@ -431,35 +386,6 @@ private fun DataManagementSettings(onRequest: (SettingsConfirmation) -> Unit) {
         }
         SettingsAction(R.string.settings_delete_playlists, R.string.settings_delete_playlists_summary) {
             onRequest(SettingsConfirmation.DELETE_ALL_PLAYLISTS)
-        }
-    }
-}
-
-@Composable
-private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    val dimensions = MusicTheme.dimensions
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmallMedium),
-    ) {
-        Text(
-            text = title,
-            style = MusicTheme.typography.titleSmall,
-            color = MusicTheme.colors.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = dimensions.spaceMedium),
-        )
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MusicTheme.shapes.large,
-            color = MusicTheme.aeroCardContainerColor,
-            contentColor = MusicTheme.colors.onSurface,
-        ) {
-            Column(
-                modifier = Modifier.padding(dimensions.spaceMedium),
-                verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
-            ) {
-                content()
-            }
         }
     }
 }
@@ -599,30 +525,21 @@ internal fun <T> ChoiceGroup(
         )
     }
     values.forEach { value ->
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = MusicTheme.dimensions.minimumTouchTarget)
-                .selectable(
+        ChoiceRow(
+            title = label(value),
+            leadingContent = {
+                RadioButton(
                     selected = value == selected,
-                    role = Role.RadioButton,
-                    onClick = { onSelect(value) },
+                    onClick = null,
+                    modifier = Modifier.clearAndSetSemantics {},
                 )
-                .semantics(mergeDescendants = true) {},
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RadioButton(
+            },
+            interactionModifier = Modifier.selectable(
                 selected = value == selected,
-                onClick = null,
-                modifier = Modifier.clearAndSetSemantics {},
-            )
-            Spacer(modifier = Modifier.padding(MusicTheme.dimensions.spaceExtraSmall))
-            Text(
-                text = label(value),
-                style = MusicTheme.typography.bodyLarge,
-                color = MusicTheme.colors.onSurface,
-            )
-        }
+                role = Role.RadioButton,
+                onClick = { onSelect(value) },
+            ),
+        )
     }
 }
 

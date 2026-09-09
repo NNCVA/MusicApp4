@@ -1,7 +1,6 @@
 package com.musicapp.player.feature.folders
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +27,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
@@ -52,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.GutterMode
+import com.musicapp.player.core.designsystem.component.InfoRow
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
@@ -253,30 +252,24 @@ private fun FolderVolumeCard(
         shape = MusicTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(
+        InfoRow(
+            title = title,
+            titleMaxLines = 1,
+            contentPadding = PaddingValues(
                 start = dimensions.spaceMedium,
                 top = dimensions.spaceMedium,
                 end = dimensions.spaceSmall,
                 bottom = dimensions.spaceMedium,
             ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_common_storage),
-                contentDescription = null,
-                tint = MusicTheme.colors.onSurfaceVariant,
-                modifier = Modifier.size(dimensions.spaceLarge),
-            )
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall)) {
-                Text(
-                    text = title,
-                    style = MusicTheme.typography.titleMedium,
-                    color = MusicTheme.colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            leadingContent = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_storage),
+                    contentDescription = null,
+                    tint = MusicTheme.colors.onSurfaceVariant,
+                    modifier = Modifier.size(dimensions.spaceLarge),
                 )
+            },
+            supportingContent = {
                 volume.rootPath?.takeIf(String::isNotBlank)?.let { path ->
                     Text(
                         text = path,
@@ -287,19 +280,9 @@ private fun FolderVolumeCard(
                     )
                 }
                 StorageCapacityText(volume.usedBytes, volume.totalBytes)
-            }
-            Box(
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_common_chevron_right),
-                    contentDescription = null,
-                    tint = MusicTheme.colors.onSurfaceVariant,
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
-            }
-        }
+            },
+            showChevron = true,
+        )
     }
 }
 
@@ -333,40 +316,31 @@ private fun FolderShortcutCard(
         shape = MusicTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MusicTheme.aeroCardContainerColor),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = dimensions.spaceMedium, end = dimensions.spaceSmall),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_common_folder),
-                contentDescription = null,
-                tint = MusicTheme.colors.onSurfaceVariant,
-                modifier = Modifier.size(dimensions.spaceLarge),
-            )
-            Column(
-                modifier = Modifier.weight(1f).padding(vertical = dimensions.spaceMedium),
-                verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-            ) {
-                Text(
-                    text = folder.displayName,
-                    style = MusicTheme.typography.titleMedium,
-                    color = MusicTheme.colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+        InfoRow(
+            title = folder.displayName,
+            subtitle = pluralStringResource(
+                R.plurals.folder_track_count,
+                folder.directTracks.size,
+                folder.directTracks.size,
+            ),
+            contentPadding = PaddingValues(
+                start = dimensions.spaceMedium,
+                top = dimensions.spaceMedium,
+                end = dimensions.spaceSmall,
+                bottom = dimensions.spaceMedium,
+            ),
+            titleMaxLines = 1,
+            subtitleMaxLines = 1,
+            leadingContent = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_folder),
+                    contentDescription = null,
+                    tint = MusicTheme.colors.onSurfaceVariant,
+                    modifier = Modifier.size(dimensions.spaceLarge),
                 )
-                Text(
-                    text = pluralStringResource(
-                        R.plurals.folder_track_count,
-                        folder.directTracks.size,
-                        folder.directTracks.size,
-                    ),
-                    style = MusicTheme.typography.bodySmall,
-                    color = MusicTheme.colors.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
-            Box {
+            },
+            trailingContent = {
+                Box {
                 BareIconButton(
                     onClick = { menuExpanded = true },
                     modifier = Modifier.size(dimensions.minimumTouchTarget),
@@ -397,8 +371,9 @@ private fun FolderShortcutCard(
                         },
                     )
                 }
-            }
-        }
+                }
+            },
+        )
     }
 }
 
@@ -438,4 +413,3 @@ private fun formatStorageValue(bytes: Long, unit: StorageUnit): String =
         minimumFractionDigits = unit.fractionDigits
         roundingMode = RoundingMode.DOWN
     }.format(bytes.toDouble() / unit.divisor)
-

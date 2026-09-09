@@ -2,7 +2,6 @@ package com.musicapp.player.feature.artists
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,6 +55,7 @@ import com.musicapp.player.core.designsystem.component.EmptyState
 import com.musicapp.player.core.designsystem.component.LockScrollOnChange
 import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import com.musicapp.player.core.designsystem.component.GutterMode
+import com.musicapp.player.core.designsystem.component.InfoRow
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.designsystem.component.SectionSortOrder
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
@@ -321,45 +321,29 @@ private fun ArtistRow(
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
-    Row(
-        modifier = modifier.fillMaxWidth()
-            .heightIn(min = dimensions.minimumTouchTarget)
-            .clip(MusicTheme.shapes.small)
-            .clickable(onClick = onClick)
-            .padding(
-                horizontal = dimensions.contentHorizontalPadding,
-                vertical = dimensions.spaceSmallMedium,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ArtistArtwork(
-            artist = artist,
-            modifier = Modifier.size(dimensions.trackArtworkSize),
-        )
-        Column(
-            modifier = Modifier.weight(1f).padding(start = dimensions.spaceMedium),
-            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-        ) {
-            Text(
-                text = artist.displayName.localizedArtistName(),
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+    InfoRow(
+        title = artist.displayName.localizedArtistName(),
+        subtitle = pluralStringResource(
+            R.plurals.artist_track_count,
+            artist.trackCount,
+            artist.trackCount,
+        ),
+        modifier = modifier,
+        minHeight = dimensions.minimumTouchTarget,
+        contentPadding = PaddingValues(
+            horizontal = dimensions.contentHorizontalPadding,
+            vertical = dimensions.spaceSmallMedium,
+        ),
+        titleMaxLines = 1,
+        subtitleMaxLines = 1,
+        onClick = onClick,
+        leadingContent = {
+            ArtistArtwork(
+                artist = artist,
+                modifier = Modifier.size(dimensions.trackArtworkSize),
             )
-            Text(
-                text = pluralStringResource(
-                    R.plurals.artist_track_count,
-                    artist.trackCount,
-                    artist.trackCount,
-                ),
-                style = MusicTheme.typography.bodySmall,
-                color = MusicTheme.colors.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
+        },
+    )
 }
 
 @Composable

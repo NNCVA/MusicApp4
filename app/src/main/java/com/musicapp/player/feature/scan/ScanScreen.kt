@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,14 +32,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import com.musicapp.player.core.designsystem.component.ActionCard
+import com.musicapp.player.core.designsystem.component.ActionCardStatus
+import com.musicapp.player.core.designsystem.component.ChoiceRow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,19 +49,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.PathRule
 import com.musicapp.player.core.domain.model.PathRuleKind
+import com.musicapp.player.data.sync.LibrarySyncState
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.feature.permission.MediaPermissionState
@@ -173,6 +171,11 @@ private fun ScanMusicScreen(
     val listState = rememberLazyListState()
     val overscrollEffect = rememberBounceOverscrollEffect(listState)
     var blockedFoldersExpanded by rememberSaveable { mutableStateOf(false) }
+    val scanActionStatus = if (state.actionFailed || state.syncState is LibrarySyncState.Failed) {
+        ActionCardStatus.Warning
+    } else {
+        ActionCardStatus.Normal
+    }
     Box(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         contentAlignment = Alignment.TopCenter,
@@ -219,6 +222,7 @@ private fun ScanMusicScreen(
                     ScanActionCard(
                         enabled = state.canScan,
                         onClick = onStartScan,
+                        status = scanActionStatus,
                     )
                 }
                 item {
@@ -236,6 +240,7 @@ private fun ScanMusicScreen(
                     ActionCard(
                         iconResId = R.drawable.ic_common_folder_add,
                         title = stringResource(R.string.scan_add_custom_folder),
+                        minHeight = dimensions.playerControlsHeight,
                         onClick = onAddFolder,
                     )
                 }
@@ -244,6 +249,7 @@ private fun ScanMusicScreen(
                     ActionCard(
                         iconResId = R.drawable.ic_common_open_in_new,
                         title = stringResource(R.string.scan_manage_storage_permission),
+                        minHeight = dimensions.playerControlsHeight,
                         onClick = onOpenApplicationSettings,
                         trailingIconResId = R.drawable.ic_common_chevron_right,
                     )
@@ -259,6 +265,7 @@ private fun ScanMusicScreen(
                     ActionCard(
                         iconResId = R.drawable.ic_sidebar_folders,
                         title = stringResource(R.string.scan_blocked_folders),
+                        minHeight = dimensions.playerControlsHeight,
                         onClick = { blockedFoldersExpanded = !blockedFoldersExpanded },
                         trailingIconResId = R.drawable.ic_common_chevron_right,
                     )
@@ -271,6 +278,7 @@ private fun ScanMusicScreen(
                         ActionCard(
                             iconResId = R.drawable.ic_common_folder_add,
                             title = stringResource(R.string.scan_add_blocked_folder),
+                            minHeight = dimensions.playerControlsHeight,
                             onClick = onAddBlockedFolder,
                         )
                     }
@@ -282,37 +290,26 @@ private fun ScanMusicScreen(
 }
 
 @Composable
-private fun ScanActionCard(enabled: Boolean, onClick: () -> Unit) {
+private fun ScanActionCard(
+    enabled: Boolean,
+    onClick: () -> Unit,
+    status: ActionCardStatus,
+) {
     val dimensions = MusicTheme.dimensions
-    Card(
-        onClick = onClick,
+    ActionCard(
+        title = stringResource(R.string.scan_now),
+        subtitle = when (status) {
+            ActionCardStatus.Normal -> null
+            ActionCardStatus.Warning -> stringResource(R.string.scan_cached_error)
+            ActionCardStatus.Success -> null
+        },
+        iconResId = R.drawable.ic_sidebar_scan,
+        status = status,
         enabled = enabled,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MusicTheme.shapes.large,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MusicTheme.aeroCardContainerColor,
-                disabledContainerColor = MusicTheme.aeroCardContainerColor,
-            ),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
-                .padding(horizontal = dimensions.spaceMedium),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_sidebar_scan),
-                contentDescription = null,
-                tint = MusicTheme.colors.primary,
-            )
-            Text(
-                text = stringResource(R.string.scan_now),
-                color = MusicTheme.colors.primary,
-                style = MusicTheme.typography.titleLarge,
-            )
-        }
-    }
+        minHeight = dimensions.playerControlsHeight,
+        titleStyle = MusicTheme.typography.titleLarge,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -323,79 +320,27 @@ internal fun SwitchCard(
 ) {
     val dimensions = MusicTheme.dimensions
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MusicTheme.shapes.large)
-            .toggleable(
-                value = checked,
-                role = Role.Switch,
-                onValueChange = onCheckedChange,
-            )
-            .semantics(mergeDescendants = true) {},
+        modifier = Modifier.fillMaxWidth(),
         shape = MusicTheme.shapes.large,
         color = MusicTheme.aeroCardContainerColor,
         contentColor = MusicTheme.colors.onSurface,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
-                .padding(horizontal = dimensions.spaceMedium),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = title,
-                modifier = Modifier.weight(1f),
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-            )
-            Switch(
-                checked = checked,
-                onCheckedChange = null,
-                modifier = Modifier.clearAndSetSemantics {},
-            )
-        }
-    }
-}
-
-@Composable
-private fun ActionCard(
-    iconResId: Int,
-    title: String,
-    onClick: () -> Unit,
-    trailingIconResId: Int? = null,
-) {
-    val dimensions = MusicTheme.dimensions
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MusicTheme.shapes.large,
-        color = MusicTheme.aeroCardContainerColor,
-        contentColor = MusicTheme.colors.primary,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = dimensions.playerControlsHeight)
-                .padding(horizontal = dimensions.spaceMedium),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-        ) {
-            Icon(
-                painter = painterResource(iconResId),
-                contentDescription = null,
-                tint = MusicTheme.colors.primary,
-            )
-            Text(
-                title,
-                modifier = Modifier.weight(1f),
-                color = MusicTheme.colors.primary,
-                style = MusicTheme.typography.titleMedium,
-            )
-            trailingIconResId?.let { icon ->
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                    tint = MusicTheme.colors.onSurfaceVariant,
+        ChoiceRow(
+            title = title,
+            minHeight = dimensions.playerControlsHeight,
+            interactionModifier = Modifier.toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = onCheckedChange,
+            ),
+            trailingContent = {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = null,
+                    modifier = Modifier.clearAndSetSemantics {},
                 )
-            }
-        }
+            },
+        )
     }
 }
 

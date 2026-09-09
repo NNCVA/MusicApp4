@@ -95,14 +95,14 @@ fun TrackInfoContent(
         }
 
         TrackInfoCard {
-            InfoRow(R.string.track_info_track_title, track.title)
-            InfoRow(R.string.track_info_artist, track.artistName)
-            InfoRow(R.string.track_info_album, track.albumTitle)
+            TrackMetadataRow(R.string.track_info_track_title, track.title)
+            TrackMetadataRow(R.string.track_info_artist, track.artistName)
+            TrackMetadataRow(R.string.track_info_album, track.albumTitle)
         }
 
         TrackInfoCard {
-            InfoRow(R.string.track_info_media_source, track.relativePath)
-            InfoRow(
+            TrackMetadataRow(R.string.track_info_media_source, track.relativePath)
+            TrackMetadataRow(
                 R.string.track_info_duration,
                 stringResource(
                     R.string.track_info_duration_value,
@@ -110,27 +110,27 @@ fun TrackInfoContent(
                     ((track.durationMs / 1_000) % 60).toInt(),
                 ),
             )
-            InfoRow(
+            TrackMetadataRow(
                 R.string.track_info_bitrate,
                 metadata?.bitrateBps?.let { stringResource(R.string.track_info_bitrate_value, it / 1_000) },
             )
-            InfoRow(
+            TrackMetadataRow(
                 R.string.track_info_sample_rate,
                 metadata?.sampleRateHz?.let { stringResource(R.string.track_info_sample_rate_value, it) },
             )
-            InfoRow(
+            TrackMetadataRow(
                 R.string.track_info_file_size,
                 trackInfoFileSizeValue(track.sizeBytes),
             )
-            InfoRow(R.string.track_info_format, trackFormat(track))
-            InfoRow(R.string.track_info_path, path)
-            InfoRow(R.string.track_info_encoding, metadata?.encoding ?: track.mimeType)
-            InfoRow(
+            TrackMetadataRow(R.string.track_info_format, trackFormat(track))
+            TrackMetadataRow(R.string.track_info_path, path)
+            TrackMetadataRow(R.string.track_info_encoding, metadata?.encoding ?: track.mimeType)
+            TrackMetadataRow(
                 R.string.track_info_bit_depth,
                 metadata?.bitDepth?.let { stringResource(R.string.track_info_bit_depth_value, it) },
             )
-            InfoRow(R.string.track_info_added_at, formatTrackInfoDate(track.dateAddedMs))
-            InfoRow(R.string.track_info_modified_at, formatTrackInfoDate(track.dateModifiedMs))
+            TrackMetadataRow(R.string.track_info_added_at, formatTrackInfoDate(track.dateAddedMs))
+            TrackMetadataRow(R.string.track_info_modified_at, formatTrackInfoDate(track.dateModifiedMs))
         }
 
         TextButton(onClick = { clipboard.setText(AnnotatedString(path)) }) {
@@ -156,7 +156,7 @@ private fun TrackInfoCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun InfoRow(label: Int, value: String?) {
+private fun TrackMetadataRow(label: Int, value: String?) {
     Column {
         Text(
             text = stringResource(label),

@@ -3,12 +3,10 @@ package com.musicapp.player.feature.playlists
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,8 +36,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,6 +46,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.InfoRow
 import com.musicapp.player.core.designsystem.component.MenuIconPalette
 import com.musicapp.player.core.designsystem.component.MessageDialog
 import com.musicapp.player.core.designsystem.component.TextInputDialog
@@ -296,104 +293,89 @@ private fun PlaylistRow(
     onExport: () -> Unit,
 ) {
     val dimensions = MusicTheme.dimensions
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(dimensions.trackListItemHeight)
-            .clickable(onClick = onClick)
-            .padding(contentPadding),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-    ) {
-        PlaylistArtwork(
-            playlist = playlist,
-            modifier = Modifier.size(dimensions.trackArtworkSize),
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
-        ) {
-            Text(
-                text = playlist.displayName,
-                fontWeight = FontWeight.Medium,
-                style = MusicTheme.typography.titleMedium,
-                color = MusicTheme.colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+    InfoRow(
+        title = playlist.displayName,
+        subtitle = pluralStringResource(
+            R.plurals.category_track_count,
+            playlist.trackIds.size,
+            playlist.trackIds.size,
+        ),
+        modifier = Modifier.height(dimensions.trackListItemHeight),
+        minHeight = dimensions.trackListItemHeight,
+        contentPadding = contentPadding,
+        titleMaxLines = 1,
+        subtitleMaxLines = 1,
+        onClick = onClick,
+        leadingContent = {
+            PlaylistArtwork(
+                playlist = playlist,
+                modifier = Modifier.size(dimensions.trackArtworkSize),
             )
-            Text(
-                text = pluralStringResource(
-                    R.plurals.category_track_count,
-                    playlist.trackIds.size,
-                    playlist.trackIds.size,
-                ),
-                style = MusicTheme.typography.bodySmall,
-                color = MusicTheme.colors.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-        Box {
+        },
+        trailingContent = {
             var menuExpanded by rememberSaveable(playlist.id.value) { mutableStateOf(false) }
-            BareIconButton(
-                onClick = { menuExpanded = true },
-                modifier = Modifier.size(dimensions.minimumTouchTarget),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_common_more_vertical),
-                    contentDescription = stringResource(R.string.selection_more_actions),
-                    tint = MusicTheme.colors.onSurface,
-                    modifier = Modifier.size(dimensions.spaceLarge),
-                )
+            Box {
+                BareIconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(dimensions.minimumTouchTarget),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_common_more_vertical),
+                        contentDescription = stringResource(R.string.selection_more_actions),
+                        tint = MusicTheme.colors.onSurface,
+                        modifier = Modifier.size(dimensions.spaceLarge),
+                    )
+                }
+                AppDropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    AppDropdownMenuItem(
+                        text = { Text(stringResource(R.string.playlist_rename)) },
+                        iconTint = MenuIconPalette.Rename,
+                        trailingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_common_edit),
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onRename()
+                        },
+                    )
+                    AppDropdownMenuItem(
+                        text = { Text(stringResource(R.string.playlist_export)) },
+                        trailingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_common_download),
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onExport()
+                        },
+                    )
+                    AppDropdownMenuItem(
+                        text = { Text(stringResource(R.string.playlist_delete)) },
+                        isDestructive = true,
+                        iconTint = MenuIconPalette.Delete,
+                        trailingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_common_delete),
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onDelete()
+                        },
+                    )
+                }
             }
-            AppDropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-            ) {
-                AppDropdownMenuItem(
-                    text = { Text(stringResource(R.string.playlist_rename)) },
-                    iconTint = MenuIconPalette.Rename,
-                    trailingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_common_edit),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        menuExpanded = false
-                        onRename()
-                    },
-                )
-                AppDropdownMenuItem(
-                    text = { Text(stringResource(R.string.playlist_export)) },
-                    trailingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_common_download),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        menuExpanded = false
-                        onExport()
-                    },
-                )
-                AppDropdownMenuItem(
-                    text = { Text(stringResource(R.string.playlist_delete)) },
-                    isDestructive = true,
-                    iconTint = MenuIconPalette.Delete,
-                    trailingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_common_delete),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        menuExpanded = false
-                        onDelete()
-                    },
-                )
-            }
-        }
-    }
+        },
+    )
 }
 
 @Composable
