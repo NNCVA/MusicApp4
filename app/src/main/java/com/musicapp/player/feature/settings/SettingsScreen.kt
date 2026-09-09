@@ -30,7 +30,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.draw.clip
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.RadioButton
@@ -172,7 +171,7 @@ private fun SettingsScreen(
                     top = dimensions.spaceSmallMedium,
                     bottom = dimensions.spaceSmall + bottomPadding,
                 ),
-                verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
+                verticalArrangement = Arrangement.spacedBy(dimensions.spaceLarge),
             ) {
                 item { AppearanceSettings(state.settings, onColorSourceChange, onPresetThemeChange, onThemeModeChange) }
                 item { LanguageSettings(state.settings.appLanguage, onLanguageChange) }
@@ -220,7 +219,6 @@ internal fun AppearanceSettings(
             label = { stringResource(it.labelRes()) },
             onSelect = onThemeModeChange,
         )
-        HorizontalDivider()
         DynamicColorSwitchRow(
             checked = isDynamicColorActive,
             enabled = supportsDynamicColor,
@@ -228,7 +226,6 @@ internal fun AppearanceSettings(
                 onColorSourceChange(if (checked) ColorSource.DYNAMIC else ColorSource.PRESET)
             },
         )
-        HorizontalDivider()
         ChoiceCardGrid(
             title = stringResource(R.string.settings_preset_theme),
             values = PresetTheme.entries,
@@ -304,7 +301,6 @@ internal fun DynamicColorSwitchRow(
 private fun LanguageSettings(selected: AppLanguage, onSelect: (AppLanguage) -> Unit) {
     SettingsSection(stringResource(R.string.settings_language)) {
         ChoiceGroup(
-            title = stringResource(R.string.settings_language),
             values = AppLanguage.entries,
             selected = selected,
             label = { stringResource(it.labelRes()) },
@@ -315,15 +311,60 @@ private fun LanguageSettings(selected: AppLanguage, onSelect: (AppLanguage) -> U
 
 @Composable
 private fun AeroSettings(selected: AeroMode, onSelect: (AeroMode) -> Unit) {
+    val isChecked = selected != AeroMode.SOLID
     SettingsSection(stringResource(R.string.settings_aero)) {
-        ChoiceCardGrid(
-            title = stringResource(R.string.settings_aero_mode),
-            values = AeroMode.entries,
-            selected = selected,
-            columns = 3,
-            iconRes = { it.iconRes() },
-            label = { stringResource(it.labelRes()) },
-            onSelect = onSelect,
+        AeroDynamicSwitchRow(
+            checked = isChecked,
+            onCheckedChange = { checked ->
+                onSelect(if (checked) AeroMode.FLUID_MESH else AeroMode.SOLID)
+            },
+        )
+    }
+}
+
+@Composable
+internal fun AeroDynamicSwitchRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dimensions = MusicTheme.dimensions
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = dimensions.minimumTouchTarget)
+            .clip(MusicTheme.shapes.medium)
+            .toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = onCheckedChange,
+            )
+            .semantics(mergeDescendants = true) {}
+            .padding(horizontal = dimensions.spaceExtraSmall, vertical = dimensions.spaceSmall),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = dimensions.spaceMedium),
+            verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
+        ) {
+            Text(
+                text = stringResource(R.string.settings_aero_player_dynamic),
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.settings_aero_player_dynamic_summary),
+                style = MusicTheme.typography.bodySmall,
+                color = MusicTheme.colors.onSurfaceVariant,
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            modifier = Modifier.clearAndSetSemantics {},
         )
     }
 }
@@ -375,22 +416,28 @@ private fun DataManagementSettings(onRequest: (SettingsConfirmation) -> Unit) {
 @Composable
 private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     val dimensions = MusicTheme.dimensions
-    Surface(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        shape = MusicTheme.shapes.large,
-        color = MusicTheme.aeroCardContainerColor,
-        contentColor = MusicTheme.colors.onSurface,
+        verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmallMedium),
     ) {
-        Column(
-            modifier = Modifier.padding(dimensions.spaceMedium),
-            verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
+        Text(
+            text = title,
+            style = MusicTheme.typography.titleSmall,
+            color = MusicTheme.colors.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = dimensions.spaceMedium),
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MusicTheme.shapes.large,
+            color = MusicTheme.aeroCardContainerColor,
+            contentColor = MusicTheme.colors.onSurface,
         ) {
-            Text(
-                text = title,
-                style = MusicTheme.typography.titleLarge,
-                color = MusicTheme.colors.onSurface,
-            )
-            content()
+            Column(
+                modifier = Modifier.padding(dimensions.spaceMedium),
+                verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
+            ) {
+                content()
+            }
         }
     }
 }
@@ -516,17 +563,19 @@ private fun ChoiceCard(
 
 @Composable
 internal fun <T> ChoiceGroup(
-    title: String,
     values: List<T>,
     selected: T,
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
+    title: String? = null,
 ) {
-    Text(
-        text = title,
-        style = MusicTheme.typography.titleMedium,
-        color = MusicTheme.colors.onSurface,
-    )
+    if (title != null) {
+        Text(
+            text = title,
+            style = MusicTheme.typography.titleMedium,
+            color = MusicTheme.colors.onSurface,
+        )
+    }
     values.forEach { value ->
         Row(
             modifier = Modifier
@@ -552,7 +601,6 @@ internal fun <T> ChoiceGroup(
             )
         }
     }
-    HorizontalDivider()
 }
 
 @Composable
@@ -641,18 +689,6 @@ private fun AppLanguage.labelRes() = when (this) {
     AppLanguage.SYSTEM -> R.string.settings_system
     AppLanguage.SIMPLIFIED_CHINESE -> R.string.settings_language_chinese
     AppLanguage.ENGLISH -> R.string.settings_language_english
-}
-
-private fun AeroMode.labelRes() = when (this) {
-    AeroMode.FLUID_MESH -> R.string.settings_aero_fluid_mesh
-    AeroMode.GLOW_AURA -> R.string.settings_aero_glow_aura
-    AeroMode.SOLID -> R.string.settings_aero_solid
-}
-
-private fun AeroMode.iconRes() = when (this) {
-    AeroMode.FLUID_MESH -> R.drawable.ic_common_grid_on
-    AeroMode.GLOW_AURA -> R.drawable.ic_common_blur_circular
-    AeroMode.SOLID -> R.drawable.ic_common_circle
 }
 
 private const val FADE_SLIDER_STEPS = 7

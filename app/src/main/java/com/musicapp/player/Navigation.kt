@@ -7,6 +7,7 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,7 +76,6 @@ import com.musicapp.player.core.playback.PlaybackEvent
 import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
 import com.musicapp.player.feature.about.AboutScreenRoute
 import com.musicapp.player.feature.about.AboutViewModel
-import com.musicapp.player.feature.aero.AeroBackground
 import com.musicapp.player.feature.permission.MediaPermissionState
 import com.musicapp.player.feature.albums.AlbumDetailScreenRoute
 import com.musicapp.player.feature.albums.AlbumDetailViewModel
@@ -202,13 +202,12 @@ fun MainNavigation(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AeroBackground(
-            preferredMode = if (playerExpanded) AeroMode.SOLID else aeroMode,
-            signals = aeroSignals,
-            modifier = Modifier.fillMaxSize(),
-        ) {
-          AppShell(
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MusicTheme.colors.background),
+    ) {
+        AppShell(
             drawerGesturesEnabled = !playerExpanded,
             playerSheetVisible = playerShellState.isPlayerVisible,
             navigationContent = { policy, closeDrawer ->
@@ -569,8 +568,7 @@ fun MainNavigation(
                     onExpansionChanged = { playerExpanded = it },
                 )
             },
-          )
-        }
+        )
         val bottomInset = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
         MessageBubbleHost(
             request = messageBubbleRequest,

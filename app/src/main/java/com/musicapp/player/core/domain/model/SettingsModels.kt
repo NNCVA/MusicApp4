@@ -40,7 +40,7 @@ data class AppSettings(
     val presetTheme: PresetTheme = PresetTheme.DEFAULT_BLUE,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val appLanguage: AppLanguage = AppLanguage.SYSTEM,
-    val aeroMode: AeroMode = AeroMode.GLOW_AURA,
+    val aeroMode: AeroMode = AeroMode.FLUID_MESH,
     val fadeThroughDurationMs: Long = DEFAULT_FADE_THROUGH_DURATION_MS,
     val scanMode: ScanMode = ScanMode.ALL,
     val skipShortAudio: Boolean = true,

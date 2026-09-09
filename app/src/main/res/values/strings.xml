@@ -374,6 +374,8 @@
     <string name="settings_language_chinese">Simplified Chinese</string>
     <string name="settings_language_english">English</string>
     <string name="settings_aero">Aero background</string>
+    <string name="settings_aero_player_dynamic">Player page dynamic background</string>
+    <string name="settings_aero_player_dynamic_summary">Render dynamic fluid mesh on the player page based on artwork colors. Shows solid color when disabled.</string>
     <string name="settings_aero_mode">Background style</string>
     <string name="settings_aero_fluid_mesh">Fluid mesh</string>
     <string name="settings_aero_glow_aura">Glow aura</string>

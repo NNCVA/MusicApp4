@@ -125,6 +125,24 @@ class SettingsViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `setAeroMode toggles player dynamic background mode`() = runTest(dispatcher) {
+        val fixture = fixture(backgroundScope)
+        val collection = backgroundScope.launch { fixture.viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(AeroMode.FLUID_MESH, fixture.viewModel.uiState.value.settings.aeroMode)
+
+        fixture.viewModel.setAeroMode(AeroMode.SOLID)
+        advanceUntilIdle()
+        assertEquals(AeroMode.SOLID, fixture.viewModel.uiState.value.settings.aeroMode)
+
+        fixture.viewModel.setAeroMode(AeroMode.FLUID_MESH)
+        advanceUntilIdle()
+        assertEquals(AeroMode.FLUID_MESH, fixture.viewModel.uiState.value.settings.aeroMode)
+        collection.cancel()
+    }
+
     private fun fixture(
         scope: kotlinx.coroutines.CoroutineScope,
         initialSettings: AppSettings = AppSettings(),
