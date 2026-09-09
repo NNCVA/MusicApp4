@@ -39,6 +39,7 @@ data class AppSettings(
     val colorSource: ColorSource = ColorSource.DYNAMIC,
     val presetTheme: PresetTheme = PresetTheme.DEFAULT_BLUE,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val playerThemeMode: ThemeMode = ThemeMode.SYSTEM,
     val appLanguage: AppLanguage = AppLanguage.SYSTEM,
     val aeroMode: AeroMode = AeroMode.FLUID_MESH,
     val fadeThroughDurationMs: Long = DEFAULT_FADE_THROUGH_DURATION_MS,

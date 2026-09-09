@@ -32,6 +32,8 @@ interface SettingsRepository {
 
     suspend fun setThemeMode(value: ThemeMode)
 
+    suspend fun setPlayerThemeMode(value: ThemeMode)
+
     suspend fun setAppLanguage(value: AppLanguage)
 
     suspend fun setAeroMode(value: AeroMode)

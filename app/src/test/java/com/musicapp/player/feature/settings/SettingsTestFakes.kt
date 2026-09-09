@@ -37,6 +37,7 @@ internal class FakeSettingsRepository(
     override suspend fun setColorSource(value: ColorSource) = update { copy(colorSource = value) }
     override suspend fun setPresetTheme(value: PresetTheme) = update { copy(presetTheme = value) }
     override suspend fun setThemeMode(value: ThemeMode) = update { copy(themeMode = value) }
+    override suspend fun setPlayerThemeMode(value: ThemeMode) = update { copy(playerThemeMode = value) }
     override suspend fun setAppLanguage(value: AppLanguage) = update { copy(appLanguage = value) }
     override suspend fun setAeroMode(value: AeroMode) = update { copy(aeroMode = value) }
     override suspend fun setFadeThroughDurationMs(value: Long) = update { copy(fadeThroughDurationMs = value) }

@@ -93,6 +93,7 @@ fun SettingsScreenRoute(
         onColorSourceChange = viewModel::setColorSource,
         onPresetThemeChange = viewModel::setPresetTheme,
         onThemeModeChange = viewModel::setThemeMode,
+        onPlayerThemeModeChange = viewModel::setPlayerThemeMode,
         onLanguageChange = viewModel::setAppLanguage,
         onAeroModeChange = viewModel::setAeroMode,
         onFadeDurationChange = viewModel::setFadeThroughDurationMs,
@@ -113,6 +114,7 @@ private fun SettingsScreen(
     onColorSourceChange: (ColorSource) -> Unit,
     onPresetThemeChange: (PresetTheme) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
+    onPlayerThemeModeChange: (ThemeMode) -> Unit,
     onLanguageChange: (AppLanguage) -> Unit,
     onAeroModeChange: (AeroMode) -> Unit,
     onFadeDurationChange: (Long) -> Unit,
@@ -175,7 +177,14 @@ private fun SettingsScreen(
             ) {
                 item { AppearanceSettings(state.settings, onColorSourceChange, onPresetThemeChange, onThemeModeChange) }
                 item { LanguageSettings(state.settings.appLanguage, onLanguageChange) }
-                item { AeroSettings(state.settings.aeroMode, onAeroModeChange) }
+                item {
+                    PlayerSettings(
+                        playerThemeMode = state.settings.playerThemeMode,
+                        aeroMode = state.settings.aeroMode,
+                        onPlayerThemeModeChange = onPlayerThemeModeChange,
+                        onAeroModeChange = onAeroModeChange,
+                    )
+                }
                 item { FadeSettings(state.settings.fadeThroughDurationMs, onFadeDurationChange) }
                 item { DataManagementSettings(onRequestConfirmation) }
             }
@@ -310,13 +319,27 @@ private fun LanguageSettings(selected: AppLanguage, onSelect: (AppLanguage) -> U
 }
 
 @Composable
-private fun AeroSettings(selected: AeroMode, onSelect: (AeroMode) -> Unit) {
-    val isChecked = selected != AeroMode.SOLID
+private fun PlayerSettings(
+    playerThemeMode: ThemeMode,
+    aeroMode: AeroMode,
+    onPlayerThemeModeChange: (ThemeMode) -> Unit,
+    onAeroModeChange: (AeroMode) -> Unit,
+) {
+    val isChecked = aeroMode != AeroMode.SOLID
     SettingsSection(stringResource(R.string.settings_aero)) {
+        ChoiceCardGrid(
+            title = stringResource(R.string.settings_theme_mode),
+            values = ThemeMode.entries,
+            selected = playerThemeMode,
+            columns = 3,
+            iconRes = { it.iconRes() },
+            label = { stringResource(it.labelRes()) },
+            onSelect = onPlayerThemeModeChange,
+        )
         AeroDynamicSwitchRow(
             checked = isChecked,
             onCheckedChange = { checked ->
-                onSelect(if (checked) AeroMode.FLUID_MESH else AeroMode.SOLID)
+                onAeroModeChange(if (checked) AeroMode.FLUID_MESH else AeroMode.SOLID)
             },
         )
     }

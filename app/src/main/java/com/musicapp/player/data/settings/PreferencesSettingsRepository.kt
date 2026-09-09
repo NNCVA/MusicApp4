@@ -20,6 +20,7 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -27,12 +28,25 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @Singleton
 class PreferencesSettingsRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     @ApplicationCoroutineScope applicationScope: CoroutineScope,
 ) : SettingsRepository {
+    init {
+        applicationScope.launch {
+            try {
+                migratePlayerThemeModeIfNeeded()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                // Settings reads retain the legacy fallback when a best-effort migration cannot write.
+            }
+        }
+    }
+
     private val settingsFlow: Flow<AppSettings> = dataStore.data
         .catch { exception ->
             if (exception is IOException) {
@@ -78,6 +92,10 @@ class PreferencesSettingsRepository @Inject constructor(
 
     override suspend fun setThemeMode(value: ThemeMode) {
         setEnum(Keys.THEME_MODE, value)
+    }
+
+    override suspend fun setPlayerThemeMode(value: ThemeMode) {
+        setEnum(Keys.PLAYER_THEME_MODE, value)
     }
 
     override suspend fun setAppLanguage(value: AppLanguage) {
@@ -183,6 +201,7 @@ class PreferencesSettingsRepository @Inject constructor(
             preferences.remove(Keys.COLOR_SOURCE)
             preferences.remove(Keys.PRESET_THEME)
             preferences.remove(Keys.THEME_MODE)
+            preferences.remove(Keys.PLAYER_THEME_MODE)
             preferences.remove(Keys.APP_LANGUAGE)
             preferences.remove(Keys.AERO_MODE)
             preferences.remove(Keys.FADE_THROUGH_DURATION_MS)
@@ -205,10 +224,12 @@ class PreferencesSettingsRepository @Inject constructor(
 
     private fun toAppSettings(preferences: Preferences): AppSettings {
         val defaults = AppSettings()
+        val themeMode = preferences.enumValue(Keys.THEME_MODE, defaults.themeMode)
         return AppSettings(
             colorSource = preferences.enumValue(Keys.COLOR_SOURCE, defaults.colorSource),
             presetTheme = preferences.enumValue(Keys.PRESET_THEME, defaults.presetTheme),
-            themeMode = preferences.enumValue(Keys.THEME_MODE, defaults.themeMode),
+            themeMode = themeMode,
+            playerThemeMode = preferences.enumValue(Keys.PLAYER_THEME_MODE, themeMode),
             appLanguage = preferences.enumValue(Keys.APP_LANGUAGE, defaults.appLanguage),
             aeroMode = preferences.enumValue(Keys.AERO_MODE, defaults.aeroMode),
             fadeThroughDurationMs = preferences[Keys.FADE_THROUGH_DURATION_MS]
@@ -241,6 +262,15 @@ class PreferencesSettingsRepository @Inject constructor(
         )
     }
 
+    private suspend fun migratePlayerThemeModeIfNeeded() {
+        dataStore.edit { preferences ->
+            if (preferences[Keys.PLAYER_THEME_MODE] == null) {
+                val mainThemeMode = preferences.enumValue(Keys.THEME_MODE, AppSettings().themeMode)
+                preferences[Keys.PLAYER_THEME_MODE] = mainThemeMode.name
+            }
+        }
+    }
+
     private inline fun <reified T : Enum<T>> Preferences.enumValue(
         key: Preferences.Key<String>,
         default: T,
@@ -250,6 +280,7 @@ class PreferencesSettingsRepository @Inject constructor(
         val COLOR_SOURCE = stringPreferencesKey("color_source")
         val PRESET_THEME = stringPreferencesKey("preset_theme")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val PLAYER_THEME_MODE = stringPreferencesKey("player_theme_mode")
         val APP_LANGUAGE = stringPreferencesKey("app_language")
         val AERO_MODE = stringPreferencesKey("aero_mode")
         val FADE_THROUGH_DURATION_MS = longPreferencesKey("fade_through_duration_ms")

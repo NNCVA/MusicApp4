@@ -349,6 +349,7 @@ class FakeSettingsRepository(
     override suspend fun setColorSource(value: com.musicapp.player.core.domain.model.ColorSource) = update { copy(colorSource = value) }
     override suspend fun setPresetTheme(value: com.musicapp.player.core.domain.model.PresetTheme) = update { copy(presetTheme = value) }
     override suspend fun setThemeMode(value: com.musicapp.player.core.domain.model.ThemeMode) = update { copy(themeMode = value) }
+    override suspend fun setPlayerThemeMode(value: com.musicapp.player.core.domain.model.ThemeMode) = update { copy(playerThemeMode = value) }
     override suspend fun setAppLanguage(value: com.musicapp.player.core.domain.model.AppLanguage) = update { copy(appLanguage = value) }
     override suspend fun setAeroMode(value: com.musicapp.player.core.domain.model.AeroMode) = update { copy(aeroMode = value) }
     override suspend fun setFadeThroughDurationMs(value: Long) = update { copy(fadeThroughDurationMs = value) }

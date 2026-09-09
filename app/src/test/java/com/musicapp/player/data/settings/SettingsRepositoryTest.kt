@@ -63,6 +63,35 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun missingPlayerThemeModeIsMigratedFromMainThemeModeOnce() = runTest {
+        val dataStore = InMemoryDataStore(
+            mutablePreferencesOf(
+                stringPreferencesKey("theme_mode") to ThemeMode.DARK.name,
+            ),
+        )
+        val applicationScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val repository = PreferencesSettingsRepository(
+            dataStore = dataStore,
+            applicationScope = applicationScope,
+        )
+
+        advanceUntilIdle()
+
+        val migrated = repository.currentSettings()
+        assertEquals(ThemeMode.DARK, migrated.themeMode)
+        assertEquals(ThemeMode.DARK, migrated.playerThemeMode)
+        assertEquals(
+            ThemeMode.DARK.name,
+            dataStore.current[stringPreferencesKey("player_theme_mode")],
+        )
+
+        repository.setPlayerThemeMode(ThemeMode.LIGHT)
+        repository.setThemeMode(ThemeMode.SYSTEM)
+        assertEquals(ThemeMode.LIGHT, repository.currentSettings().playerThemeMode)
+        applicationScope.cancel()
+    }
+
+    @Test
     fun ioExceptionWhileReadingReturnsDefaults() = runTest {
         val repository = PreferencesSettingsRepository(
             dataStore = ThrowingDataStore(IOException("Cannot read settings")),
@@ -108,6 +137,10 @@ class SettingsRepositoryTest {
         ThemeMode.entries.forEach { value ->
             repository.setThemeMode(value)
             assertEquals(value, repository.settings.first { it.themeMode == value }.themeMode)
+        }
+        ThemeMode.entries.forEach { value ->
+            repository.setPlayerThemeMode(value)
+            assertEquals(value, repository.settings.first { it.playerThemeMode == value }.playerThemeMode)
         }
         AppLanguage.entries.forEach { value ->
             repository.setAppLanguage(value)
@@ -172,6 +205,7 @@ class SettingsRepositoryTest {
         repository.setColorSource(ColorSource.PRESET)
         repository.setPresetTheme(PresetTheme.VIOLET)
         repository.setThemeMode(ThemeMode.DARK)
+        repository.setPlayerThemeMode(ThemeMode.LIGHT)
         repository.setAppLanguage(AppLanguage.ENGLISH)
         repository.setAeroMode(AeroMode.SOLID)
         repository.setFadeThroughDurationMs(2_000)
@@ -218,8 +252,9 @@ class SettingsRepositoryTest {
         )
     }
 
-    private class InMemoryDataStore : DataStore<Preferences> {
-        private val preferences = MutableStateFlow<Preferences>(emptyPreferences())
+    private class InMemoryDataStore(initialPreferences: Preferences = emptyPreferences()) : DataStore<Preferences> {
+        val current: Preferences get() = preferences.value
+        private val preferences = MutableStateFlow(initialPreferences)
         private val updateMutex = Mutex()
 
         override val data: Flow<Preferences> = preferences

@@ -71,6 +71,8 @@ import com.musicapp.player.core.aero.AeroRuntimeSignals
 import com.musicapp.player.core.designsystem.snackbar.MessageBubbleHost
 import com.musicapp.player.core.designsystem.snackbar.MessageBubbleQueue
 import com.musicapp.player.core.domain.model.AeroMode
+import com.musicapp.player.core.domain.model.ColorSource
+import com.musicapp.player.core.domain.model.PresetTheme
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.core.playback.PlaybackEvent
 import com.musicapp.player.data.sync.PendingLibrarySyncFeedback
@@ -108,6 +110,7 @@ import com.musicapp.player.feature.scan.ScanViewModel
 import com.musicapp.player.feature.tracks.TracksScreenRoute
 import com.musicapp.player.feature.tracks.TracksViewModel
 import com.musicapp.player.theme.MusicTheme
+import com.musicapp.player.theme.MusicWindowWidthTier
 import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.ArtistId
 import com.musicapp.player.core.domain.model.TrackId
@@ -125,6 +128,10 @@ fun MainNavigation(
     aeroMode: AeroMode,
     aeroSignals: AeroRuntimeSignals,
     themeMode: ThemeMode,
+    playerThemeMode: ThemeMode,
+    colorSource: ColorSource,
+    presetTheme: PresetTheme,
+    windowWidthTier: MusicWindowWidthTier,
     pendingFeedback: PendingLibrarySyncFeedback? = null,
     onFullExit: () -> Unit,
     onReturnToDesktop: () -> Unit,
@@ -563,6 +570,10 @@ fun MainNavigation(
                     lyricsViewModel = lyricsViewModel,
                     aeroMode = aeroMode,
                     aeroSignals = aeroSignals,
+                    playerThemeMode = playerThemeMode,
+                    colorSource = colorSource,
+                    presetTheme = presetTheme,
+                    windowWidthTier = windowWidthTier,
                     contentInsets = contentInsets,
                     isExpanded = playerExpanded,
                     onExpansionChanged = { playerExpanded = it },

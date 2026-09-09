@@ -359,7 +359,7 @@
         <item quantity="one">Played %1$d time</item>
         <item quantity="other">Played %1$d times</item>
     </plurals>
-    <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance">Main interface</string>
     <string name="settings_color_source">Color source</string>
     <string name="settings_color_dynamic">Material You</string>
     <string name="settings_color_preset">Preset colors</string>
@@ -378,7 +378,7 @@
     <string name="settings_language">Language</string>
     <string name="settings_language_chinese">Simplified Chinese</string>
     <string name="settings_language_english">English</string>
-    <string name="settings_aero">Aero background</string>
+    <string name="settings_aero">Player interface</string>
     <string name="settings_aero_player_dynamic">Player page dynamic background</string>
     <string name="settings_aero_player_dynamic_summary">Render dynamic fluid mesh on the player page based on artwork colors. Shows solid color when disabled.</string>
     <string name="settings_aero_mode">Background style</string>

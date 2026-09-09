@@ -141,6 +141,7 @@ class AndroidMediaLibraryScanSourceTest {
         override suspend fun setColorSource(value: com.musicapp.player.core.domain.model.ColorSource) = Unit
         override suspend fun setPresetTheme(value: com.musicapp.player.core.domain.model.PresetTheme) = Unit
         override suspend fun setThemeMode(value: com.musicapp.player.core.domain.model.ThemeMode) = Unit
+        override suspend fun setPlayerThemeMode(value: com.musicapp.player.core.domain.model.ThemeMode) = Unit
         override suspend fun setAppLanguage(value: com.musicapp.player.core.domain.model.AppLanguage) = Unit
         override suspend fun setAeroMode(value: com.musicapp.player.core.domain.model.AeroMode) = Unit
         override suspend fun setFadeThroughDurationMs(value: Long) = Unit

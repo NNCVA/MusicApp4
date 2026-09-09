@@ -56,6 +56,7 @@ class SettingsViewModelTest {
         fixture.viewModel.setColorSource(ColorSource.PRESET)
         fixture.viewModel.setPresetTheme(PresetTheme.VIOLET)
         fixture.viewModel.setThemeMode(ThemeMode.DARK)
+        fixture.viewModel.setPlayerThemeMode(ThemeMode.LIGHT)
         fixture.viewModel.setAppLanguage(AppLanguage.ENGLISH)
         fixture.viewModel.setAeroMode(AeroMode.SOLID)
         fixture.viewModel.setFadeThroughDurationMs(1_000)
@@ -67,6 +68,7 @@ class SettingsViewModelTest {
                 colorSource = ColorSource.PRESET,
                 presetTheme = PresetTheme.VIOLET,
                 themeMode = ThemeMode.DARK,
+                playerThemeMode = ThemeMode.LIGHT,
                 appLanguage = AppLanguage.ENGLISH,
                 aeroMode = AeroMode.SOLID,
                 fadeThroughDurationMs = 1_000,
@@ -76,6 +78,21 @@ class SettingsViewModelTest {
         )
         assertTrue(fixture.viewModel.uiState.value.pendingLibrarySync)
         assertTrue(fixture.viewModel.uiState.value.rescanPromptVisible)
+        collection.cancel()
+    }
+
+    @Test
+    fun `player theme mode changes independently from main theme mode`() = runTest(dispatcher) {
+        val fixture = fixture(backgroundScope)
+        val collection = backgroundScope.launch { fixture.viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        fixture.viewModel.setThemeMode(ThemeMode.DARK)
+        fixture.viewModel.setPlayerThemeMode(ThemeMode.LIGHT)
+        advanceUntilIdle()
+
+        assertEquals(ThemeMode.DARK, fixture.viewModel.uiState.value.settings.themeMode)
+        assertEquals(ThemeMode.LIGHT, fixture.viewModel.uiState.value.settings.playerThemeMode)
         collection.cancel()
     }
 

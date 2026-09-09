@@ -117,6 +117,8 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(value: ThemeMode) = updateSetting { settingsRepository.setThemeMode(value) }
 
+    fun setPlayerThemeMode(value: ThemeMode) = updateSetting { settingsRepository.setPlayerThemeMode(value) }
+
     fun setAppLanguage(value: AppLanguage) = updateSetting { settingsRepository.setAppLanguage(value) }
 
     fun setAeroMode(value: AeroMode) = updateSetting { settingsRepository.setAeroMode(value) }
