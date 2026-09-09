@@ -338,6 +338,8 @@ fun PlayerSheet(
                         signals = aeroSignals,
                         artwork = (state.artwork as? ArtworkResult.Embedded)?.image,
                         mixArtworkColors = true,
+                        isPlaying = state.isPlaying,
+                        isVisible = progress > 0f,
                         modifier = Modifier.fillMaxSize()
                             .graphicsLayer { alpha = PlayerLayerAlpha.full(progress) },
                     ) {
