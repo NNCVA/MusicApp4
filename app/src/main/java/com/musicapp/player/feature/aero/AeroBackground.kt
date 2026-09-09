@@ -13,6 +13,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -24,6 +25,7 @@ import com.musicapp.player.core.aero.AeroDegradePolicy
 import com.musicapp.player.core.aero.AeroRuntimeSignals
 import com.musicapp.player.core.aero.ArtworkColorSampler
 import com.musicapp.player.core.domain.model.AeroMode
+import com.musicapp.player.core.designsystem.motion.PlayerMotionTokens
 import com.musicapp.player.core.metadata.ArtworkImage
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.ProvideAeroCardTransparency
@@ -51,6 +53,8 @@ fun AeroBackground(
     mixArtworkColors: Boolean = false,
     isPlaying: Boolean = true,
     isVisible: Boolean = true,
+    artworkTransitionProgress: Float? = null,
+    artworkTransitionRunning: Boolean = false,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
     val runtimeState = remember(preferredMode, signals) {
@@ -77,27 +81,41 @@ fun AeroBackground(
             )
         }
 
+    var previousTargetPalette by remember { mutableStateOf(targetPalette) }
+    var observedTargetPalette by remember { mutableStateOf(targetPalette) }
+    LaunchedEffect(targetPalette) {
+        if (targetPalette != observedTargetPalette) {
+            previousTargetPalette = observedTargetPalette
+            observedTargetPalette = targetPalette
+        }
+    }
+
+    val paletteAnimationDuration = if (artworkTransitionProgress == null) {
+        AeroFluidMeshMotion.COLOR_CROSSFADE_DURATION_MS
+    } else {
+        0
+    }
     val animatedBase by animateColorAsState(
         targetValue = targetPalette.base,
-        animationSpec = tween(AeroFluidMeshMotion.COLOR_CROSSFADE_DURATION_MS),
+        animationSpec = tween(paletteAnimationDuration),
         label = "aero-palette-base",
     )
     val animatedPrimary by animateColorAsState(
         targetValue = targetPalette.primary,
-        animationSpec = tween(AeroFluidMeshMotion.COLOR_CROSSFADE_DURATION_MS),
+        animationSpec = tween(paletteAnimationDuration),
         label = "aero-palette-primary",
     )
     val animatedSecondary by animateColorAsState(
         targetValue = targetPalette.secondary,
-        animationSpec = tween(AeroFluidMeshMotion.COLOR_CROSSFADE_DURATION_MS),
+        animationSpec = tween(paletteAnimationDuration),
         label = "aero-palette-secondary",
     )
     val animatedTertiary by animateColorAsState(
         targetValue = targetPalette.tertiary,
-        animationSpec = tween(AeroFluidMeshMotion.COLOR_CROSSFADE_DURATION_MS),
+        animationSpec = tween(paletteAnimationDuration),
         label = "aero-palette-tertiary",
     )
-    val palette = remember(animatedBase, animatedPrimary, animatedSecondary, animatedTertiary) {
+    val animatedPalette = remember(animatedBase, animatedPrimary, animatedSecondary, animatedTertiary) {
         AeroPalette(
             base = animatedBase,
             primary = animatedPrimary,
@@ -105,6 +123,13 @@ fun AeroBackground(
             tertiary = animatedTertiary,
         )
     }
+    val palette = artworkTransitionProgress?.let { progress ->
+        if (artworkTransitionRunning) {
+            lerpAeroPalette(previousTargetPalette, targetPalette, progress)
+        } else {
+            targetPalette
+        }
+    } ?: animatedPalette
 
     Box(modifier = modifier) {
         when {
@@ -134,6 +159,20 @@ internal fun resolveAeroPalette(
         primary = artworkColors.getOrNull(0)?.let { lerp(primary, it, ACCENT_ARTWORK_BLEND) } ?: primary,
         secondary = artworkColors.getOrNull(1)?.let { lerp(secondary, it, ACCENT_ARTWORK_BLEND) } ?: secondary,
         tertiary = artworkColors.getOrNull(2)?.let { lerp(tertiary, it, ACCENT_ARTWORK_BLEND) } ?: tertiary,
+    )
+}
+
+internal fun lerpAeroPalette(
+    start: AeroPalette,
+    end: AeroPalette,
+    progress: Float,
+): AeroPalette {
+    val fraction = progress.coerceIn(0f, 1f)
+    return AeroPalette(
+        base = lerp(start.base, end.base, fraction),
+        primary = lerp(start.primary, end.primary, fraction),
+        secondary = lerp(start.secondary, end.secondary, fraction),
+        tertiary = lerp(start.tertiary, end.tertiary, fraction),
     )
 }
 
@@ -255,7 +294,7 @@ private fun BoxScope.GlowAuraAeroCanvas(
 internal object AeroFluidMeshMotion {
     const val FLUID_MESH_CYCLE_MS = 36_000
     const val GLOW_AURA_CYCLE_MS = 4_800
-    const val COLOR_CROSSFADE_DURATION_MS = 500
+    const val COLOR_CROSSFADE_DURATION_MS = PlayerMotionTokens.TRACK_CHANGE_DURATION_MS
 
     const val MESH_TRAVEL_FRACTION = 0.28f
     const val MESH_RADIUS_FRACTION = 0.72f

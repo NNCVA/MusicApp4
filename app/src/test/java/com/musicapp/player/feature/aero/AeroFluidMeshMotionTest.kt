@@ -1,5 +1,7 @@
 package com.musicapp.player.feature.aero
 
+import com.musicapp.player.core.designsystem.motion.PlayerMotionTokens
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -10,7 +12,19 @@ class AeroFluidMeshMotionTest {
     @Test
     fun constants_matchSpecification() {
         assertEquals(36_000, AeroFluidMeshMotion.FLUID_MESH_CYCLE_MS)
-        assertEquals(500, AeroFluidMeshMotion.COLOR_CROSSFADE_DURATION_MS)
+        assertEquals(PlayerMotionTokens.TRACK_CHANGE_DURATION_MS, AeroFluidMeshMotion.COLOR_CROSSFADE_DURATION_MS)
+    }
+
+    @Test
+    fun paletteTransition_usesTheSharedProgressEndpoints() {
+        val start = AeroPalette(Color.Black, Color.Red, Color.Green, Color.Blue)
+        val end = AeroPalette(Color.White, Color.Cyan, Color.Magenta, Color.Yellow)
+
+        assertEquals(start, lerpAeroPalette(start, end, 0f))
+        assertEquals(end, lerpAeroPalette(start, end, 1f))
+        val midpoint = lerpAeroPalette(start, end, 0.5f).base
+        assertNotEquals(start.base, midpoint)
+        assertNotEquals(end.base, midpoint)
     }
 
     @Test

@@ -73,6 +73,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
@@ -129,6 +130,7 @@ import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.playback.timer.formatRemainingTime
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
+import com.musicapp.player.core.designsystem.motion.PlayerMotionTokens
 import com.musicapp.player.feature.lyrics.LyricsDisplayMode
 import com.musicapp.player.feature.lyrics.LyricsPaneRoute
 import com.musicapp.player.feature.lyrics.LyricsViewModel
@@ -297,6 +299,17 @@ fun PlayerSheet(
             animateSheetTo(targetProgress, velocityY)
         }
         BackHandler(enabled = isExpanded) { animateSheetTo(0f, 0f) }
+        val animationsEnabled = coroutineScope.coroutineContext[MotionDurationScale]?.scaleFactor != 0f
+        val artworkVisible = progress > 0f && (
+            PlayerResponsivePolicy.isLandscape(maxWidth, maxHeight) ||
+                state.fullPlayerPage == FullPlayerPage.ARTWORK
+            )
+        val artworkTransition = rememberArtworkDiscTransition(
+            trackId = track.id,
+            artworkTrackId = state.artworkTrackId,
+            isVisible = artworkVisible,
+            animationsEnabled = animationsEnabled,
+        )
         val miniDragState = rememberDraggableState { deltaY ->
             PlayerGestureRouter.routeSheetDrag(
                 region = PlayerGestureRegion.SHEET_BACKGROUND,
@@ -342,6 +355,8 @@ fun PlayerSheet(
                         mixArtworkColors = true,
                         isPlaying = state.isPlaying,
                         isVisible = progress > 0f,
+                        artworkTransitionProgress = artworkTransition.progress,
+                        artworkTransitionRunning = artworkTransition.isRunning,
                         modifier = Modifier.fillMaxSize()
                             .graphicsLayer { alpha = PlayerLayerAlpha.full(progress) },
                     ) {
@@ -370,6 +385,7 @@ fun PlayerSheet(
                             onSheetDrag = dragSheet,
                             onSheetSettle = settleSheet,
                             sheetProgress = { progress },
+                            artworkTransition = artworkTransition,
                         )
                     }
                 }
@@ -389,6 +405,82 @@ fun PlayerSheet(
             onDismiss = onDismissSleepTimer,
         )
     }
+}
+
+@Composable
+private fun rememberArtworkDiscTransition(
+    trackId: TrackId,
+    artworkTrackId: TrackId?,
+    isVisible: Boolean,
+    animationsEnabled: Boolean,
+): ArtworkDiscTransitionState {
+    val progress = remember { Animatable(1f) }
+    var settledTrackId by remember { mutableStateOf<TrackId?>(null) }
+    var isRunning by remember { mutableStateOf(false) }
+    var transitionId by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(trackId, artworkTrackId, isVisible, animationsEnabled) {
+        val artworkReady = artworkTrackId == trackId
+
+        if (settledTrackId == null) {
+            if (!artworkReady) return@LaunchedEffect
+            settledTrackId = trackId
+            isRunning = false
+            progress.snapTo(1f)
+            return@LaunchedEffect
+        }
+
+        if (trackId == settledTrackId) {
+            if (!isVisible || !animationsEnabled) {
+                isRunning = false
+                progress.snapTo(1f)
+            }
+            return@LaunchedEffect
+        }
+
+        if (!artworkReady) return@LaunchedEffect
+
+        settledTrackId = trackId
+        val nextTransitionId = transitionId + 1L
+        transitionId = nextTransitionId
+        if (!isVisible || !animationsEnabled) {
+            isRunning = false
+            progress.snapTo(1f)
+            return@LaunchedEffect
+        }
+
+        isRunning = true
+        progress.stop()
+        progress.snapTo(0f)
+        try {
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = ArtworkDiscMotion.REWIND_DURATION_MS,
+                    easing = FastOutSlowInEasing,
+                ),
+            )
+        } finally {
+            if (transitionId == nextTransitionId) {
+                progress.snapTo(1f)
+                isRunning = false
+            }
+        }
+    }
+
+    val shouldAnimate = settledTrackId != null &&
+        trackId != settledTrackId &&
+        artworkTrackId == trackId &&
+        isVisible &&
+        animationsEnabled
+    return ArtworkDiscTransitionState(
+        // Publish the zero point in the same composition that exposes the new artwork so the
+        // background cannot render the target palette fully for one frame before the coroutine
+        // starts the Animatable.
+        progress = if (shouldAnimate && !isRunning) 0f else progress.value,
+        isRunning = isRunning || shouldAnimate,
+        transitionId = transitionId,
+    )
 }
 
 private fun Modifier.offsetPx(y: () -> Float): Modifier =
@@ -487,6 +579,7 @@ private fun FullPlayer(
     onSheetDrag: (Float) -> Float,
     onSheetSettle: (Float) -> Unit,
     sheetProgress: () -> Float = { 1f },
+    artworkTransition: ArtworkDiscTransitionState = ArtworkDiscTransitionState(),
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -498,12 +591,18 @@ private fun FullPlayer(
         FullPlayerPage.LYRICS -> lyricsUiState.mode == LyricsDisplayMode.SYNCHRONIZED
         FullPlayerPage.ARTWORK -> false
     }
+    val latestArtwork by rememberUpdatedState(state.artwork)
+    val latestArtworkTrackId by rememberUpdatedState(state.artworkTrackId)
+    val latestArtworkTransition by rememberUpdatedState(artworkTransition)
     val artworkContent = remember {
         movableContentOf { artworkModifier: Modifier, artworkTrack: Track, artworkIsPlaying: Boolean, artworkIsVisible: Boolean ->
             RotatingArtworkDisc(
                 track = artworkTrack,
                 isPlaying = artworkIsPlaying,
                 isVisible = artworkIsVisible,
+                artwork = latestArtwork,
+                artworkTrackId = latestArtworkTrackId,
+                transition = latestArtworkTransition,
                 modifier = artworkModifier,
             )
         }
@@ -1471,8 +1570,8 @@ private fun MiniArtworkImage(
 }
 
 internal object MiniArtworkMotion {
-    const val DURATION_MS = 500
-    const val MAX_BLUR_DP = 20f
+    const val DURATION_MS = PlayerMotionTokens.TRACK_CHANGE_DURATION_MS
+    const val MAX_BLUR_DP = PlayerMotionTokens.TRACK_CHANGE_MAX_BLUR_DP
 
     fun shouldAnimate(
         previousTrackId: TrackId?,

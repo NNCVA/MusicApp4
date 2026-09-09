@@ -143,7 +143,8 @@ class PlayerViewModelTest {
                 queue = PlaybackQueue(items(1), currentItemId = id(1)),
             ),
         )
-        val viewModel = subject(controller, listOf(track(1)))
+        val clock = MutableClock()
+        val viewModel = subject(controller, listOf(track(1)), clock)
         val collection = backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
@@ -153,6 +154,7 @@ class PlayerViewModelTest {
         viewModel.seekToPosition(3_500L)
         viewModel.cyclePlaybackMode()
         viewModel.skipPrevious()
+        clock.currentTime += PlayerViewModel.SKIP_DEBOUNCE_WINDOW_MS
         viewModel.skipNext()
         viewModel.jumpToQueueItem(id(1))
         viewModel.removeFromQueue(id(1))
@@ -287,7 +289,7 @@ class PlayerViewModelTest {
     }
 
     @Test
-    fun `skipNext suppresses rapid clicks within 500ms and extends suppression on continuous clicks`() = runTest(dispatcher) {
+    fun `skipNext suppresses rapid clicks within a shared 500ms window without extending it`() = runTest(dispatcher) {
         val clock = MutableClock(10_000L)
         val controller = RecordingController(PlaybackControllerState())
         val viewModel = subject(controller, emptyList(), clock)
@@ -296,30 +298,29 @@ class PlayerViewModelTest {
         viewModel.skipNext()
         assertEquals(1, controller.nextCalls)
 
-        // Continuous click at +200ms (<500ms) is ignored and extends last click time to 10_200L
+        // Continuous click at +200ms (<500ms) is ignored and does not extend the accepted window.
         clock.currentTime = 10_200L
         viewModel.skipNext()
         assertEquals(1, controller.nextCalls)
 
-        // Continuous click at 10_500L (300ms from 10_200L) is ignored because interval < 500ms,
-        // even though 500ms elapsed since first click (10_000L)
+        // The accepted window expires exactly 500ms after the first click.
         clock.currentTime = 10_500L
         viewModel.skipNext()
-        assertEquals(1, controller.nextCalls)
+        assertEquals(2, controller.nextCalls)
 
-        // Another continuous click at 10_800L (300ms from 10_500L) is still ignored
-        clock.currentTime = 10_800L
-        viewModel.skipNext()
-        assertEquals(1, controller.nextCalls)
-
-        // Pause / wait for more than 500ms since last click (10_800L + 501ms = 11_301L)
-        clock.currentTime = 11_301L
+        // A click 200ms after the second accepted click is ignored.
+        clock.currentTime = 10_700L
         viewModel.skipNext()
         assertEquals(2, controller.nextCalls)
+
+        // The next click is accepted after another complete 500ms window.
+        clock.currentTime = 11_000L
+        viewModel.skipNext()
+        assertEquals(3, controller.nextCalls)
     }
 
     @Test
-    fun `skipPrevious suppresses rapid clicks within 500ms and extends suppression on continuous clicks`() = runTest(dispatcher) {
+    fun `skipPrevious suppresses rapid clicks within a shared 500ms window without extending it`() = runTest(dispatcher) {
         val clock = MutableClock(10_000L)
         val controller = RecordingController(PlaybackControllerState())
         val viewModel = subject(controller, emptyList(), clock)
@@ -328,27 +329,27 @@ class PlayerViewModelTest {
         viewModel.skipPrevious()
         assertEquals(1, controller.previousCalls)
 
-        // Continuous clicks at intervals < 500ms are all ignored
+        // Continuous clicks at intervals < 500ms are ignored without extending the window.
         clock.currentTime = 10_300L
         viewModel.skipPrevious()
         assertEquals(1, controller.previousCalls)
 
-        clock.currentTime = 10_600L
+        clock.currentTime = 10_499L
         viewModel.skipPrevious()
         assertEquals(1, controller.previousCalls)
+
+        // Exactly 500ms after the accepted click, the action is available again.
+        clock.currentTime = 10_500L
+        viewModel.skipPrevious()
+        assertEquals(2, controller.previousCalls)
 
         clock.currentTime = 10_900L
-        viewModel.skipPrevious()
-        assertEquals(1, controller.previousCalls)
-
-        // Next click after >= 500ms interval (10_900L + 500ms = 11_400L) executes
-        clock.currentTime = 11_400L
         viewModel.skipPrevious()
         assertEquals(2, controller.previousCalls)
     }
 
     @Test
-    fun `different playback actions have independent throttle windows and do not block each other`() = runTest(dispatcher) {
+    fun `skip directions share a debounce window while playback toggle remains independent`() = runTest(dispatcher) {
         val clock = MutableClock(10_000L)
         val controller = RecordingController(PlaybackControllerState(isPlaying = false))
         val viewModel = subject(controller, emptyList(), clock)
@@ -361,15 +362,20 @@ class PlayerViewModelTest {
         viewModel.skipNext()
         assertEquals(1, controller.nextCalls)
 
-        // Immediately (100ms later) invoke skipPrevious, must not be blocked by skipNext
+        // A different skip direction in the same 500ms window is also suppressed.
         clock.currentTime = 10_100L
         viewModel.skipPrevious()
-        assertEquals(1, controller.previousCalls)
+        assertEquals(0, controller.previousCalls)
 
-        // But rapid repeat of skipNext (50ms after previous skipNext) is blocked and extends window
-        clock.currentTime = 10_100L
+        // The first direction remains suppressed in the same window.
+        clock.currentTime = 10_400L
         viewModel.skipNext()
         assertEquals(1, controller.nextCalls)
+
+        // Once the shared window expires, the other direction is accepted.
+        clock.currentTime = 10_550L
+        viewModel.skipPrevious()
+        assertEquals(1, controller.previousCalls)
     }
 
     @Test

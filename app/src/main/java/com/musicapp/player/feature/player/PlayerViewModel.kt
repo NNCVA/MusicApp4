@@ -11,6 +11,7 @@ import com.musicapp.player.core.domain.model.PlaybackMode
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.core.designsystem.motion.PlayerMotionTokens
 import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkRepository
 import com.musicapp.player.core.metadata.ArtworkResult
@@ -49,6 +50,11 @@ data class PlayerQueueRow(
     val queueItemId: QueueItemId,
     val track: Track?,
     val isCurrent: Boolean,
+)
+
+private data class LoadedArtwork(
+    val result: ArtworkResult = ArtworkResult.Placeholder,
+    val trackId: TrackId? = null,
 )
 
 data class PlayerUiState(
@@ -119,9 +125,8 @@ class PlayerViewModel(
         }
     }.flowOn(computationDispatcher)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    private val artwork = MutableStateFlow<ArtworkResult>(ArtworkResult.Placeholder)
-    /** Track ID whose artwork result has completed loading. */
-    private val artworkTrackId = MutableStateFlow<TrackId?>(null)
+    /** Artwork and its ready track ID are published atomically to keep transitions in lockstep. */
+    private val loadedArtwork = MutableStateFlow(LoadedArtwork())
     private val showTrackInfo = MutableStateFlow(false)
     private val metadata = MutableStateFlow<AdvancedTrackMetadata?>(null)
     private val metadataLoading = MutableStateFlow(false)
@@ -164,10 +169,9 @@ class PlayerViewModel(
     val uiState = combine(
         playbackController.state,
         combine(tracksById, queueRows) { byId, rows -> byId to rows },
-        artwork,
-        artworkTrackId,
+        loadedArtwork,
         dialogsState,
-    ) { playback, (byId, rows), currentArtwork, loadedArtworkTrackId, (info, timerDialog) ->
+    ) { playback, (byId, rows), loadedArtwork, (info, timerDialog) ->
         val currentTrack = playback.currentTrackId?.let(byId::get)
         val newTrackId = currentTrack?.id
         if (newTrackId != previousTrackId) {
@@ -209,8 +213,8 @@ class PlayerViewModel(
             loadState = playback.playbackStatus.toPlayerLoadState(),
             errorMessageRes = playback.playbackFailure?.code?.messageRes(),
             currentTrack = currentTrack,
-            artwork = currentArtwork,
-            artworkTrackId = loadedArtworkTrackId,
+            artwork = loadedArtwork.result,
+            artworkTrackId = loadedArtwork.trackId,
             isPlaying = playback.isPlaying,
             positionMs = playback.positionMs,
             durationMs = playback.durationMs ?: currentTrack?.durationMs ?: 0,
@@ -239,19 +243,25 @@ class PlayerViewModel(
                 showTrackInfo.value = false
                 if (track != null) {
                     val result = artworkRepository.artwork(track, ARTWORK_TARGET_PX)
-                    artwork.value = result
-                    artworkTrackId.value = track.id
+                    loadedArtwork.value = LoadedArtwork(result = result, trackId = track.id)
+                    if (skipDebouncePending) {
+                        // Start the perceptual debounce window when the target artwork is ready,
+                        // so a slow local decode cannot let the next tap overtake the transition.
+                        lastSkipClickTimeMs = clock.currentTimeMillis()
+                        skipDebouncePending = false
+                        pendingSkipOriginTrackId = null
+                    }
                 } else {
-                    artwork.value = ArtworkResult.Placeholder
-                    artworkTrackId.value = null
+                    loadedArtwork.value = LoadedArtwork()
                 }
             }
         }
     }
 
     private var lastTogglePlaybackTimeMs = -THROTTLE_WINDOW_MS
-    private var lastSkipNextClickTimeMs = -SKIP_DEBOUNCE_WINDOW_MS
-    private var lastSkipPreviousClickTimeMs = -SKIP_DEBOUNCE_WINDOW_MS
+    private var lastSkipClickTimeMs = -PlayerMotionTokens.TRACK_CHANGE_DURATION_MS.toLong()
+    private var skipDebouncePending = false
+    private var pendingSkipOriginTrackId: TrackId? = null
 
     fun togglePlayback() {
         val now = clock.currentTimeMillis()
@@ -261,25 +271,36 @@ class PlayerViewModel(
     }
 
     fun skipPrevious() {
-        val now = clock.currentTimeMillis()
-        if (now - lastSkipPreviousClickTimeMs in 0 until SKIP_DEBOUNCE_WINDOW_MS) {
-            lastSkipPreviousClickTimeMs = now
-            return
-        }
-        lastSkipPreviousClickTimeMs = now
+        if (!acceptSkipClick()) return
         pendingExplicitDirection = TrackSlideDirection.BACKWARD
         playbackController.skipToPrevious()
     }
 
     fun skipNext() {
-        val now = clock.currentTimeMillis()
-        if (now - lastSkipNextClickTimeMs in 0 until SKIP_DEBOUNCE_WINDOW_MS) {
-            lastSkipNextClickTimeMs = now
-            return
-        }
-        lastSkipNextClickTimeMs = now
+        if (!acceptSkipClick()) return
         pendingExplicitDirection = TrackSlideDirection.FORWARD
         playbackController.skipToNext()
+    }
+
+    private fun acceptSkipClick(): Boolean {
+        val now = clock.currentTimeMillis()
+        val elapsed = now - lastSkipClickTimeMs
+        if (skipDebouncePending) {
+            val currentTrackId = uiState.value.currentTrack?.id
+            val targetHasChanged = currentTrackId != null && currentTrackId != pendingSkipOriginTrackId
+            if (targetHasChanged || elapsed < PlayerMotionTokens.TRACK_CHANGE_DURATION_MS.toLong()) {
+                return false
+            }
+            // A controller that could not advance the queue has no artwork-ready callback to
+            // release the pending state; allow the normal fixed window to recover here.
+            skipDebouncePending = false
+            pendingSkipOriginTrackId = null
+        }
+        if (elapsed in 0 until PlayerMotionTokens.TRACK_CHANGE_DURATION_MS.toLong()) return false
+        lastSkipClickTimeMs = now
+        skipDebouncePending = true
+        pendingSkipOriginTrackId = uiState.value.currentTrack?.id
+        return true
     }
 
     fun seekToFraction(fraction: Float) {
@@ -367,7 +388,7 @@ class PlayerViewModel(
 
     companion object {
         const val THROTTLE_WINDOW_MS = 300L
-        const val SKIP_DEBOUNCE_WINDOW_MS = 500L
+        val SKIP_DEBOUNCE_WINDOW_MS = PlayerMotionTokens.TRACK_CHANGE_DURATION_MS.toLong()
         private const val ARTWORK_TARGET_PX = 1_024
         private const val SEEK_INTERVAL_MS = 10_000L
     }
