@@ -179,6 +179,11 @@
     <string name="player_unknown_track">未知曲目</string>
     <string name="player_queue_current">正在播放</string>
     <string name="player_queue_remove">移除</string>
+    <string name="player_queue_clear">清除</string>
+    <string name="player_queue_clear_confirm_title">清空播放队列？</string>
+    <string name="player_queue_clear_confirm_description">清空后将立即停止播放，播放详情将变为空，当前队列无法恢复。播放历史和歌单不会受影响。</string>
+    <string name="player_queue_clear_confirm_action">确定</string>
+    <string name="player_queue_clear_cancel">取消</string>
     <string name="playback_mode_list_repeat">列表循环</string>
     <string name="playback_mode_single_repeat">单曲循环</string>
     <string name="playback_mode_shuffle">随机播放</string>

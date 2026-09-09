@@ -222,6 +222,7 @@ class MusicPlaybackService : MediaLibraryService() {
                 }
             },
             onFullExit = ::requestFullExit,
+            onClearQueue = ::clearQueue,
             onStartSleepTimer = { duration, extend ->
                 lastSleepTimerExpiredTimestampMs = null
                 sleepTimer.start(duration, extend)
@@ -502,6 +503,24 @@ class MusicPlaybackService : MediaLibraryService() {
             )
         }
         return result
+    }
+
+    private fun clearQueue(): Boolean {
+        val coordinator = queueCoordinator ?: return false
+        playbackResumptionAllowed = PlaybackResumptionPolicy.decide(
+            PlaybackResumptionEvent.PlaybackStopped,
+        ).playbackResumptionAllowed
+        pendingRestoredItemId = null
+        pendingRestoredPositionMs = null
+        restoredHistoryPending = false
+        historyRecorder?.stopInstance()
+        historyItemId = null
+        lastSleepTimerExpiredTimestampMs = null
+        cancelNaturalTransition()
+        sleepTimerCoordinator?.stop()
+        fadeCoordinator?.onPlaybackEvent(FadePlaybackEvent.PAUSE)
+        coordinator.clearRuntimeQueue()
+        return true
     }
 
     private fun currentPlaybackSnapshot(

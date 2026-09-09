@@ -309,6 +309,15 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         )
     }
 
+    override fun clearQueue() = dispatch {
+        mainHandler.removeCallbacks(pendingTimeout)
+        mainHandler.removeCallbacks(optimisticTimeout)
+        pendingTrackId = null
+        pendingPlayWhenReady = null
+        optimisticTrackId = null
+        it.sendCustomCommand(PlaybackSessionProtocol.clearQueueCommand, Bundle.EMPTY)
+    }
+
     override fun startSleepTimer(durationMinutes: Int, extendToEndOfTrack: Boolean) = dispatch {
         it.sendCustomCommand(
             PlaybackSessionProtocol.startSleepTimerCommand,
@@ -540,4 +549,3 @@ internal class Media3PlaybackControllerConnection @Inject constructor(
         const val RECENT_EXPIRED_WINDOW_MS = 5000L
     }
 }
-

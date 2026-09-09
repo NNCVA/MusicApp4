@@ -21,6 +21,7 @@ internal object PlaybackSessionProtocol {
     val playNextCommand = SessionCommand("$PREFIX.PLAY_NEXT", Bundle.EMPTY)
     val jumpToQueueItemCommand = SessionCommand("$PREFIX.JUMP_TO_QUEUE_ITEM", Bundle.EMPTY)
     val removeFromQueueCommand = SessionCommand("$PREFIX.REMOVE_FROM_QUEUE", Bundle.EMPTY)
+    val clearQueueCommand = SessionCommand("$PREFIX.CLEAR_QUEUE", Bundle.EMPTY)
     val fullExitCommand = SessionCommand("$PREFIX.FULL_EXIT", Bundle.EMPTY)
     val skipNextCommand = SessionCommand("$PREFIX.SKIP_NEXT", Bundle.EMPTY)
     val skipPreviousCommand = SessionCommand("$PREFIX.SKIP_PREVIOUS", Bundle.EMPTY)
@@ -35,6 +36,7 @@ internal object PlaybackSessionProtocol {
         playNextCommand,
         jumpToQueueItemCommand,
         removeFromQueueCommand,
+        clearQueueCommand,
         skipNextCommand,
         skipPreviousCommand,
         fullExitCommand,

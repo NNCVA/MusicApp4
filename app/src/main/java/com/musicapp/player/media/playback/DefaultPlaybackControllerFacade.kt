@@ -7,12 +7,13 @@ import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.core.playback.PlaybackControllerState
+import com.musicapp.player.core.playback.PlaybackEvent
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import com.musicapp.player.core.playback.PlaybackEvent
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -56,6 +57,7 @@ internal class DefaultPlaybackControllerFacade @Inject constructor(
                     mediaLibraryRepository.getTrack(trackId)?.let(::add)
                 }
             }
+            ensureActive()
             val startIndex = tracks.indexOfFirst { it.id == context.selectedTrackId }
             if (startIndex >= 0) {
                 connection.replaceQueue(
@@ -87,6 +89,12 @@ internal class DefaultPlaybackControllerFacade @Inject constructor(
 
     override fun removeFromQueue(queueItemId: QueueItemId) = connection.removeFromQueue(queueItemId)
 
+    override fun clearQueue() {
+        queueLoadJob?.cancel()
+        queueLoadJob = null
+        connection.clearQueue()
+    }
+
     override fun startSleepTimer(durationMinutes: Int, extendToEndOfTrack: Boolean) =
         connection.startSleepTimer(durationMinutes, extendToEndOfTrack)
 
@@ -102,6 +110,7 @@ internal class DefaultPlaybackControllerFacade @Inject constructor(
         queueLoadJob?.cancel()
         queueLoadJob = applicationScope.launch {
             val tracks = trackIds.mapNotNull { mediaLibraryRepository.getTrack(it) }
+            ensureActive()
             if (tracks.isNotEmpty()) command(tracks)
         }
     }

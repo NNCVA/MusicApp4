@@ -3,6 +3,7 @@ package com.musicapp.player.media.service
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.musicapp.player.core.domain.model.PlaybackMode
+import com.musicapp.player.core.domain.model.PlaybackQueue
 import com.musicapp.player.core.domain.model.QueueItemId
 import com.musicapp.player.core.domain.model.TrackId
 import com.musicapp.player.core.playback.PlaybackFailure
@@ -160,6 +161,21 @@ class PlaybackQueueCoordinatorTest {
         assertTrue(player.stopped)
         assertTrue(player.items.isEmpty())
         assertTrue(coordinator.currentState.queue.originalQueue.isEmpty())
+    }
+
+    @Test
+    fun `clearing the queue stops playback and clears the real timeline atomically`() {
+        coordinator.replaceQueue(tracks(1, 2), startIndex = 0, playWhenReady = true)
+        var queueStateChangeCount = 0
+        coordinator.attachQueueStateListener { queueStateChangeCount += 1 }
+
+        coordinator.clearRuntimeQueue()
+
+        assertTrue(player.stopped)
+        assertFalse(player.playWhenReady)
+        assertTrue(player.items.isEmpty())
+        assertEquals(PlaybackQueue(), coordinator.currentState.queue)
+        assertEquals(1, queueStateChangeCount)
     }
 
     @Test

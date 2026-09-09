@@ -80,6 +80,7 @@ internal fun PlayerLandscapeContent(
     onSheetSettle: (Float) -> Unit,
     sheetProgress: () -> Float,
     modifier: Modifier = Modifier,
+    onClearQueue: () -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
     val dimensions = MusicTheme.dimensions
@@ -194,6 +195,7 @@ internal fun PlayerLandscapeContent(
                                 onCycleMode = onCycleMode,
                                 onJump = onJumpToQueueItem,
                                 onRemove = onRemoveQueueItem,
+                                onClearQueue = onClearQueue,
                                 onSheetDrag = onSheetDrag,
                                 onSheetSettle = onSheetSettle,
                                 sheetProgress = sheetProgress,

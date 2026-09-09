@@ -102,6 +102,8 @@ interface PlaybackControllerFacade {
 
     fun removeFromQueue(queueItemId: QueueItemId) = Unit
 
+    fun clearQueue() = Unit
+
     fun startSleepTimer(durationMinutes: Int, extendToEndOfTrack: Boolean) = Unit
 
     fun stopSleepTimer() = Unit

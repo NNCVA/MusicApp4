@@ -156,12 +156,14 @@ class PlayerViewModelTest {
         viewModel.skipNext()
         viewModel.jumpToQueueItem(id(1))
         viewModel.removeFromQueue(id(1))
+        viewModel.clearQueue()
 
         assertEquals(1, controller.playCalls)
         assertEquals(3_500L, controller.seekPosition)
         assertEquals(PlaybackMode.SINGLE_REPEAT, controller.mode)
         assertEquals(id(1), controller.removed)
         assertEquals(id(1), controller.jumped)
+        assertEquals(1, controller.clearQueueCalls)
         assertEquals(1, controller.previousCalls)
         assertEquals(1, controller.nextCalls)
         collection.cancel()
@@ -660,6 +662,7 @@ private class RecordingController(initial: PlaybackControllerState) : PlaybackCo
     var mode: PlaybackMode? = null
     var removed: QueueItemId? = null
     var jumped: QueueItemId? = null
+    var clearQueueCalls = 0
     var startSleepTimerCalls = 0
     var stopSleepTimerCalls = 0
     var lastSleepTimerDuration: Int? = null
@@ -675,6 +678,7 @@ private class RecordingController(initial: PlaybackControllerState) : PlaybackCo
     override fun setPlaybackMode(mode: PlaybackMode) { this.mode = mode }
     override fun jumpToQueueItem(queueItemId: QueueItemId) { jumped = queueItemId }
     override fun removeFromQueue(queueItemId: QueueItemId) { removed = queueItemId }
+    override fun clearQueue() { clearQueueCalls++ }
     override fun startSleepTimer(durationMinutes: Int, extendToEndOfTrack: Boolean) {
         startSleepTimerCalls++
         lastSleepTimerDuration = durationMinutes

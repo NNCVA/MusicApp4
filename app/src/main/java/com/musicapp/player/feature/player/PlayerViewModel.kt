@@ -307,6 +307,7 @@ class PlayerViewModel(
         playbackController.jumpToQueueItem(queueItemId)
     }
     fun removeFromQueue(queueItemId: QueueItemId) = playbackController.removeFromQueue(queueItemId)
+    fun clearQueue() = playbackController.clearQueue()
 
     fun showTrackInfo() {
         val track = uiState.value.currentTrack ?: return

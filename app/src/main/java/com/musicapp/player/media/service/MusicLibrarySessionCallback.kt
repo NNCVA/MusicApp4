@@ -50,6 +50,7 @@ internal class MusicLibrarySessionCallbackFactory @Inject constructor(
         onStopSleepTimer: () -> Boolean = { false },
         onSkipNext: () -> Boolean = { false },
         onSkipPrevious: () -> Boolean = { false },
+        onClearQueue: () -> Boolean = { false },
     ): MusicLibrarySessionCallback =
         MusicLibrarySessionCallback(
             connectionPolicy = ControllerConnectionPolicy(context.packageName, Process.myUid()),
@@ -60,6 +61,7 @@ internal class MusicLibrarySessionCallbackFactory @Inject constructor(
             applicationScope = applicationScope,
             onSnapshotRestored = onSnapshotRestored,
             onFullExit = onFullExit,
+            onClearQueue = onClearQueue,
             onStartSleepTimer = onStartSleepTimer,
             onStopSleepTimer = onStopSleepTimer,
             onSkipNext = onSkipNext,
@@ -81,6 +83,7 @@ internal class MusicLibrarySessionCallback(
     private val onStopSleepTimer: () -> Boolean = { false },
     private val onSkipNext: () -> Boolean = { false },
     private val onSkipPrevious: () -> Boolean = { false },
+    private val onClearQueue: () -> Boolean = { false },
 ) : MediaLibrarySession.Callback {
     private val applicationControllers = linkedSetOf<MediaSession.ControllerInfo>()
     private val libraryRoot =
@@ -168,6 +171,7 @@ internal class MusicLibrarySessionCallback(
                 PlaybackSessionProtocol.decodeQueueItemId(args)?.let(queueCoordinator::jumpToQueueItem) ?: false
             PlaybackSessionProtocol.removeFromQueueCommand.customAction ->
                 PlaybackSessionProtocol.decodeQueueItemId(args)?.let { queueCoordinator.remove(it); true } ?: false
+            PlaybackSessionProtocol.clearQueueCommand.customAction -> onClearQueue()
             PlaybackSessionProtocol.skipNextCommand.customAction ->
                 onSkipNext()
             PlaybackSessionProtocol.skipPreviousCommand.customAction ->

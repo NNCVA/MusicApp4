@@ -123,11 +123,13 @@ class PlaybackControllerFacadeTest {
         facade.playNext(listOf(first.id))
         scope.advanceUntilIdle()
         facade.removeFromQueue(QueueItemId(9))
+        facade.clearQueue()
 
         assertEquals(PlaybackMode.SHUFFLE, connection.mode)
         assertEquals(listOf(second.id, first.id), connection.addedTracks.map(Track::id))
         assertEquals(listOf(first.id), connection.nextTracks.map(Track::id))
         assertEquals(QueueItemId(9), connection.removedId)
+        assertEquals(1, connection.clearQueueCalls)
     }
 
     @Test
@@ -175,6 +177,7 @@ class PlaybackControllerFacadeTest {
         var addedTracks: List<Track> = emptyList()
         var nextTracks: List<Track> = emptyList()
         var removedId: QueueItemId? = null
+        var clearQueueCalls = 0
 
         override fun connect() {
             commands += "connect"
@@ -224,6 +227,10 @@ class PlaybackControllerFacadeTest {
 
         override fun removeFromQueue(queueItemId: QueueItemId) {
             removedId = queueItemId
+        }
+
+        override fun clearQueue() {
+            clearQueueCalls++
         }
 
         override suspend fun requestFullExit(): Boolean {

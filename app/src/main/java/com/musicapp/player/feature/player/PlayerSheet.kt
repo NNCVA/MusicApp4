@@ -60,6 +60,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.CircularRippleIconButton
+import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.localizedArtistName
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -180,6 +181,7 @@ fun PlayerSheetRoute(
         onCycleMode = viewModel::cyclePlaybackMode,
         onJumpToQueueItem = viewModel::jumpToQueueItem,
         onRemoveQueueItem = viewModel::removeFromQueue,
+        onClearQueue = viewModel::clearQueue,
         onShowInfo = viewModel::showTrackInfo,
         onDismissInfo = viewModel::dismissTrackInfo,
         onShowSleepTimer = viewModel::showSleepTimer,
@@ -218,6 +220,7 @@ fun PlayerSheet(
     onPageChanged: (FullPlayerPage) -> Unit,
     onExpansionChanged: (Boolean) -> Unit,
     expandRequests: SharedFlow<Unit>? = null,
+    onClearQueue: () -> Unit = {},
 ) {
     var progress by rememberSaveable {
         mutableFloatStateOf(if (initialExpanded) 1f else 0f)
@@ -359,6 +362,7 @@ fun PlayerSheet(
                             onCycleMode = onCycleMode,
                             onJumpToQueueItem = onJumpToQueueItem,
                             onRemoveQueueItem = onRemoveQueueItem,
+                            onClearQueue = onClearQueue,
                             onShowInfo = onShowInfo,
                             onShowSleepTimer = onShowSleepTimer,
                             initialPage = state.fullPlayerPage,
@@ -475,6 +479,7 @@ private fun FullPlayer(
     onCycleMode: () -> Unit,
     onJumpToQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
     onRemoveQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
+    onClearQueue: () -> Unit,
     onShowInfo: () -> Unit,
     onShowSleepTimer: () -> Unit = {},
     initialPage: FullPlayerPage,
@@ -556,6 +561,7 @@ private fun FullPlayer(
                 onCycleMode = onCycleMode,
                 onJumpToQueueItem = onJumpToQueueItem,
                 onRemoveQueueItem = onRemoveQueueItem,
+                onClearQueue = onClearQueue,
                 onShowInfo = onShowInfo,
                 onShowSleepTimer = onShowSleepTimer,
                 showFeedback = showFeedback,
@@ -580,6 +586,7 @@ private fun FullPlayer(
                 onCycleMode = onCycleMode,
                 onJumpToQueueItem = onJumpToQueueItem,
                 onRemoveQueueItem = onRemoveQueueItem,
+                onClearQueue = onClearQueue,
                 onShowInfo = onShowInfo,
                 onShowSleepTimer = onShowSleepTimer,
                 showFeedback = showFeedback,
@@ -634,6 +641,7 @@ private fun PortraitFullPlayer(
     onCycleMode: () -> Unit,
     onJumpToQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
     onRemoveQueueItem: (com.musicapp.player.core.domain.model.QueueItemId) -> Unit,
+    onClearQueue: () -> Unit,
     onShowInfo: () -> Unit,
     onShowSleepTimer: () -> Unit,
     showFeedback: (String) -> Unit,
@@ -703,6 +711,7 @@ private fun PortraitFullPlayer(
                     onCycleMode = onCycleMode,
                     onJump = onJumpToQueueItem,
                     onRemove = onRemoveQueueItem,
+                    onClearQueue = onClearQueue,
                     onSheetDrag = onSheetDrag,
                     onSheetSettle = onSheetSettle,
                     sheetProgress = sheetProgress,
@@ -1053,6 +1062,7 @@ internal fun QueuePage(
     onSheetDrag: (Float) -> Float,
     onSheetSettle: (Float) -> Unit,
     sheetProgress: () -> Float = { 1f },
+    onClearQueue: () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
     val listState = rememberLazyListState()
@@ -1094,6 +1104,7 @@ internal fun QueuePage(
             "- / ${rows.size}"
         }
     }
+    var showClearQueueDialog by rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -1127,16 +1138,17 @@ internal fun QueuePage(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.CenterEnd,
             ) {
-                BareIconButton(
-                    onClick = onCycleMode,
-                    modifier = Modifier.size(dimensions.minimumTouchTarget),
-                ) {
-                    Icon(
-                        painter = painterResource(playbackMode.iconRes()),
-                        contentDescription = stringResource(playbackMode.labelRes()),
-                        modifier = Modifier.size(dimensions.spaceLarge),
-                        tint = MusicTheme.colors.onSurface,
-                    )
+                if (rows.isNotEmpty()) {
+                    BareIconButton(
+                        onClick = { showClearQueueDialog = true },
+                        modifier = Modifier.size(dimensions.minimumTouchTarget),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.player_queue_clear),
+                            style = MusicTheme.typography.labelSmall,
+                            color = MusicTheme.colors.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
@@ -1176,6 +1188,20 @@ internal fun QueuePage(
                 }
             }
         }
+    }
+    if (showClearQueueDialog) {
+        ConfirmationDialog(
+            title = stringResource(R.string.player_queue_clear_confirm_title),
+            text = stringResource(R.string.player_queue_clear_confirm_description),
+            confirmLabel = stringResource(R.string.player_queue_clear_confirm_action),
+            cancelLabel = stringResource(R.string.player_queue_clear_cancel),
+            onConfirm = {
+                showClearQueueDialog = false
+                onClearQueue()
+            },
+            onDismiss = { showClearQueueDialog = false },
+            isDestructive = true,
+        )
     }
 }
 

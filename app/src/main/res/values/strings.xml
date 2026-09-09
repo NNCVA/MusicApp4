@@ -183,6 +183,11 @@
     <string name="player_unknown_track">Unknown track</string>
     <string name="player_queue_current">Playing now</string>
     <string name="player_queue_remove">Remove</string>
+    <string name="player_queue_clear">Clear</string>
+    <string name="player_queue_clear_confirm_title">Clear playback queue?</string>
+    <string name="player_queue_clear_confirm_description">Playback will stop immediately, the player details will become empty, and the current queue cannot be restored. Playback history and playlists will not be affected.</string>
+    <string name="player_queue_clear_confirm_action">Confirm</string>
+    <string name="player_queue_clear_cancel">Cancel</string>
     <string name="track_info_title">Track information</string>
     <string name="track_info_track_title">Title</string>
     <string name="track_info_artist">Artist</string>
