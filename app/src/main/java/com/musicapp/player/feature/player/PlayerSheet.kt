@@ -58,6 +58,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.CircularRippleIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
@@ -69,6 +70,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -370,45 +372,49 @@ fun PlayerSheet(
                         themeMode = playerThemeMode,
                         windowWidthTier = windowWidthTier,
                     ) {
-                        AeroBackground(
-                            preferredMode = aeroMode,
-                            signals = aeroSignals,
-                            artwork = (state.artwork as? ArtworkResult.Embedded)?.image,
-                            mixArtworkColors = true,
-                            isPlaying = state.isPlaying,
-                            isVisible = progress > 0f,
-                            artworkTransitionProgress = artworkTransition.progress,
-                            artworkTransitionRunning = artworkTransition.isRunning,
-                            modifier = Modifier.fillMaxSize()
-                                .graphicsLayer { alpha = PlayerLayerAlpha.full(progress) },
+                        CompositionLocalProvider(
+                            LocalContentColor provides MusicTheme.colors.onSurface,
                         ) {
-                            FullPlayer(
-                                state = state,
-                                lyricsViewModel = lyricsViewModel,
-                                track = track,
-                                contentInsets = contentInsets,
-                                onCollapse = {
-                                    animateSheetTo(0f, 0f)
-                                },
-                                onTogglePlayback = onTogglePlayback,
-                                onPrevious = onPrevious,
-                                onNext = onNext,
-                                onSeek = onSeek,
-                                onRewind = onRewind,
-                                onFastForward = onFastForward,
-                                onCycleMode = onCycleMode,
-                                onJumpToQueueItem = onJumpToQueueItem,
-                                onRemoveQueueItem = onRemoveQueueItem,
-                                onClearQueue = onClearQueue,
-                                onShowInfo = onShowInfo,
-                                onShowSleepTimer = onShowSleepTimer,
-                                initialPage = state.fullPlayerPage,
-                                onPageChanged = onPageChanged,
-                                onSheetDrag = dragSheet,
-                                onSheetSettle = settleSheet,
-                                sheetProgress = { progress },
-                                artworkTransition = artworkTransition,
-                            )
+                            AeroBackground(
+                                preferredMode = aeroMode,
+                                signals = aeroSignals,
+                                artwork = (state.artwork as? ArtworkResult.Embedded)?.image,
+                                mixArtworkColors = true,
+                                isPlaying = state.isPlaying,
+                                isVisible = progress > 0f,
+                                artworkTransitionProgress = artworkTransition.progress,
+                                artworkTransitionRunning = artworkTransition.isRunning,
+                                modifier = Modifier.fillMaxSize()
+                                    .graphicsLayer { alpha = PlayerLayerAlpha.full(progress) },
+                            ) {
+                                FullPlayer(
+                                    state = state,
+                                    lyricsViewModel = lyricsViewModel,
+                                    track = track,
+                                    contentInsets = contentInsets,
+                                    onCollapse = {
+                                        animateSheetTo(0f, 0f)
+                                    },
+                                    onTogglePlayback = onTogglePlayback,
+                                    onPrevious = onPrevious,
+                                    onNext = onNext,
+                                    onSeek = onSeek,
+                                    onRewind = onRewind,
+                                    onFastForward = onFastForward,
+                                    onCycleMode = onCycleMode,
+                                    onJumpToQueueItem = onJumpToQueueItem,
+                                    onRemoveQueueItem = onRemoveQueueItem,
+                                    onClearQueue = onClearQueue,
+                                    onShowInfo = onShowInfo,
+                                    onShowSleepTimer = onShowSleepTimer,
+                                    initialPage = state.fullPlayerPage,
+                                    onPageChanged = onPageChanged,
+                                    onSheetDrag = dragSheet,
+                                    onSheetSettle = settleSheet,
+                                    sheetProgress = { progress },
+                                    artworkTransition = artworkTransition,
+                                )
+                            }
                         }
                     }
                 }
@@ -422,18 +428,22 @@ fun PlayerSheet(
             themeMode = playerThemeMode,
             windowWidthTier = windowWidthTier,
         ) {
-            if (state.showTrackInfo) {
-                TrackInfoViewer(track, state.metadata, state.metadataLoading, onDismissInfo)
-            }
-            if (state.showSleepTimer) {
-                SleepTimerSheet(
-                    sleepTimerStatus = state.sleepTimer,
-                    initialDurationMinutes = state.savedSleepTimerDurationMinutes,
-                    initialExtendToEndOfTrack = state.savedSleepTimerExtendToEndOfTrack,
-                    onStart = onStartSleepTimer,
-                    onStop = onStopSleepTimer,
-                    onDismiss = onDismissSleepTimer,
-                )
+            CompositionLocalProvider(
+                LocalContentColor provides MusicTheme.colors.onSurface,
+            ) {
+                if (state.showTrackInfo) {
+                    TrackInfoViewer(track, state.metadata, state.metadataLoading, onDismissInfo)
+                }
+                if (state.showSleepTimer) {
+                    SleepTimerSheet(
+                        sleepTimerStatus = state.sleepTimer,
+                        initialDurationMinutes = state.savedSleepTimerDurationMinutes,
+                        initialExtendToEndOfTrack = state.savedSleepTimerExtendToEndOfTrack,
+                        onStart = onStartSleepTimer,
+                        onStop = onStopSleepTimer,
+                        onDismiss = onDismissSleepTimer,
+                    )
+                }
             }
         }
     }
