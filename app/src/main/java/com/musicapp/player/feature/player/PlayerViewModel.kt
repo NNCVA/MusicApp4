@@ -244,13 +244,6 @@ class PlayerViewModel(
                 if (track != null) {
                     val result = artworkRepository.artwork(track, ARTWORK_TARGET_PX)
                     loadedArtwork.value = LoadedArtwork(result = result, trackId = track.id)
-                    if (skipDebouncePending) {
-                        // Start the perceptual debounce window when the target artwork is ready,
-                        // so a slow local decode cannot let the next tap overtake the transition.
-                        lastSkipClickTimeMs = clock.currentTimeMillis()
-                        skipDebouncePending = false
-                        pendingSkipOriginTrackId = null
-                    }
                 } else {
                     loadedArtwork.value = LoadedArtwork()
                 }
@@ -259,9 +252,7 @@ class PlayerViewModel(
     }
 
     private var lastTogglePlaybackTimeMs = -THROTTLE_WINDOW_MS
-    private var lastSkipClickTimeMs = -PlayerMotionTokens.TRACK_CHANGE_DURATION_MS.toLong()
-    private var skipDebouncePending = false
-    private var pendingSkipOriginTrackId: TrackId? = null
+    private var lastSkipClickTimeMs = -SKIP_DEBOUNCE_WINDOW_MS
 
     fun togglePlayback() {
         val now = clock.currentTimeMillis()
@@ -285,22 +276,11 @@ class PlayerViewModel(
     private fun acceptSkipClick(): Boolean {
         val now = clock.currentTimeMillis()
         val elapsed = now - lastSkipClickTimeMs
-        if (skipDebouncePending) {
-            val currentTrackId = uiState.value.currentTrack?.id
-            val targetHasChanged = currentTrackId != null && currentTrackId != pendingSkipOriginTrackId
-            if (targetHasChanged || elapsed < PlayerMotionTokens.TRACK_CHANGE_DURATION_MS.toLong()) {
-                return false
-            }
-            // A controller that could not advance the queue has no artwork-ready callback to
-            // release the pending state; allow the normal fixed window to recover here.
-            skipDebouncePending = false
-            pendingSkipOriginTrackId = null
-        }
-        if (elapsed in 0 until PlayerMotionTokens.TRACK_CHANGE_DURATION_MS.toLong()) return false
+        // Every click re-anchors the shared window, so a burst of taps only executes the tap that
+        // starts it and the queue stays put until a full window passes without a tap. Rejected taps
+        // return before skipPrevious/skipNext assign the direction, so they never change direction.
         lastSkipClickTimeMs = now
-        skipDebouncePending = true
-        pendingSkipOriginTrackId = uiState.value.currentTrack?.id
-        return true
+        return elapsed >= SKIP_DEBOUNCE_WINDOW_MS
     }
 
     fun seekToFraction(fraction: Float) {

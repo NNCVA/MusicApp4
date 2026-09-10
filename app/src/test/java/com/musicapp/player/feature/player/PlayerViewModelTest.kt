@@ -289,94 +289,126 @@ class PlayerViewModelTest {
     }
 
     @Test
-    fun `skipNext suppresses rapid clicks within a shared 500ms window without extending it`() = runTest(dispatcher) {
-        val clock = MutableClock(10_000L)
-        val controller = RecordingController(PlaybackControllerState())
-        val viewModel = subject(controller, emptyList(), clock)
+    fun `skipNext suppresses rapid clicks within a shared 500ms window and each click refreshes it`() =
+        runTest(dispatcher) {
+            val clock = MutableClock(10_000L)
+            val controller = RecordingController(PlaybackControllerState())
+            val viewModel = subject(controller, emptyList(), clock)
 
-        // First click executes immediately
-        viewModel.skipNext()
-        assertEquals(1, controller.nextCalls)
+            // First click executes immediately and opens the window until +500ms.
+            viewModel.skipNext()
+            assertEquals(1, controller.nextCalls)
 
-        // Continuous click at +200ms (<500ms) is ignored and does not extend the accepted window.
-        clock.currentTime = 10_200L
-        viewModel.skipNext()
-        assertEquals(1, controller.nextCalls)
+            // A click at +200ms is ignored and pushes the window to +700ms.
+            clock.currentTime = 10_200L
+            viewModel.skipNext()
+            assertEquals(1, controller.nextCalls)
 
-        // The accepted window expires exactly 500ms after the first click.
-        clock.currentTime = 10_500L
-        viewModel.skipNext()
-        assertEquals(2, controller.nextCalls)
+            // The original +500ms expiry is gone: the window now ends 500ms after the ignored click.
+            clock.currentTime = 10_500L
+            viewModel.skipNext()
+            assertEquals(1, controller.nextCalls)
 
-        // A click 200ms after the second accepted click is ignored.
-        clock.currentTime = 10_700L
-        viewModel.skipNext()
-        assertEquals(2, controller.nextCalls)
+            // +700ms is only 200ms after the ignored click, so the window moved to +1200ms.
+            clock.currentTime = 10_700L
+            viewModel.skipNext()
+            assertEquals(1, controller.nextCalls)
 
-        // The next click is accepted after another complete 500ms window.
-        clock.currentTime = 11_000L
-        viewModel.skipNext()
-        assertEquals(3, controller.nextCalls)
-    }
+            // The window is anchored to the most recent tap, so the quiet gap starts at +900ms.
+            clock.currentTime = 10_900L
+            viewModel.skipNext()
+            assertEquals(1, controller.nextCalls)
 
-    @Test
-    fun `skipPrevious suppresses rapid clicks within a shared 500ms window without extending it`() = runTest(dispatcher) {
-        val clock = MutableClock(10_000L)
-        val controller = RecordingController(PlaybackControllerState())
-        val viewModel = subject(controller, emptyList(), clock)
+            // The tap that finally finds a quiet 500ms behind it executes.
+            clock.currentTime = 11_400L
+            viewModel.skipNext()
+            assertEquals(2, controller.nextCalls)
 
-        // First click executes immediately
-        viewModel.skipPrevious()
-        assertEquals(1, controller.previousCalls)
-
-        // Continuous clicks at intervals < 500ms are ignored without extending the window.
-        clock.currentTime = 10_300L
-        viewModel.skipPrevious()
-        assertEquals(1, controller.previousCalls)
-
-        clock.currentTime = 10_499L
-        viewModel.skipPrevious()
-        assertEquals(1, controller.previousCalls)
-
-        // Exactly 500ms after the accepted click, the action is available again.
-        clock.currentTime = 10_500L
-        viewModel.skipPrevious()
-        assertEquals(2, controller.previousCalls)
-
-        clock.currentTime = 10_900L
-        viewModel.skipPrevious()
-        assertEquals(2, controller.previousCalls)
-    }
+            // The accepted click opened a fresh window of its own.
+            clock.currentTime = 11_600L
+            viewModel.skipNext()
+            assertEquals(2, controller.nextCalls)
+        }
 
     @Test
-    fun `skip directions share a debounce window while playback toggle remains independent`() = runTest(dispatcher) {
-        val clock = MutableClock(10_000L)
-        val controller = RecordingController(PlaybackControllerState(isPlaying = false))
-        val viewModel = subject(controller, emptyList(), clock)
+    fun `skipPrevious suppresses rapid clicks within a shared 500ms window and each click refreshes it`() =
+        runTest(dispatcher) {
+            val clock = MutableClock(10_000L)
+            val controller = RecordingController(PlaybackControllerState())
+            val viewModel = subject(controller, emptyList(), clock)
 
-        viewModel.togglePlayback()
-        assertEquals(1, controller.playCalls)
+            // First click executes immediately and opens the window until +500ms.
+            viewModel.skipPrevious()
+            assertEquals(1, controller.previousCalls)
 
-        // Immediately (50ms later) invoke skipNext, must not be blocked by togglePlayback
-        clock.currentTime = 10_050L
-        viewModel.skipNext()
-        assertEquals(1, controller.nextCalls)
+            // Ignored clicks at +300ms and +498ms keep re-anchoring the window.
+            clock.currentTime = 10_300L
+            viewModel.skipPrevious()
+            assertEquals(1, controller.previousCalls)
 
-        // A different skip direction in the same 500ms window is also suppressed.
-        clock.currentTime = 10_100L
-        viewModel.skipPrevious()
-        assertEquals(0, controller.previousCalls)
+            clock.currentTime = 10_498L
+            viewModel.skipPrevious()
+            assertEquals(1, controller.previousCalls)
 
-        // The first direction remains suppressed in the same window.
-        clock.currentTime = 10_400L
-        viewModel.skipNext()
-        assertEquals(1, controller.nextCalls)
+            // The window ends 500ms after the most recent tap, so this tap executes and re-anchors it.
+            clock.currentTime = 11_400L
+            viewModel.skipPrevious()
+            assertEquals(2, controller.previousCalls)
 
-        // Once the shared window expires, the other direction is accepted.
-        clock.currentTime = 10_550L
-        viewModel.skipPrevious()
-        assertEquals(1, controller.previousCalls)
-    }
+            // Tapping every 900ms leaves a full quiet window each time.
+            clock.currentTime = 12_300L
+            viewModel.skipPrevious()
+            assertEquals(3, controller.previousCalls)
+
+            // Tapping every 350ms keeps the window alive: each rejected tap re-anchors it.
+            clock.currentTime = 12_650L
+            viewModel.skipPrevious()
+            assertEquals(3, controller.previousCalls)
+
+            clock.currentTime = 13_000L
+            viewModel.skipPrevious()
+            assertEquals(3, controller.previousCalls)
+
+            clock.currentTime = 13_350L
+            viewModel.skipPrevious()
+            assertEquals(3, controller.previousCalls)
+
+            // Without a new tap the window expires at +13850ms and the tap executes.
+            clock.currentTime = 13_850L
+            viewModel.skipPrevious()
+            assertEquals(4, controller.previousCalls)
+        }
+
+    @Test
+    fun `skip directions share a refreshed debounce window while playback toggle remains independent`() =
+        runTest(dispatcher) {
+            val clock = MutableClock(10_000L)
+            val controller = RecordingController(PlaybackControllerState(isPlaying = false))
+            val viewModel = subject(controller, emptyList(), clock)
+
+            viewModel.togglePlayback()
+            assertEquals(1, controller.playCalls)
+
+            // Immediately (50ms later) invoke skipNext, must not be blocked by togglePlayback.
+            clock.currentTime = 10_050L
+            viewModel.skipNext()
+            assertEquals(1, controller.nextCalls)
+
+            // A different skip direction 350ms later is suppressed by the same shared window.
+            clock.currentTime = 10_400L
+            viewModel.skipPrevious()
+            assertEquals(0, controller.previousCalls)
+
+            // The ignored click re-anchored the window, so the next tap at +700ms is still inside it.
+            clock.currentTime = 10_700L
+            viewModel.skipNext()
+            assertEquals(1, controller.nextCalls)
+
+            // The ignored clicks never changed direction: the next accepted tap goes backward.
+            clock.currentTime = 11_900L
+            viewModel.skipPrevious()
+            assertEquals(1, controller.previousCalls)
+        }
 
     @Test
     fun `progress reuses library index and queue rows and does not emit shell changes`() = runTest(dispatcher) {
