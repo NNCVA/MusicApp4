@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
@@ -7,11 +9,39 @@ plugins {
   alias(libs.plugins.room)
 }
 
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.isFile) {
+        localPropertiesFile.inputStream().use(::load)
+    }
+}
+
+val releaseStoreFile = localProperties.getProperty("release.storeFile")
+val releaseStorePassword = localProperties.getProperty("release.storePassword")
+val releaseKeyAlias = localProperties.getProperty("release.keyAlias")
+val releaseKeyPassword = localProperties.getProperty("release.keyPassword")
+val releaseSigningConfigured = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = file(checkNotNull(releaseStoreFile))
+                storePassword = checkNotNull(releaseStorePassword)
+                keyAlias = checkNotNull(releaseKeyAlias)
+                keyPassword = checkNotNull(releaseKeyPassword)
+            }
+        }
+    }
     namespace = "com.musicapp.player"
     compileSdk = 37
     defaultConfig {
-        applicationId = "com.musicapp.player"
+        applicationId = "com.musicapp4.player"
         minSdk = 26
         targetSdk = 37
         versionCode = 1
@@ -23,6 +53,9 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {
