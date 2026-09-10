@@ -25,10 +25,10 @@ internal object FlowingLightRenderPolicy {
     const val REFERENCE_BLUR_RADIUS_PX = 25
     const val BLUR_PASSES = 3
     const val FRAME_DELAY_MS = 42L
-    const val PRIMARY_PERIOD_MS = 100_000L
-    const val SECONDARY_PERIOD_MS = 70_000L
-    const val TERTIARY_PERIOD_MS = 40_000L
-    const val ARTWORK_COVERAGE = 1.3f
+    const val PRIMARY_PERIOD_MS = 150_000L
+    const val SECONDARY_PERIOD_MS = 120_000L
+    const val TERTIARY_PERIOD_MS = 72_000L
+    const val ARTWORK_COVERAGE = 1f
     const val SECONDARY_TRANSLATION_X = -0.95f
     const val SECONDARY_TRANSLATION_Y = -0.7f
     const val TERTIARY_TRANSLATION_X = -0.5f

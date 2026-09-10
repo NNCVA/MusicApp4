@@ -366,12 +366,12 @@
     <string name="settings_language_chinese">简体中文</string>
     <string name="settings_language_english">English</string>
     <string name="settings_aero">播放界面</string>
-    <string name="settings_aero_player_dynamic">播放页动态背景</string>
-    <string name="settings_aero_player_dynamic_summary">开启后播放页将随封面色彩呈现流体网格动态流动，关闭时显示纯色背景</string>
+    <string name="settings_aero_player_dynamic">播放器流光</string>
+    <string name="settings_aero_player_dynamic_summary">开启后播放页将随封面呈现多层动态流光，关闭时保留静态流光</string>
     <string name="settings_aero_mode">背景样式</string>
-    <string name="settings_aero_fluid_mesh">流体网格</string>
-    <string name="settings_aero_glow_aura">光晕气场</string>
-    <string name="settings_aero_solid">纯色静态</string>
+    <string name="settings_aero_fluid_mesh">动态流光</string>
+    <string name="settings_aero_glow_aura">静态流光</string>
+    <string name="settings_aero_solid">静态初始流光</string>
     <string name="settings_playback">播放</string>
     <string name="settings_fade_duration">淡出淡入时长：%1$d 毫秒</string>
     <string name="settings_fade_effective_next_transition">更改从下一次切歌开始生效。</string>

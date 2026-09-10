@@ -2,6 +2,9 @@ package com.musicapp.player.feature.aero
 
 import android.graphics.Color
 import androidx.compose.ui.graphics.Color as ComposeColor
+import com.musicapp.player.core.aero.AeroDegradePolicy
+import com.musicapp.player.core.aero.AeroRuntimeSignals
+import com.musicapp.player.core.domain.model.AeroMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -14,6 +17,40 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class AeroFluidMeshMotionTest {
+    @Test
+    fun `manual solid preference keeps the fluid mesh initial frame without scheduling animation`() {
+        val presentation = resolveFlowingLightPresentation(
+            runtimeState = AeroDegradePolicy.resolve(AeroMode.SOLID, AeroRuntimeSignals.Active),
+            hasArtwork = true,
+        )
+
+        assertEquals(
+            FlowingLightPresentation(
+                renderMode = AeroMode.FLUID_MESH,
+                schedulesFrames = false,
+                initialElapsedRealtimeMs = 0L,
+            ),
+            presentation,
+        )
+    }
+
+    @Test
+    fun `runtime degradation and missing artwork retain the solid fallback`() {
+        val degraded = AeroDegradePolicy.resolve(
+            AeroMode.FLUID_MESH,
+            AeroRuntimeSignals.Active.copy(isPowerSaveMode = true),
+        )
+
+        assertEquals(null, resolveFlowingLightPresentation(degraded, hasArtwork = true))
+        assertEquals(
+            null,
+            resolveFlowingLightPresentation(
+                AeroDegradePolicy.resolve(AeroMode.SOLID, AeroRuntimeSignals.Active),
+                hasArtwork = false,
+            ),
+        )
+    }
+
     @Test
     fun `buffer size follows density-specific reference formula`() {
         assertEquals(FlowingLightBufferSpec(91, 133), FlowingLightRenderPolicy.bufferSpec(1080, 2400, 440))
@@ -55,11 +92,15 @@ class AeroFluidMeshMotionTest {
     }
 
     @Test
-    fun `three artwork layers use independent reference periods`() {
-        assertEquals(180f, FlowingLightRenderPolicy.angleDegrees(50_000, 0), .001f)
-        assertEquals(-180f, FlowingLightRenderPolicy.angleDegrees(35_000, 1), .001f)
-        assertEquals(-180f, FlowingLightRenderPolicy.angleDegrees(20_000, 2), .001f)
-        assertEquals(0f, FlowingLightRenderPolicy.angleDegrees(100_000, 0), .001f)
+    fun `three artwork layers use configured periods and coverage`() {
+        assertEquals(150_000L, FlowingLightRenderPolicy.PRIMARY_PERIOD_MS)
+        assertEquals(120_000L, FlowingLightRenderPolicy.SECONDARY_PERIOD_MS)
+        assertEquals(72_000L, FlowingLightRenderPolicy.TERTIARY_PERIOD_MS)
+        assertEquals(180f, FlowingLightRenderPolicy.angleDegrees(75_000, 0), .001f)
+        assertEquals(-180f, FlowingLightRenderPolicy.angleDegrees(60_000, 1), .001f)
+        assertEquals(-180f, FlowingLightRenderPolicy.angleDegrees(36_000, 2), .001f)
+        assertEquals(0f, FlowingLightRenderPolicy.angleDegrees(150_000, 0), .001f)
+        assertEquals(1f, FlowingLightRenderPolicy.ARTWORK_COVERAGE, .001f)
     }
 
     @Test

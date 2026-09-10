@@ -379,12 +379,12 @@
     <string name="settings_language_chinese">Simplified Chinese</string>
     <string name="settings_language_english">English</string>
     <string name="settings_aero">Player interface</string>
-    <string name="settings_aero_player_dynamic">Player page dynamic background</string>
-    <string name="settings_aero_player_dynamic_summary">Render dynamic fluid mesh on the player page based on artwork colors. Shows solid color when disabled.</string>
+    <string name="settings_aero_player_dynamic">Player flowing light</string>
+    <string name="settings_aero_player_dynamic_summary">Animate layered artwork light on the player page. Keeps a static flowing light when disabled.</string>
     <string name="settings_aero_mode">Background style</string>
-    <string name="settings_aero_fluid_mesh">Fluid mesh</string>
-    <string name="settings_aero_glow_aura">Glow aura</string>
-    <string name="settings_aero_solid">Solid color</string>
+    <string name="settings_aero_fluid_mesh">Dynamic flowing light</string>
+    <string name="settings_aero_glow_aura">Static flowing light</string>
+    <string name="settings_aero_solid">Static initial flowing light</string>
     <string name="settings_playback">Playback</string>
     <string name="settings_fade_duration">Fade-through duration: %1$d ms</string>
     <string name="settings_fade_effective_next_transition">Changes apply to the next track transition.</string>
