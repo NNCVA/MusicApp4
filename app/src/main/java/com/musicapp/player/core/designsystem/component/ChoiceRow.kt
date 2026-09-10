@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.musicapp.player.theme.MusicAlpha
 import com.musicapp.player.theme.MusicTheme
 
@@ -31,6 +32,7 @@ internal fun ChoiceRow(
     subtitle: String? = null,
     enabled: Boolean = true,
     minHeight: Dp? = null,
+    compact: Boolean = false,
     interactionModifier: Modifier = Modifier,
     mergeDescendants: Boolean = true,
     leadingContent: (@Composable () -> Unit)? = null,
@@ -39,6 +41,8 @@ internal fun ChoiceRow(
 ) {
     val dimensions = MusicTheme.dimensions
     val contentAlpha = if (enabled) 1f else MusicAlpha.Disabled
+    val rowVerticalPadding = if (compact) 0.dp else dimensions.spaceSmall
+    val contentPadding = if (compact) 0.dp else dimensions.spaceMedium
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -46,13 +50,13 @@ internal fun ChoiceRow(
             .clip(MusicTheme.shapes.medium)
             .then(interactionModifier)
             .semantics(mergeDescendants = mergeDescendants) {}
-            .padding(horizontal = dimensions.spaceExtraSmall, vertical = dimensions.spaceSmall),
+            .padding(horizontal = dimensions.spaceExtraSmall, vertical = rowVerticalPadding),
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         leadingContent?.invoke()
         Column(
-            modifier = Modifier.weight(1f).padding(MusicTheme.dimensions.spaceMedium),
+            modifier = Modifier.weight(1f).padding(contentPadding),
             verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
         ) {
             title?.let {

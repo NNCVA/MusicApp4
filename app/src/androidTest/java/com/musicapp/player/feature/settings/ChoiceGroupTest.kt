@@ -12,8 +12,10 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -68,5 +70,26 @@ class ChoiceGroupTest {
 
         composeTestRule.onAllNodes(isSelectable(), useUnmergedTree = true)
             .assertCountEquals(2)
+    }
+
+    @Test
+    fun compactChoiceGroupKeepsRowsDenseAndTouchable() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                ChoiceGroup(
+                    values = listOf("Light", "Dark"),
+                    selected = "Light",
+                    label = { it },
+                    onSelect = {},
+                    rowSpacing = 0.dp,
+                    compactRows = true,
+                )
+            }
+        }
+
+        val row = composeTestRule.onNode(isSelectable() and hasText("Dark"))
+        val height = row.fetchSemanticsNode().size.height
+        assertTrue(height >= with(composeTestRule.density) { 48.dp.roundToPx() })
+        assertTrue(height < with(composeTestRule.density) { 80.dp.roundToPx() })
     }
 }

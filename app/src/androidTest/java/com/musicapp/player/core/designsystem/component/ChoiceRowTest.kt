@@ -104,4 +104,19 @@ class ChoiceRowTest {
         assertEquals(emptyList<Boolean>(), changes)
         assertTrue(row.fetchSemanticsNode().size.height >= with(composeTestRule.density) { 48.dp.roundToPx() })
     }
+
+    @Test
+    fun compactRowKeepsMinimumTouchHeight() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                ChoiceRow(
+                    title = "Compact choice",
+                    compact = true,
+                )
+            }
+        }
+
+        val row = composeTestRule.onNode(hasText("Compact choice"))
+        assertTrue(row.fetchSemanticsNode().size.height >= with(composeTestRule.density) { 48.dp.roundToPx() })
+    }
 }

@@ -290,6 +290,8 @@ private fun LanguageSettings(selected: AppLanguage, onSelect: (AppLanguage) -> U
             selected = selected,
             label = { stringResource(it.labelRes()) },
             onSelect = onSelect,
+            rowSpacing = 0.dp,
+            compactRows = true,
         )
     }
 }
@@ -516,30 +518,40 @@ internal fun <T> ChoiceGroup(
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     title: String? = null,
+    modifier: Modifier = Modifier,
+    rowSpacing: Dp? = null,
+    compactRows: Boolean = false,
 ) {
-    if (title != null) {
-        Text(
-            text = title,
-            style = MusicTheme.typography.titleMedium,
-            color = MusicTheme.colors.onSurface,
-        )
-    }
-    values.forEach { value ->
-        ChoiceRow(
-            title = label(value),
-            leadingContent = {
-                RadioButton(
+    val dimensions = MusicTheme.dimensions
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(rowSpacing ?: dimensions.spaceMedium),
+    ) {
+        if (title != null) {
+            Text(
+                text = title,
+                style = MusicTheme.typography.titleMedium,
+                color = MusicTheme.colors.onSurface,
+            )
+        }
+        values.forEach { value ->
+            ChoiceRow(
+                title = label(value),
+                compact = compactRows,
+                leadingContent = {
+                    RadioButton(
+                        selected = value == selected,
+                        onClick = null,
+                        modifier = Modifier.clearAndSetSemantics {},
+                    )
+                },
+                interactionModifier = Modifier.selectable(
                     selected = value == selected,
-                    onClick = null,
-                    modifier = Modifier.clearAndSetSemantics {},
-                )
-            },
-            interactionModifier = Modifier.selectable(
-                selected = value == selected,
-                role = Role.RadioButton,
-                onClick = { onSelect(value) },
-            ),
-        )
+                    role = Role.RadioButton,
+                    onClick = { onSelect(value) },
+                ),
+            )
+        }
     }
 }
 
