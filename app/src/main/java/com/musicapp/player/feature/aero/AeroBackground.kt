@@ -1,40 +1,44 @@
 package com.musicapp.player.feature.aero
 
+import android.os.SystemClock
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import com.musicapp.player.core.aero.AeroDegradePolicy
 import com.musicapp.player.core.aero.AeroRuntimeSignals
 import com.musicapp.player.core.aero.ArtworkColorSampler
-import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.designsystem.motion.PlayerMotionTokens
+import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.metadata.ArtworkImage
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.ProvideAeroCardTransparency
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.roundToInt
-import kotlin.math.sin
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 
 @Immutable
 data class AeroPalette(
@@ -64,22 +68,15 @@ fun AeroBackground(
     val artworkArgb = remember(artwork, mixArtworkColors) {
         if (mixArtworkColors && artwork != null) ArtworkColorSampler.dominantArgb(artwork) else emptyList()
     }
-    val targetPalette =
-        remember(
-            colors.background,
-            colors.primary,
-            colors.secondary,
-            colors.tertiary,
-            artworkArgb,
-        ) {
-            resolveAeroPalette(
-                base = colors.background,
-                primary = colors.primary,
-                secondary = colors.secondary,
-                tertiary = colors.tertiary,
-                artworkArgb = artworkArgb,
-            )
-        }
+    val targetPalette = remember(colors.background, colors.primary, colors.secondary, colors.tertiary, artworkArgb) {
+        resolveAeroPalette(
+            base = colors.background,
+            primary = colors.primary,
+            secondary = colors.secondary,
+            tertiary = colors.tertiary,
+            artworkArgb = artworkArgb,
+        )
+    }
 
     var previousTargetPalette by remember { mutableStateOf(targetPalette) }
     var observedTargetPalette by remember { mutableStateOf(targetPalette) }
@@ -89,61 +86,177 @@ fun AeroBackground(
             observedTargetPalette = targetPalette
         }
     }
-
     val paletteAnimationDuration = if (artworkTransitionProgress == null) {
         AeroFluidMeshMotion.COLOR_CROSSFADE_DURATION_MS
     } else {
         0
     }
-    val animatedBase by animateColorAsState(
-        targetValue = targetPalette.base,
-        animationSpec = tween(paletteAnimationDuration),
-        label = "aero-palette-base",
-    )
-    val animatedPrimary by animateColorAsState(
-        targetValue = targetPalette.primary,
-        animationSpec = tween(paletteAnimationDuration),
-        label = "aero-palette-primary",
-    )
-    val animatedSecondary by animateColorAsState(
-        targetValue = targetPalette.secondary,
-        animationSpec = tween(paletteAnimationDuration),
-        label = "aero-palette-secondary",
-    )
-    val animatedTertiary by animateColorAsState(
-        targetValue = targetPalette.tertiary,
-        animationSpec = tween(paletteAnimationDuration),
-        label = "aero-palette-tertiary",
-    )
+    val animatedBase by animateColorAsState(targetPalette.base, tween(paletteAnimationDuration), label = "aero-palette-base")
+    val animatedPrimary by animateColorAsState(targetPalette.primary, tween(paletteAnimationDuration), label = "aero-palette-primary")
+    val animatedSecondary by animateColorAsState(targetPalette.secondary, tween(paletteAnimationDuration), label = "aero-palette-secondary")
+    val animatedTertiary by animateColorAsState(targetPalette.tertiary, tween(paletteAnimationDuration), label = "aero-palette-tertiary")
     val animatedPalette = remember(animatedBase, animatedPrimary, animatedSecondary, animatedTertiary) {
-        AeroPalette(
-            base = animatedBase,
-            primary = animatedPrimary,
-            secondary = animatedSecondary,
-            tertiary = animatedTertiary,
-        )
+        AeroPalette(animatedBase, animatedPrimary, animatedSecondary, animatedTertiary)
     }
     val palette = artworkTransitionProgress?.let { progress ->
-        if (artworkTransitionRunning) {
-            lerpAeroPalette(previousTargetPalette, targetPalette, progress)
-        } else {
-            targetPalette
-        }
+        if (artworkTransitionRunning) lerpAeroPalette(previousTargetPalette, targetPalette, progress) else targetPalette
     } ?: animatedPalette
 
+    val drawsFlowingLight = runtimeState.schedulesCanvasFrames &&
+        artwork != null &&
+        (runtimeState.effectiveMode == AeroMode.FLUID_MESH || runtimeState.effectiveMode == AeroMode.GLOW_AURA)
     Box(modifier = modifier) {
-        when {
-            !runtimeState.schedulesCanvasFrames -> SolidAeroCanvas(palette)
-            runtimeState.effectiveMode == AeroMode.FLUID_MESH ->
-                FluidMeshAeroCanvas(palette = palette, isPlaying = isPlaying, isVisible = isVisible)
-            runtimeState.effectiveMode == AeroMode.GLOW_AURA ->
-                GlowAuraAeroCanvas(palette = palette, isPlaying = isPlaying, isVisible = isVisible)
-            else -> SolidAeroCanvas(palette)
+        if (drawsFlowingLight) {
+            FlowingLightCanvas(
+                artwork = artwork,
+                mode = runtimeState.effectiveMode,
+                isPlaying = isPlaying,
+                isVisible = isVisible,
+                runtimeAllowsFrames = runtimeState.schedulesCanvasFrames,
+                darkTheme = colors.background.luminance() < .5f,
+                transitionProgress = artworkTransitionProgress ?: 1f,
+                transitionRunning = artworkTransitionRunning,
+                fallbackColor = palette.base,
+            )
+        } else {
+            SolidAeroCanvas(palette)
         }
-        ProvideAeroCardTransparency(enabled = runtimeState.schedulesCanvasFrames) {
-            content()
+        ProvideAeroCardTransparency(enabled = drawsFlowingLight) { content() }
+    }
+}
+
+private data class FlowingLightFrame(
+    val artwork: ArtworkImage,
+    val image: ImageBitmap,
+    val screenSize: IntSize,
+    val viewport: FlowingLightViewportSpec,
+    val generation: Long,
+)
+
+@Composable
+private fun BoxScope.FlowingLightCanvas(
+    artwork: ArtworkImage,
+    mode: AeroMode,
+    isPlaying: Boolean,
+    isVisible: Boolean,
+    runtimeAllowsFrames: Boolean,
+    darkTheme: Boolean,
+    transitionProgress: Float,
+    transitionRunning: Boolean,
+    fallbackColor: Color,
+) {
+    val renderer = remember { FlowingLightBitmapRenderer() }
+    val densityDpi = LocalConfiguration.current.densityDpi
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    var currentFrame by remember { mutableStateOf<FlowingLightFrame?>(null) }
+    var previousFrame by remember { mutableStateOf<FlowingLightFrame?>(null) }
+    var generation by remember { mutableStateOf(0L) }
+
+    DisposableEffect(renderer) { onDispose(renderer::close) }
+
+    LaunchedEffect(artwork, canvasSize, densityDpi, darkTheme, mode) {
+        if (canvasSize.width <= 0 || canvasSize.height <= 0) return@LaunchedEffect
+        val oldFrame = currentFrame
+        if (oldFrame != null && oldFrame.screenSize != canvasSize) {
+            currentFrame = null
+            previousFrame = null
+        }
+        val bitmap = withContext(Dispatchers.Default) {
+            renderer.render(
+                artwork = artwork,
+                screenWidth = canvasSize.width,
+                screenHeight = canvasSize.height,
+                densityDpi = densityDpi,
+                darkTheme = darkTheme,
+                mode = mode,
+                elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+            )
+        }
+        generation += 1
+        if (oldFrame?.artwork !== artwork || oldFrame.screenSize != canvasSize) {
+            previousFrame = oldFrame?.takeIf { it.screenSize == canvasSize }
+        }
+        currentFrame = FlowingLightFrame(
+            artwork = artwork,
+            image = bitmap.asImageBitmap(),
+            screenSize = canvasSize,
+            viewport = FlowingLightRenderPolicy.viewportSpec(
+                canvasSize.width,
+                canvasSize.height,
+                densityDpi,
+            ),
+            generation = generation,
+        )
+    }
+
+    LaunchedEffect(transitionRunning, transitionProgress, previousFrame, currentFrame) {
+        if (previousFrame != null && !transitionRunning && transitionProgress >= 1f) {
+            previousFrame = null
         }
     }
+
+    val shouldSchedule = FlowingLightRenderPolicy.shouldScheduleFrames(
+        dynamic = mode == AeroMode.FLUID_MESH,
+        isPlaying = isPlaying,
+        isVisible = isVisible,
+        runtimeAllowsFrames = runtimeAllowsFrames,
+        transitionRunning = transitionRunning || previousFrame != null,
+    )
+    LaunchedEffect(artwork, canvasSize, densityDpi, darkTheme, mode, shouldSchedule, currentFrame?.artwork) {
+        if (!shouldSchedule || currentFrame?.artwork !== artwork || canvasSize == IntSize.Zero) return@LaunchedEffect
+        while (isActive) {
+            delay(FlowingLightRenderPolicy.FRAME_DELAY_MS)
+            val bitmap = withContext(Dispatchers.Default) {
+                renderer.render(
+                    artwork = artwork,
+                    screenWidth = canvasSize.width,
+                    screenHeight = canvasSize.height,
+                    densityDpi = densityDpi,
+                    darkTheme = darkTheme,
+                    mode = mode,
+                    elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+                )
+            }
+            generation += 1
+            currentFrame = FlowingLightFrame(
+                artwork = artwork,
+                image = bitmap.asImageBitmap(),
+                screenSize = canvasSize,
+                viewport = FlowingLightRenderPolicy.viewportSpec(
+                    canvasSize.width,
+                    canvasSize.height,
+                    densityDpi,
+                ),
+                generation = generation,
+            )
+        }
+    }
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .onSizeChanged { canvasSize = it },
+    ) {
+        drawRect(fallbackColor)
+        val current = currentFrame ?: return@Canvas
+        val previous = previousFrame
+        val alpha = FlowingLightRenderPolicy.crossfade(transitionProgress, previous != null)
+        previous?.let { drawFullscreenImage(it, alpha.previousAlpha) }
+        drawFullscreenImage(current, alpha.currentAlpha)
+    }
+}
+
+private fun DrawScope.drawFullscreenImage(frame: FlowingLightFrame, alpha: Float) {
+    if (alpha <= 0f) return
+    drawImage(
+        image = frame.image,
+        srcOffset = IntOffset(frame.viewport.offsetX, frame.viewport.offsetY),
+        srcSize = IntSize(frame.viewport.width, frame.viewport.height),
+        dstOffset = IntOffset.Zero,
+        dstSize = IntSize(size.width.toInt(), size.height.toInt()),
+        alpha = alpha,
+        filterQuality = FilterQuality.Medium,
+    )
 }
 
 internal fun resolveAeroPalette(
@@ -162,11 +275,7 @@ internal fun resolveAeroPalette(
     )
 }
 
-internal fun lerpAeroPalette(
-    start: AeroPalette,
-    end: AeroPalette,
-    progress: Float,
-): AeroPalette {
+internal fun lerpAeroPalette(start: AeroPalette, end: AeroPalette, progress: Float): AeroPalette {
     val fraction = progress.coerceIn(0f, 1f)
     return AeroPalette(
         base = lerp(start.base, end.base, fraction),
@@ -181,160 +290,8 @@ private fun BoxScope.SolidAeroCanvas(palette: AeroPalette) {
     Canvas(modifier = Modifier.fillMaxSize()) { drawRect(palette.base) }
 }
 
-@Composable
-private fun BoxScope.FluidMeshAeroCanvas(
-    palette: AeroPalette,
-    isPlaying: Boolean,
-    isVisible: Boolean,
-) {
-    val phase = remember { Animatable(0f) }
-    LaunchedEffect(isPlaying, isVisible) {
-        if (isPlaying && isVisible) {
-            while (isActive) {
-                val normalized = phase.value % 1f
-                val current = if (normalized < 0f) normalized + 1f else normalized
-                phase.snapTo(current)
-                val remainingFraction = 1f - current
-                val duration = (AeroFluidMeshMotion.FLUID_MESH_CYCLE_MS * remainingFraction)
-                    .roundToInt()
-                    .coerceAtLeast(1)
-                phase.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(
-                        durationMillis = duration,
-                        easing = LinearEasing,
-                    ),
-                )
-            }
-        }
-    }
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        drawRect(palette.base)
-        val minimumDimension = size.minDimension
-        val colors = listOf(palette.primary, palette.secondary, palette.tertiary)
-        val currentPhase = phase.value
-        colors.forEachIndexed { index, color ->
-            val center =
-                AeroFluidMeshMotion.calculateCenter(
-                    phase = currentPhase,
-                    colorIndex = index,
-                    colorCount = colors.size,
-                    width = size.width,
-                    height = size.height,
-                )
-            drawCircle(
-                brush =
-                    Brush.radialGradient(
-                        colors = listOf(
-                            color.copy(alpha = AeroFluidMeshMotion.MESH_CENTER_ALPHA),
-                            Color.Transparent,
-                        ),
-                        center = center,
-                        radius = minimumDimension * AeroFluidMeshMotion.MESH_RADIUS_FRACTION,
-                    ),
-                radius = minimumDimension * AeroFluidMeshMotion.MESH_RADIUS_FRACTION,
-                center = center,
-            )
-        }
-    }
-}
-
-@Composable
-private fun BoxScope.GlowAuraAeroCanvas(
-    palette: AeroPalette,
-    isPlaying: Boolean,
-    isVisible: Boolean,
-) {
-    val pulse = remember { Animatable(0f) }
-    var targetPulse by remember { mutableFloatStateOf(1f) }
-    LaunchedEffect(isPlaying, isVisible) {
-        if (isPlaying && isVisible) {
-            while (isActive) {
-                val remainingFraction = abs(targetPulse - pulse.value)
-                val duration = (AeroFluidMeshMotion.GLOW_AURA_CYCLE_MS * remainingFraction)
-                    .roundToInt()
-                    .coerceAtLeast(1)
-                pulse.animateTo(
-                    targetValue = targetPulse,
-                    animationSpec = tween(duration, easing = LinearEasing),
-                )
-                targetPulse = if (targetPulse == 1f) 0f else 1f
-            }
-        }
-    }
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        drawRect(palette.base)
-        val radius =
-            size.minDimension *
-                (AeroFluidMeshMotion.GLOW_MINIMUM_RADIUS + pulse.value * AeroFluidMeshMotion.GLOW_RADIUS_RANGE)
-        val center =
-            Offset(
-                size.width * AeroFluidMeshMotion.GLOW_CENTER_X,
-                size.height * AeroFluidMeshMotion.GLOW_CENTER_Y,
-            )
-        drawCircle(
-            brush =
-                Brush.radialGradient(
-                    colors =
-                        listOf(
-                            palette.primary.copy(alpha = AeroFluidMeshMotion.GLOW_PRIMARY_ALPHA),
-                            palette.secondary.copy(alpha = AeroFluidMeshMotion.GLOW_SECONDARY_ALPHA),
-                            palette.tertiary.copy(alpha = AeroFluidMeshMotion.GLOW_TERTIARY_ALPHA),
-                            Color.Transparent,
-                        ),
-                    center = center,
-                    radius = radius,
-                ),
-            radius = radius,
-            center = center,
-        )
-    }
-}
-
 internal object AeroFluidMeshMotion {
-    const val FLUID_MESH_CYCLE_MS = 36_000
-    const val GLOW_AURA_CYCLE_MS = 4_800
     const val COLOR_CROSSFADE_DURATION_MS = PlayerMotionTokens.TRACK_CHANGE_DURATION_MS
-
-    const val MESH_TRAVEL_FRACTION = 0.28f
-    const val MESH_RADIUS_FRACTION = 0.72f
-    const val MESH_CENTER_ALPHA = 0.44f
-
-    const val GLOW_MINIMUM_RADIUS = 0.54f
-    const val GLOW_RADIUS_RANGE = 0.16f
-    const val GLOW_CENTER_X = 0.68f
-    const val GLOW_CENTER_Y = 0.28f
-    const val GLOW_PRIMARY_ALPHA = 0.5f
-    const val GLOW_SECONDARY_ALPHA = 0.32f
-    const val GLOW_TERTIARY_ALPHA = 0.2f
-
-    private const val TWO_PI = (PI * 2).toFloat()
-    private const val SECONDARY_HARMONIC_FACTOR = 0.2f
-
-    /**
-     * Calculates the center offset for a fluid blob color point.
-     *
-     * The motion follows a closed, harmonic curve where both position and velocity (derivatives)
-     * are strictly continuous across the cycle boundary [phase 0f -> 1f].
-     */
-    fun calculateCenter(
-        phase: Float,
-        colorIndex: Int,
-        colorCount: Int,
-        width: Float,
-        height: Float,
-    ): Offset {
-        val angle = phase * TWO_PI + colorIndex * TWO_PI / colorCount.coerceAtLeast(1)
-        val xNorm = 0.5f + cos(angle) * MESH_TRAVEL_FRACTION
-        val yNorm =
-            0.5f +
-                (sin(angle) + SECONDARY_HARMONIC_FACTOR * sin(angle * 2)) *
-                    MESH_TRAVEL_FRACTION
-        return Offset(
-            x = width * xNorm,
-            y = height * yNorm,
-        )
-    }
 }
 
 private const val MAXIMUM_ARTWORK_COLORS = 3
