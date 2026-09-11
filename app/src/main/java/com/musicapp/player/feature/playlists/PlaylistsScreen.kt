@@ -2,7 +2,6 @@ package com.musicapp.player.feature.playlists
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,13 +38,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.EntityArtworkImage
 import com.musicapp.player.core.designsystem.component.InfoRow
 import com.musicapp.player.core.designsystem.component.MenuIconPalette
 import com.musicapp.player.core.designsystem.component.MessageDialog
@@ -391,15 +390,11 @@ private fun PlaylistArtwork(
             dateModifiedMs = 0L,
         )
     }
-    AsyncImage(
+    EntityArtworkImage(
         model = request,
         contentDescription = null,
-        modifier = modifier
-            .clip(MusicTheme.shapes.extraSmall)
-            .background(MusicTheme.colors.secondaryContainer),
+        modifier = modifier.clip(MusicTheme.shapes.extraSmall),
         contentScale = ContentScale.Crop,
-        error = painterResource(R.drawable.ic_playlist_album),
-        placeholder = painterResource(R.drawable.ic_playlist_album),
     )
 }
 

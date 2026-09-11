@@ -1,7 +1,6 @@
 package com.musicapp.player.feature.artists
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,7 +42,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -52,6 +50,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.EntityArtworkImage
 import com.musicapp.player.core.designsystem.component.LockScrollOnChange
 import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
 import com.musicapp.player.core.designsystem.component.GutterMode
@@ -367,12 +366,10 @@ private fun ArtistArtwork(
             .crossfade(false)
             .build()
     }
-    AsyncImage(
+    EntityArtworkImage(
         model = imageRequest,
         contentDescription = stringResource(R.string.artist_artwork_description, artist.displayName.localizedArtistName()),
-        modifier = modifier.clip(CircleShape).background(MusicTheme.colors.secondaryContainer),
+        modifier = modifier.clip(CircleShape),
         contentScale = ContentScale.Crop,
-        error = painterResource(R.drawable.ic_playlist_album),
-        placeholder = painterResource(R.drawable.ic_playlist_album),
     )
 }

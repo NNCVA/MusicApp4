@@ -32,7 +32,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
-import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -120,15 +119,12 @@ fun TrackArtwork(
             .crossfade(false)
             .build()
     }
-    AsyncImage(
+    EntityArtworkImage(
         model = imageRequest,
         contentDescription = artworkDescription,
         modifier = modifier
-            .clip(shape)
-            .background(MusicTheme.colors.secondaryContainer),
+            .clip(shape),
         contentScale = ContentScale.Crop,
-        error = painterResource(R.drawable.ic_playlist_album),
-        placeholder = painterResource(R.drawable.ic_playlist_album),
     )
 }
 

@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -50,10 +48,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.EntityArtworkImage
 import com.musicapp.player.core.designsystem.component.ListActionBar
 import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.TextInputDialog
@@ -333,15 +331,12 @@ internal fun ArtistHeroSection(state: ArtistDetailUiState, title: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
     ) {
-        AsyncImage(
+        EntityArtworkImage(
             model = request,
             contentDescription = stringResource(R.string.artist_artwork_description, title),
             modifier = Modifier.size(dimensions.artistHeroArtworkSize)
-                .clip(CircleShape)
-                .background(MusicTheme.colors.surfaceVariant),
+                .clip(CircleShape),
             contentScale = ContentScale.Crop,
-            error = painterResource(R.drawable.ic_playlist_album),
-            placeholder = painterResource(R.drawable.ic_playlist_album),
         )
         Text(
             text = title,
@@ -374,15 +369,12 @@ internal fun ArtistAlbumRow(album: ArtistAlbumSummary, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
     ) {
-        AsyncImage(
+        EntityArtworkImage(
             model = request,
             contentDescription = stringResource(R.string.album_artwork_description, title),
             modifier = Modifier.size(dimensions.albumRowArtworkSize)
-                .clip(MusicTheme.shapes.small)
-                .background(MusicTheme.colors.surfaceVariant),
+                .clip(MusicTheme.shapes.small),
             contentScale = ContentScale.Crop,
-            error = painterResource(R.drawable.ic_playlist_album),
-            placeholder = painterResource(R.drawable.ic_playlist_album),
         )
         Column(
             modifier = Modifier.weight(1f),

@@ -3,10 +3,8 @@ package com.musicapp.player.feature.albums
 import android.graphics.Bitmap
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
-import coil3.compose.AsyncImage
 import com.musicapp.player.core.image.AudioArtworkRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,6 +72,7 @@ import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.EntityArtworkImage
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
 import com.musicapp.player.core.domain.model.Availability
@@ -384,15 +383,12 @@ private fun AlbumArtwork(
             .crossfade(false)
             .build()
     }
-    AsyncImage(
+    EntityArtworkImage(
         model = imageRequest,
         contentDescription = artworkDescription,
         modifier = modifier
-            .clip(shape)
-            .background(MusicTheme.colors.secondaryContainer),
+            .clip(shape),
         contentScale = ContentScale.Crop,
-        error = painterResource(R.drawable.ic_playlist_album),
-        placeholder = painterResource(R.drawable.ic_playlist_album),
     )
 }
 
@@ -573,15 +569,12 @@ private fun AlbumRowArtwork(
             .crossfade(false)
             .build()
     }
-    AsyncImage(
+    EntityArtworkImage(
         model = imageRequest,
         contentDescription = artworkDescription,
         modifier = modifier
-            .clip(MusicTheme.shapes.small)
-            .background(MusicTheme.colors.secondaryContainer),
+            .clip(MusicTheme.shapes.small),
         contentScale = ContentScale.Crop,
-        error = painterResource(R.drawable.ic_playlist_album),
-        placeholder = painterResource(R.drawable.ic_playlist_album),
     )
 }
 

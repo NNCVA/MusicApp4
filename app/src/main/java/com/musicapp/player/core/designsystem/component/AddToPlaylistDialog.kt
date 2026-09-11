@@ -1,6 +1,5 @@
 package com.musicapp.player.core.designsystem.component
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,13 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.musicapp.player.R
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.PlaylistId
@@ -128,15 +125,12 @@ private fun PlaylistThumbnail(
             dateModifiedMs = 0L,
         )
     }
-    AsyncImage(
+    EntityArtworkImage(
         model = request,
         contentDescription = null,
         modifier = modifier
-            .clip(MusicTheme.shapes.extraSmall)
-            .background(MusicTheme.colors.secondaryContainer),
+            .clip(MusicTheme.shapes.extraSmall),
         contentScale = ContentScale.Crop,
-        error = painterResource(R.drawable.ic_playlist_album),
-        placeholder = painterResource(R.drawable.ic_playlist_album),
     )
 }
 

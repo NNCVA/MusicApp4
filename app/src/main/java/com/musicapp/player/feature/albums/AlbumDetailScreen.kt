@@ -62,11 +62,11 @@ import com.musicapp.player.core.designsystem.component.localizedArtistName
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.EntityArtworkImage
 import com.musicapp.player.core.designsystem.component.QualityBadge
 import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.TextInputDialog
@@ -182,7 +182,7 @@ fun AlbumDetailScreen(
                     .fillMaxWidth()
                     .height(440.dp + topInsetPadding),
             ) {
-                AsyncImage(
+                EntityArtworkImage(
                     model = AudioArtworkRequest.AlbumArtworkRequest(
                         albumId = state.albumId,
                         representativeTrackId = state.representativeTrack.id,
@@ -403,7 +403,7 @@ private fun AlbumHeroSection(
             color = MusicTheme.colors.surfaceVariant,
             modifier = Modifier.size(128.dp),
         ) {
-            AsyncImage(
+            EntityArtworkImage(
                 model = state.representativeTrack?.let {
                     AudioArtworkRequest.AlbumArtworkRequest(
                         albumId = state.albumId ?: AlbumId(it.id.volumeName, 1L),
@@ -715,7 +715,7 @@ private fun AlbumArtistsSection(
                     color = MusicTheme.colors.surfaceVariant,
                     modifier = Modifier.size(dimensions.trackArtworkSize),
                 ) {
-                    AsyncImage(
+                    EntityArtworkImage(
                         model = AudioArtworkRequest.ArtistArtworkRequest(
                             artistName = credit.artistName,
                             representativeTrackId = credit.representativeTrack.id,

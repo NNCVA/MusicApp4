@@ -1,6 +1,5 @@
 package com.musicapp.player.feature.playlists
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +11,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import coil3.compose.AsyncImage
 import com.musicapp.player.R
+import com.musicapp.player.core.designsystem.component.EntityArtworkImage
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.image.toArtworkRequest
@@ -28,7 +26,7 @@ import com.musicapp.player.theme.MusicTheme
  * - 尺寸与圆角：130×130dp，圆角 8dp (MusicShapes.small)
  * - 当歌单可用封面数 >= 4：取前 4 首单曲封面组成 2×2 网格（每个子格 63×63dp，间隙 4dp）
  * - 当歌单可用封面数 1 ~ 3：使用首张单曲封面全尺寸铺满 (130×130dp)
- * - 当 0 张封面或空歌单：展示系统默认歌单矢量占位图 (ic_playlist_album)
+ * - 当 0 张封面或空歌单：展示系统默认歌单矢量降级图 (ic_playlist_album)
  */
 @Composable
 fun QuadPlaylistArtwork(
@@ -44,8 +42,7 @@ fun QuadPlaylistArtwork(
     Box(
         modifier = modifier
             .size(dimensions.playlistHeroArtworkSize)
-            .clip(shape)
-            .background(MusicTheme.colors.secondaryContainer),
+            .clip(shape),
         contentAlignment = Alignment.Center,
     ) {
         val top4Tracks = remember(tracks) {
@@ -73,23 +70,19 @@ fun QuadPlaylistArtwork(
                 }
             }
             top4Tracks.isNotEmpty() -> {
-                AsyncImage(
+                EntityArtworkImage(
                     model = top4Tracks.first().toArtworkRequest(),
                     contentDescription = contentDesc,
                     modifier = Modifier.size(dimensions.playlistHeroArtworkSize),
                     contentScale = ContentScale.Crop,
-                    error = painterResource(R.drawable.ic_playlist_album),
-                    placeholder = painterResource(R.drawable.ic_playlist_album),
                 )
             }
             else -> {
-                AsyncImage(
-                    model = R.drawable.ic_playlist_album,
+                EntityArtworkImage(
+                    model = null,
                     contentDescription = contentDesc,
                     modifier = Modifier.size(dimensions.playlistHeroArtworkSize),
                     contentScale = ContentScale.Fit,
-                    error = painterResource(R.drawable.ic_playlist_album),
-                    placeholder = painterResource(R.drawable.ic_playlist_album),
                 )
             }
         }
@@ -101,14 +94,11 @@ private fun SubArtworkImage(
     track: Track,
     modifier: Modifier = Modifier,
 ) {
-    AsyncImage(
+    EntityArtworkImage(
         model = track.toArtworkRequest(),
         contentDescription = null,
         modifier = modifier
-            .size(MusicTheme.dimensions.playlistQuadSubArtworkSize)
-            .background(MusicTheme.colors.secondaryContainer),
+            .size(MusicTheme.dimensions.playlistQuadSubArtworkSize),
         contentScale = ContentScale.Crop,
-        error = painterResource(R.drawable.ic_playlist_album),
-        placeholder = painterResource(R.drawable.ic_playlist_album),
     )
 }
