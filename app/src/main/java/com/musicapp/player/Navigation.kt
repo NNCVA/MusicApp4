@@ -3,7 +3,12 @@ package com.musicapp.player
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -39,9 +44,11 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import com.musicapp.player.navigation.AboutRoute
 import com.musicapp.player.navigation.AlbumDetailRoute
@@ -435,7 +442,7 @@ fun MainNavigation(
                                 bottomPadding = bottomPadding,
                             )
                         }
-                        entry<CustomEqualizerRoute> {
+                        entry<CustomEqualizerRoute>(metadata = equalizerTransitionMetadata) {
                             CustomEqualizerScreenRoute(
                                 viewModel = viewModel<CustomEqualizerViewModel>(),
                                 contentInsets = contentInsets,
@@ -444,7 +451,7 @@ fun MainNavigation(
                                 bottomPadding = bottomPadding,
                             )
                         }
-                        entry<SystemEqualizerRoute> {
+                        entry<SystemEqualizerRoute>(metadata = equalizerTransitionMetadata) {
                             SystemEqualizerScreenRoute(
                                 viewModel = viewModel<SystemEqualizerViewModel>(),
                                 contentInsets = contentInsets,
@@ -597,10 +604,26 @@ fun MainNavigation(
                     modifier = Modifier.fillMaxSize().clipToBounds(),
                     onBack = ::handleBack,
                     // A sidebar selection can shrink entries while still being a forward action.
-                    transitionSpec = { pageTransition(pageTransitionDirection) },
-                    popTransitionSpec = { pageTransition(pageTransitionDirection) },
+                    transitionSpec = {
+                        if (targetState.containsEqualizer() || initialState.containsEqualizer()) {
+                            equalizerFadeTransition()
+                        } else {
+                            pageTransition(pageTransitionDirection)
+                        }
+                    },
+                    popTransitionSpec = {
+                        if (targetState.containsEqualizer() || initialState.containsEqualizer()) {
+                            equalizerFadeTransition()
+                        } else {
+                            pageTransition(pageTransitionDirection)
+                        }
+                    },
                     predictivePopTransitionSpec = { _ ->
-                        pageTransition(PageTransitionDirection.BACKWARD)
+                        if (targetState.containsEqualizer() || initialState.containsEqualizer()) {
+                            equalizerFadeTransition()
+                        } else {
+                            pageTransition(PageTransitionDirection.BACKWARD)
+                        }
                     },
                 )
                 BackHandler(
@@ -691,6 +714,42 @@ private fun pageTransition(direction: PageTransitionDirection): ContentTransform
             slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth }) togetherWith
                 slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth })
     }
+
+private const val EQUALIZER_PAGE_FADE_DURATION_MS = 300
+
+internal fun equalizerFadeTransition(): ContentTransform =
+    fadeIn(
+        animationSpec =
+            tween(
+                durationMillis = EQUALIZER_PAGE_FADE_DURATION_MS,
+                easing = FastOutSlowInEasing,
+            ),
+    ) togetherWith
+        fadeOut(
+            animationSpec =
+                tween(
+                    durationMillis = EQUALIZER_PAGE_FADE_DURATION_MS,
+                    easing = FastOutSlowInEasing,
+                ),
+        )
+
+internal val equalizerTransitionMetadata: Map<String, Any> by lazy {
+    NavDisplay.transitionSpec { equalizerFadeTransition() } +
+        NavDisplay.popTransitionSpec { equalizerFadeTransition() } +
+        NavDisplay.predictivePopTransitionSpec { _ -> equalizerFadeTransition() }
+}
+
+internal fun isEqualizerRoute(route: Any?): Boolean =
+    route is CustomEqualizerRoute || route is SystemEqualizerRoute
+
+internal fun Scene<*>.containsEqualizer(): Boolean {
+    val sceneKey = key.toString()
+    if (sceneKey.contains("Equalizer")) return true
+    return entries.any { entry ->
+        val contentKey = entry.contentKey.toString()
+        contentKey.contains("Equalizer") || entry.metadata.containsKey("transitionSpec")
+    }
+}
 
 @Composable
 private fun DestinationPlaceholder(

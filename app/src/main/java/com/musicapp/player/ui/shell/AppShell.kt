@@ -23,8 +23,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -70,6 +72,18 @@ fun AppShell(
         val policy = WindowLayoutPolicy.forWidth(maxWidth)
         val dimensions = MusicTheme.dimensions
         val availableWidth = maxWidth
+
+        val latestContent by rememberUpdatedState(content)
+        val latestContentInsets by rememberUpdatedState(contentInsets)
+        val latestPolicy by rememberUpdatedState(policy)
+        val movableShellContent =
+            remember {
+                movableContentOf { openDrawer: () -> Unit ->
+                    ShellContent {
+                        latestContent(latestContentInsets, latestPolicy, openDrawer)
+                    }
+                }
+            }
 
         Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
             if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
@@ -159,18 +173,14 @@ fun AppShell(
                             Box(
                                 modifier = Modifier.width(availableWidth).fillMaxHeight(),
                             ) {
-                                ShellContent {
-                                    content(contentInsets, policy, ::toggleDrawer)
-                                }
+                                movableShellContent(::toggleDrawer)
                             }
                         }
                     }
                     BackHandler(enabled = isDrawerVisible, onBack = ::closeDrawer)
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        ShellContent {
-                            content(contentInsets, policy) {}
-                        }
+                        movableShellContent {}
                     }
                 }
             } else {
@@ -182,16 +192,12 @@ fun AppShell(
                             navigationContent(policy) {}
                         }
                         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            ShellContent {
-                                content(contentInsets, policy) {}
-                            }
+                            movableShellContent {}
                         }
                     }
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        ShellContent {
-                            content(contentInsets, policy) {}
-                        }
+                        movableShellContent {}
                     }
                 }
             }
