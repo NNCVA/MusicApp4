@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -269,7 +270,7 @@ fun PlayerSheet(
         }
     }
 
-    val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
+    val bottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
     val totalCollapsedHeight = dimensions.miniPlayerHeight + bottomInset
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {

@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -67,7 +69,9 @@ fun SelectionBottomBar(
         Column(
             modifier =
                 if (applyBottomInset) {
-                    Modifier.windowInsetsPadding(contentInsets.only(WindowInsetsSides.Bottom))
+                    Modifier.windowInsetsPadding(
+                        contentInsets.exclude(WindowInsets.ime).only(WindowInsetsSides.Bottom),
+                    )
                 } else {
                     Modifier
                 },

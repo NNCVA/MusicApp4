@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -130,6 +132,8 @@ fun SearchScreenRoute(
         viewModel.acknowledgeBatchResult()
     }
 
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     SearchScreen(
         state = state,
         contentInsets = contentInsets,
@@ -141,16 +145,29 @@ fun SearchScreenRoute(
         onClearQuery = viewModel::clearQuery,
         onSortSelected = viewModel::onSortSelected,
         onPlayTrack = { track ->
+            keyboardController?.hide()
             if (track.id == currentPlayingTrackId) {
                 onOpenPlayer()
             } else {
                 viewModel.playTrack(track)
             }
         },
-        onPlayAll = viewModel::playAll,
-        onEnterSelection = viewModel::enterSelection,
-        onToggleSelection = viewModel::toggleSelection,
-        onToggleSelectAll = viewModel::toggleSelectAll,
+        onPlayAll = {
+            keyboardController?.hide()
+            viewModel.playAll()
+        },
+        onEnterSelection = { trackId ->
+            keyboardController?.hide()
+            viewModel.enterSelection(trackId)
+        },
+        onToggleSelection = { trackId ->
+            keyboardController?.hide()
+            viewModel.toggleSelection(trackId)
+        },
+        onToggleSelectAll = {
+            keyboardController?.hide()
+            viewModel.toggleSelectAll()
+        },
         onClearSelection = viewModel::clearSelection,
         onAddToQueue = viewModel::onAddToQueue,
         onPlayNext = viewModel::onPlayNext,
@@ -258,12 +275,17 @@ fun SearchScreen(
     }
 
     val selectionBarHeight = dimensions.minimumTouchTarget
-    val dynamicBottomPadding = bottomPadding + if (state.isSelectionMode) selectionBarHeight else 0.dp
     val resolvedPersistentBottomPadding = persistentBottomPadding ?: run {
         val systemBottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
         val miniPlayerPadding = (bottomPadding - contentInsets.asPaddingValues().calculateBottomPadding()).coerceAtLeast(0.dp)
         systemBottomInset + miniPlayerPadding
     }
+    val dynamicBottomPadding =
+        if (state.isSelectionMode) {
+            resolvedPersistentBottomPadding + selectionBarHeight
+        } else {
+            bottomPadding
+        }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -432,14 +454,11 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .bounceOverscroll(overscrollEffect)
-                        .padding(horizontal = dimensions.contentHorizontalPadding),
+                        .bounceOverscroll(overscrollEffect),
                     contentPadding = PaddingValues(
-                        top = dimensions.spaceExtraSmall,
+                        top = dimensions.spaceSmall,
                         bottom = dimensions.spaceSmall + dynamicBottomPadding,
-                        end = dimensions.spaceExtraSmall,
                     ),
-                    verticalArrangement = Arrangement.spacedBy(dimensions.spaceExtraSmall),
                 ) {
                     items(
                         items = state.filteredTracks,
@@ -486,14 +505,16 @@ fun SearchScreen(
                 .padding(bottom = dynamicBottomPadding),
         )
 
-        // 4. 多选底部批量操作栏
+        // 4. 多选底部批量操作栏（绝对锚定底部，对软键盘完全免疫）
+        val systemBottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+        val hasMiniPlayer = resolvedPersistentBottomPadding > systemBottomInset + 1.dp
         AnimatedVisibility(
             visible = state.isSelectionMode,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = bottomPadding)
+                .padding(bottom = if (hasMiniPlayer) resolvedPersistentBottomPadding else 0.dp)
                 .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Horizontal)),
         ) {
             val isSelectionEnabled = state.selectedTrackIds.isNotEmpty()
@@ -515,8 +536,8 @@ fun SearchScreen(
                         onClick = onBatchAddToQueue,
                     ),
                 ),
-                contentInsets = contentInsets,
-                applyBottomInset = false,
+                contentInsets = contentInsets.exclude(WindowInsets.ime),
+                applyBottomInset = !hasMiniPlayer,
             )
         }
     }

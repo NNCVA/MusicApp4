@@ -4,7 +4,7 @@ ADR = Architecture Decision Record（架构决策记录）。当前实现以代�
 
 ## 当前实现依据
 
-0001、0002、0003、0007、0009、0012、0014、0015、0016、0017（导航栈契约）、0018、0019、0020、0021、0022、0023、[0024](0024-dual-equalizer-pipeline-and-sidebar-free-detail-navigation.md)、[0025](0025-vertical-console-equalizer-layout-and-builtin-preset-registry.md)。
+0001、0002、0003、0007、0009、0012、0014、0015、0016、0017（导航栈契约）、0018、0019、0020、0021、0022、0023、[0024](0024-dual-equalizer-pipeline-and-sidebar-free-detail-navigation.md)、[0025](0025-vertical-console-equalizer-layout-and-builtin-preset-registry.md)、[0026](0026-mini-player-anchoring-and-ime-inset-decoupling.md)。
 
 ## 已合并
 

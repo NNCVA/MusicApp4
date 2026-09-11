@@ -18,8 +18,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBars
@@ -274,11 +276,18 @@ fun MainNavigation(
                 )
             },
             content = { contentInsets, policy, openDrawer ->
-                val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
-                val miniPlayerPadding = if (playerShellState.isPlayerVisible && !isSidebarFree) MusicTheme.dimensions.miniPlayerHeight else 0.dp
-                val bottomPadding = bottomInset + miniPlayerPadding
                 val systemBottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+                val imeBottomInset = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+                val miniPlayerPadding = if (playerShellState.isPlayerVisible && !isSidebarFree) MusicTheme.dimensions.miniPlayerHeight else 0.dp
                 val persistentBottomPadding = systemBottomInset + miniPlayerPadding
+                val bottomPadding =
+                    resolveContentBottomPadding(
+                        systemBottomInset = systemBottomInset,
+                        imeBottomInset = imeBottomInset,
+                        isPlayerVisible = playerShellState.isPlayerVisible,
+                        isSidebarFree = isSidebarFree,
+                        miniPlayerHeight = MusicTheme.dimensions.miniPlayerHeight,
+                    )
                 val currentPlayingTrackId: TrackId? = playerShellState.currentTrackId
                 val onOpenPlayer: () -> Unit = playerViewModel::expandPlayer
                 val navigateToArtist: (String) -> Unit = { artistName ->
@@ -643,7 +652,7 @@ fun MainNavigation(
                     colorSource = colorSource,
                     presetTheme = presetTheme,
                     windowWidthTier = windowWidthTier,
-                    contentInsets = contentInsets,
+                    contentInsets = contentInsets.exclude(WindowInsets.ime),
                     isExpanded = playerExpanded,
                     onExpansionChanged = { playerExpanded = it },
                     onOpenEqualizer = {
@@ -656,7 +665,17 @@ fun MainNavigation(
                 )
             },
         )
-        val bottomInset = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
+        val systemBottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+        val imeBottomInset = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+        val bubbleBottom =
+            resolveBubbleBottomPadding(
+                systemBottomInset = systemBottomInset,
+                imeBottomInset = imeBottomInset,
+                isPlayerVisible = playerShellState.isPlayerVisible,
+                miniPlayerHeight = MusicTheme.dimensions.miniPlayerHeight,
+                spaceMedium = MusicTheme.dimensions.spaceMedium,
+                messageBubbleBottomLift = MusicTheme.dimensions.messageBubbleBottomLift,
+            )
         MessageBubbleHost(
             request = messageBubbleRequest,
             message = messageBubbleText,
@@ -664,14 +683,7 @@ fun MainNavigation(
             onAction = { requestId -> messageBubbleQueue.performAction(requestId) },
             modifier =
                 Modifier.align(Alignment.BottomCenter)
-                    .padding(
-                        bottom =
-                            (if (playerShellState.isPlayerVisible) {
-                                MusicTheme.dimensions.miniPlayerHeight
-                            } else {
-                                MusicTheme.dimensions.spaceMedium
-                            }) + bottomInset + MusicTheme.dimensions.messageBubbleBottomLift,
-                    ),
+                    .padding(bottom = bubbleBottom),
         )
     }
     pendingFeedback?.let { feedback ->
@@ -813,3 +825,50 @@ private fun MusicNavKey.titleResId(): Int =
         CustomEqualizerRoute -> R.string.equalizer_custom_title
         SystemEqualizerRoute -> R.string.equalizer_system_title
     }
+
+internal fun resolveContentBottomPadding(
+    systemBottomInset: androidx.compose.ui.unit.Dp,
+    imeBottomInset: androidx.compose.ui.unit.Dp,
+    isPlayerVisible: Boolean,
+    isSidebarFree: Boolean,
+    miniPlayerHeight: androidx.compose.ui.unit.Dp,
+): androidx.compose.ui.unit.Dp {
+    val miniPlayerPadding = if (isPlayerVisible && !isSidebarFree) miniPlayerHeight else 0.dp
+    val persistentBottomPadding = systemBottomInset + miniPlayerPadding
+    return maxOf(persistentBottomPadding, imeBottomInset)
+}
+
+internal fun resolveDynamicContentBottomPadding(
+    systemBottomInset: androidx.compose.ui.unit.Dp,
+    imeBottomInset: androidx.compose.ui.unit.Dp,
+    isPlayerVisible: Boolean,
+    isSidebarFree: Boolean,
+    miniPlayerHeight: androidx.compose.ui.unit.Dp,
+    isSelectionMode: Boolean,
+    selectionBarHeight: androidx.compose.ui.unit.Dp,
+): androidx.compose.ui.unit.Dp {
+    val miniPlayerPadding = if (isPlayerVisible && !isSidebarFree) miniPlayerHeight else 0.dp
+    val persistentBottomPadding = systemBottomInset + miniPlayerPadding
+    return if (isSelectionMode) {
+        persistentBottomPadding + selectionBarHeight
+    } else {
+        maxOf(persistentBottomPadding, imeBottomInset)
+    }
+}
+
+internal fun resolveBubbleBottomPadding(
+    systemBottomInset: androidx.compose.ui.unit.Dp,
+    imeBottomInset: androidx.compose.ui.unit.Dp,
+    isPlayerVisible: Boolean,
+    miniPlayerHeight: androidx.compose.ui.unit.Dp,
+    spaceMedium: androidx.compose.ui.unit.Dp,
+    messageBubbleBottomLift: androidx.compose.ui.unit.Dp,
+): androidx.compose.ui.unit.Dp {
+    val baseBubbleBottom =
+        (if (isPlayerVisible) {
+            miniPlayerHeight
+        } else {
+            spaceMedium
+        }) + systemBottomInset
+    return maxOf(baseBubbleBottom, imeBottomInset) + messageBubbleBottomLift
+}
