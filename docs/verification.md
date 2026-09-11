@@ -29,6 +29,8 @@ export PATH="$JAVA_HOME/bin:$PATH"
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon --console=plain
 ```
 
+Lint 日常报告在 `app/build.gradle.kts` 中关闭依赖升级提示、未使用资源、Compose 参数/重组启发式和复数候选提示，保留其余可直接行动的检查；这些类别仍属于维护债务，不能据此推断资源或依赖已经完成清理。
+
 没有设备或模拟器时，补充确认 Android 测试 APK 可编译：
 
 ```shell

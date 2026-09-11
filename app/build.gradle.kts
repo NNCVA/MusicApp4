@@ -86,6 +86,21 @@ android {
     androidResources {
       generateLocaleConfig = true
     }
+
+    // Keep the regular report focused on correctness, security and build-breaking issues.
+    // These checks are currently tracked as maintenance debt or known heuristics and otherwise
+    // drown out actionable findings in every local run.
+    lint {
+        disable += setOf(
+            "AndroidGradlePluginVersion",
+            "FrequentlyChangingValue",
+            "GradleDependency",
+            "ModifierParameter",
+            "NewerVersionAvailable",
+            "PluralsCandidate",
+            "UnusedResources",
+        )
+    }
 }
 
 kotlin {

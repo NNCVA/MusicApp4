@@ -1,13 +1,13 @@
 # 使用统一右侧覆盖层与固定 28 逻辑桶索引
 
-> **状态：需要更新（2026-09-11 静态核对）**。取代 [0006-use-reusable-section-index.md](0006-use-reusable-section-index.md)。本文要求列表不可滚动时自动隐藏索引并提供滚动条模式；Folders/Search 调用方已有条件门控，Tracks/Albums/Artists 尚未完整接入，组件本身仍只按 `GutterMode.Hidden` 控制，详见 [ADR 状态表](README.md)。
+> **状态：需要更新（2026-09-11 静态核对）**。取代 [0006-use-reusable-section-index.md](0006-use-reusable-section-index.md)。当前实现已接入固定索引与 20dp 透明命中区；`Scrollbar` 分支仍为空，内容可滚动性隐藏条件也未由组件统一处理，Albums 非标题/艺术家排序会进入该空分支，详见 [ADR 状态表](README.md)。
 
 ## 背景与上下文
 早期实现中各列表（Tracks、Albums、Artists、Folders）在字母索引逻辑上存在割裂：Tracks/Albums 采用动态桶（仅呈现实际存在的字符），Artists/Folders 采用固定桶；手势上支持单击且缺乏纵向滑动仲裁，导致列表右缘 48×48dp 操作按钮容易误触或被遮挡；无障碍上 28 个字符被拆散为独立焦点，且缺乏等距采样与 72dp 拖动字母气泡。
 
 ## 决策内容
 1. **统一覆盖层抽象 (`RightGutterOverlay`)**：
-   与列表并列覆盖，不参与列表布局测量；可见条宽固定 12dp，透明手势命中区固定 20dp（严格位于列表右侧安全边距内，向左不侵占列表项 More 等交互按钮）；支持 `mode = Index`（字母类排序）与 `mode = Scrollbar`（非文本排序/无排序）平滑切换；内容不足一屏（`!canScrollForward && !canScrollBackward`）时自动隐藏并禁用命中。
+   当前实现与列表并列覆盖且不参与列表布局测量；索引可见条宽 12dp，透明手势命中区为 20dp；`mode = Index` 提供索引交互，`mode = Scrollbar` 仅保留空分支，尚未绘制额外滚动条或统一处理内容不足一屏的隐藏条件。
 2. **固定 28 个逻辑桶 (`0 + A–Z + #`)**：
    数字归 `0`，汉字拼音与英文字符归 `A–Z`，其他特殊字符归 `#`；升序为 `0 → A…Z → #`，降序对称反转为 `# → Z…A → 0`；空桶双向寻近，等距时优先当前拖动方向。
 3. **即时触控响应与 72dp 字母气泡**：
