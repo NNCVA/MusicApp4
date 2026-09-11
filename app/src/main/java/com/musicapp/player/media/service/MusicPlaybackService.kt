@@ -42,6 +42,8 @@ import com.musicapp.player.core.playback.system.SystemPlaybackCommand
 import com.musicapp.player.data.repository.HistoryRepository
 import com.musicapp.player.data.repository.PlaybackSnapshotRepository
 import com.musicapp.player.data.settings.SettingsRepository
+import com.musicapp.player.data.equalizer.EqualizerRepository
+import com.musicapp.player.media.audiofx.AudioEffectController
 import com.musicapp.player.media.playback.Media3PlaybackFailureMapper
 import com.musicapp.player.media.playback.PlaybackSessionProtocol
 import com.musicapp.player.media.playback.QueueMediaIdCodec
@@ -77,6 +79,12 @@ class MusicPlaybackService : MediaLibraryService() {
     @Inject
     internal lateinit var clock: Clock
 
+    @Inject
+    internal lateinit var equalizerRepository: EqualizerRepository
+
+    @Inject
+    internal lateinit var audioEffectController: AudioEffectController
+
     private var player: ExoPlayer? = null
     private var mediaLibrarySession: MediaLibrarySession? = null
     private var queueCoordinator: PlaybackQueueCoordinator? = null
@@ -87,6 +95,7 @@ class MusicPlaybackService : MediaLibraryService() {
     private var snapshotFinalWriteJob: Job? = null
     private var automaticTransitionJob: Job? = null
     private var settingsJob: Job? = null
+    private var equalizerJob: Job? = null
     private var historyTickerJob: Job? = null
     private var historyItemId: QueueItemId? = null
     private var restoredHistoryPending = false
@@ -246,6 +255,10 @@ class MusicPlaybackService : MediaLibraryService() {
         )
         sessionCallback = callback
         val listener = object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                audioEffectController.attachAudioSession(audioSessionId, equalizerRepository.settings.value)
+            }
+
             override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
                 coordinator.onMediaItemTransition(mediaItem)
                 startHistoryInstance(servicePlayer, mediaItem, reason)
@@ -418,6 +431,12 @@ class MusicPlaybackService : MediaLibraryService() {
         settingsJob = serviceScope.launch {
             settingsRepository.settings.drop(1).collect { scheduleNaturalTransition(servicePlayer) }
         }
+        audioEffectController.attachAudioSession(servicePlayer.audioSessionId, equalizerRepository.settings.value)
+        equalizerJob = serviceScope.launch {
+            equalizerRepository.settings.collect { settings ->
+                audioEffectController.applySettings(settings)
+            }
+        }
         historyTickerJob = serviceScope.launch {
             while (true) {
                 delay(HISTORY_TICK_MS)
@@ -450,6 +469,9 @@ class MusicPlaybackService : MediaLibraryService() {
         snapshotCoordinator = null
         settingsJob?.cancel()
         settingsJob = null
+        equalizerJob?.cancel()
+        equalizerJob = null
+        audioEffectController.detachAudioSession()
         historyTickerJob?.cancel()
         historyTickerJob = null
         historyRecorder?.stopInstance()

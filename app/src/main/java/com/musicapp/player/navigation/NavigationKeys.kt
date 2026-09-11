@@ -126,6 +126,14 @@ data class SearchRoute(
     }
 }
 
+@Serializable
+@SerialName("custom_equalizer")
+data object CustomEqualizerRoute : MusicNavKey
+
+@Serializable
+@SerialName("system_equalizer")
+data object SystemEqualizerRoute : MusicNavKey
+
 val topLevelNavKeys: List<TopLevelNavKey> =
     listOf(
         TracksRoute,
@@ -156,6 +164,8 @@ internal fun MusicNavKey.owner(): TopLevelNavKey =
         is ArtistDetailRoute -> ArtistsRoute
         is PlaylistDetailRoute -> PlaylistsRoute
         is FolderDetailRoute -> FoldersRoute
+        CustomEqualizerRoute -> TracksRoute
+        SystemEqualizerRoute -> SettingsRoute
         is SearchRoute ->
             when (scopeType) {
                 SearchScopeType.ALL_TRACKS -> TracksRoute

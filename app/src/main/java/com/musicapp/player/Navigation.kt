@@ -57,6 +57,8 @@ import com.musicapp.player.navigation.NavigationState
 import com.musicapp.player.navigation.Navigator
 import com.musicapp.player.navigation.PlaylistDetailRoute
 import com.musicapp.player.navigation.PlaylistsRoute
+import com.musicapp.player.navigation.CustomEqualizerRoute
+import com.musicapp.player.navigation.SystemEqualizerRoute
 import com.musicapp.player.navigation.ScanMusicRoute
 import com.musicapp.player.navigation.SearchRoute
 import com.musicapp.player.navigation.SearchScopeType
@@ -65,6 +67,10 @@ import com.musicapp.player.navigation.TopLevelNavKey
 import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
 import com.musicapp.player.navigation.topLevelNavKeys
+import com.musicapp.player.feature.equalizer.CustomEqualizerScreenRoute
+import com.musicapp.player.feature.equalizer.CustomEqualizerViewModel
+import com.musicapp.player.feature.equalizer.SystemEqualizerScreenRoute
+import com.musicapp.player.feature.equalizer.SystemEqualizerViewModel
 import com.musicapp.player.feature.search.SearchScreenRoute
 import com.musicapp.player.feature.search.SearchViewModel
 import com.musicapp.player.core.aero.AeroRuntimeSignals
@@ -158,6 +164,7 @@ fun MainNavigation(
     val playerShellState by playerViewModel.shellState.collectAsStateWithLifecycle()
     var playerExpanded by rememberSaveable { mutableStateOf(false) }
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
+    var restorePlayerOnBack by rememberSaveable { mutableStateOf(false) }
     var pageTransitionDirection by remember { mutableStateOf(PageTransitionDirection.FORWARD) }
     val messageBubbleQueue = remember { MessageBubbleQueue() }
     val messageBubbleRequest by messageBubbleQueue.current.collectAsStateWithLifecycle()
@@ -195,11 +202,18 @@ fun MainNavigation(
     }
 
     fun handleBack() {
+        val currentTop = navigationState.currentBackStack.lastOrNull()
+        val leavingEqualizer = currentTop is CustomEqualizerRoute || currentTop is SystemEqualizerRoute
         if (navigator.goBack() == BackNavigationResult.REQUEST_RETURN_TO_DESKTOP) {
             onReturnToDesktop()
         } else {
             pageTransitionDirection = PageTransitionDirection.BACKWARD
             encodedSnapshot = navigationState.snapshot().encode()
+            if (leavingEqualizer && restorePlayerOnBack) {
+                restorePlayerOnBack = false
+                playerViewModel.expandPlayer()
+                playerExpanded = true
+            }
         }
     }
 
@@ -209,14 +223,18 @@ fun MainNavigation(
         }
     }
 
+    val currentTopRoute = navigationState.currentBackStack.lastOrNull()
+    val isSidebarFree = currentTopRoute is CustomEqualizerRoute || currentTopRoute is SystemEqualizerRoute
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MusicTheme.colors.background),
     ) {
         AppShell(
-            drawerGesturesEnabled = !playerExpanded,
-            playerSheetVisible = playerShellState.isPlayerVisible,
+            drawerGesturesEnabled = !playerExpanded && !isSidebarFree,
+            sidebarVisible = !isSidebarFree,
+            playerSheetVisible = playerShellState.isPlayerVisible && !isSidebarFree,
             navigationContent = { policy, closeDrawer ->
                 SidebarNavigation(
                     policy = policy,
@@ -243,17 +261,17 @@ fun MainNavigation(
                         }
                     },
                     onEqualizer = {
-                        messageBubbleQueue.enqueue(R.string.sidebar_equalizer_placeholder)
+                        commitNavigation { navigate(CustomEqualizerRoute) }
+                        closeDrawer()
                     },
                 )
             },
             content = { contentInsets, policy, openDrawer ->
                 val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
-                val miniPlayerPadding = if (playerShellState.isPlayerVisible) MusicTheme.dimensions.miniPlayerHeight else 0.dp
+                val miniPlayerPadding = if (playerShellState.isPlayerVisible && !isSidebarFree) MusicTheme.dimensions.miniPlayerHeight else 0.dp
                 val bottomPadding = bottomInset + miniPlayerPadding
                 val systemBottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
                 val persistentBottomPadding = systemBottomInset + miniPlayerPadding
-                val currentTopRoute = navigationState.currentBackStack.lastOrNull()
                 val currentPlayingTrackId: TrackId? = playerShellState.currentTrackId
                 val onOpenPlayer: () -> Unit = playerViewModel::expandPlayer
                 val navigateToArtist: (String) -> Unit = { artistName ->
@@ -404,6 +422,34 @@ fun MainNavigation(
                                 onShowMessage = { messageResId ->
                                     messageBubbleQueue.enqueue(messageResId)
                                 },
+                                onNavigateToSystemEqualizer = {
+                                    commitNavigation {
+                                        navigate(SystemEqualizerRoute)
+                                    }
+                                },
+                                onNavigateToCustomEqualizer = {
+                                    commitNavigation {
+                                        navigate(CustomEqualizerRoute)
+                                    }
+                                },
+                                bottomPadding = bottomPadding,
+                            )
+                        }
+                        entry<CustomEqualizerRoute> {
+                            CustomEqualizerScreenRoute(
+                                viewModel = viewModel<CustomEqualizerViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                onBack = ::handleBack,
+                                bottomPadding = bottomPadding,
+                            )
+                        }
+                        entry<SystemEqualizerRoute> {
+                            SystemEqualizerScreenRoute(
+                                viewModel = viewModel<SystemEqualizerViewModel>(),
+                                contentInsets = contentInsets,
+                                policy = policy,
+                                onBack = ::handleBack,
                                 bottomPadding = bottomPadding,
                             )
                         }
@@ -577,6 +623,13 @@ fun MainNavigation(
                     contentInsets = contentInsets,
                     isExpanded = playerExpanded,
                     onExpansionChanged = { playerExpanded = it },
+                    onOpenEqualizer = {
+                        restorePlayerOnBack = true
+                        playerExpanded = false
+                        commitNavigation {
+                            navigate(CustomEqualizerRoute)
+                        }
+                    },
                 )
             },
         )
@@ -698,4 +751,6 @@ private fun MusicNavKey.titleResId(): Int =
         AboutRoute -> R.string.navigation_about
         is ScanMusicRoute -> R.string.navigation_scan_music
         is SearchRoute -> R.string.tracks_search_label
+        CustomEqualizerRoute -> R.string.equalizer_custom_title
+        SystemEqualizerRoute -> R.string.equalizer_system_title
     }

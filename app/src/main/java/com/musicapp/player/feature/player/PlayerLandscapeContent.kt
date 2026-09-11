@@ -81,6 +81,7 @@ internal fun PlayerLandscapeContent(
     sheetProgress: () -> Float,
     modifier: Modifier = Modifier,
     onClearQueue: () -> Unit = {},
+    onOpenEqualizer: () -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
     val dimensions = MusicTheme.dimensions
@@ -166,6 +167,7 @@ internal fun PlayerLandscapeContent(
                             },
                             onShowInfo = onShowInfo,
                             onShowSleepTimer = onShowSleepTimer,
+                            onOpenEqualizer = onOpenEqualizer,
                             showFeedback = showFeedback,
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -230,6 +232,7 @@ internal fun LandscapeControlsPage(
     onOpenQueue: () -> Unit,
     onShowInfo: () -> Unit,
     onShowSleepTimer: () -> Unit = {},
+    onOpenEqualizer: () -> Unit = {},
     showFeedback: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -379,7 +382,7 @@ internal fun LandscapeControlsPage(
             }
             item {
                 BareIconButton(
-                    onClick = { showFeedback(equalizerComingSoon) },
+                    onClick = onOpenEqualizer,
                     modifier = Modifier.size(dimensions.minimumTouchTarget),
                 ) {
                     Icon(

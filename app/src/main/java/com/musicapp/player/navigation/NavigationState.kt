@@ -131,6 +131,8 @@ private object NavigationSnapshotCodec {
                 writeBoolean(route.playlistId != null)
                 route.playlistId?.let(::writeLong)
             }
+            CustomEqualizerRoute -> writeByte(15)
+            SystemEqualizerRoute -> writeByte(16)
         }
     }
 
@@ -160,6 +162,8 @@ private object NavigationSnapshotCodec {
                 val playlistId = if (readBoolean()) readLong() else null
                 SearchRoute(scopeType = scopeType, playlistId = playlistId)
             }
+            15 -> CustomEqualizerRoute
+            16 -> SystemEqualizerRoute
             else -> throw IllegalArgumentException("unknown navigation route type: $routeType")
         }
 

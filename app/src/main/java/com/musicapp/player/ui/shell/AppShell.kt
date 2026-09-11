@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 fun AppShell(
     modifier: Modifier = Modifier,
     drawerGesturesEnabled: Boolean = true,
+    sidebarVisible: Boolean = true,
     playerSheetVisible: Boolean = false,
     navigationContent: @Composable (WindowLayoutPolicy, closeDrawer: () -> Unit) -> Unit = { _, _ -> },
     contentInsets: WindowInsets = WindowInsets.safeDrawing,
@@ -72,106 +73,122 @@ fun AppShell(
 
         Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
             if (policy == WindowLayoutPolicy.COMPACT_DRAWER) {
-                val drawerWidth = availableWidth * policy.drawerFraction
-                val drawerWidthPx = with(LocalDensity.current) { drawerWidth.toPx() }
-                val drawerOffset = remember(drawerWidthPx) { Animatable(-drawerWidthPx) }
-                val scope = rememberCoroutineScope()
-                val isDrawerVisible by
-                    remember(drawerOffset, drawerWidthPx) {
-                        derivedStateOf { drawerOffset.value > -drawerWidthPx }
+                if (sidebarVisible) {
+                    val drawerWidth = availableWidth * policy.drawerFraction
+                    val drawerWidthPx = with(LocalDensity.current) { drawerWidth.toPx() }
+                    val drawerOffset = remember(drawerWidthPx) { Animatable(-drawerWidthPx) }
+                    val scope = rememberCoroutineScope()
+                    val isDrawerVisible by
+                        remember(drawerOffset, drawerWidthPx) {
+                            derivedStateOf { drawerOffset.value > -drawerWidthPx }
+                        }
+                    fun openDrawer() {
+                        scope.launch {
+                            drawerOffset.animateTo(
+                                targetValue = 0f,
+                                animationSpec = CompactDrawerAnimationSpec,
+                            )
+                        }
                     }
-                fun openDrawer() {
-                    scope.launch {
-                        drawerOffset.animateTo(
-                            targetValue = 0f,
-                            animationSpec = CompactDrawerAnimationSpec,
-                        )
+                    fun closeDrawer() {
+                        scope.launch {
+                            drawerOffset.animateTo(
+                                targetValue = -drawerWidthPx,
+                                animationSpec = CompactDrawerAnimationSpec,
+                            )
+                        }
                     }
-                }
-                fun closeDrawer() {
-                    scope.launch {
-                        drawerOffset.animateTo(
-                            targetValue = -drawerWidthPx,
-                            animationSpec = CompactDrawerAnimationSpec,
-                        )
+                    fun toggleDrawer() {
+                        scope.launch {
+                            drawerOffset.animateTo(
+                                targetValue =
+                                    toggleCompactDrawerOffset(
+                                        offset = drawerOffset.value,
+                                        drawerWidth = drawerWidthPx,
+                                        targetOffset = drawerOffset.targetValue,
+                                    ),
+                                animationSpec = CompactDrawerAnimationSpec,
+                            )
+                        }
                     }
-                }
-                fun toggleDrawer() {
-                    scope.launch {
-                        drawerOffset.animateTo(
-                            targetValue =
-                                toggleCompactDrawerOffset(
-                                    offset = drawerOffset.value,
-                                    drawerWidth = drawerWidthPx,
-                                    targetOffset = drawerOffset.targetValue,
-                                ),
-                            animationSpec = CompactDrawerAnimationSpec,
-                        )
-                    }
-                }
 
-                LaunchedEffect(drawerGesturesEnabled) {
-                    if (!drawerGesturesEnabled) {
-                        drawerOffset.animateTo(
-                            targetValue =
-                                compactDrawerSettledOffset(
-                                    offset = drawerOffset.value,
-                                    drawerWidth = drawerWidthPx,
-                                ),
-                            animationSpec = CompactDrawerAnimationSpec,
-                        )
+                    LaunchedEffect(drawerGesturesEnabled) {
+                        if (!drawerGesturesEnabled) {
+                            drawerOffset.animateTo(
+                                targetValue =
+                                    compactDrawerSettledOffset(
+                                        offset = drawerOffset.value,
+                                        drawerWidth = drawerWidthPx,
+                                    ),
+                                animationSpec = CompactDrawerAnimationSpec,
+                            )
+                        }
                     }
-                }
 
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .compactDrawerDrag(
-                                enabled = drawerGesturesEnabled,
-                                drawerOffset = drawerOffset,
-                                drawerWidthPx = drawerWidthPx,
-                            ),
-                ) {
-                    Row(
+                    Box(
                         modifier =
                             Modifier
-                                .wrapContentWidth(
-                                    align = Alignment.Start,
-                                    unbounded = true,
-                                )
-                                .requiredWidth(drawerWidth + availableWidth)
-                                .fillMaxHeight()
-                                .offset {
-                                    IntOffset(
-                                        x = drawerOffset.value.roundToInt(),
-                                        y = 0,
-                                    )
-                                },
+                                .fillMaxSize()
+                                .compactDrawerDrag(
+                                    enabled = drawerGesturesEnabled,
+                                    drawerOffset = drawerOffset,
+                                    drawerWidthPx = drawerWidthPx,
+                                ),
                     ) {
-                        Box(
-                            modifier = Modifier.width(drawerWidth).fillMaxHeight(),
+                        Row(
+                            modifier =
+                                Modifier
+                                    .wrapContentWidth(
+                                        align = Alignment.Start,
+                                        unbounded = true,
+                                    )
+                                    .requiredWidth(drawerWidth + availableWidth)
+                                    .fillMaxHeight()
+                                    .offset {
+                                        IntOffset(
+                                            x = drawerOffset.value.roundToInt(),
+                                            y = 0,
+                                        )
+                                    },
                         ) {
-                            navigationContent(policy, ::closeDrawer)
-                        }
-                        Box(
-                            modifier = Modifier.width(availableWidth).fillMaxHeight(),
-                        ) {
-                            ShellContent {
-                                content(contentInsets, policy, ::toggleDrawer)
+                            Box(
+                                modifier = Modifier.width(drawerWidth).fillMaxHeight(),
+                            ) {
+                                navigationContent(policy, ::closeDrawer)
+                            }
+                            Box(
+                                modifier = Modifier.width(availableWidth).fillMaxHeight(),
+                            ) {
+                                ShellContent {
+                                    content(contentInsets, policy, ::toggleDrawer)
+                                }
                             }
                         }
                     }
-                }
-                BackHandler(enabled = isDrawerVisible, onBack = ::closeDrawer)
-            } else {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier.width(policy.sidebarWidth).fillMaxHeight(),
-                    ) {
-                        navigationContent(policy) {}
+                    BackHandler(enabled = isDrawerVisible, onBack = ::closeDrawer)
+                } else {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        ShellContent {
+                            content(contentInsets, policy) {}
+                        }
                     }
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                }
+            } else {
+                if (sidebarVisible) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier.width(policy.sidebarWidth).fillMaxHeight(),
+                        ) {
+                            navigationContent(policy) {}
+                        }
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            ShellContent {
+                                content(contentInsets, policy) {}
+                            }
+                        }
+                    }
+                } else {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         ShellContent {
                             content(contentInsets, policy) {}
                         }
@@ -181,11 +198,13 @@ fun AppShell(
 
             // The application player sheet is above both navigation and content,
             // so Mini remains full-window-width while the compact drawer is open.
-            Box(
-                modifier = Modifier.fillMaxSize().zIndex(1f),
-                propagateMinConstraints = true,
-            ) {
-                playerSheetContent(contentInsets)
+            if (playerSheetVisible) {
+                Box(
+                    modifier = Modifier.fillMaxSize().zIndex(1f),
+                    propagateMinConstraints = true,
+                ) {
+                    playerSheetContent(contentInsets)
+                }
             }
         }
     }

@@ -165,6 +165,7 @@ fun PlayerSheetRoute(
     contentInsets: WindowInsets,
     isExpanded: Boolean = false,
     onExpansionChanged: (Boolean) -> Unit,
+    onOpenEqualizer: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.currentTrack) {
@@ -207,6 +208,7 @@ fun PlayerSheetRoute(
         onPageChanged = viewModel::selectFullPlayerPage,
         onExpansionChanged = onExpansionChanged,
         expandRequests = viewModel.expandRequests,
+        onOpenEqualizer = onOpenEqualizer,
     )
 }
 
@@ -241,6 +243,7 @@ fun PlayerSheet(
     onExpansionChanged: (Boolean) -> Unit,
     expandRequests: SharedFlow<Unit>? = null,
     onClearQueue: () -> Unit = {},
+    onOpenEqualizer: () -> Unit = {},
 ) {
     var progress by rememberSaveable {
         mutableFloatStateOf(if (initialExpanded) 1f else 0f)
@@ -257,6 +260,14 @@ fun PlayerSheet(
         derivedStateOf { progress > 0f }
     }
     LaunchedEffect(isExpanded) { onExpansionChanged(isExpanded) }
+    LaunchedEffect(initialExpanded) {
+        if (!initialExpanded && progress > 0f) {
+            sheetAnimationJob?.cancel()
+            sheetAnimationJob = null
+            progress = 0f
+            isContentMounted = false
+        }
+    }
 
     val bottomInset = contentInsets.asPaddingValues().calculateBottomPadding()
     val totalCollapsedHeight = dimensions.miniPlayerHeight + bottomInset
@@ -413,6 +424,7 @@ fun PlayerSheet(
                                     onSheetSettle = settleSheet,
                                     sheetProgress = { progress },
                                     artworkTransition = artworkTransition,
+                                    onOpenEqualizer = onOpenEqualizer,
                                 )
                             }
                         }
@@ -623,6 +635,7 @@ private fun FullPlayer(
     sheetProgress: () -> Float = { 1f },
     artworkTransition: ArtworkDiscTransitionState = ArtworkDiscTransitionState(),
     modifier: Modifier = Modifier,
+    onOpenEqualizer: () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
@@ -709,6 +722,7 @@ private fun FullPlayer(
                 onSheetDrag = onSheetDrag,
                 onSheetSettle = onSheetSettle,
                 sheetProgress = sheetProgress,
+                onOpenEqualizer = onOpenEqualizer,
             )
         } else {
             PortraitFullPlayer(
@@ -734,6 +748,7 @@ private fun FullPlayer(
                 onSheetDrag = onSheetDrag,
                 onSheetSettle = onSheetSettle,
                 sheetProgress = sheetProgress,
+                onOpenEqualizer = onOpenEqualizer,
             )
         }
         AnimatedVisibility(
@@ -790,6 +805,7 @@ private fun PortraitFullPlayer(
     onSheetSettle: (Float) -> Unit,
     sheetProgress: () -> Float,
     modifier: Modifier = Modifier,
+    onOpenEqualizer: () -> Unit = {},
 ) {
     val dimensions = MusicTheme.dimensions
     val coroutineScope = rememberCoroutineScope()
@@ -970,9 +986,8 @@ private fun PortraitFullPlayer(
                     )
                 }
             }
-            val equalizerComingSoon = stringResource(R.string.playback_equalizer_coming_soon)
             BareIconButton(
-                onClick = { showFeedback(equalizerComingSoon) },
+                onClick = onOpenEqualizer,
                 modifier = Modifier.size(dimensions.minimumTouchTarget),
             ) {
                 Icon(

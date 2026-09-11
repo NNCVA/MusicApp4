@@ -32,6 +32,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import com.musicapp.player.core.domain.model.EqualizerSettings
+import com.musicapp.player.data.equalizer.EqualizerRepository
+import com.musicapp.player.data.equalizer.InMemoryEqualizerRepository
+
 enum class SettingsConfirmation {
     RESET_SETTINGS,
     CLEAR_HISTORY,
@@ -49,6 +53,7 @@ enum class SettingsMessage {
 
 data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
+    val equalizerSettings: EqualizerSettings = EqualizerSettings(),
     val pathRules: List<PathRule> = emptyList(),
     val pendingLibrarySync: Boolean = false,
     val rescanPromptVisible: Boolean = false,
@@ -69,6 +74,7 @@ class SettingsViewModel @Inject constructor(
     private val dataManagementUseCase: DataManagementUseCase,
     private val syncController: SettingsSyncController,
     private val sortPreferencesRepository: SortPreferencesRepository,
+    private val equalizerRepository: EqualizerRepository = InMemoryEqualizerRepository(),
 ) : ViewModel() {
     constructor(
         settingsRepository: SettingsRepository,
@@ -83,6 +89,7 @@ class SettingsViewModel @Inject constructor(
         dataManagementUseCase = dataManagementUseCase,
         syncController = syncController,
         sortPreferencesRepository = InMemorySortPreferencesRepository(),
+        equalizerRepository = InMemoryEqualizerRepository(),
     )
 
     private val controls = MutableStateFlow(SettingsControls())
@@ -90,13 +97,21 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> =
         combine(
             settingsRepository.settings,
-            mediaLibraryRepository.observePathRules(),
-            pathRuleChangeCoordinator.state,
-            syncController.state,
-            controls,
-        ) { settings, pathRules, pathState, syncState, controls ->
+            equalizerRepository.settings,
+            combine(
+                mediaLibraryRepository.observePathRules(),
+                pathRuleChangeCoordinator.state,
+                ::Pair,
+            ),
+            combine(
+                syncController.state,
+                controls,
+                ::Pair,
+            ),
+        ) { settings, eqSettings, (pathRules, pathState), (syncState, controls) ->
             SettingsUiState(
                 settings = settings,
+                equalizerSettings = eqSettings,
                 pathRules = pathRules,
                 pendingLibrarySync = pathState.pendingLibrarySync,
                 rescanPromptVisible = pathState.rescanPromptVisible,
@@ -108,8 +123,19 @@ class SettingsViewModel @Inject constructor(
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = SettingsUiState(settings = settingsRepository.settings.value),
+            initialValue = SettingsUiState(
+                settings = settingsRepository.settings.value,
+                equalizerSettings = equalizerRepository.settings.value,
+            ),
         )
+
+    fun setSystemEqualizerEnabled(enabled: Boolean) {
+        viewModelScope.launch { equalizerRepository.setSystemEnabled(enabled) }
+    }
+
+    fun setCustomEqualizerEnabled(enabled: Boolean) {
+        viewModelScope.launch { equalizerRepository.setCustomEnabled(enabled) }
+    }
 
     fun setColorSource(value: ColorSource) = updateSetting { settingsRepository.setColorSource(value) }
 
