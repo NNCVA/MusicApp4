@@ -1,9 +1,14 @@
 # MusicApp 设计盘问索引
 
-本索引汇总需求盘问形成的历史约束。页面级 review、PRD 和首版实现规格不再作为当前实现依据；当前只继续维护通用组件与资源治理规范。页面行为以代码、测试和实际设备验证为准。
+本索引汇总需求盘问形成的历史约束。页面级 review、PRD 和首版实现规格不再作为当前实现依据；当前规范入口见上级目录的通用组件、资源治理和业务规则文档。页面行为以代码、测试和实际设备验证为准。
 
 ## 历史页面约束
 
+- [艺术家详情页 PRD](artist-detail-screen-prd.md)
+- [专辑详情页 PRD](album-detail-prd.md)
+- [播放详情页 PRD](playback-detail-screen-prd.md)
+- [播放历史页 PRD](playback-history-prd.md)
+- [歌单详情页 PRD](playlist-detail-prd.md)
 - [01 播放与歌词](design-review-01-playback-and-lyrics.md)
 - [02 媒体库与权限](design-review-02-library-and-permissions.md)
 - [03 自适应界面](design-review-03-adaptive-ui.md)

@@ -76,7 +76,7 @@ app/src/main/java/com/musicapp/player/
 - [专辑分组与聚合规则规范](docs/design/album-grouping-rules.md)
 - [音频格式白名单与准入规范](docs/design/audio-format-registry.md)
 - [架构决策记录与冲突状态](docs/adr/README.md)
-- [早期页面设计说明](docs/design/README.md)
+- [设计文档入口与历史归档](docs/design/README.md)
 - [早期实施计划](docs/plan/README.md)
 
-页面级设计、首版实施规格和计划文件集中在 `docs/design/archive/`、`docs/plan/archive/` 中供历史追溯，但不再作为当前实现依据。
+页面级设计、首版实施规格和计划文件集中在 `docs/design/archive/`、`docs/plan/archive/` 中供历史追溯；当前实现不以这些历史资料作为开发或验收依据。
