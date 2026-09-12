@@ -493,11 +493,22 @@
     <string name="equalizer_presets">Presets</string>
     <string name="equalizer_preset_custom">Custom</string>
     <string name="equalizer_preset_flat">Flat</string>
+    <string name="equalizer_preset_bass_boost">Bass boost</string>
+    <string name="equalizer_preset_vocal">Vocal</string>
+    <string name="equalizer_preset_rock">Rock</string>
+    <string name="equalizer_preset_pop">Pop</string>
+    <string name="equalizer_preset_electronic">Electronic</string>
+    <string name="equalizer_preset_jazz">Jazz</string>
+    <string name="equalizer_preset_classical">Classical</string>
+    <string name="equalizer_preset_folk">Folk</string>
+    <string name="equalizer_preset_dropdown_desc">Select equalizer preset</string>
     <string name="equalizer_bands">Equalizer bands</string>
     <string name="equalizer_bass_boost">Bass boost</string>
     <string name="equalizer_virtualizer">Surround sound</string>
     <string name="equalizer_reset_to_flat">Reset to flat</string>
     <string name="equalizer_effect_strength">%1$d%%</string>
     <string name="equalizer_band_db_format">%1$+.1f dB</string>
+    <string name="equalizer_effect_db_format">%1$.1f dB</string>
+    <string name="equalizer_effects_section">Audio effects</string>
     <string name="equalizer_not_supported_on_device">Hardware audio effects are not supported on this device</string>
 </resources>

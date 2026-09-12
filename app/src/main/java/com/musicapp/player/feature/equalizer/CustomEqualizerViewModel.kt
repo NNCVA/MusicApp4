@@ -2,6 +2,7 @@ package com.musicapp.player.feature.equalizer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.musicapp.player.core.domain.model.BuiltInEqualizerPresets
 import com.musicapp.player.core.domain.model.EqualizerBand
 import com.musicapp.player.core.domain.model.EqualizerPreset
 import com.musicapp.player.core.domain.model.EqualizerSettings
@@ -22,8 +23,10 @@ data class CustomEqualizerUiState(
     val selectedPresetIndex: Int = EqualizerSettings.PRESET_CUSTOM,
     val bassBoostEnabled: Boolean = false,
     val bassBoostStrength: Int = 0,
+    val bassBoostDb: Float = 0f,
     val virtualizerEnabled: Boolean = false,
     val virtualizerStrength: Int = 0,
+    val virtualizerDb: Float = 0f,
 )
 
 @HiltViewModel
@@ -32,7 +35,7 @@ class CustomEqualizerViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val hardwareCaps = AudioEffectController.queryHardwareCapabilities()
-    val availablePresets: List<EqualizerPreset> = hardwareCaps.second
+    val availablePresets: List<EqualizerPreset> = BuiltInEqualizerPresets.toEqualizerPresets()
 
     val uiState: StateFlow<CustomEqualizerUiState> = equalizerRepository.settings
         .map { settings ->
@@ -47,8 +50,10 @@ class CustomEqualizerViewModel @Inject constructor(
                 selectedPresetIndex = settings.selectedPresetIndex,
                 bassBoostEnabled = settings.bassBoostEnabled,
                 bassBoostStrength = settings.bassBoostStrength,
+                bassBoostDb = EqualizerSettings.effectStrengthToDb(settings.bassBoostStrength),
                 virtualizerEnabled = settings.virtualizerEnabled,
                 virtualizerStrength = settings.virtualizerStrength,
+                virtualizerDb = EqualizerSettings.effectStrengthToDb(settings.virtualizerStrength),
             )
         }
         .stateIn(
@@ -74,14 +79,36 @@ class CustomEqualizerViewModel @Inject constructor(
     }
 
     fun setBandLevel(bandIndex: Int, levelMb: Int) {
+        val clamped = levelMb.coerceIn(
+            EqualizerSettings.MIN_DISPLAY_BAND_LEVEL_MB,
+            EqualizerSettings.MAX_DISPLAY_BAND_LEVEL_MB,
+        )
         viewModelScope.launch {
-            equalizerRepository.setBandLevel(bandIndex, levelMb)
+            equalizerRepository.setBandLevel(bandIndex, clamped)
         }
     }
 
     fun resetToFlat() {
         viewModelScope.launch {
             equalizerRepository.resetToFlat(hardwareCaps.first.size)
+        }
+    }
+
+    fun setBassBoostDb(db: Float) {
+        val clamped = db.coerceIn(EqualizerSettings.MIN_EFFECT_DB, EqualizerSettings.MAX_EFFECT_DB)
+        val strength = EqualizerSettings.effectDbToStrength(clamped)
+        viewModelScope.launch {
+            equalizerRepository.setBassBoostStrength(strength)
+            equalizerRepository.setBassBoostEnabled(strength > 0)
+        }
+    }
+
+    fun setVirtualizerDb(db: Float) {
+        val clamped = db.coerceIn(EqualizerSettings.MIN_EFFECT_DB, EqualizerSettings.MAX_EFFECT_DB)
+        val strength = EqualizerSettings.effectDbToStrength(clamped)
+        viewModelScope.launch {
+            equalizerRepository.setVirtualizerStrength(strength)
+            equalizerRepository.setVirtualizerEnabled(strength > 0)
         }
     }
 

@@ -1,6 +1,6 @@
 package com.musicapp.player.feature.equalizer
 
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,37 +12,43 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
-import com.musicapp.player.core.designsystem.component.ChoiceRow
-import com.musicapp.player.core.designsystem.component.InsetPillSlider
-import com.musicapp.player.core.designsystem.component.SettingsSection
+import com.musicapp.player.core.designsystem.component.AppDropdownMenu
+import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
+import com.musicapp.player.core.designsystem.component.HorizontalThinRingSlider
+import com.musicapp.player.core.designsystem.component.VerticalEqualizerConsole
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.EqualizerBand
@@ -52,7 +58,6 @@ import com.musicapp.player.feature.category.CategoryHeader
 import com.musicapp.player.theme.MusicAlpha
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
-import kotlin.math.roundToInt
 
 @Composable
 fun CustomEqualizerScreenRoute(
@@ -72,16 +77,14 @@ fun CustomEqualizerScreenRoute(
         onSelectPreset = viewModel::selectPreset,
         onBandLevelChange = viewModel::setBandLevel,
         onResetToFlat = viewModel::resetToFlat,
-        onBassBoostEnabledChange = viewModel::setBassBoostEnabled,
-        onBassBoostStrengthChange = viewModel::setBassBoostStrength,
-        onVirtualizerEnabledChange = viewModel::setVirtualizerEnabled,
-        onVirtualizerStrengthChange = viewModel::setVirtualizerStrength,
+        onBassBoostDbChange = viewModel::setBassBoostDb,
+        onVirtualizerDbChange = viewModel::setVirtualizerDb,
         bottomPadding = bottomPadding,
     )
 }
 
 @Composable
-private fun CustomEqualizerScreen(
+internal fun CustomEqualizerScreen(
     state: CustomEqualizerUiState,
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
@@ -90,10 +93,8 @@ private fun CustomEqualizerScreen(
     onSelectPreset: (EqualizerPreset) -> Unit,
     onBandLevelChange: (Int, Int) -> Unit,
     onResetToFlat: () -> Unit,
-    onBassBoostEnabledChange: (Boolean) -> Unit,
-    onBassBoostStrengthChange: (Int) -> Unit,
-    onVirtualizerEnabledChange: (Boolean) -> Unit,
-    onVirtualizerStrengthChange: (Int) -> Unit,
+    onBassBoostDbChange: (Float) -> Unit,
+    onVirtualizerDbChange: (Float) -> Unit,
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -124,184 +125,137 @@ private fun CustomEqualizerScreen(
                     .fillMaxWidth()
                     .bounceOverscroll(overscrollEffect),
                 contentPadding = PaddingValues(
-                    start = dimensions.contentHorizontalPadding,
-                    end = dimensions.contentHorizontalPadding,
                     top = dimensions.spaceSmall,
                     bottom = dimensions.spaceLarge + bottomPadding,
                 ),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
             ) {
-                // 1. Master Toggle
+                // 1. 上方：左侧默认设置（预设下拉），右侧开关（非卡片式平铺）
                 item {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MusicTheme.shapes.large,
-                        color = MusicTheme.aeroCardContainerColor,
-                        contentColor = MusicTheme.colors.onSurface,
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = dimensions.contentHorizontalPadding),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        ChoiceRow(
-                            title = stringResource(R.string.equalizer_custom_enable),
-                            interactionModifier = Modifier.toggleable(
-                                value = state.isEnabled,
-                                role = Role.Switch,
-                                onValueChange = onEnabledChange,
-                            ),
-                            trailingContent = {
-                                Switch(
-                                    checked = state.isEnabled,
-                                    onCheckedChange = null,
-                                    modifier = Modifier.clearAndSetSemantics {},
-                                )
-                            },
+                        PresetDropdownSelector(
+                            selectedPresetIndex = state.selectedPresetIndex,
+                            presets = state.presets,
+                            enabled = state.isEnabled,
+                            onSelectPreset = onSelectPreset,
+                            onResetToFlat = onResetToFlat,
                         )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(MusicTheme.shapes.medium)
+                                .toggleable(
+                                    value = state.isEnabled,
+                                    role = Role.Switch,
+                                    onValueChange = onEnabledChange,
+                                )
+                                .semantics(mergeDescendants = true) {}
+                                .padding(horizontal = dimensions.spaceSmall, vertical = dimensions.spaceExtraSmall),
+                        ) {
+                            Switch(
+                                checked = state.isEnabled,
+                                onCheckedChange = null,
+                                modifier = Modifier.clearAndSetSemantics {},
+                            )
+                        }
                     }
                 }
 
-                // 2. Presets Selection & Reset
+                // 2. 中间：频段调节调音台（横轴频率、纵轴分贝大小，-10dB 到 10dB，细条加细圆环，非卡片平铺）
                 item {
-                    SettingsSection(title = stringResource(R.string.equalizer_presets)) {
+                    VerticalEqualizerConsole(
+                        bands = state.bands,
+                        enabled = state.isEnabled,
+                        onBandLevelChange = onBandLevelChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = dimensions.contentHorizontalPadding),
+                        sliderHeight = 190.dp,
+                    )
+                }
+
+                // 3. 下方：低音增强与环绕声场（从 0-10dB，细条加细圆环平滑滑动，非卡片平铺）
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = dimensions.contentHorizontalPadding),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.equalizer_effects_section),
+                            style = MusicTheme.typography.titleMedium,
+                            color = if (state.isEnabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
+                            modifier = Modifier.padding(bottom = dimensions.spaceSmall),
+                        )
+
+                        // 低音增强 (0-10dB)
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = dimensions.spaceSmall),
                         ) {
-                            val scrollState = rememberScrollState()
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(scrollState)
-                                    .padding(horizontal = dimensions.spaceMedium),
-                                horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                // Custom chip
-                                val isCustomSelected = state.selectedPresetIndex == EqualizerSettings.PRESET_CUSTOM
-                                EqualizerChip(
-                                    label = stringResource(R.string.equalizer_preset_custom),
-                                    selected = isCustomSelected,
-                                    enabled = state.isEnabled,
-                                    onClick = {},
+                                Text(
+                                    text = stringResource(R.string.equalizer_bass_boost),
+                                    style = MusicTheme.typography.bodyLarge,
+                                    color = if (state.isEnabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
                                 )
-
-                                state.presets.forEach { preset ->
-                                    val isSelected = state.selectedPresetIndex == preset.index
-                                    EqualizerChip(
-                                        label = preset.name,
-                                        selected = isSelected,
-                                        enabled = state.isEnabled,
-                                        onClick = { onSelectPreset(preset) },
-                                    )
-                                }
+                                Text(
+                                    text = stringResource(R.string.equalizer_effect_db_format, state.bassBoostDb),
+                                    style = MusicTheme.typography.bodyMedium,
+                                    color = if (state.isEnabled && state.bassBoostDb > 0f) MusicTheme.colors.primary else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
+                                )
                             }
+                            Spacer(modifier = Modifier.height(dimensions.spaceSmall))
+                            HorizontalThinRingSlider(
+                                value = state.bassBoostDb,
+                                onValueChange = onBassBoostDbChange,
+                                enabled = state.isEnabled,
+                                valueRange = 0f..10f,
+                            )
+                        }
 
+                        Spacer(modifier = Modifier.height(dimensions.spaceSmall))
+
+                        // 环绕声场 (0-10dB)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = dimensions.spaceSmall),
+                        ) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        start = dimensions.spaceMedium,
-                                        end = dimensions.spaceMedium,
-                                        top = dimensions.spaceSmall,
-                                    ),
-                                horizontalArrangement = Arrangement.End,
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                TextButton(
-                                    onClick = onResetToFlat,
-                                    enabled = state.isEnabled,
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.equalizer_reset_to_flat),
-                                        style = MusicTheme.typography.labelMedium,
-                                        color = if (state.isEnabled) MusicTheme.colors.primary else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 3. Frequency Bands Sliders
-                item {
-                    SettingsSection(title = stringResource(R.string.equalizer_bands)) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = dimensions.spaceMedium, vertical = dimensions.spaceSmall),
-                            verticalArrangement = Arrangement.spacedBy(dimensions.spaceSmall),
-                        ) {
-                            state.bands.forEach { band ->
-                                BandSliderRow(
-                                    band = band,
-                                    enabled = state.isEnabled,
-                                    onLevelChange = { newLevel -> onBandLevelChange(band.index, newLevel) },
+                                Text(
+                                    text = stringResource(R.string.equalizer_virtualizer),
+                                    style = MusicTheme.typography.bodyLarge,
+                                    color = if (state.isEnabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
+                                )
+                                Text(
+                                    text = stringResource(R.string.equalizer_effect_db_format, state.virtualizerDb),
+                                    style = MusicTheme.typography.bodyMedium,
+                                    color = if (state.isEnabled && state.virtualizerDb > 0f) MusicTheme.colors.primary else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
                                 )
                             }
-                        }
-                    }
-                }
-
-                // 4. Bass Boost & Virtualizer
-                item {
-                    SettingsSection(title = stringResource(R.string.playback_equalizer)) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = dimensions.spaceMedium, vertical = dimensions.spaceSmall),
-                            verticalArrangement = Arrangement.spacedBy(dimensions.spaceMedium),
-                        ) {
-                            // Bass Boost
-                            ChoiceRow(
-                                title = stringResource(R.string.equalizer_bass_boost),
-                                subtitle = stringResource(R.string.equalizer_effect_strength, (state.bassBoostStrength / 10)),
-                                interactionModifier = Modifier.toggleable(
-                                    value = state.bassBoostEnabled,
-                                    role = Role.Switch,
-                                    enabled = state.isEnabled,
-                                    onValueChange = onBassBoostEnabledChange,
-                                ),
-                                trailingContent = {
-                                    Switch(
-                                        checked = state.bassBoostEnabled,
-                                        onCheckedChange = null,
-                                        enabled = state.isEnabled,
-                                        modifier = Modifier.clearAndSetSemantics {},
-                                    )
-                                },
-                            )
-                            InsetPillSlider(
-                                value = state.bassBoostStrength.toFloat(),
-                                onValueChange = { onBassBoostStrengthChange(it.roundToInt()) },
-                                enabled = state.isEnabled && state.bassBoostEnabled,
-                                valueRange = EqualizerSettings.MIN_EFFECT_STRENGTH.toFloat()..EqualizerSettings.MAX_EFFECT_STRENGTH.toFloat(),
-                                steps = 20,
-                            )
-
-                            Spacer(modifier = Modifier.height(dimensions.spaceExtraSmall))
-
-                            // Virtualizer
-                            ChoiceRow(
-                                title = stringResource(R.string.equalizer_virtualizer),
-                                subtitle = stringResource(R.string.equalizer_effect_strength, (state.virtualizerStrength / 10)),
-                                interactionModifier = Modifier.toggleable(
-                                    value = state.virtualizerEnabled,
-                                    role = Role.Switch,
-                                    enabled = state.isEnabled,
-                                    onValueChange = onVirtualizerEnabledChange,
-                                ),
-                                trailingContent = {
-                                    Switch(
-                                        checked = state.virtualizerEnabled,
-                                        onCheckedChange = null,
-                                        enabled = state.isEnabled,
-                                        modifier = Modifier.clearAndSetSemantics {},
-                                    )
-                                },
-                            )
-                            InsetPillSlider(
-                                value = state.virtualizerStrength.toFloat(),
-                                onValueChange = { onVirtualizerStrengthChange(it.roundToInt()) },
-                                enabled = state.isEnabled && state.virtualizerEnabled,
-                                valueRange = EqualizerSettings.MIN_EFFECT_STRENGTH.toFloat()..EqualizerSettings.MAX_EFFECT_STRENGTH.toFloat(),
-                                steps = 20,
+                            Spacer(modifier = Modifier.height(dimensions.spaceSmall))
+                            HorizontalThinRingSlider(
+                                value = state.virtualizerDb,
+                                onValueChange = onVirtualizerDbChange,
+                                enabled = state.isEnabled,
+                                valueRange = 0f..10f,
                             )
                         }
                     }
@@ -312,90 +266,118 @@ private fun CustomEqualizerScreen(
 }
 
 @Composable
-private fun BandSliderRow(
-    band: EqualizerBand,
+private fun PresetDropdownSelector(
+    selectedPresetIndex: Int,
+    presets: List<EqualizerPreset>,
     enabled: Boolean,
-    onLevelChange: (Int) -> Unit,
+    onSelectPreset: (EqualizerPreset) -> Unit,
+    onResetToFlat: () -> Unit,
 ) {
+    var expanded by remember { mutableStateOf(false) }
     val dimensions = MusicTheme.dimensions
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = formatFrequency(band.centerFreqHz),
-                style = MusicTheme.typography.labelMedium,
-                color = if (enabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
-            )
-            Text(
-                text = formatDb(band.levelMb),
-                style = MusicTheme.typography.bodySmall,
-                color = if (enabled) MusicTheme.colors.primary else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
-            )
+    val currentPresetName = when {
+        selectedPresetIndex == EqualizerSettings.PRESET_CUSTOM -> stringResource(R.string.equalizer_preset_custom)
+        else -> {
+            val p = presets.find { it.index == selectedPresetIndex }
+            if (p != null && p.nameResId != 0) stringResource(p.nameResId) else p?.name ?: stringResource(R.string.equalizer_preset_custom)
         }
-        InsetPillSlider(
-            value = band.levelMb.toFloat(),
-            onValueChange = { onLevelChange(it.roundToInt()) },
-            enabled = enabled,
-            valueRange = EqualizerSettings.MIN_BAND_LEVEL_MB.toFloat()..EqualizerSettings.MAX_BAND_LEVEL_MB.toFloat(),
-            steps = 30,
-        )
     }
-}
 
-@Composable
-private fun EqualizerChip(
-    label: String,
-    selected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val dimensions = MusicTheme.dimensions
-    val containerColor = if (selected) {
-        MusicTheme.colors.primaryContainer
-    } else {
-        MusicTheme.colors.surfaceContainerHigh
-    }
-    val contentColor = if (selected) {
-        MusicTheme.colors.onPrimaryContainer
-    } else {
-        MusicTheme.colors.onSurfaceVariant
-    }
-    Surface(
-        shape = MusicTheme.shapes.medium,
-        color = containerColor,
-        contentColor = contentColor,
-        modifier = Modifier
-            .selectable(
-                selected = selected,
-                enabled = enabled,
-                role = Role.RadioButton,
-                onClick = onClick,
-            ),
-    ) {
-        Text(
-            text = label,
-            style = MusicTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = dimensions.spaceMedium, vertical = dimensions.spaceSmall),
-        )
-    }
-}
+    Box {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MusicTheme.colors.surfaceContainerHigh,
+            contentColor = if (enabled) MusicTheme.colors.onSurface else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .clickable(enabled = enabled) { expanded = true }
+                .semantics(mergeDescendants = true) {
+                    role = Role.DropdownList
+                },
+        ) {
+            Row(
+                modifier = Modifier
+                    .heightIn(min = 40.dp)
+                    .padding(horizontal = dimensions.spaceMedium, vertical = dimensions.spaceSmallMedium),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(dimensions.spaceSmallMedium),
+            ) {
+                Text(
+                    text = currentPresetName,
+                    style = MusicTheme.typography.titleSmall,
+                    color = if (enabled) MusicTheme.colors.primary else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
+                )
+                Icon(
+                    painter = painterResource(R.drawable.ic_common_dropdown),
+                    contentDescription = stringResource(R.string.equalizer_preset_dropdown_desc),
+                    tint = if (enabled) MusicTheme.colors.primary else MusicTheme.colors.onSurfaceVariant.copy(alpha = MusicAlpha.Disabled),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
 
-private fun formatFrequency(freqHz: Int): String {
-    return if (freqHz >= 1000) {
-        val kHz = freqHz / 1000.0
-        if (freqHz % 1000 == 0) "${freqHz / 1000} kHz" else "%.1f kHz".format(kHz)
-    } else {
-        "$freqHz Hz"
-    }
-}
+        AppDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            // 自定义项
+            val isCustomSelected = selectedPresetIndex == EqualizerSettings.PRESET_CUSTOM
+            AppDropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.equalizer_preset_custom),
+                        color = if (isCustomSelected) MusicTheme.colors.primary else MusicTheme.colors.onSurface,
+                        style = MusicTheme.typography.bodyMedium,
+                    )
+                },
+                trailingIcon = if (isCustomSelected) {
+                    {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_status_check),
+                            contentDescription = null,
+                            tint = MusicTheme.colors.primary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                } else null,
+                onClick = {
+                    expanded = false
+                },
+            )
 
-private fun formatDb(levelMb: Int): String {
-    val db = levelMb / 100.0
-    return if (db > 0) "+%.1f dB".format(db) else "%.1f dB".format(db)
+            HorizontalDivider(
+                color = MusicTheme.colors.outlineVariant.copy(alpha = MusicAlpha.Divider),
+                modifier = Modifier.padding(horizontal = dimensions.spaceMedium),
+            )
+
+            // 预设列表
+            presets.forEach { preset ->
+                val isSelected = selectedPresetIndex == preset.index
+                val displayName = if (preset.nameResId != 0) stringResource(preset.nameResId) else preset.name
+                AppDropdownMenuItem(
+                    text = {
+                        Text(
+                            text = displayName,
+                            color = if (isSelected) MusicTheme.colors.primary else MusicTheme.colors.onSurface,
+                            style = MusicTheme.typography.bodyMedium,
+                        )
+                    },
+                    trailingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_status_check),
+                                contentDescription = null,
+                                tint = MusicTheme.colors.primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    } else null,
+                    onClick = {
+                        expanded = false
+                        onSelectPreset(preset)
+                    },
+                )
+            }
+        }
+    }
 }

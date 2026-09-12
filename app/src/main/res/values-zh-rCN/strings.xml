@@ -480,11 +480,22 @@
     <string name="equalizer_presets">预设音效</string>
     <string name="equalizer_preset_custom">自定义</string>
     <string name="equalizer_preset_flat">平直</string>
+    <string name="equalizer_preset_bass_boost">低音</string>
+    <string name="equalizer_preset_vocal">人声</string>
+    <string name="equalizer_preset_rock">摇滚</string>
+    <string name="equalizer_preset_pop">流行</string>
+    <string name="equalizer_preset_electronic">电子</string>
+    <string name="equalizer_preset_jazz">爵士</string>
+    <string name="equalizer_preset_classical">古典</string>
+    <string name="equalizer_preset_folk">民谣</string>
+    <string name="equalizer_preset_dropdown_desc">选择均衡器预设</string>
     <string name="equalizer_bands">频段调节</string>
     <string name="equalizer_bass_boost">低音增强</string>
     <string name="equalizer_virtualizer">环绕声场</string>
     <string name="equalizer_reset_to_flat">重置为平直</string>
     <string name="equalizer_effect_strength">%1$d%%</string>
     <string name="equalizer_band_db_format">%1$+.1f dB</string>
+    <string name="equalizer_effect_db_format">%1$.1f dB</string>
+    <string name="equalizer_effects_section">音效增强</string>
     <string name="equalizer_not_supported_on_device">当前设备音频硬件不支持音效调节</string>
 </resources>

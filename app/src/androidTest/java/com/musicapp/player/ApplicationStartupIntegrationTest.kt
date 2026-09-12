@@ -13,6 +13,6 @@ class ApplicationStartupIntegrationTest {
     fun applicationResourcesAreAvailableInAndroidRuntime() {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
-        assertEquals("MusicApp", context.getString(R.string.app_name))
+        assertEquals("MusicApp debug", context.getString(R.string.app_name))
     }
 }

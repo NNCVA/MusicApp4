@@ -43,10 +43,13 @@ class CustomEqualizerViewModelTest {
         assertFalse(state.isEnabled)
         assertEquals(EqualizerSettings.PRESET_CUSTOM, state.selectedPresetIndex)
         assertEquals(5, state.bands.size)
+        assertEquals(9, state.presets.size)
         assertFalse(state.bassBoostEnabled)
         assertEquals(0, state.bassBoostStrength)
+        assertEquals(0f, state.bassBoostDb)
         assertFalse(state.virtualizerEnabled)
         assertEquals(0, state.virtualizerStrength)
+        assertEquals(0f, state.virtualizerDb)
     }
 
     @Test
@@ -71,19 +74,16 @@ class CustomEqualizerViewModelTest {
         backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        val preset = EqualizerPreset(
-            index = 1,
-            name = "Classical",
-            bandLevels = listOf(400, 300, -200, 400, 300),
-        )
+        val preset = viewModel.availablePresets.first { it.name == "Bass boost" }
 
         viewModel.selectPreset(preset)
         advanceUntilIdle()
 
-        assertEquals(1, repository.settings.value.selectedPresetIndex)
-        assertEquals(1, viewModel.uiState.value.selectedPresetIndex)
+        assertEquals(preset.index, repository.settings.value.selectedPresetIndex)
+        assertEquals(preset.index, viewModel.uiState.value.selectedPresetIndex)
         assertEquals(400, viewModel.uiState.value.bands[0].levelMb)
-        assertEquals(300, viewModel.uiState.value.bands[1].levelMb)
+        assertEquals(200, viewModel.uiState.value.bands[1].levelMb)
+        assertEquals(-100, viewModel.uiState.value.bands[2].levelMb)
     }
 
     @Test
@@ -96,6 +96,20 @@ class CustomEqualizerViewModelTest {
 
         assertEquals(EqualizerSettings.PRESET_CUSTOM, repository.settings.value.selectedPresetIndex)
         assertEquals(450, viewModel.uiState.value.bands[0].levelMb)
+    }
+
+    @Test
+    fun setBandLevelClampsToDisplayBounds() = runTest(testDispatcher) {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        viewModel.setBandLevel(0, 1500)
+        advanceUntilIdle()
+        assertEquals(1000, viewModel.uiState.value.bands[0].levelMb)
+
+        viewModel.setBandLevel(0, -1500)
+        advanceUntilIdle()
+        assertEquals(-1000, viewModel.uiState.value.bands[0].levelMb)
     }
 
     @Test
@@ -113,22 +127,42 @@ class CustomEqualizerViewModelTest {
     }
 
     @Test
-    fun setBassBoostAndVirtualizerUpdatesState() = runTest(testDispatcher) {
+    fun setBassBoostDbUpdatesDbAndEnablesEffect() = runTest(testDispatcher) {
         backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        viewModel.setBassBoostEnabled(true)
-        viewModel.setBassBoostStrength(600)
+        viewModel.setBassBoostDb(5.5f)
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.bassBoostEnabled)
-        assertEquals(600, viewModel.uiState.value.bassBoostStrength)
+        assertEquals(550, viewModel.uiState.value.bassBoostStrength)
+        assertEquals(5.5f, viewModel.uiState.value.bassBoostDb)
 
-        viewModel.setVirtualizerEnabled(true)
-        viewModel.setVirtualizerStrength(800)
+        viewModel.setBassBoostDb(0f)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.bassBoostEnabled)
+        assertEquals(0, viewModel.uiState.value.bassBoostStrength)
+        assertEquals(0f, viewModel.uiState.value.bassBoostDb)
+    }
+
+    @Test
+    fun setVirtualizerDbUpdatesDbAndEnablesEffect() = runTest(testDispatcher) {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        viewModel.setVirtualizerDb(7.0f)
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.virtualizerEnabled)
-        assertEquals(800, viewModel.uiState.value.virtualizerStrength)
+        assertEquals(700, viewModel.uiState.value.virtualizerStrength)
+        assertEquals(7.0f, viewModel.uiState.value.virtualizerDb)
+
+        viewModel.setVirtualizerDb(0f)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.virtualizerEnabled)
+        assertEquals(0, viewModel.uiState.value.virtualizerStrength)
+        assertEquals(0f, viewModel.uiState.value.virtualizerDb)
     }
 }
