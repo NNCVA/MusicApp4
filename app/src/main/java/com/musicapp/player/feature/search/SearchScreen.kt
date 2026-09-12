@@ -91,6 +91,7 @@ fun SearchScreenRoute(
     playlistId: Long? = null,
     contentInsets: WindowInsets,
     onBack: () -> Unit,
+    isInBackStack: () -> Boolean = { true },
     onArtistClick: (String) -> Unit = {},
     onAlbumClick: (AlbumId) -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
@@ -100,6 +101,13 @@ fun SearchScreenRoute(
     onOpenPlayer: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    val exitSearch: () -> Unit = {
+        keyboardController?.hide()
+        viewModel.resetSearch()
+        onBack()
+    }
 
     LaunchedEffect(scopeType, playlistId) {
         viewModel.initScope(scopeType, playlistId)
@@ -108,11 +116,18 @@ fun SearchScreenRoute(
     DisposableEffect(Unit) {
         onDispose {
             viewModel.exitSelection()
+            if (!isInBackStack()) {
+                viewModel.resetSearch()
+            }
         }
     }
 
-    BackHandler(enabled = state.isSelectionMode || state.infoTrack != null) {
-        viewModel.onBack()
+    BackHandler {
+        if (state.isSelectionMode || state.infoTrack != null) {
+            viewModel.onBack()
+        } else {
+            exitSearch()
+        }
     }
 
     LaunchedEffect(state.batchResult) {
@@ -132,15 +147,13 @@ fun SearchScreenRoute(
         viewModel.acknowledgeBatchResult()
     }
 
-    val keyboardController = LocalSoftwareKeyboardController.current
-
     SearchScreen(
         state = state,
         contentInsets = contentInsets,
         bottomPadding = bottomPadding,
         persistentBottomPadding = persistentBottomPadding,
         currentPlayingTrackId = currentPlayingTrackId,
-        onBack = onBack,
+        onBack = exitSearch,
         onQueryChange = viewModel::onQueryChange,
         onClearQuery = viewModel::clearQuery,
         onSortSelected = viewModel::onSortSelected,
@@ -215,10 +228,14 @@ fun SearchScreen(
 
     var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var singleTrackAddToPlaylistTarget by rememberSaveable { mutableStateOf<TrackId?>(null) }
+    var hasAutoRequestedFocus by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        keyboardController?.show()
+        if (!hasAutoRequestedFocus && state.query.isEmpty()) {
+            focusRequester.requestFocus()
+            keyboardController?.show()
+            hasAutoRequestedFocus = true
+        }
     }
 
     val placeholderText = when (state.scopeType) {

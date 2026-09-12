@@ -103,7 +103,11 @@ class SearchViewModel(
     private var batchJob: Job? = null
 
     fun initScope(scopeType: SearchScopeType, playlistId: Long? = null) {
-        scopeConfig.value = scopeType to playlistId
+        val newScope = scopeType to playlistId
+        if (scopeConfig.value != newScope) {
+            scopeConfig.value = newScope
+            resetSearch()
+        }
     }
 
     private val candidatesFlow = scopeConfig.flatMapLatest { (scope, pId) ->
@@ -229,6 +233,18 @@ class SearchViewModel(
 
     fun clearQuery() {
         queryState.value = ""
+    }
+
+    fun resetSearch() {
+        queryState.value = ""
+        sortState.value = TrackSort.DEFAULT
+        isSelectionModeState.value = false
+        selectedTrackIdsState.value = emptySet()
+        infoTrackState.value = null
+        infoMetadataState.value = null
+        batchResultState.value = null
+        batchJob?.cancel()
+        batchJob = null
     }
 
     fun onSortSelected(field: TrackSortField) {

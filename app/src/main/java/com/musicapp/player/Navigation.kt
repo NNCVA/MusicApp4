@@ -554,6 +554,7 @@ fun MainNavigation(
                                 playlistId = key.playlistId,
                                 contentInsets = contentInsets,
                                 onBack = ::handleBack,
+                                isInBackStack = { key in navigationState.currentBackStack },
                                 onArtistClick = navigateToArtist,
                                 onAlbumClick = navigateToAlbum,
                                 onShowMessage = { messageResId, formatArgs ->

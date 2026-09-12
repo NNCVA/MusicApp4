@@ -15,6 +15,7 @@ import com.musicapp.player.core.playback.PlaybackControllerState
 import com.musicapp.player.data.repository.FakeHistoryRepository
 import com.musicapp.player.data.repository.FakeMediaLibraryRepository
 import com.musicapp.player.data.repository.FakePlaylistRepository
+import com.musicapp.player.feature.tracks.TrackSort
 import com.musicapp.player.feature.tracks.TrackSortField
 import com.musicapp.player.feature.tracks.batch.BatchTrackAction
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
@@ -193,6 +194,84 @@ class SearchViewModelTest {
         vm.clearQuery()
         testScheduler.advanceUntilIdle()
         assertTrue(vm.uiState.value.filteredTracks.isEmpty())
+    }
+
+    @Test
+    fun `resetSearch resets query sort selection and infoTrack`() = runTest(dispatcher) {
+        val vm = createViewModel()
+        val collector = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.uiState.collect {}
+        }
+        testScheduler.advanceUntilIdle()
+
+        vm.onQueryChange("Moonlight")
+        vm.onSortSelected(TrackSortField.TITLE)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("Moonlight", vm.uiState.value.query)
+        assertEquals(listOf(track2), vm.uiState.value.filteredTracks)
+        assertEquals(TrackSortField.TITLE, vm.uiState.value.sort.field)
+
+        vm.enterSelection(track2.id)
+        vm.showTrackInfo(track2)
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.isSelectionMode)
+        assertEquals(setOf(track2.id), vm.uiState.value.selectedTrackIds)
+        assertEquals(track2, vm.uiState.value.infoTrack)
+
+        // Reset search
+        vm.resetSearch()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("", vm.uiState.value.query)
+        assertTrue(vm.uiState.value.filteredTracks.isEmpty())
+        assertEquals(TrackSort.DEFAULT, vm.uiState.value.sort)
+        assertFalse(vm.uiState.value.isSelectionMode)
+        assertTrue(vm.uiState.value.selectedTrackIds.isEmpty())
+        assertEquals(null, vm.uiState.value.infoTrack)
+    }
+
+    @Test
+    fun `initScope with new scope resets search state`() = runTest(dispatcher) {
+        val vm = createViewModel()
+        val collector = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.uiState.collect {}
+        }
+        testScheduler.advanceUntilIdle()
+
+        vm.onQueryChange("Beethoven")
+        vm.onSortSelected(TrackSortField.TITLE)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("Beethoven", vm.uiState.value.query)
+
+        vm.initScope(SearchScopeType.HISTORY)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("", vm.uiState.value.query)
+        assertTrue(vm.uiState.value.filteredTracks.isEmpty())
+        assertEquals(TrackSort.DEFAULT, vm.uiState.value.sort)
+        assertEquals(SearchScopeType.HISTORY, vm.uiState.value.scopeType)
+    }
+
+    @Test
+    fun `initScope with same scope preserves search state`() = runTest(dispatcher) {
+        val vm = createViewModel()
+        val collector = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.uiState.collect {}
+        }
+        testScheduler.advanceUntilIdle()
+
+        vm.onQueryChange("Beethoven")
+        testScheduler.advanceUntilIdle()
+        assertEquals("Beethoven", vm.uiState.value.query)
+
+        // Same scope
+        vm.initScope(SearchScopeType.ALL_TRACKS, null)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("Beethoven", vm.uiState.value.query)
     }
 
     @Test
