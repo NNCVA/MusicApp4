@@ -1,24 +1,17 @@
 package com.musicapp.player.media.audiofx
 
-import android.content.Context
-import android.content.Intent
-import android.media.audiofx.AudioEffect
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
 import android.media.audiofx.Virtualizer
 import com.musicapp.player.core.domain.model.EqualizerBand
 import com.musicapp.player.core.domain.model.EqualizerPreset
 import com.musicapp.player.core.domain.model.EqualizerSettings
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class AudioEffectController @Inject constructor(
-    @param:ApplicationContext private val context: Context,
-) {
+class AudioEffectController @Inject constructor() {
     private var activeSessionId: Int = 0
-    private var systemSessionBroadcasted: Boolean = false
 
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
@@ -38,57 +31,19 @@ class AudioEffectController @Inject constructor(
     fun applySettings(settings: EqualizerSettings) {
         if (activeSessionId == 0) return
 
-        // 1. System Equalizer session broadcast
-        if (settings.systemEnabled) {
-            if (!systemSessionBroadcasted) {
-                broadcastSystemSession(activeSessionId, open = true)
-                systemSessionBroadcasted = true
-            }
-        } else {
-            if (systemSessionBroadcasted) {
-                broadcastSystemSession(activeSessionId, open = false)
-                systemSessionBroadcasted = false
-            }
-        }
-
-        // 2. Custom Equalizer audiofx suite
-        if (settings.customEnabled) {
+        if (settings.enabled) {
             ensureEffectsInitialized(activeSessionId)
-            applyCustomEqualizerSettings(settings)
+            applyEqualizerSettings(settings)
         } else {
-            disableCustomEffects()
+            disableEffects()
         }
     }
 
     @Synchronized
     fun detachAudioSession() {
         if (activeSessionId == 0) return
-        if (systemSessionBroadcasted) {
-            broadcastSystemSession(activeSessionId, open = false)
-            systemSessionBroadcasted = false
-        }
         releaseEffects()
         activeSessionId = 0
-    }
-
-    private fun broadcastSystemSession(audioSessionId: Int, open: Boolean) {
-        try {
-            val action = if (open) {
-                AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION
-            } else {
-                AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION
-            }
-            val intent = Intent(action).apply {
-                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
-                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                if (open) {
-                    putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-                }
-            }
-            context.sendBroadcast(intent)
-        } catch (_: Exception) {
-            // Ignore broadcast failures on platforms without standard audio effect handling
-        }
     }
 
     private fun ensureEffectsInitialized(sessionId: Int) {
@@ -115,7 +70,7 @@ class AudioEffectController @Inject constructor(
         }
     }
 
-    private fun applyCustomEqualizerSettings(settings: EqualizerSettings) {
+    private fun applyEqualizerSettings(settings: EqualizerSettings) {
         equalizer?.let { eq ->
             try {
                 if (!eq.enabled) eq.enabled = true
@@ -148,7 +103,7 @@ class AudioEffectController @Inject constructor(
         }
     }
 
-    private fun disableCustomEffects() {
+    private fun disableEffects() {
         try { equalizer?.enabled = false } catch (_: Exception) {}
         try { bassBoost?.enabled = false } catch (_: Exception) {}
         try { virtualizer?.enabled = false } catch (_: Exception) {}

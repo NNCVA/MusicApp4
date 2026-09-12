@@ -66,8 +66,7 @@ import com.musicapp.player.navigation.NavigationState
 import com.musicapp.player.navigation.Navigator
 import com.musicapp.player.navigation.PlaylistDetailRoute
 import com.musicapp.player.navigation.PlaylistsRoute
-import com.musicapp.player.navigation.CustomEqualizerRoute
-import com.musicapp.player.navigation.SystemEqualizerRoute
+import com.musicapp.player.navigation.EqualizerRoute
 import com.musicapp.player.navigation.ScanMusicRoute
 import com.musicapp.player.navigation.SearchRoute
 import com.musicapp.player.navigation.SearchScopeType
@@ -76,10 +75,8 @@ import com.musicapp.player.navigation.TopLevelNavKey
 import com.musicapp.player.navigation.TrackInfoRoute
 import com.musicapp.player.navigation.TracksRoute
 import com.musicapp.player.navigation.topLevelNavKeys
-import com.musicapp.player.feature.equalizer.CustomEqualizerScreenRoute
-import com.musicapp.player.feature.equalizer.CustomEqualizerViewModel
-import com.musicapp.player.feature.equalizer.SystemEqualizerScreenRoute
-import com.musicapp.player.feature.equalizer.SystemEqualizerViewModel
+import com.musicapp.player.feature.equalizer.EqualizerScreenRoute
+import com.musicapp.player.feature.equalizer.EqualizerViewModel
 import com.musicapp.player.feature.search.SearchScreenRoute
 import com.musicapp.player.feature.search.SearchViewModel
 import com.musicapp.player.core.aero.AeroRuntimeSignals
@@ -212,7 +209,7 @@ fun MainNavigation(
 
     fun handleBack() {
         val currentTop = navigationState.currentBackStack.lastOrNull()
-        val leavingEqualizer = currentTop is CustomEqualizerRoute || currentTop is SystemEqualizerRoute
+        val leavingEqualizer = currentTop is EqualizerRoute
         if (navigator.goBack() == BackNavigationResult.REQUEST_RETURN_TO_DESKTOP) {
             onReturnToDesktop()
         } else {
@@ -233,7 +230,7 @@ fun MainNavigation(
     }
 
     val currentTopRoute = navigationState.currentBackStack.lastOrNull()
-    val isSidebarFree = currentTopRoute is CustomEqualizerRoute || currentTopRoute is SystemEqualizerRoute
+    val isSidebarFree = currentTopRoute is EqualizerRoute
 
     Box(
         modifier = Modifier
@@ -270,7 +267,7 @@ fun MainNavigation(
                         }
                     },
                     onEqualizer = {
-                        commitNavigation { navigate(CustomEqualizerRoute) }
+                        commitNavigation { navigate(EqualizerRoute) }
                         closeDrawer()
                     },
                 )
@@ -438,31 +435,17 @@ fun MainNavigation(
                                 onShowMessage = { messageResId ->
                                     messageBubbleQueue.enqueue(messageResId)
                                 },
-                                onNavigateToSystemEqualizer = {
+                                onNavigateToEqualizer = {
                                     commitNavigation {
-                                        navigate(SystemEqualizerRoute)
-                                    }
-                                },
-                                onNavigateToCustomEqualizer = {
-                                    commitNavigation {
-                                        navigate(CustomEqualizerRoute)
+                                        navigate(EqualizerRoute)
                                     }
                                 },
                                 bottomPadding = bottomPadding,
                             )
                         }
-                        entry<CustomEqualizerRoute>(metadata = equalizerTransitionMetadata) {
-                            CustomEqualizerScreenRoute(
-                                viewModel = viewModel<CustomEqualizerViewModel>(),
-                                contentInsets = contentInsets,
-                                policy = policy,
-                                onBack = ::handleBack,
-                                bottomPadding = bottomPadding,
-                            )
-                        }
-                        entry<SystemEqualizerRoute>(metadata = equalizerTransitionMetadata) {
-                            SystemEqualizerScreenRoute(
-                                viewModel = viewModel<SystemEqualizerViewModel>(),
+                        entry<EqualizerRoute>(metadata = equalizerTransitionMetadata) {
+                            EqualizerScreenRoute(
+                                viewModel = viewModel<EqualizerViewModel>(),
                                 contentInsets = contentInsets,
                                 policy = policy,
                                 onBack = ::handleBack,
@@ -660,7 +643,7 @@ fun MainNavigation(
                         restorePlayerOnBack = true
                         playerExpanded = false
                         commitNavigation {
-                            navigate(CustomEqualizerRoute)
+                            navigate(EqualizerRoute)
                         }
                     },
                 )
@@ -753,7 +736,7 @@ internal val equalizerTransitionMetadata: Map<String, Any> by lazy {
 }
 
 internal fun isEqualizerRoute(route: Any?): Boolean =
-    route is CustomEqualizerRoute || route is SystemEqualizerRoute
+    route is EqualizerRoute
 
 internal fun Scene<*>.containsEqualizer(): Boolean {
     val sceneKey = key.toString()
@@ -823,8 +806,7 @@ private fun MusicNavKey.titleResId(): Int =
         AboutRoute -> R.string.navigation_about
         is ScanMusicRoute -> R.string.navigation_scan_music
         is SearchRoute -> R.string.tracks_search_label
-        CustomEqualizerRoute -> R.string.equalizer_custom_title
-        SystemEqualizerRoute -> R.string.equalizer_system_title
+        EqualizerRoute -> R.string.equalizer_title
     }
 
 internal fun resolveContentBottomPadding(

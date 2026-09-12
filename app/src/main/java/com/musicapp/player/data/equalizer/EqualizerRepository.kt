@@ -6,9 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 interface EqualizerRepository {
     val settings: StateFlow<EqualizerSettings>
 
-    suspend fun setSystemEnabled(enabled: Boolean)
-
-    suspend fun setCustomEnabled(enabled: Boolean)
+    suspend fun setEnabled(enabled: Boolean)
 
     suspend fun setPreset(presetIndex: Int, bandLevels: Map<Int, Int>)
 

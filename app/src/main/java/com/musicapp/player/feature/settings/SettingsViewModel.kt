@@ -129,12 +129,8 @@ class SettingsViewModel @Inject constructor(
             ),
         )
 
-    fun setSystemEqualizerEnabled(enabled: Boolean) {
-        viewModelScope.launch { equalizerRepository.setSystemEnabled(enabled) }
-    }
-
-    fun setCustomEqualizerEnabled(enabled: Boolean) {
-        viewModelScope.launch { equalizerRepository.setCustomEnabled(enabled) }
+    fun setEqualizerEnabled(enabled: Boolean) {
+        viewModelScope.launch { equalizerRepository.setEnabled(enabled) }
     }
 
     fun setColorSource(value: ColorSource) = updateSetting { settingsRepository.setColorSource(value) }

@@ -30,8 +30,7 @@ data class EqualizerPreset(
 }
 
 data class EqualizerSettings(
-    val systemEnabled: Boolean = false,
-    val customEnabled: Boolean = false,
+    val enabled: Boolean = false,
     val selectedPresetIndex: Int = PRESET_CUSTOM,
     val bandLevels: Map<Int, Int> = emptyMap(),
     val bassBoostEnabled: Boolean = false,

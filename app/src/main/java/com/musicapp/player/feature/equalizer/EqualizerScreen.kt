@@ -60,20 +60,20 @@ import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 
 @Composable
-fun CustomEqualizerScreenRoute(
-    viewModel: CustomEqualizerViewModel,
+fun EqualizerScreenRoute(
+    viewModel: EqualizerViewModel,
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     onBack: () -> Unit,
     bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    CustomEqualizerScreen(
+    EqualizerScreen(
         state = state,
         contentInsets = contentInsets,
         policy = policy,
         onBack = onBack,
-        onEnabledChange = viewModel::setCustomEnabled,
+        onEnabledChange = viewModel::setEnabled,
         onSelectPreset = viewModel::selectPreset,
         onBandLevelChange = viewModel::setBandLevel,
         onResetToFlat = viewModel::resetToFlat,
@@ -84,8 +84,8 @@ fun CustomEqualizerScreenRoute(
 }
 
 @Composable
-internal fun CustomEqualizerScreen(
-    state: CustomEqualizerUiState,
+internal fun EqualizerScreen(
+    state: EqualizerUiState,
     contentInsets: WindowInsets,
     policy: WindowLayoutPolicy,
     onBack: () -> Unit,
@@ -113,7 +113,7 @@ internal fun CustomEqualizerScreen(
                 .widthIn(max = dimensions.settingsContentMaxWidth),
         ) {
             CategoryHeader(
-                title = stringResource(R.string.equalizer_custom_title),
+                title = stringResource(R.string.equalizer_title),
                 policy = policy,
                 onBack = onBack,
             )

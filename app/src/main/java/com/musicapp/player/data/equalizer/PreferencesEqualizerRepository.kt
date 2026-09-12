@@ -43,15 +43,9 @@ class PreferencesEqualizerRepository @Inject constructor(
             initialValue = EqualizerSettings(),
         )
 
-    override suspend fun setSystemEnabled(enabled: Boolean) {
+    override suspend fun setEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[Keys.SYSTEM_ENABLED] = enabled
-        }
-    }
-
-    override suspend fun setCustomEnabled(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[Keys.CUSTOM_ENABLED] = enabled
+            preferences[Keys.ENABLED] = enabled
         }
     }
 
@@ -132,8 +126,7 @@ class PreferencesEqualizerRepository @Inject constructor(
 
     private fun toEqualizerSettings(preferences: Preferences): EqualizerSettings {
         return EqualizerSettings(
-            systemEnabled = preferences[Keys.SYSTEM_ENABLED] ?: false,
-            customEnabled = preferences[Keys.CUSTOM_ENABLED] ?: false,
+            enabled = preferences[Keys.ENABLED] ?: preferences[Keys.CUSTOM_ENABLED_LEGACY] ?: false,
             selectedPresetIndex = preferences[Keys.SELECTED_PRESET_INDEX] ?: EqualizerSettings.PRESET_CUSTOM,
             bandLevels = decodeBandLevels(preferences[Keys.BAND_LEVELS]),
             bassBoostEnabled = preferences[Keys.BASS_BOOST_ENABLED] ?: false,
@@ -167,8 +160,8 @@ class PreferencesEqualizerRepository @Inject constructor(
     }
 
     private object Keys {
-        val SYSTEM_ENABLED = booleanPreferencesKey("system_equalizer_enabled")
-        val CUSTOM_ENABLED = booleanPreferencesKey("custom_equalizer_enabled")
+        val ENABLED = booleanPreferencesKey("equalizer_enabled")
+        val CUSTOM_ENABLED_LEGACY = booleanPreferencesKey("custom_equalizer_enabled")
         val SELECTED_PRESET_INDEX = intPreferencesKey("selected_preset_index")
         val BAND_LEVELS = stringPreferencesKey("band_levels")
         val BASS_BOOST_ENABLED = booleanPreferencesKey("bass_boost_enabled")

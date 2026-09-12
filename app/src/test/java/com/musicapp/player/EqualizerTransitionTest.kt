@@ -3,10 +3,9 @@ package com.musicapp.player
 import com.musicapp.player.navigation.AboutRoute
 import com.musicapp.player.navigation.AlbumsRoute
 import com.musicapp.player.navigation.ArtistDetailRoute
-import com.musicapp.player.navigation.CustomEqualizerRoute
+import com.musicapp.player.navigation.EqualizerRoute
 import com.musicapp.player.navigation.ScanMusicRoute
 import com.musicapp.player.navigation.SettingsRoute
-import com.musicapp.player.navigation.SystemEqualizerRoute
 import com.musicapp.player.navigation.TracksRoute
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -18,8 +17,7 @@ class EqualizerTransitionTest {
 
     @Test
     fun isEqualizerRoute_correctlyIdentifiesEqualizerRoutes() {
-        assertTrue(isEqualizerRoute(CustomEqualizerRoute))
-        assertTrue(isEqualizerRoute(SystemEqualizerRoute))
+        assertTrue(isEqualizerRoute(EqualizerRoute))
 
         assertFalse(isEqualizerRoute(TracksRoute))
         assertFalse(isEqualizerRoute(AlbumsRoute))

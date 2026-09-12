@@ -11,12 +11,8 @@ class InMemoryEqualizerRepository(
     private val _settings = MutableStateFlow(initialSettings)
     override val settings: StateFlow<EqualizerSettings> = _settings.asStateFlow()
 
-    override suspend fun setSystemEnabled(enabled: Boolean) {
-        _settings.value = _settings.value.copy(systemEnabled = enabled)
-    }
-
-    override suspend fun setCustomEnabled(enabled: Boolean) {
-        _settings.value = _settings.value.copy(customEnabled = enabled)
+    override suspend fun setEnabled(enabled: Boolean) {
+        _settings.value = _settings.value.copy(enabled = enabled)
     }
 
     override suspend fun setPreset(presetIndex: Int, bandLevels: Map<Int, Int>) {

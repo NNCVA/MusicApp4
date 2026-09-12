@@ -28,8 +28,7 @@ class PreferencesEqualizerRepositoryTest {
 
         val settings = repository.settings.value
         assertEquals(EqualizerSettings(), settings)
-        assertFalse(settings.systemEnabled)
-        assertFalse(settings.customEnabled)
+        assertFalse(settings.enabled)
         assertEquals(EqualizerSettings.PRESET_CUSTOM, settings.selectedPresetIndex)
         assertTrue(settings.bandLevels.isEmpty())
         assertFalse(settings.bassBoostEnabled)
@@ -39,17 +38,14 @@ class PreferencesEqualizerRepositoryTest {
     }
 
     @Test
-    fun toggleSystemAndCustomEnabled() = runTest {
+    fun toggleEnabled() = runTest {
         val repository = createRepository()
 
-        repository.setSystemEnabled(true)
-        assertTrue(repository.settings.first { it.systemEnabled }.systemEnabled)
+        repository.setEnabled(true)
+        assertTrue(repository.settings.first { it.enabled }.enabled)
 
-        repository.setCustomEnabled(true)
-        assertTrue(repository.settings.first { it.customEnabled }.customEnabled)
-
-        repository.setSystemEnabled(false)
-        assertFalse(repository.settings.first { !it.systemEnabled }.systemEnabled)
+        repository.setEnabled(false)
+        assertFalse(repository.settings.first { !it.enabled }.enabled)
     }
 
     @Test

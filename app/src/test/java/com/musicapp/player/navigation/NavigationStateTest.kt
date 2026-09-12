@@ -381,17 +381,16 @@ class NavigationStateTest {
     }
 
     @Test
-    fun serializedSnapshotPreservesEqualizerRoutes() {
+    fun serializedSnapshotPreservesEqualizerRoute() {
         val state = NavigationState.initial()
         val navigator = Navigator(state)
         navigator.navigate(SettingsRoute)
-        navigator.navigate(CustomEqualizerRoute)
-        navigator.navigate(SystemEqualizerRoute)
+        navigator.navigate(EqualizerRoute)
 
         val restored = NavigationState.restore(NavigationSnapshot.decode(state.snapshot().encode()))
 
         assertEquals(SettingsRoute, restored.currentTopLevelRoute)
-        assertEquals(listOf(SettingsRoute, CustomEqualizerRoute, SystemEqualizerRoute), restored.currentBackStack)
+        assertEquals(listOf(SettingsRoute, EqualizerRoute), restored.currentBackStack)
         assertEquals(state.snapshot(), restored.snapshot())
     }
 

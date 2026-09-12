@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class CustomEqualizerUiState(
+data class EqualizerUiState(
     val isEnabled: Boolean = false,
     val bands: List<EqualizerBand> = emptyList(),
     val presets: List<EqualizerPreset> = emptyList(),
@@ -30,21 +30,21 @@ data class CustomEqualizerUiState(
 )
 
 @HiltViewModel
-class CustomEqualizerViewModel @Inject constructor(
+class EqualizerViewModel @Inject constructor(
     private val equalizerRepository: EqualizerRepository,
 ) : ViewModel() {
 
     private val hardwareCaps = AudioEffectController.queryHardwareCapabilities()
     val availablePresets: List<EqualizerPreset> = BuiltInEqualizerPresets.toEqualizerPresets()
 
-    val uiState: StateFlow<CustomEqualizerUiState> = equalizerRepository.settings
+    val uiState: StateFlow<EqualizerUiState> = equalizerRepository.settings
         .map { settings ->
             val bands = hardwareCaps.first.map { defaultBand ->
                 val currentLevel = settings.bandLevels[defaultBand.index] ?: defaultBand.levelMb
                 defaultBand.copy(levelMb = currentLevel)
             }
-            CustomEqualizerUiState(
-                isEnabled = settings.customEnabled,
+            EqualizerUiState(
+                isEnabled = settings.enabled,
                 bands = bands,
                 presets = availablePresets,
                 selectedPresetIndex = settings.selectedPresetIndex,
@@ -59,15 +59,15 @@ class CustomEqualizerViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = CustomEqualizerUiState(
+            initialValue = EqualizerUiState(
                 bands = hardwareCaps.first,
                 presets = availablePresets,
             ),
         )
 
-    fun setCustomEnabled(enabled: Boolean) {
+    fun setEnabled(enabled: Boolean) {
         viewModelScope.launch {
-            equalizerRepository.setCustomEnabled(enabled)
+            equalizerRepository.setEnabled(enabled)
         }
     }
 

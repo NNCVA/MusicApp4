@@ -19,17 +19,17 @@ import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class CustomEqualizerViewModelTest {
+class EqualizerViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: InMemoryEqualizerRepository
-    private lateinit var viewModel: CustomEqualizerViewModel
+    private lateinit var viewModel: EqualizerViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         repository = InMemoryEqualizerRepository()
-        viewModel = CustomEqualizerViewModel(repository)
+        viewModel = EqualizerViewModel(repository)
     }
 
     @After
@@ -53,19 +53,19 @@ class CustomEqualizerViewModelTest {
     }
 
     @Test
-    fun toggleCustomEnabledUpdatesRepository() = runTest(testDispatcher) {
+    fun toggleEnabledUpdatesRepository() = runTest(testDispatcher) {
         backgroundScope.launch { viewModel.uiState.collect {} }
         advanceUntilIdle()
 
-        viewModel.setCustomEnabled(true)
+        viewModel.setEnabled(true)
         advanceUntilIdle()
 
-        assertTrue(repository.settings.value.customEnabled)
+        assertTrue(repository.settings.value.enabled)
         assertTrue(viewModel.uiState.value.isEnabled)
 
-        viewModel.setCustomEnabled(false)
+        viewModel.setEnabled(false)
         advanceUntilIdle()
-        assertFalse(repository.settings.value.customEnabled)
+        assertFalse(repository.settings.value.enabled)
         assertFalse(viewModel.uiState.value.isEnabled)
     }
 

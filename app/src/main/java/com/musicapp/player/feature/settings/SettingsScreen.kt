@@ -82,8 +82,7 @@ fun SettingsScreenRoute(
     policy: WindowLayoutPolicy,
     onBack: () -> Unit,
     onShowMessage: (Int) -> Unit,
-    onNavigateToSystemEqualizer: () -> Unit = {},
-    onNavigateToCustomEqualizer: () -> Unit = {},
+    onNavigateToEqualizer: () -> Unit = {},
     bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -100,10 +99,8 @@ fun SettingsScreenRoute(
         onLanguageChange = viewModel::setAppLanguage,
         onAeroModeChange = viewModel::setAeroMode,
         onFadeDurationChange = viewModel::setFadeThroughDurationMs,
-        onSystemEqualizerEnabledChange = viewModel::setSystemEqualizerEnabled,
-        onCustomEqualizerEnabledChange = viewModel::setCustomEqualizerEnabled,
-        onNavigateToSystemEqualizer = onNavigateToSystemEqualizer,
-        onNavigateToCustomEqualizer = onNavigateToCustomEqualizer,
+        onEqualizerEnabledChange = viewModel::setEqualizerEnabled,
+        onNavigateToEqualizer = onNavigateToEqualizer,
         onRequestConfirmation = viewModel::requestConfirmation,
         onCancelConfirmation = viewModel::cancelConfirmation,
         onConfirmAction = viewModel::confirmAction,
@@ -125,10 +122,8 @@ private fun SettingsScreen(
     onLanguageChange: (AppLanguage) -> Unit,
     onAeroModeChange: (AeroMode) -> Unit,
     onFadeDurationChange: (Long) -> Unit,
-    onSystemEqualizerEnabledChange: (Boolean) -> Unit,
-    onCustomEqualizerEnabledChange: (Boolean) -> Unit,
-    onNavigateToSystemEqualizer: () -> Unit,
-    onNavigateToCustomEqualizer: () -> Unit,
+    onEqualizerEnabledChange: (Boolean) -> Unit,
+    onNavigateToEqualizer: () -> Unit,
     onRequestConfirmation: (SettingsConfirmation) -> Unit,
     onCancelConfirmation: () -> Unit,
     onConfirmAction: () -> Unit,
@@ -200,10 +195,8 @@ private fun SettingsScreen(
                 item {
                     EqualizerSettingsSection(
                         equalizerSettings = state.equalizerSettings,
-                        onSystemEqualizerEnabledChange = onSystemEqualizerEnabledChange,
-                        onCustomEqualizerEnabledChange = onCustomEqualizerEnabledChange,
-                        onNavigateToSystemEqualizer = onNavigateToSystemEqualizer,
-                        onNavigateToCustomEqualizer = onNavigateToCustomEqualizer,
+                        onEqualizerEnabledChange = onEqualizerEnabledChange,
+                        onNavigateToEqualizer = onNavigateToEqualizer,
                     )
                 }
                 item { DataManagementSettings(onRequestConfirmation) }
@@ -401,57 +394,32 @@ private fun FadeSettings(value: Long, onValueChange: (Long) -> Unit) {
 @Composable
 private fun EqualizerSettingsSection(
     equalizerSettings: EqualizerSettings,
-    onSystemEqualizerEnabledChange: (Boolean) -> Unit,
-    onCustomEqualizerEnabledChange: (Boolean) -> Unit,
-    onNavigateToSystemEqualizer: () -> Unit,
-    onNavigateToCustomEqualizer: () -> Unit,
+    onEqualizerEnabledChange: (Boolean) -> Unit,
+    onNavigateToEqualizer: () -> Unit,
 ) {
     SettingsSection(stringResource(R.string.settings_equalizer)) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(MusicTheme.dimensions.spaceSmallMedium),
-        ) {
-            val systemSummary = if (equalizerSettings.systemEnabled) {
-                stringResource(R.string.settings_system_equalizer_summary_enabled)
+        val summary = if (equalizerSettings.enabled) {
+            val presetName = if (equalizerSettings.selectedPresetIndex == EqualizerSettings.PRESET_CUSTOM) {
+                stringResource(R.string.equalizer_preset_custom)
             } else {
-                stringResource(R.string.settings_system_equalizer_summary_disabled)
+                stringResource(R.string.equalizer_presets)
             }
-            ChoiceRow(
-                title = stringResource(R.string.settings_system_equalizer),
-                subtitle = systemSummary,
-                compact = true,
-                interactionModifier = Modifier.clickable(onClick = onNavigateToSystemEqualizer),
-                trailingContent = {
-                    Switch(
-                        checked = equalizerSettings.systemEnabled,
-                        onCheckedChange = onSystemEqualizerEnabledChange,
-                    )
-                },
-            )
-
-            val customSummary = if (equalizerSettings.customEnabled) {
-                val presetName = if (equalizerSettings.selectedPresetIndex == EqualizerSettings.PRESET_CUSTOM) {
-                    stringResource(R.string.equalizer_preset_custom)
-                } else {
-                    stringResource(R.string.equalizer_presets)
-                }
-                stringResource(R.string.settings_custom_equalizer_summary_enabled, presetName)
-            } else {
-                stringResource(R.string.settings_custom_equalizer_summary_disabled)
-            }
-            ChoiceRow(
-                title = stringResource(R.string.settings_custom_equalizer),
-                subtitle = customSummary,
-                compact = true,
-                interactionModifier = Modifier.clickable(onClick = onNavigateToCustomEqualizer),
-                trailingContent = {
-                    Switch(
-                        checked = equalizerSettings.customEnabled,
-                        onCheckedChange = onCustomEqualizerEnabledChange,
-                    )
-                },
-            )
+            stringResource(R.string.settings_equalizer_summary_enabled, presetName)
+        } else {
+            stringResource(R.string.settings_equalizer_summary_disabled)
         }
+        ChoiceRow(
+            title = stringResource(R.string.settings_equalizer),
+            subtitle = summary,
+            compact = true,
+            interactionModifier = Modifier.clickable(onClick = onNavigateToEqualizer),
+            trailingContent = {
+                Switch(
+                    checked = equalizerSettings.enabled,
+                    onCheckedChange = onEqualizerEnabledChange,
+                )
+            },
+        )
     }
 }
 
