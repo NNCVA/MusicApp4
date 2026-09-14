@@ -231,14 +231,14 @@ internal class MusicLibrarySessionCallback(
                     onSnapshotRestored(snapshot, currentDurationMs)
                 }
                 val playbackItems = if (isForPlayback) {
-                    queueCoordinator.mediaItemsInPlaybackOrder()
+                    queueCoordinator.mediaItemsInOriginalOrder()
                 } else {
                     listOf(payloads.getValue(requireNotNull(snapshot.queue.currentItemId)).toMediaItem(
                         requireNotNull(snapshot.queue.currentItemId),
                     ))
                 }
                 val startIndex = if (isForPlayback) {
-                    snapshot.queue.playbackOrder.indexOfFirst { it.id == snapshot.queue.currentItemId }
+                    snapshot.queue.originalQueue.indexOfFirst { it.id == snapshot.queue.currentItemId }
                 } else {
                     0
                 }

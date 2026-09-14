@@ -260,7 +260,7 @@ class MusicPlaybackService : MediaLibraryService() {
             }
 
             override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
-                coordinator.onMediaItemTransition(mediaItem)
+                coordinator.onMediaItemTransition(mediaItem, reason)
                 startHistoryInstance(servicePlayer, mediaItem, reason)
                 snapshots.onTrackChanged()
                 scheduleNaturalTransition(servicePlayer)

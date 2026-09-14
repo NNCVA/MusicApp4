@@ -90,6 +90,9 @@ internal class PlaybackQueueCoordinator(
     fun mediaItemsInPlaybackOrder(): List<MediaItem> =
         state.queue.playbackOrder.map { mediaItemsById.getValue(it.id) }
 
+    fun mediaItemsInOriginalOrder(): List<MediaItem> =
+        state.queue.originalQueue.map { mediaItemsById.getValue(it.id) }
+
     fun advanceRestoredPastEnd() {
         if (state.queue.currentItemId == null) return
         state = reducer.naturalEnd(state)
@@ -98,8 +101,6 @@ internal class PlaybackQueueCoordinator(
 
     fun setMode(mode: PlaybackMode) {
         if (state.mode == mode) return
-        val previousOrder = state.queue.playbackOrder
-        val position = player.currentPositionMs
         state = reducer.setMode(state, mode)
         player.repeatMode = when (state.mode) {
             PlaybackMode.LIST_REPEAT -> Player.REPEAT_MODE_ALL
@@ -107,17 +108,6 @@ internal class PlaybackQueueCoordinator(
             PlaybackMode.SHUFFLE -> Player.REPEAT_MODE_OFF
         }
         player.shuffleModeEnabled = false
-        val newOrder = state.queue.playbackOrder
-        if (previousOrder != newOrder && state.queue.originalQueue.isNotEmpty()) {
-            val targetIndex = newOrder.indexOfFirst { it.id == state.queue.currentItemId }
-            if (targetIndex >= 0) {
-                player.setMediaItems(
-                    newOrder.map { mediaItemsById.getValue(it.id) },
-                    targetIndex,
-                    position,
-                )
-            }
-        }
         publish()
     }
 
@@ -163,13 +153,8 @@ internal class PlaybackQueueCoordinator(
 
     fun manualNext() {
         if (state.queue.currentItemId == null) return
-        val previousRound = state.queue.shuffleRound
         state = reducer.manualNext(state)
-        if (state.queue.shuffleRound != previousRound) {
-            applyTimeline(positionMs = 0, playWhenReady = player.playWhenReady)
-        } else {
-            seekToCurrent()
-        }
+        seekToCurrent()
     }
 
     fun manualPrevious() {
@@ -180,13 +165,8 @@ internal class PlaybackQueueCoordinator(
 
     fun naturalNext() {
         if (state.queue.currentItemId == null) return
-        val previousRound = state.queue.shuffleRound
         state = reducer.naturalEnd(state)
-        if (state.queue.shuffleRound != previousRound) {
-            applyTimeline(positionMs = 0, playWhenReady = player.playWhenReady)
-        } else {
-            seekToCurrent()
-        }
+        seekToCurrent()
     }
 
     fun recoverTo(queueItemId: QueueItemId): Boolean = jumpToQueueItem(queueItemId)
@@ -224,10 +204,24 @@ internal class PlaybackQueueCoordinator(
         publishProtocolState()
     }
 
-    fun onMediaItemTransition(mediaItem: MediaItem?) {
+    fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int = -1) {
         if (rebuildingShuffleRound) return
         val transitioned = QueueMediaIdCodec.decode(mediaItem?.mediaId.orEmpty()) ?: return
         if (state.queue.originalQueue.none { it.id == transitioned.id }) return
+
+        if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && state.mode == PlaybackMode.SHUFFLE) {
+            val currentCursor = state.queue.shuffleCursor
+            val expectedNext = if (currentCursor != null) {
+                state.queue.stableShuffleSequence.getOrNull(currentCursor + 1)
+            } else {
+                null
+            }
+            if (expectedNext != null && expectedNext != transitioned.id) {
+                naturalNext()
+                return
+            }
+        }
+
         state = state.copy(
             queue = state.queue.copy(
                 currentItemId = transitioned.id,
@@ -278,7 +272,7 @@ internal class PlaybackQueueCoordinator(
         positionMs: Long,
         playWhenReady: Boolean,
     ) {
-        val order = state.queue.playbackOrder
+        val order = state.queue.originalQueue
         val currentIndex = order.indexOfFirst { it.id == state.queue.currentItemId }
         player.repeatMode = when (state.mode) {
             PlaybackMode.LIST_REPEAT -> Player.REPEAT_MODE_ALL
@@ -297,7 +291,7 @@ internal class PlaybackQueueCoordinator(
     }
 
     private fun seekToCurrent() {
-        val targetIndex = state.queue.playbackOrder.indexOfFirst { it.id == state.queue.currentItemId }
+        val targetIndex = state.queue.originalQueue.indexOfFirst { it.id == state.queue.currentItemId }
         if (targetIndex < 0) return
         player.seekTo(targetIndex, 0)
         publish()

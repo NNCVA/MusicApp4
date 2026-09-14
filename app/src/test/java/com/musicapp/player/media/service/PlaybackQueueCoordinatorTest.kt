@@ -47,7 +47,9 @@ class PlaybackQueueCoordinatorTest {
         coordinator.setMode(PlaybackMode.SHUFFLE)
         val firstRound = coordinator.currentState.queue.stableShuffleSequence
         val firstRoundNumber = coordinator.currentState.queue.shuffleRound
-        coordinator.onMediaItemTransition(player.items.last())
+        val lastInShuffle = coordinator.currentState.queue.playbackOrder.last()
+        val lastMediaItem = player.items.first { it.mediaId == QueueMediaIdCodec.encode(lastInShuffle.id, lastInShuffle.trackId) }
+        coordinator.onMediaItemTransition(lastMediaItem)
 
         coordinator.manualNext()
 
@@ -57,22 +59,25 @@ class PlaybackQueueCoordinatorTest {
         assertEquals(firstRoundNumber + 1, coordinator.currentState.queue.shuffleRound)
         assertNotEquals(firstRound, nextRound)
         assertEquals(nextRound.first(), coordinator.currentState.queue.currentItemId)
-        assertEquals(0, player.currentIndex)
+        val expectedTargetIndex = coordinator.currentState.queue.originalQueue.indexOfFirst { it.id == nextRound.first() }
+        assertEquals(expectedTargetIndex, player.currentIndex)
     }
 
     @Test
     fun `shuffle natural end rebuilds the timeline and continues playing`() {
         coordinator.replaceQueue(tracks(1, 2, 3), startIndex = 0, playWhenReady = true)
         coordinator.setMode(PlaybackMode.SHUFFLE)
-        coordinator.onMediaItemTransition(player.items.last())
+        val lastInShuffle = coordinator.currentState.queue.playbackOrder.last()
+        val lastMediaItem = player.items.first { it.mediaId == QueueMediaIdCodec.encode(lastInShuffle.id, lastInShuffle.trackId) }
+        coordinator.onMediaItemTransition(lastMediaItem)
         val previousRound = coordinator.currentState.queue.shuffleRound
 
         coordinator.onPlaybackStateChanged(Player.STATE_ENDED)
 
         assertEquals(previousRound + 1, coordinator.currentState.queue.shuffleRound)
-        assertEquals(0, player.currentIndex)
+        val expectedTargetIndex = coordinator.currentState.queue.originalQueue.indexOfFirst { it.id == coordinator.currentState.queue.currentItemId }
+        assertEquals(expectedTargetIndex, player.currentIndex)
         assertTrue(player.playWhenReady)
-        assertTrue(player.prepareCount >= 2)
     }
 
     @Test
@@ -99,19 +104,24 @@ class PlaybackQueueCoordinatorTest {
         coordinator.replaceQueue(tracks(1, 2, 3), startIndex = 1, playWhenReady = true)
         val initialPrepareCount = player.prepareCount
         val initialTrackId = coordinator.currentState.queue.currentItem?.trackId
+        val initialItems = player.items
+        val initialIndex = player.currentIndex
 
         coordinator.setMode(PlaybackMode.SHUFFLE)
 
         assertEquals(Player.REPEAT_MODE_OFF, player.repeatMode)
         assertEquals(initialPrepareCount, player.prepareCount)
-        assertEquals(0, player.currentIndex)
+        assertEquals(initialIndex, player.currentIndex)
+        assertEquals(initialItems, player.items)
         assertEquals(
             initialTrackId,
             QueueMediaIdCodec.decode(player.items[player.currentIndex].mediaId)?.trackId,
         )
         assertEquals(
             coordinator.currentState.queue.playbackOrder.map { it.trackId },
-            player.items.map { QueueMediaIdCodec.decode(it.mediaId)?.trackId },
+            coordinator.currentState.queue.stableShuffleSequence.map { id ->
+                coordinator.currentState.queue.originalQueue.first { it.id == id }.trackId
+            },
         )
     }
 
@@ -119,6 +129,7 @@ class PlaybackQueueCoordinatorTest {
     fun `mode change from shuffle back to list repeat restores original index and preserves current track`() {
         coordinator.replaceQueue(tracks(1, 2, 3), startIndex = 1, playWhenReady = true)
         val initialTrackId = coordinator.currentState.queue.currentItem?.trackId
+        val initialItems = player.items
         coordinator.setMode(PlaybackMode.SHUFFLE)
         val prepareCountAfterShuffle = player.prepareCount
 
@@ -127,14 +138,53 @@ class PlaybackQueueCoordinatorTest {
         assertEquals(Player.REPEAT_MODE_ALL, player.repeatMode)
         assertEquals(prepareCountAfterShuffle, player.prepareCount)
         assertEquals(1, player.currentIndex)
+        assertEquals(initialItems, player.items)
         assertEquals(
             initialTrackId,
             QueueMediaIdCodec.decode(player.items[player.currentIndex].mediaId)?.trackId,
         )
         assertEquals(
             listOf(1L, 2L, 3L),
-            player.items.map { QueueMediaIdCodec.decode(it.mediaId)?.trackId?.mediaStoreId },
+            coordinator.currentState.queue.playbackOrder.map { it.trackId.mediaStoreId },
         )
+    }
+
+    @Test
+    fun `shuffle mode manual next navigates through shuffle sequence and maps to player physical index`() {
+        coordinator.replaceQueue(tracks(1, 2, 3), startIndex = 0, playWhenReady = true)
+        coordinator.setMode(PlaybackMode.SHUFFLE)
+        val shuffleSequence = coordinator.currentState.queue.stableShuffleSequence
+        assertEquals(3, shuffleSequence.size)
+
+        coordinator.manualNext()
+
+        val expectedSecondItemId = shuffleSequence[1]
+        val expectedPhysicalIndex = coordinator.currentState.queue.originalQueue.indexOfFirst { it.id == expectedSecondItemId }
+        assertEquals(expectedSecondItemId, coordinator.currentState.queue.currentItemId)
+        assertEquals(expectedPhysicalIndex, player.currentIndex)
+    }
+
+    @Test
+    fun `shuffle mode auto transition deviating from sequence triggers auto correction to shuffle next`() {
+        coordinator.replaceQueue(tracks(1, 2, 3), startIndex = 0, playWhenReady = true)
+        coordinator.setMode(PlaybackMode.SHUFFLE)
+        val shuffleSequence = coordinator.currentState.queue.stableShuffleSequence
+        val currentItemId = shuffleSequence[0]
+        assertEquals(currentItemId, coordinator.currentState.queue.currentItemId)
+
+        val expectedNextId = shuffleSequence[1]
+        // 选取真正偏离预期下一首且非当前曲目的 item 模拟 ExoPlayer 原生线性滑动
+        val deviatingItem = player.items.first {
+            val decoded = QueueMediaIdCodec.decode(it.mediaId)
+            decoded?.id != expectedNextId && decoded?.id != currentItemId
+        }
+
+        coordinator.onMediaItemTransition(deviatingItem, reason = Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
+
+        // 验证自动纠偏到了预期的随机下一首，且索引映射正确
+        assertEquals(expectedNextId, coordinator.currentState.queue.currentItemId)
+        val expectedPhysicalIndex = coordinator.currentState.queue.originalQueue.indexOfFirst { it.id == expectedNextId }
+        assertEquals(expectedPhysicalIndex, player.currentIndex)
     }
 
     @Test
