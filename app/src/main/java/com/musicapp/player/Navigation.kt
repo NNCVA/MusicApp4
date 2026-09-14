@@ -4,6 +4,7 @@ import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -15,6 +16,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -29,6 +31,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -170,7 +173,7 @@ fun MainNavigation(
     val playerShellState by playerViewModel.shellState.collectAsStateWithLifecycle()
     var playerExpanded by rememberSaveable { mutableStateOf(false) }
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
-    var restorePlayerOnBack by rememberSaveable { mutableStateOf(false) }
+    var showEqualizer by rememberSaveable { mutableStateOf(false) }
     var pageTransitionDirection by remember { mutableStateOf(PageTransitionDirection.FORWARD) }
     val messageBubbleQueue = remember { MessageBubbleQueue() }
     val messageBubbleRequest by messageBubbleQueue.current.collectAsStateWithLifecycle()
@@ -208,18 +211,15 @@ fun MainNavigation(
     }
 
     fun handleBack() {
-        val currentTop = navigationState.currentBackStack.lastOrNull()
-        val leavingEqualizer = currentTop is EqualizerRoute
+        if (showEqualizer) {
+            showEqualizer = false
+            return
+        }
         if (navigator.goBack() == BackNavigationResult.REQUEST_RETURN_TO_DESKTOP) {
             onReturnToDesktop()
         } else {
             pageTransitionDirection = PageTransitionDirection.BACKWARD
             encodedSnapshot = navigationState.snapshot().encode()
-            if (leavingEqualizer && restorePlayerOnBack) {
-                restorePlayerOnBack = false
-                playerViewModel.expandPlayer()
-                playerExpanded = true
-            }
         }
     }
 
@@ -230,17 +230,17 @@ fun MainNavigation(
     }
 
     val currentTopRoute = navigationState.currentBackStack.lastOrNull()
-    val isSidebarFree = currentTopRoute is EqualizerRoute
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(MusicTheme.colors.background),
     ) {
+        val windowLayoutPolicy = WindowLayoutPolicy.forWidth(maxWidth)
         AppShell(
-            drawerGesturesEnabled = !playerExpanded && !isSidebarFree,
-            sidebarVisible = !isSidebarFree,
-            playerSheetVisible = playerShellState.isPlayerVisible && !isSidebarFree,
+            drawerGesturesEnabled = !playerExpanded && !showEqualizer,
+            sidebarVisible = true,
+            playerSheetVisible = playerShellState.isPlayerVisible,
             navigationContent = { policy, closeDrawer ->
                 SidebarNavigation(
                     policy = policy,
@@ -267,22 +267,21 @@ fun MainNavigation(
                         }
                     },
                     onEqualizer = {
-                        commitNavigation { navigate(EqualizerRoute) }
-                        closeDrawer()
+                        showEqualizer = true
                     },
                 )
             },
             content = { contentInsets, policy, openDrawer ->
                 val systemBottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
                 val imeBottomInset = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-                val miniPlayerPadding = if (playerShellState.isPlayerVisible && !isSidebarFree) MusicTheme.dimensions.miniPlayerHeight else 0.dp
+                val miniPlayerPadding = if (playerShellState.isPlayerVisible) MusicTheme.dimensions.miniPlayerHeight else 0.dp
                 val persistentBottomPadding = systemBottomInset + miniPlayerPadding
                 val bottomPadding =
                     resolveContentBottomPadding(
                         systemBottomInset = systemBottomInset,
                         imeBottomInset = imeBottomInset,
                         isPlayerVisible = playerShellState.isPlayerVisible,
-                        isSidebarFree = isSidebarFree,
+                        isSidebarFree = false,
                         miniPlayerHeight = MusicTheme.dimensions.miniPlayerHeight,
                     )
                 val currentPlayingTrackId: TrackId? = playerShellState.currentTrackId
@@ -436,9 +435,7 @@ fun MainNavigation(
                                     messageBubbleQueue.enqueue(messageResId)
                                 },
                                 onNavigateToEqualizer = {
-                                    commitNavigation {
-                                        navigate(EqualizerRoute)
-                                    }
+                                    showEqualizer = true
                                 },
                                 bottomPadding = bottomPadding,
                             )
@@ -640,15 +637,47 @@ fun MainNavigation(
                     isExpanded = playerExpanded,
                     onExpansionChanged = { playerExpanded = it },
                     onOpenEqualizer = {
-                        restorePlayerOnBack = true
-                        playerExpanded = false
-                        commitNavigation {
-                            navigate(EqualizerRoute)
-                        }
+                        showEqualizer = true
                     },
                 )
             },
         )
+        AnimatedVisibility(
+            visible = showEqualizer,
+            enter =
+                fadeIn(
+                    animationSpec =
+                        tween(
+                            durationMillis = EQUALIZER_PAGE_FADE_DURATION_MS,
+                            easing = FastOutSlowInEasing,
+                        ),
+                ),
+            exit =
+                fadeOut(
+                    animationSpec =
+                        tween(
+                            durationMillis = EQUALIZER_PAGE_FADE_DURATION_MS,
+                            easing = FastOutSlowInEasing,
+                        ),
+                ),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MusicTheme.colors.background,
+            ) {
+                EqualizerScreenRoute(
+                    viewModel = viewModel<EqualizerViewModel>(),
+                    contentInsets = WindowInsets.safeDrawing,
+                    policy = windowLayoutPolicy,
+                    onBack = { showEqualizer = false },
+                    bottomPadding = 0.dp,
+                )
+            }
+        }
+        BackHandler(enabled = showEqualizer) {
+            showEqualizer = false
+        }
         val systemBottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
         val imeBottomInset = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
         val bubbleBottom =
@@ -813,7 +842,7 @@ internal fun resolveContentBottomPadding(
     systemBottomInset: androidx.compose.ui.unit.Dp,
     imeBottomInset: androidx.compose.ui.unit.Dp,
     isPlayerVisible: Boolean,
-    isSidebarFree: Boolean,
+    isSidebarFree: Boolean = false,
     miniPlayerHeight: androidx.compose.ui.unit.Dp,
 ): androidx.compose.ui.unit.Dp {
     val miniPlayerPadding = if (isPlayerVisible && !isSidebarFree) miniPlayerHeight else 0.dp
@@ -825,7 +854,7 @@ internal fun resolveDynamicContentBottomPadding(
     systemBottomInset: androidx.compose.ui.unit.Dp,
     imeBottomInset: androidx.compose.ui.unit.Dp,
     isPlayerVisible: Boolean,
-    isSidebarFree: Boolean,
+    isSidebarFree: Boolean = false,
     miniPlayerHeight: androidx.compose.ui.unit.Dp,
     isSelectionMode: Boolean,
     selectionBarHeight: androidx.compose.ui.unit.Dp,
