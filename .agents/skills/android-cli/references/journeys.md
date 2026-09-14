@@ -71,27 +71,32 @@ if the *current* Android app can correctly handle the *current* steps outlined i
 other improvements should be kept to journey evaluation summary at the end.
 
 ## Summarizing
-For each `<action>` you evaluated, output JSON describing the results.
+After evaluating the whole journey, output a markdown (.md) file describing the results.
 
-```
-{
-  "journey:", The name of the journey
-  "results:" [
-    {
-      // A string containing the full text of the <action> 
-      "action": "Click the blue button,
-      // "PASSED" if the instruction was evaluated, "FAILED" if the instruction could not be evaluated, or "SKIPPED" if journey evaluation ended early because an instruction failed 
-      "status": "PASSED", 
-      // A list of the ADB commands executed while evaluating the instruction,
-      "commands": [ "adb input swipe 490 200 500 500 500", "adb input tap 45 920" ],  
-      // Failure reasons, feedback, or other useful information 
-      "comment": "The journey step doesn't specify that the button requires scrolling to see", 
-    },
-    {
-      "action": "The home screen is shown", 
-      "status": "FAILED", 
-      "comment": "The settings page was shown",   
-    },
-  ]
-}
+The file should have the following format:
+
+```markdown
+# Journey: <Name of the journey>
+
+## Results
+
+  <!-- Append "✅" to the action header if the instruction was evaluated or "❌" if the instruction could not be evaluated -->
+### Action: Click the blue button ✅
+- **Commands**:
+  <!-- A list of the ADB commands executed while evaluating the instruction -->
+  - `adb input swipe 490 200 500 500 500`
+  - `adb input tap 45 920`
+
+  <!-- Failure reasons, feedback, or other useful information -->
+- **Comment**: The journey step doesn't specify that the button requires scrolling to see
+
+### Action: Check if "Switch 2" is visible on the screen ✅
+- **Screenshot**: [switch_2_screenshot.png](path/to/screenshot)
+- **Comment**: Confirmed both in layout and visually
+
+### Action: The home screen is shown ❌
+- **Comment**: The settings page was shown
+
+<!-- Append nothing to the action header if the action was not evaluated because the journey execution ended early -->
+### Action: Swipe down to view active notifications
 ```

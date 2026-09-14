@@ -18,7 +18,7 @@ Each JSON object represents a UI element in the Android app. The following prope
 Use `layout` as a primary means of examining an Android app. Use `layout --diff` to focus on changes and to keep your context small.
 Example: When entering digits into a calculator, use `layout --diff` to output only the digit readout element.
 
-`layout` may fail due to the app displaying a WebView or animation; in these cases, use `android screen --annotate` to inspect the app.
+`layout` may fail due to the app displaying a WebView or animation; in these cases, use `android screen capture --annotate` to inspect the app.
 This failure will likely resolve after navigating away from the current screen.
 
 ## Screenshot
@@ -76,8 +76,15 @@ To tap on this button, you would execute `adb shell input tap 152 23`. This taps
 ```
 To scroll down on this list, you would execute `adb shell input swipe 250 400 250 200 500`. This swipes from the center to the top over 500ms.
 
+### Text Input
+To enter text, ensure the field is focused and execute `adb shell input text "<text>"`.
+
+- **Spaces (`%s`):** Replace spaces with `%s` (Android ignores text after raw spaces): `adb shell input text "Hello%sworld"` (enters `"Hello world"`).
+- **Special characters:** Escape shell metacharacters (`&`, `$`, `(`, `)`, `!`): `adb shell input text "AT\&T"` or `adb shell input text 'Price:\$10'`.
+- **Submit / Enter:** `adb shell input keyevent 66`
+
 # Android Interaction Rules
-1. Always ensure text input fields have `"focused"` in their `"state"` list before entering text
-2. If an element has `"scrollable"` in its `"interactions"` list, try scrolling it when looking for missing UI elements
-2. Always scroll slowly when executing scroll inputs. The 5th argument to `adb shell input swipe` controls scroll duration.
-3. Content may take time to load; if a `layout` is missing information after you take an action, wait a few seconds, then perform `layout --diff` to see if anything changes.
+1. Always ensure text input fields have `"focused"` in their `"state"` list before entering text.
+2. If an element has `"scrollable"` in its `"interactions"` list, try scrolling it when looking for missing UI elements.
+3. Always scroll slowly when executing scroll inputs. The 5th argument to `adb shell input swipe` controls scroll duration.
+4. Content may take time to load; if a `layout` is missing information after you take an action, wait a few seconds, then perform `layout --diff` to see if anything changes.

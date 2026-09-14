@@ -7,7 +7,7 @@ description: Best practices for Android Intent security. Use this skill when aud
 license: Complete terms in LICENSE.txt
 metadata:
   author: Google LLC
-  last-updated: '2026-06-25'
+  last-updated: '2026-08-14'
   keywords:
   - recipe
   - Android
