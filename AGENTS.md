@@ -41,7 +41,7 @@
 - 界面文本必须进入双语资源；圆角、间距和字号使用设计令牌；交互图标必须提供本地化 content description。
 - 组件默认 `exported=false`，PendingIntent 默认不可变；新增资源按资源治理文档记录来源、许可证和修改。
 - 所有依赖 Room 的列表与详情页，未就绪（`!isLoaded`）期间严格使用纯色空白占位，严禁引入 `LoadingState` 转圈动画导致首屏/切页闪烁（对齐 ADR-0013）。
-- 二级详情页（Album/Artist/Playlist/Folder Detail）严禁承载全局扫描等一级管理入口；实体缺失展示全屏 Unavailable 状态并保留返回；曲目为空时必须隐藏播放全部等行动栏。
+- 二级详情页（Album/Artist/Playlist/Folder Detail）严禁承载全局扫描等一级管理入口；专辑与艺术家实体缺失展示全屏 Unavailable 状态并保留返回，歌单与文件夹缺失或为空时提供确定性返回与空态兜底；曲目为空时必须隐藏播放全部等行动栏。
 - 纯业务规则和少量平台适配放在 `app/src/test`；Room、Hilt、MediaLibraryService、真实资源和启动行为放在 `app/src/androidTest`。
 
 ## 任务路由与验收

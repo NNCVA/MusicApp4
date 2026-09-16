@@ -82,15 +82,16 @@
 - 新增回归覆盖：1,000 首媒体库在 20 次进度更新中零重复读取、队列实例复用、导航状态无重复发射；换曲、重排、同 ID 元数据更新、媒体移除后的投影及封面刷新；选择/信息弹窗保留排序列表实例；排序和卷信息变化复用目录节点；媒体更新、隐藏、缺失目录状态。
 - Runtime：59 项，57 通过、2 失败，日志 `runtime.log`。`EmptyStateSemanticsTest.emptyStateWithoutActionDisplaysTitleAndDescription` 的文本显示断言，以及 `TrackRowSemanticsTest.selectionBottomBarDisablesActionsWhenEmpty` 的未合并语义树禁用断言失败。
 - 原基线 APK 使用相同测试 APK 单独复跑两个测试类，4 项中同样 2 项失败（`baseline-runtime-subset.log`）。可确认失败不由本轮性能生产代码引入，但完整 Runtime 门禁仍未通过，不能写“全部验收通过”。本轮未改动这两个组件或断言。
+- **后续修复注记（2026-09-09）**：上述两项测试断言已在 commit `88613dcd` 修复（调整为空态语义整合后的 contentDescription 判定及禁用态节点校验）；当前全量 Runtime 测试已扩充至 80 项并全部通过。
 
-基线失败复核实际命令：
+基线失败复核历史命令（注：当前环境测试 Runner 对应 Application ID 为 `com.musicapp4.player.debug.test`）：
 
 ```sh
 adb -s emulator-5554 install -r /tmp/musicapp-perf-20260908/baseline.apk
 adb -s emulator-5554 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb -s emulator-5554 shell am instrument -w -r \
   -e class 'com.musicapp.player.core.designsystem.component.EmptyStateSemanticsTest,com.musicapp.player.core.designsystem.component.TrackRowSemanticsTest' \
-  com.musicapp.player.test/com.musicapp.player.HiltTestRunner
+  com.musicapp4.player.debug.test/com.musicapp.player.HiltTestRunner
 ```
 
 对照构建在冻结快照使用 `./gradlew :app:assembleDebug --no-daemon --console=plain`；安装使用 `adb install -r`。采样：

@@ -36,7 +36,7 @@
 
 代码常量：`AudioFormatRegistry.SUPPORTED_MIME_TYPES`
 
-由于不同 Android 系统版本、OEM 厂商驱动以及第三方音频抓轨打标工具写入的 MIME 存在别名或兼容前缀（如 `audio/x-flac`），准入层对以下 22 种 MIME 类型予以直接通行：
+由于不同 Android 系统版本、OEM 厂商驱动以及第三方音频抓轨打标工具写入的 MIME 存在别名或兼容前缀（如 `audio/x-flac`），准入层对以下 21 种 MIME 类型予以直接通行：
 
 ```text
 audio/mpeg, audio/mp3, audio/x-mp3, audio/x-mpeg

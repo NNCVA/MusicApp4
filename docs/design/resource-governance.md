@@ -62,6 +62,7 @@
 | MusicApp 资源 | Google 源文件 (Round) | 用途与修改 |
 |---|---|---|
 | `ic_common_more_horizontal.xml` | `src/navigation/more_horiz/materialiconsround/24px.svg` | 播放详情页歌曲信息入口（横向三点）；转为 `VectorDrawable`，平滑圆点 |
+| `ic_common_more_vertical.xml` | `src/navigation/more_vert/materialiconsround/24px.svg` | 页面级更多操作菜单入口（纵向三点）；转为 `VectorDrawable`，平滑圆点 |
 | `ic_common_add.xml` | `src/content/add/materialiconsround/24px.svg` | 添加操作；十字端点圆角化 |
 | `ic_common_remove.xml` | `src/content/remove/materialiconsround/24px.svg` | 移除/从队列移除操作；平滑圆角横线 |
 | `ic_common_close.xml` | `src/navigation/close/materialiconsround/24px.svg` | 关闭与清除；交叉叉号端点圆角化 |

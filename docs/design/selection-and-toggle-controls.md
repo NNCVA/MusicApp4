@@ -44,6 +44,8 @@
 
 ## 2. 标准代码模板
 
+> **工程实践提示**：在实际生产代码中，单选行与开关行均统一通过 `ChoiceRow`（见 `core/designsystem/component/ChoiceRow.kt`）进行构建。`ChoiceRow` 内部已完整封装了 `clip(shape)` 裁剪、`clearAndSetSemantics` 语义树提升、48dp 最小点击热区以及水波纹约束，业务页面直接使用封装组件即可，无需手工编排基础 Row。
+
 ### 2.1 单选组模板 (Single-Choice Group)
 
 ```kotlin

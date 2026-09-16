@@ -1,6 +1,11 @@
 # 使用统一右侧覆盖层与固定 28 逻辑桶索引
 
-> **状态：需要更新（2026-09-11 静态核对）**。取代 [0006-use-reusable-section-index.md](0006-use-reusable-section-index.md)。当前实现已接入固定索引与 20dp 透明命中区；`Scrollbar` 分支仍为空，内容可滚动性隐藏条件也未由组件统一处理，Albums 非标题/艺术家排序会进入该空分支，详见 [ADR 状态表](README.md)。
+> **状态：已接受（含已知实现债务）(Accepted with Implementation Debts)**。取代 [ADR-0006](0006-use-reusable-section-index.md)。
+>
+> **实现状态与债务说明**：
+> 固定 28 个逻辑桶、72dp 跟随字母气泡、单节点无障碍聚合与触觉反馈已全量落地。当前保留两项已知工程债务：
+> 1. 右侧透明手势命中区使用 20dp（`DesignTokens.kt:39`），未达到通用的 48dp 触控标准（此为避免与列表项右缘 48dp 快捷操作按钮冲突的妥协权衡）；
+> 2. `GutterMode.Scrollbar` 目前为空实现分支（`RightGutterOverlay.kt:92-94`），专辑列表在按非标题/艺术家排序时长列表暂无滚动条视觉指示。
 
 ## 背景与上下文
 早期实现中各列表（Tracks、Albums、Artists、Folders）在字母索引逻辑上存在割裂：Tracks/Albums 采用动态桶（仅呈现实际存在的字符），Artists/Folders 采用固定桶；手势上支持单击且缺乏纵向滑动仲裁，导致列表右缘 48×48dp 操作按钮容易误触或被遮挡；无障碍上 28 个字符被拆散为独立焦点，且缺乏等距采样与 72dp 拖动字母气泡。

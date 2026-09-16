@@ -4,7 +4,7 @@ ADR = Architecture Decision Record（架构决策记录）。当前实现以代�
 
 ## 当前实现依据
 
-0001、0002、0003、0007、0009、0012、0014、0015、0016、0017（导航栈契约）、0018、0019、0020、0021、0022、0023、[0024](0024-dual-equalizer-pipeline-and-sidebar-free-detail-navigation.md)、[0025](0025-vertical-console-equalizer-layout-and-builtin-preset-registry.md)、[0026](0026-mini-player-anchoring-and-ime-inset-decoupling.md)。
+0001、0002、0003、[0004（带修订附注）](0004-use-grouped-card-navigation.md)、[0005（带修订附注）](0005-use-replacing-message-bubble.md)、0007、[0008（含已知债务）](0008-use-unified-right-gutter-overlay-and-fixed-index.md)、0009、0012、[0013（带修订附注）](0013-use-splash-screen-gate-for-seamless-cold-start.md)、0014、0015、0016、0017（导航栈契约）、0018、0019、0020、0021、0022、0023、[0024（部分废弃并由新方案取代）](0024-dual-equalizer-pipeline-and-sidebar-free-detail-navigation.md)、[0025](0025-vertical-console-equalizer-layout-and-builtin-preset-registry.md)、[0026](0026-mini-player-anchoring-and-ime-inset-decoupling.md)。
 
 ## 已合并
 
@@ -15,14 +15,15 @@ ADR = Architecture Decision Record（架构决策记录）。当前实现以代�
 - [0006：可复用字母分组索引](0006-use-reusable-section-index.md) 已由 [0008](0008-use-unified-right-gutter-overlay-and-fixed-index.md) 取代。
 - [0011：统一 Bounce Overscroll](0011-use-unified-bounce-overscroll-for-scrollable-containers.md) 已由 [0012](0012-use-state-aware-compose-overscroll-effect.md) 取代。
 
-## 需要更新
+## 已对齐更新（带修订附注）
 
-| ADR | 当前差异 | 代码证据 |
+| ADR | 当前对齐说明 | 代码证据 |
 | --- | --- | --- |
-| [0004](0004-use-grouped-card-navigation.md) | 原文记录中等/展开侧栏为 `240 dp` / `256 dp`；当前两档均为 `300 dp`。 | `app/src/main/java/com/musicapp/player/theme/DesignTokens.kt:21-22` |
-| [0005](0005-use-replacing-message-bubble.md) | 原文写固定白色气泡；当前使用 `MaterialTheme.colorScheme.inverseSurface`。 | `app/src/main/java/com/musicapp/player/core/designsystem/snackbar/MessageBubbleHost.kt:70-74` |
-| [0008](0008-use-unified-right-gutter-overlay-and-fixed-index.md) | 原文要求按 `canScrollForward/canScrollBackward` 隐藏不可用覆盖层并提供滚动条；当前索引透明命中区为 20dp，`Scrollbar` 分支为空，Albums 在非标题/艺术家排序时仍会选择该空分支。 | `app/src/main/java/com/musicapp/player/core/designsystem/component/RightGutterOverlay.kt:85-101,178-183`；`app/src/main/java/com/musicapp/player/feature/albums/AlbumsScreen.kt:151-172` |
-| [0013](0013-use-splash-screen-gate-for-seamless-cold-start.md) | 原文记录 `1200 ms` 启动门控；当前超时为 `3000 ms`。 | `app/src/main/java/com/musicapp/player/MainActivity.kt:69-72` |
+| [0004](0004-use-grouped-card-navigation.md) | 原文记录中等/展开侧栏为 `240 dp` / `256 dp`；当前两档统一收敛为 `300 dp`，已追加修订附注。 | `app/src/main/java/com/musicapp/player/theme/DesignTokens.kt:21-22` |
+| [0005](0005-use-replacing-message-bubble.md) | 原文写固定白色气泡；当前使用 `MaterialTheme.colorScheme.inverseSurface` 语义反色，已追加修订附注。 | `app/src/main/java/com/musicapp/player/core/designsystem/snackbar/MessageBubbleHost.kt:70-74` |
+| [0008](0008-use-unified-right-gutter-overlay-and-fixed-index.md) | 固定 28 桶与 72dp 气泡已全量落地；索引透明命中区为 20dp，`Scrollbar` 分支为空，已标注为含已知债务。 | `app/src/main/java/com/musicapp/player/core/designsystem/component/RightGutterOverlay.kt:85-101,178-183`；`app/src/main/java/com/musicapp/player/feature/albums/AlbumsScreen.kt:151-172` |
+| [0013](0013-use-splash-screen-gate-for-seamless-cold-start.md) | 原文记录 `1200 ms` 启动门控；当前超时安全放宽为 `3000 ms`，已追加修订附注。 | `app/src/main/java/com/musicapp/player/MainActivity.kt:69-72` |
+| [0024](0024-dual-equalizer-pipeline-and-sidebar-free-detail-navigation.md) | 移除系统均衡器广播，全面收敛为单一内置音效，升级为全应用顶层 300ms Overlay，已标注部分废弃并由新方案取代。 | `app/src/main/java/com/musicapp/player/Navigation.kt:176, 646-679` |
 
 “需要更新”表示文档与实现存在可定位差异，不代表代码已经判定为缺陷。产品行为确认前保留原始决策；确认后在对应 ADR 中记录新决定和迁移影响。
 

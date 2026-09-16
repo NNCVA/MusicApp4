@@ -1,5 +1,7 @@
 # 垂直控制台均衡器布局、细轨圆环滑块与内置预设配置管理契约
 
+> **状态：已接受 (Accepted)**。继承并标准化 [ADR-0024](0024-dual-equalizer-pipeline-and-sidebar-free-detail-navigation.md) 内置音效界面规范。
+
 ## 背景与问题
 
 在先前自定义均衡器实现中存在如下体验与架构局限：

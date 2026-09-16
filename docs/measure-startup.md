@@ -53,7 +53,7 @@ python3 scripts/measure_startup_time.py -s emulator-5554
 🎵 MusicApp 启动到歌曲列表刷新时间性能测试
 ===========================================================================
 📱 目标设备 : emulator-5554
-📦 目标应用 : com.musicapp.player
+📦 目标应用 : com.musicapp4.player.debug (Debug) 或 com.musicapp4.player (Release)
 🚀 入口组件 : com.musicapp.player.MainActivity
 🔄 启动模式 : 冷启动 (Cold Start)
 🔢 测试轮数 : 5 轮 (预热: 1 轮)
@@ -82,6 +82,6 @@ python3 scripts/measure_startup_time.py -s emulator-5554
 
 ## 4. 注意事项
 
-1. **测试前准备**：请确保目标设备已安装应用（`./gradlew :app:installDebug`），且设备媒体库中存有音乐文件。
+1. **测试前准备**：请确保目标设备已安装应用（执行 `./gradlew :app:installDebug` 安装 Debug 版，包名为 `com.musicapp4.player.debug`），且设备媒体库中存有音乐文件。如使用自定义包名或 Release 包，请使用 `--package com.musicapp4.player` 参数运行脚本。
 2. **权限处理**：脚本默认会在首轮前通过 `pm grant` 授予媒体读取权限，避免由于权限弹窗阻塞启动测量。
 3. **数据一致性**：冷启动模式下，每轮测试前脚本均会调用 `am force-stop` 并清理 logcat 缓冲区，保证多轮测试独立性。

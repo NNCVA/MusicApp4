@@ -1,37 +1,37 @@
-# Luna worker task packet
+# 子任务包规范
 
 ```markdown
-## Objective
-One concrete, observable outcome.
+## 任务目标
+明确、可观测的单一成果。
 
-## Relevant context
-Only approved facts and decisions needed for execution.
+## 关联上下文
+执行所必需的已确认事实、ADR 决策与文件依据。
 
-## In scope
-- Inspectable files/modules.
-- Writable files/modules owned exclusively by this worker.
+## 范围包含 (In Scope)
+- 允许查看的文件/模块。
+- 本任务包独占拥有的可写文件/模块。
 
-## Out of scope
-- Files, systems, and decisions this worker must not change.
+## 范围排除 (Out of Scope)
+- 严禁修改的文件、系统与架构决策。
 
-## Constraints
-- Conventions, compatibility, safety, performance, and rollback requirements.
-- No new dependencies unless explicitly authorized.
+## 硬性约束
+- 既有规范、兼容性、安全性、性能与回滚要求。
+- 未经批准严禁引入新第三方依赖。
 
-## Acceptance criteria
-- Observable behavior and required edge cases.
+## 验收条件
+- 可观测的行为表现及必要边界用例。
 
-## Required validation
-Exact commands or deterministic checks.
+## 验证要求
+- 确切的本地验证命令或确定性断言。
 
-## Expected return
-1. Summary and exact files changed.
-2. Commands/checks and each result.
-3. Remaining risks or uncertainty.
-4. Decisions required from the primary Luna thread.
+## 预期交付
+1. 修改摘要与确切的文件清单。
+2. 实际执行的命令及每项输出结果。
+3. 剩余风险或未覆盖领域。
+4. 需要主智能体确认的事项。
 
-## Escalate immediately if
-- Repository facts contradict the packet.
-- Interface, dependency, security, data-integrity, or compatibility decisions appear.
-- Validation cannot run, scope expands, or two attempts fail.
+## 立即上报升级条件
+- 仓库代码事实与任务包前提冲突。
+- 出现接口破坏、安全隐患、数据一致性风险或兼容性分歧。
+- 验证流程无法执行、范围蔓延或重试两次仍失败。
 ```

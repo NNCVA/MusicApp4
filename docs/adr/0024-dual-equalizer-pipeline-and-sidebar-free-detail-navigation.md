@@ -1,11 +1,14 @@
 # 双均衡器音效管道叠加与无侧边栏详情流导航契约
 
-> **状态更新（演进变更）**：
-> 1. **音效管道精简**：已彻底移除系统均衡器（及系统音频会话广播机制），仅保留应用内置均衡器管道（Equalizer, BassBoost, Virtualizer）。设置页与界面全面去 Custom 语义，统一为“均衡器”。
-> 2. **导航层级与无缝淡入淡出重构**：废除原有的“进入均衡器强制收回侧边栏/抽屉与折叠播放详情页”契约。将全屏均衡器升级为顶层无缝全屏覆盖图层（Overlay），以 300ms 动画直接淡入淡出：
->    - **侧边栏入口**：不播放抽屉/侧边栏收起动画，直接从当前展开状态淡入全屏独立均衡器；返回时淡出，侧边栏/抽屉无缝保持原本的打开状态。
->    - **播放详情页入口**：不折叠播放详情页，直接在当前全屏播放详情页上方淡入独立全屏均衡器（使用应用标准纯色背景，不显示播放控件与 MiniPlayer）；返回时淡出，直接恢复全屏播放页，无任何滑动与重建打断。
->    - **独立界面呈现**：均衡器页面本身独立全屏呈现，不承载侧边栏与 MiniPlayer。
+> **状态：部分废弃并由新方案取代 (Partially Superseded / Amended)**。
+>
+> **重大架构演进与废弃说明（2026-09）**：
+> 本文记录的双音效管道与无侧边栏路由契约在实际演进中已被重构推翻，保留本文仅作历史决策追溯：
+> 1. **系统均衡器彻底废除**：因各厂商 ROM 系统广播（`ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION`）兼容性极差且频发崩溃，已彻底移除系统均衡器支持。应用全面去 Custom 语义，统一收敛为单一内置硬件音效引擎（Equalizer, BassBoost, Virtualizer）；
+> 2. **导航契约升级为顶层全屏覆盖层 (Overlay)**：废弃原有的“进入均衡器强制收回抽屉/侧边栏与折叠播放页（`sidebarVisible = false`, `playerSheetVisible = false`, `restorePlayerOnBack = true`）”契约。全屏均衡器已升级为全应用顶层无缝覆盖图层（Overlay，见 `Navigation.kt:176, 646-679`），通过 300ms `fadeIn` / `fadeOut` 直接在当前任何界面上方平滑呈现：
+>    - 侧边栏入口：不收起抽屉/侧栏，直接全屏淡入均衡器，返回时淡出，侧栏保持原有展开态；
+>    - 播放详情页入口：不折叠全屏播放页，直接在上方淡入均衡器，返回时淡出直接恢复播放页；
+> 3. 均衡器的界面布局与滑块规范已由 [ADR-0025](0025-vertical-console-equalizer-layout-and-builtin-preset-registry.md) 继承并标准化。
 
 ## 背景与问题
 
@@ -17,7 +20,7 @@
 
 ## 决策
 
-### 1. 双音效管道（Dual Equalizer Pipeline）架构
+### 1. [已废弃 / Superseded] 双音效管道（Dual Equalizer Pipeline）架构
 - **系统均衡器接入**：
   - 维护系统音频会话广播机制（`AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION` 与 `ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION`）。
   - 当“系统均衡器”启用时，通知系统音频引擎绑定当前音频会话；通过 `ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL` 安全唤起系统控制面板。针对无系统音效面板的设备进行意图解析预检与置灰提示。
@@ -28,7 +31,7 @@
 - **音效叠加规则**：
   - 允许系统均衡器与自定义均衡器同时开启。底层物理管道上，系统音效与应用级 AudioEffect 挂载于同一 `audioSessionId`，硬件层流水线串联叠加，满足多层次听感调校需求。
 
-### 2. 无侧边栏与无底栏详情流（Sidebar-Free Detail Flow）契约
+### 2. [已废弃 / Superseded] 无侧边栏与无底栏详情流（Sidebar-Free Detail Flow）契约
 - **AppShell 布局扩展**：
   - `AppShell` 引入 `sidebarVisible: Boolean` 与 `playerSheetVisible: Boolean` 参数。当当前路由属于无侧边栏详情页（如 `CustomEqualizerRoute`、`SystemEqualizerRoute`）时：
     - 中等与展开窗口（桌面/平板/横屏）：隐藏左侧 300dp 侧边栏，内容区自动全宽展开；

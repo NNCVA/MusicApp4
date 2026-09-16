@@ -51,6 +51,19 @@ Lint 日常报告在 `app/build.gradle.kts` 中关闭依赖升级提示、未使
 
 Debug APK 输出为 `app/build/outputs/apk/debug/app-debug.apk`。`assembleDebugAndroidTest` 只证明测试 APK 编译成功，不能代替 `connectedDebugAndroidTest`。
 
+## Release 发布产物构建
+
+在准备版本发布或需要验证 R8 混淆、资源压缩（Resource Shrinking）时，执行：
+
+```shell
+./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --console=plain
+```
+
+- 输出产物：
+  - APK：`app/build/outputs/apk/release/app-release.apk`
+  - AAB：`app/build/outputs/bundle/release/app-release.aab`
+- 签名依赖被 Git 忽略的 `local.properties`；未配置签名属性时，构建仍可验证 R8 压缩与 ProGuard 规则有效性。严禁将私钥与密码提交到仓库。
+
 ## 结果报告与失败分类
 
 - 记录实际执行的命令、退出结果、JVM 测试数量、Lint/构建结果，以及是否运行了设备 Runtime 测试。

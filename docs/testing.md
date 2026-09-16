@@ -1,14 +1,15 @@
 # 测试策略
 
-Android Runtime 集成测试 = 在真实 Android 运行时的设备或模拟器上执行的 instrumentation test；Robolectric = 在 JVM 中模拟选定 Android API 的平台适配测试。本项目采用“纯逻辑少量 JVM 单测 + Android Runtime 集成测试优先”的分层策略。
+Android Runtime 集成测试 = 在真实 Android 运行时的设备或模拟器上执行的 instrumentation test；Robolectric = 在 JVM 中模拟选定 Android API 的平台适配测试。本项目采用“高覆盖快速反馈 JVM 单测（纯逻辑 + Robolectric 适配）与真实环境 Android Runtime 集成测试分层协同”的测试策略。
 
 ## 测试分层与目录
 
 | 层级 | 目录 | 适用范围 | 运行方式 |
 |---|---|---|---|
-| 纯逻辑 JVM 单测 | `app/src/test/java` | 领域规则、状态机、队列策略、歌词解析、格式化、ViewModel 和其他不需要真实 Android 环境的确定性逻辑 | `:app:testDebugUnitTest` |
-| Robolectric 平台适配测试 | `app/src/test/java` | 少量需要 `Context`、权限、MediaStore 协议或其他 Android API 模拟的适配逻辑 | `:app:testDebugUnitTest`，使用 `RobolectricTestRunner` |
-| Android Runtime 集成测试 | `app/src/androidTest/java` | Room 数据库/迁移/Repository、媒体库同步、Hilt 依赖图、MediaLibraryService、真实资源和应用启动 | `AndroidJUnit4`，通过 `:app:connectedDebugAndroidTest` |
+| 纯逻辑 JVM 单测 | `app/src/test/java` | 领域规则、状态机、队列策略、歌词解析、格式化、ViewModel、图形策略及不需要真实 Android 环境的确定性业务逻辑 | `:app:testDebugUnitTest` |
+| Robolectric 平台适配测试 | `app/src/test/java` | 需要 `Context`、权限、MediaStore 协议解析、图片管道或 Android API 模拟的适配逻辑 | `:app:testDebugUnitTest`，使用 `RobolectricTestRunner` |
+| JVM 性能基准测试 | `app/src/test/java/com/musicapp/player/benchmark` | 核心算法（列表排序、拼音索引、分组聚合、并发限流）的计算耗时与吞吐量微基准测试 | `:app:testDebugUnitTest --tests "*.benchmark.*"` |
+| Android Runtime 集成测试 | `app/src/androidTest/java` | Room 数据库/迁移/Repository、媒体库同步、Hilt 依赖图、MediaLibraryService、真实资源启动、以及 Compose UI 交互/手势与无障碍语义树验证 | `AndroidJUnit4`，通过 `:app:connectedDebugAndroidTest` |
 
 `src/test` 不以覆盖 Android Runtime 为目标，也不把 Room/Hilt/Service 的真实行为强行放回 Robolectric。设备、视觉与完整交互验收仍由人工执行。
 
@@ -16,8 +17,9 @@ Android Runtime 集成测试 = 在真实 Android 运行时的设备或模拟器�
 
 ## Android Runtime 测试归属
 
-以下测试归 `app/src/androidTest/java/com/musicapp/player`：
+以下典型测试归 `app/src/androidTest/java/com/musicapp/player`（包含架构持久化与 Compose 运行时语义两大部分）：
 
+**1. 持久化、依赖图与服务组件**：
 - `data/local/MusicDatabaseMigrationTest.kt`
 - `data/HistoryRepositoryTest.kt`
 - `data/MediaLibraryRepositoryTest.kt`
@@ -27,6 +29,16 @@ Android Runtime 集成测试 = 在真实 Android 运行时的设备或模拟器�
 - `di/ApplicationGraphTest.kt`
 - `media/service/PlaybackServiceHiltTest.kt`
 - `feature/about/AboutMetadataTest.kt`
+
+**2. Compose UI 交互、手势与无障碍语义**：
+- `core/designsystem/component/EmptyStateSemanticsTest.kt`
+- `core/designsystem/component/TrackRowSemanticsTest.kt`
+- `core/designsystem/component/ActionCardTest.kt`
+- `core/designsystem/component/InsetPillSliderTest.kt`
+- `feature/player/PlayerProgressBarTest.kt`
+- `feature/player/PlayerLandscapeContentTest.kt`
+- `ui/shell/AppShellGestureTest.kt`
+- `ui/shell/AppShellSidebarFreeTest.kt`
 
 `ApplicationStartupIntegrationTest` 同样位于 `app/src/androidTest`，用于确认测试 Application 能读取真实应用资源并完成启动级冒烟。`src/test/ProjectSmokeTest.kt` 已不再作为 JVM 冒烟测试；`src/test` 保留纯业务单测和少量 Robolectric 平台适配测试。
 

@@ -6,8 +6,8 @@ MusicApp 是一款使用 Kotlin 与 Jetpack Compose 构建的 Android 本地音�
 
 ## 当前版本
 
-- 版本名称：`1.0`
-- 版本号：`1`
+- 版本名称：`1.1`
+- 版本号：`2`
 - Application ID：`com.musicapp4.player`
 - 支持范围：Android `minSdk 26`，`targetSdk 37`
 - 当前主干：`main`
@@ -90,9 +90,11 @@ Release 签名从本机未提交的 `local.properties` 读取；不要把密钥�
 app/src/main/java/com/musicapp/player/
 ├── core/       # 领域模型、设计系统、歌词、媒体与播放规则
 ├── data/       # Room、DataStore、MediaStore、Repository 与同步
+├── di/         # 依赖注入组件与 Hilt Module
 ├── feature/    # 媒体库、播放器、歌词、播放列表、设置等页面
 ├── media/      # Media3 播放、MediaSession 与后台服务
 ├── navigation/ # Navigation 3 路由与状态
+├── theme/      # 设计令牌、排版、动态取色与主题系统
 └── ui/         # 应用壳层与共享 UI
 ```
 

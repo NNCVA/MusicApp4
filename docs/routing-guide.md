@@ -1,37 +1,36 @@
-# Routing guide
+# 任务路由准则
 
-## Decision sequence
+## 决策序列
 
-1. Can Luna Max complete and verify the task safely in one thread? Use `LUNA_LOCAL`.
-2. Are there at least two independent, disjoint, separately verifiable packets? Use `LUNA_PARALLEL` with `luna_worker`.
-3. Does one high-impact decision remain after targeted evidence gathering? Use `SOL_ADVISED` for that question, then return execution to Luna.
+1. **单线程即可安全完成并验证？** 使用 `LOCAL_SINGLE`（主智能体本地串行完成）。
+2. **存在至少两个独立、文件互斥且可单独验证的任务包？** 使用 `PARALLEL_PACKETS`（委派子智能体并行执行）。
+3. **定向收集证据后仍存在高影响架构决策？** 使用 `ADVISORY_ESCALATION`（发起架构决策专项分析，定案后返回主智能体执行）。
 
-## Difficulty is not size
+## 任务难度不等于文件规模
 
-A thousand mechanical edits can be large but easy. A ten-line authorization change can be small but difficult. Escalate based on uncertainty, blast radius, reversibility, and the cost of a plausible error—not file count.
+上千行机械化文件修改可能是繁重但简单的；而十几行涉及播放状态机或数据库事务的修改可能是轻量但高危的。依据**不确定性、影响面（爆炸半径）、可逆性**以及**潜在错误代价**来进行分工与升级，而非仅看文件数量。
 
-## Examples
+## 场景示例
 
-### LUNA_LOCAL
+### LOCAL_SINGLE（本地串行）
 
-Add tests for established parser behavior and run the targeted suite.
+为既有的 LRC 解析器或音轨排序补充单元测试，并在本地运行定向测试套件。
 
-### LUNA_PARALLEL
+### PARALLEL_PACKETS（并行任务包）
 
-Implement an approved feature whose UI, serializer, and tests live in disjoint files. Assign one writable owner per packet; the primary Luna thread integrates and validates.
+实现一个已定型的功能：UI 界面、Repository 数据层和单元测试位于完全互斥的文件中。为每个任务包分配唯一可写所有权；主智能体负责合并集成与全量门禁校验。
 
-### SOL_ADVISED
+### ADVISORY_ESCALATION（架构咨询与升级）
 
-A cache change may return stale authorization data. Luna first collects the call path, TTL configuration, and failing concurrency evidence. Sol Advisor decides the consistency policy and acceptance criteria. Luna implements the decision.
+例如：MediaLibraryService 销毁流程中是否需要同步阻塞等待播放快照写入 Room。主智能体先收集调用时序、生命周期回调日志及 SQLite 锁竞争证据；架构咨询给出明确的时序策略与验收标准；主智能体依据决策落实代码。
 
-## Sol request shape
+## 架构咨询请求格式
 
 ```text
-Decision: Can the proposed cache policy expose stale authorization data?
-Evidence: <call graph, TTL configuration, reproducer, test output>
-Constraints: <compatibility and latency requirements>
-Return: recommendation, rationale, rejected alternatives, risks,
-implementation constraints, and acceptance criteria.
+决策议题: <具体议题，如：服务销毁时是否必须阻塞保存快照>
+实证依据: <调用链路、生命周期时序、测试复现输出>
+约束条件: <ANR 耗时上限、数据完整性要求>
+预期输出: 明确建议、依据、被否决的备选方案、风险点、实现约束与验收条件。
 ```
 
-Do not ask Sol to “review everything” or “complete the task.”
+严禁提交“请全面审查”或“帮我把任务做完”这类无边界泛化请求。
