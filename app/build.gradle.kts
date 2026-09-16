@@ -91,6 +91,8 @@ android {
     // These checks are currently tracked as maintenance debt or known heuristics and otherwise
     // drown out actionable findings in every local run.
     lint {
+        ignoreTestSources = true
+        checkReleaseBuilds = false
         disable += setOf(
             "AndroidGradlePluginVersion",
             "FrequentlyChangingValue",

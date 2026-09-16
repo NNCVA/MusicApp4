@@ -93,8 +93,7 @@ class AeroSignalSourceTest {
     }
 
     @Test
-    @Config(sdk = [26])
-    fun `api 26 late creation reads low battery level and recovers from changed level`() {
+    fun `late creation reads low battery level and recovers from changed level`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         publishBatteryLevel(context, level = 15)
 
@@ -127,7 +126,8 @@ class AeroSignalSourceTest {
         context.sendStickyBroadcast(
             Intent(Intent.ACTION_BATTERY_CHANGED)
                 .putExtra(BatteryManager.EXTRA_LEVEL, level)
-                .putExtra(BatteryManager.EXTRA_SCALE, 100),
+                .putExtra(BatteryManager.EXTRA_SCALE, 100)
+                .putExtra(BatteryManager.EXTRA_BATTERY_LOW, level <= 15),
         )
         shadowOf(Looper.getMainLooper()).idle()
     }

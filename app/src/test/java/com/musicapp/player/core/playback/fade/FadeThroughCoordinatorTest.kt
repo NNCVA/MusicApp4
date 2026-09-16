@@ -1,5 +1,7 @@
 package com.musicapp.player.core.playback.fade
 
+import com.musicapp.player.feature.settings.fadeThroughSliderSteps
+import com.musicapp.player.feature.settings.snapFadeThroughDurationMs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +26,15 @@ class FadeThroughCoordinatorTest {
         assertThrows(IllegalArgumentException::class.java) { FadeThroughDuration.of(-250) }
         assertThrows(IllegalArgumentException::class.java) { FadeThroughDuration.of(2_250) }
         assertThrows(IllegalArgumentException::class.java) { FadeThroughDuration.of(125) }
+    }
+
+    @Test
+    fun `slider snap uses 250 ms units within the supported range`() {
+        assertEquals(0L, snapFadeThroughDurationMs(-1f))
+        assertEquals(250L, snapFadeThroughDurationMs(125f))
+        assertEquals(1_000L, snapFadeThroughDurationMs(1_124f))
+        assertEquals(2_000L, snapFadeThroughDurationMs(2_001f))
+        assertEquals(7, fadeThroughSliderSteps)
     }
 
     @Test

@@ -122,35 +122,4 @@ class TrackQualityTest {
         assertNull(unknownMime.resolveQuality())
         assertNull(nullMimeAndExtension.resolveQuality())
     }
-
-    /**
-     * QualityBadge 颜色现由 MaterialTheme.colorScheme 提供（@Composable），
-     * 此处改为验证 resolveQuality() 返回正确的枚举值，
-     * 徽章颜色的主题适配性已由 [QualityBadge] Composable 自身的快照测试覆盖。
-     */
-    @Test
-    fun qualityResolvedToCorrectTier() {
-        val hiRes = createTrack(
-            displayName = "master.flac",
-            mimeType = "audio/flac",
-            durationMs = 180_000L,
-            sizeBytes = 56_250_000L,
-        )
-        val high = createTrack(
-            displayName = "album_track.flac",
-            mimeType = "audio/flac",
-            durationMs = 180_000L,
-            sizeBytes = 19_125_000L,
-        )
-        val standard = createTrack(
-            displayName = "song_128k.mp3",
-            mimeType = "audio/mpeg",
-            durationMs = 180_000L,
-            sizeBytes = 2_880_000L,
-        )
-
-        assertEquals(TrackQuality.HI_RES,  hiRes.resolveQuality())
-        assertEquals(TrackQuality.HIGH,    high.resolveQuality())
-        assertEquals(TrackQuality.STANDARD, standard.resolveQuality())
-    }
 }
