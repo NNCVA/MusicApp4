@@ -234,6 +234,18 @@ class LibrarySyncCoordinatorTest {
         )
     }
 
+    @Test
+    fun requestFullSyncAndAwaitRunsFullSyncWithSilentFeedback() = runTest {
+        val fixture = fixture(cache = cache(true), snapshot = snapshot("v1"))
+
+        val event = fixture.coordinator.requestFullSyncAndAwait(MediaLibrarySyncFeedback.SILENT)
+
+        assertTrue(event is LibrarySyncEvent.Completed)
+        assertEquals(MediaLibrarySyncFeedback.SILENT, event.feedback)
+        assertEquals(listOf(MediaLibrarySyncMode.FULL), fixture.synchronizer.modes)
+        assertNull(fixture.coordinator.state.value.pendingFeedback)
+    }
+
     private fun kotlinx.coroutines.test.TestScope.fixture(
         cache: MediaLibraryCacheSnapshot,
         snapshot: MediaStoreSnapshot,

@@ -18,6 +18,8 @@ import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
 import com.musicapp.player.data.sort.SortPreferencesRepository
+import com.musicapp.player.data.sync.LibrarySyncEvent
+import com.musicapp.player.data.sync.LibrarySyncState
 import com.musicapp.player.feature.tracks.batch.BatchTrackAction
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionResult
@@ -32,8 +34,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -93,6 +97,14 @@ data class TrackSort(
     }
 }
 
+sealed interface TracksRefreshResult {
+    data class Added(val count: Int) : TracksRefreshResult
+    data class Removed(val count: Int) : TracksRefreshResult
+    data class AddedAndRemoved(val addedCount: Int, val removedCount: Int) : TracksRefreshResult
+    data object UpToDate : TracksRefreshResult
+    data object Failed : TracksRefreshResult
+}
+
 data class TracksUiState(
     val tracks: List<Track> = emptyList(),
     val sections: List<TrackSection> = emptyList(),
@@ -107,6 +119,8 @@ data class TracksUiState(
     val infoTrack: Track? = null,
     val infoMetadata: AdvancedTrackMetadata? = null,
     val isInfoLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val refreshResult: TracksRefreshResult? = null,
 ) {
     @Deprecated("Artwork state decoupled from ViewModel StateFlow in M2 (R3). Replaced by Coil AsyncImage in M3.")
     val artworkByTrackId: Map<TrackId, TrackArtworkState> get() = emptyMap()
@@ -124,6 +138,7 @@ class TracksViewModel internal constructor(
     private val trackMetadataRepository: TrackMetadataRepository,
     private val sortPreferencesRepository: SortPreferencesRepository,
     private val computationDispatcher: CoroutineDispatcher,
+    private val tracksSyncController: TracksSyncController? = null,
 ) : ViewModel() {
     @Inject
     constructor(
@@ -136,6 +151,7 @@ class TracksViewModel internal constructor(
         artworkRepository: ArtworkRepository,
         trackMetadataRepository: TrackMetadataRepository,
         sortPreferencesRepository: SortPreferencesRepository,
+        tracksSyncController: TracksSyncController,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playlistRepository = playlistRepository,
@@ -147,6 +163,7 @@ class TracksViewModel internal constructor(
         trackMetadataRepository = trackMetadataRepository,
         sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = Dispatchers.Default,
+        tracksSyncController = tracksSyncController,
     )
 
     internal constructor(
@@ -159,6 +176,7 @@ class TracksViewModel internal constructor(
         trackMetadataRepository: TrackMetadataRepository,
         sortPreferencesRepository: SortPreferencesRepository,
         computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
+        tracksSyncController: TracksSyncController? = null,
     ) : this(
         mediaLibraryRepository = mediaLibraryRepository,
         playlistRepository = playlistRepository,
@@ -170,6 +188,7 @@ class TracksViewModel internal constructor(
         trackMetadataRepository = trackMetadataRepository,
         sortPreferencesRepository = sortPreferencesRepository,
         computationDispatcher = computationDispatcher,
+        tracksSyncController = tracksSyncController,
     )
 
     private val isSelectionMode = MutableStateFlow(false)
@@ -222,13 +241,30 @@ class TracksViewModel internal constructor(
             TracksInfoState(track, metadata, loading)
         }
 
+    private val refreshResult = MutableStateFlow<TracksRefreshResult?>(null)
+    private val isManualRefreshing = MutableStateFlow(false)
+
+    private val isRefreshingFlow: Flow<Boolean> =
+        combine(
+            tracksSyncController?.state ?: MutableStateFlow(LibrarySyncState.Idle(false)),
+            isManualRefreshing,
+        ) { syncState, manualRefreshing ->
+            manualRefreshing || syncState is LibrarySyncState.Syncing
+        }
+
+    private val refreshState =
+        combine(isRefreshingFlow, refreshResult) { isRefreshing, result ->
+            isRefreshing to result
+        }
+
     val uiState: StateFlow<TracksUiState> =
         combine(
             sortedTracksState,
             playlists,
             presentationState,
             infoState,
-        ) { sortedTracks, playlists, presentation, info ->
+            refreshState,
+        ) { sortedTracks, playlists, presentation, info, (isRefreshing, refreshResult) ->
             val visibleSelection =
                 presentation.selectedTrackIds.filterTo(linkedSetOf()) {
                     it in sortedTracks.visibleTrackIds
@@ -251,6 +287,8 @@ class TracksViewModel internal constructor(
                 infoTrack = info.track,
                 infoMetadata = info.metadata,
                 isInfoLoading = info.isLoading,
+                isRefreshing = isRefreshing,
+                refreshResult = refreshResult,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -431,6 +469,48 @@ class TracksViewModel internal constructor(
         batchResult.value = null
     }
 
+    fun refreshTracks() {
+        if (uiState.value.isRefreshing || uiState.value.isSelectionMode) return
+        val controller = tracksSyncController ?: return
+        viewModelScope.launch {
+            isManualRefreshing.value = true
+            val startTime = System.currentTimeMillis()
+            try {
+                val event = controller.requestFullSync()
+                val elapsed = System.currentTimeMillis() - startTime
+                val remainingDelay = (MIN_REFRESH_DURATION_MS - elapsed).coerceAtLeast(0L)
+                if (remainingDelay > 0L) {
+                    delay(remainingDelay)
+                }
+                when (event) {
+                    is LibrarySyncEvent.Completed -> {
+                        val added = event.result.addedTrackCount
+                        val removed = event.result.removedTrackCount
+                        refreshResult.value = when {
+                            added > 0 && removed > 0 -> TracksRefreshResult.AddedAndRemoved(added, removed)
+                            added > 0 -> TracksRefreshResult.Added(added)
+                            removed > 0 -> TracksRefreshResult.Removed(removed)
+                            else -> TracksRefreshResult.UpToDate
+                        }
+                    }
+                    is LibrarySyncEvent.Failed -> {
+                        refreshResult.value = TracksRefreshResult.Failed
+                    }
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                refreshResult.value = TracksRefreshResult.Failed
+            } finally {
+                isManualRefreshing.value = false
+            }
+        }
+    }
+
+    fun acknowledgeRefreshResult() {
+        refreshResult.value = null
+    }
+
     private fun executeBatch(
         action: BatchTrackAction,
         requestedTrackIds: List<TrackId> = currentVisibleSelection().toList(),
@@ -466,6 +546,7 @@ class TracksViewModel internal constructor(
     }
 
     private companion object {
+        const val MIN_REFRESH_DURATION_MS = 800L
         const val ARTWORK_TARGET_PX = 128
         const val STOP_TIMEOUT_MS = 5_000L
     }

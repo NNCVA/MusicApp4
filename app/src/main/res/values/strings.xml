@@ -154,6 +154,11 @@
     <string name="scan_result_title">Scan complete</string>
     <string name="scan_result_failed_title">Scan failed</string>
     <string name="scan_result_added">Tracks</string>
+    <string name="scan_incremental_success">Found %1$d new tracks</string>
+    <string name="scan_refresh_added">Found %1$d new tracks</string>
+    <string name="scan_refresh_removed">Removed %1$d obsolete tracks</string>
+    <string name="scan_refresh_added_and_removed">Found %1$d new, removed %2$d tracks</string>
+    <string name="scan_refresh_up_to_date">Music library is already up to date</string>
     <string name="playback_play">Play</string>
     <string name="playback_pause">Pause</string>
     <string name="player_collapse">Collapse</string>

@@ -47,10 +47,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
@@ -197,6 +201,8 @@ fun TracksScreenRoute(
         onPlayNext = viewModel::playSelectedNext,
         onHideSelected = viewModel::hideSelected,
         onAcknowledgeBatchResult = viewModel::acknowledgeBatchResult,
+        onRefresh = viewModel::refreshTracks,
+        onAcknowledgeRefreshResult = viewModel::acknowledgeRefreshResult,
         onShowMessage = onShowMessage,
         onPlayAll = viewModel::playAll,
         onFirstTrackLaidOut = {
@@ -243,6 +249,8 @@ fun TracksScreen(
     onPlayNext: () -> Unit,
     onHideSelected: () -> Unit,
     onAcknowledgeBatchResult: () -> Unit,
+    onRefresh: () -> Unit = {},
+    onAcknowledgeRefreshResult: () -> Unit = {},
     onShowMessage: (Int, List<Any>) -> Unit = { _, _ -> },
     onSearchClick: () -> Unit = {},
     onPlayAll: () -> Unit = {},
@@ -253,6 +261,36 @@ fun TracksScreen(
     var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var singleTrackAddToPlaylistTarget by remember { mutableStateOf<TrackId?>(null) }
+    LaunchedEffect(state.refreshResult) {
+        val result = state.refreshResult ?: return@LaunchedEffect
+        when (result) {
+            is TracksRefreshResult.Added -> {
+                onShowMessage(
+                    R.string.scan_refresh_added,
+                    listOf(result.count),
+                )
+            }
+            is TracksRefreshResult.Removed -> {
+                onShowMessage(
+                    R.string.scan_refresh_removed,
+                    listOf(result.count),
+                )
+            }
+            is TracksRefreshResult.AddedAndRemoved -> {
+                onShowMessage(
+                    R.string.scan_refresh_added_and_removed,
+                    listOf(result.addedCount, result.removedCount),
+                )
+            }
+            TracksRefreshResult.UpToDate -> {
+                onShowMessage(R.string.scan_refresh_up_to_date, emptyList())
+            }
+            TracksRefreshResult.Failed -> {
+                onShowMessage(R.string.scan_result_failed_title, emptyList())
+            }
+        }
+        onAcknowledgeRefreshResult()
+    }
     LaunchedEffect(state.batchResult) {
         val result = state.batchResult ?: return@LaunchedEffect
         when (result) {
@@ -401,6 +439,8 @@ fun TracksScreen(
                     selectedIds = state.selectedTrackIds,
                     selectionMode = state.isSelectionMode,
                     playlists = state.playlists,
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = onRefresh,
                     onAddToQueue = onTrackAddToQueue,
                     onPlayNext = onTrackPlayNext,
                     onHide = onTrackHide,
@@ -506,7 +546,7 @@ fun TracksScreen(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun TrackList(
     tracks: List<Track>,
@@ -516,6 +556,8 @@ private fun TrackList(
     selectedIds: Set<TrackId>,
     selectionMode: Boolean,
     playlists: List<com.musicapp.player.core.domain.model.Playlist>,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     onAddToQueue: (TrackId) -> Unit,
     onPlayNext: (TrackId) -> Unit,
     onHide: (TrackId) -> Unit,
@@ -531,7 +573,12 @@ private fun TrackList(
     modifier: Modifier = Modifier,
 ) {
     val dimensions = MusicTheme.dimensions
-    val overscrollEffect = rememberBounceOverscrollEffect(listState)
+    val overscrollEffect =
+        rememberBounceOverscrollEffect(
+            state = listState,
+            allowStartEdge = false,
+            allowEndEdge = true,
+        )
     val scrollbarModifier =
         if (!showSectionIndex) {
             listState.scrollIndicatorState?.let { scrollIndicatorState ->
@@ -540,7 +587,23 @@ private fun TrackList(
         } else {
             Modifier
         }
-    Box(modifier = modifier.fillMaxWidth()) {
+    val pullRefreshState = rememberPullToRefreshState()
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxWidth(),
+        state = pullRefreshState,
+        enabled = !selectionMode && tracks.isNotEmpty(),
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = pullRefreshState,
+                isRefreshing = isRefreshing,
+                modifier = Modifier.align(Alignment.TopCenter),
+                containerColor = MusicTheme.colors.surfaceContainerHigh,
+                color = MusicTheme.colors.primary,
+            )
+        },
+    ) {
         LazyColumn(
             state = listState,
             overscrollEffect = overscrollEffect,

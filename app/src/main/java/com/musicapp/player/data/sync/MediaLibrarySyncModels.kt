@@ -130,6 +130,7 @@ data class SyncReport(
     val temporarilyUnavailableVolumeNames: Set<String>,
     val failure: MediaLibrarySyncFailure? = null,
     val scanSummary: MediaLibraryScanSummary? = null,
+    val addedTrackCount: Int = 0,
 ) {
     val succeeded: Boolean = failure == null
 }

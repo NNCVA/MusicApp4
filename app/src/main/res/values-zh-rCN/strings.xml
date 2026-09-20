@@ -150,6 +150,11 @@
     <string name="scan_result_title">扫描完成</string>
     <string name="scan_result_failed_title">扫描失败</string>
     <string name="scan_result_added">单曲</string>
+    <string name="scan_incremental_success">已发现 %1$d 首新单曲</string>
+    <string name="scan_refresh_added">已发现 %1$d 首新单曲</string>
+    <string name="scan_refresh_removed">已移除 %1$d 首失效单曲</string>
+    <string name="scan_refresh_added_and_removed">已发现 %1$d 首，已移除 %2$d 首</string>
+    <string name="scan_refresh_up_to_date">已是最新曲目库</string>
     <string name="playback_play">播放</string>
     <string name="playback_pause">暂停</string>
     <string name="player_collapse">收起</string>

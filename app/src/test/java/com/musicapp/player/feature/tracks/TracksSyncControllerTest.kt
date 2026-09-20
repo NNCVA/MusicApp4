@@ -89,6 +89,30 @@ class TracksSyncControllerTest {
         assertEquals(latestRevision, fixture.settings.pendingLibrarySync.value.revision)
     }
 
+    @Test
+    fun `tracks incremental sync invokes coordinator in incremental mode with silent feedback`() = runTest {
+        val fixture = fixture(successfulReport())
+
+        val event = fixture.controller.requestIncrementalSync()
+
+        assertTrue(event is LibrarySyncEvent.Completed)
+        assertEquals(listOf(MediaLibrarySyncMode.INCREMENTAL), fixture.synchronizer.modes)
+        val feedback = fixture.coordinator.state.value.pendingFeedback
+        assertTrue(feedback == null)
+    }
+
+    @Test
+    fun `tracks full sync invokes coordinator in full mode with silent feedback`() = runTest {
+        val fixture = fixture(successfulReport())
+
+        val event = fixture.controller.requestFullSync()
+
+        assertTrue(event is LibrarySyncEvent.Completed)
+        assertEquals(listOf(MediaLibrarySyncMode.FULL), fixture.synchronizer.modes)
+        val feedback = fixture.coordinator.state.value.pendingFeedback
+        assertTrue(feedback == null)
+    }
+
     private fun TestScope.fixture(result: MediaLibrarySyncResult): Fixture {
         val settings = FakeSettingsRepository()
         val synchronizer = GatedSynchronizer(result)

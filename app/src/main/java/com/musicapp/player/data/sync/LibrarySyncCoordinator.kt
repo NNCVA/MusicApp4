@@ -87,6 +87,34 @@ class LibrarySyncCoordinator @Inject constructor(
         return completion.await()
     }
 
+    suspend fun requestIncrementalSyncAndAwait(): LibrarySyncEvent {
+        val completion = CompletableDeferred<LibrarySyncEvent>()
+        enqueue(
+            SyncRequest(
+                trigger = MediaLibrarySyncTrigger.MANUAL,
+                mode = MediaLibrarySyncMode.INCREMENTAL,
+                feedback = MediaLibrarySyncFeedback.SILENT,
+                completions = listOf(completion),
+            ),
+        )
+        return completion.await()
+    }
+
+    suspend fun requestFullSyncAndAwait(
+        feedback: MediaLibrarySyncFeedback = MediaLibrarySyncFeedback.SILENT,
+    ): LibrarySyncEvent {
+        val completion = CompletableDeferred<LibrarySyncEvent>()
+        enqueue(
+            SyncRequest(
+                trigger = MediaLibrarySyncTrigger.MANUAL,
+                mode = MediaLibrarySyncMode.FULL,
+                feedback = feedback,
+                completions = listOf(completion),
+            ),
+        )
+        return completion.await()
+    }
+
     @OptIn(FlowPreview::class)
     fun startForeground() {
         if (foregroundJob?.isActive == true) return

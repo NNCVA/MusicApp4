@@ -130,6 +130,9 @@ interface TrackDao {
         volumeNames: List<String>,
         generation: Long,
     ): List<TrackEntity>
+
+    @Query("SELECT volume_name || ':' || media_store_id FROM tracks")
+    suspend fun getAllTrackCompositeKeys(): List<String>
 }
 
 @Dao

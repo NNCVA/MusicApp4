@@ -17,6 +17,12 @@ import com.musicapp.player.data.repository.FakeMediaLibraryRepository
 import com.musicapp.player.data.repository.FakePlaylistRepository
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.repository.PlaylistRepository
+import com.musicapp.player.data.sync.LibrarySyncEvent
+import com.musicapp.player.data.sync.LibrarySyncState
+import com.musicapp.player.data.sync.MediaLibrarySyncFailure
+import com.musicapp.player.data.sync.MediaLibrarySyncFeedback
+import com.musicapp.player.data.sync.MediaLibrarySyncTrigger
+import com.musicapp.player.data.sync.SyncReport
 import com.musicapp.player.data.sync.scanResultTitle
 import com.musicapp.player.feature.tracks.batch.BatchTrackAction
 import com.musicapp.player.feature.tracks.batch.BatchTrackActionExecutor
@@ -581,6 +587,7 @@ class TracksViewModelTest {
         artworkRepository: ArtworkRepository = placeholderArtworkRepository,
         trackMetadataRepository: TrackMetadataRepository = placeholderTrackMetadataRepository,
         sortPreferencesRepository: com.musicapp.player.data.sort.SortPreferencesRepository = com.musicapp.player.fakes.FakeSortPreferencesRepository(),
+        tracksSyncController: TracksSyncController = FakeTracksSyncController(),
     ): TracksViewModel {
         val clock = FakeClock(123)
         return TracksViewModel(
@@ -600,6 +607,7 @@ class TracksViewModelTest {
             trackMetadataRepository = trackMetadataRepository,
             sortPreferencesRepository = sortPreferencesRepository,
             computationDispatcher = dispatcher,
+            tracksSyncController = tracksSyncController,
         )
     }
 
@@ -645,6 +653,223 @@ class TracksViewModelTest {
         assertEquals(2, state.sectionPositions["B"])
     }
 
+    @Test
+    fun `isRefreshing reflects tracks sync controller syncing state`() = runTest(dispatcher) {
+        val syncController = FakeTracksSyncController()
+        val viewModel = subject(tracksSyncController = syncController)
+        collectState(viewModel)
+
+        assertFalse(viewModel.uiState.value.isRefreshing)
+
+        syncController.syncState.value =
+            LibrarySyncState.Syncing(
+                hasSuccessfulScan = true,
+                trigger = MediaLibrarySyncTrigger.MANUAL,
+            )
+        testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.isRefreshing)
+
+        syncController.syncState.value = LibrarySyncState.Idle(hasSuccessfulScan = true)
+        testScheduler.runCurrent()
+        assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun `refreshTracks triggers full sync and holds refreshing for minimum duration before setting Added result`() = runTest(dispatcher) {
+        val syncController = FakeTracksSyncController()
+        syncController.fullSyncResult =
+            LibrarySyncEvent.Completed(
+                trigger = MediaLibrarySyncTrigger.MANUAL,
+                feedback = MediaLibrarySyncFeedback.SILENT,
+                result =
+                    SyncReport(
+                        generation = 2,
+                        upsertedTrackCount = 5,
+                        removedTrackCount = 0,
+                        addedTrackCount = 5,
+                        temporarilyUnavailableVolumeNames = emptySet(),
+                    ),
+            )
+        val viewModel = subject(tracksSyncController = syncController)
+        collectState(viewModel)
+
+        viewModel.refreshTracks()
+        testScheduler.runCurrent()
+
+        assertEquals(1, syncController.fullSyncCalls)
+        assertTrue(viewModel.uiState.value.isRefreshing)
+        assertEquals(null, viewModel.uiState.value.refreshResult)
+
+        testScheduler.advanceTimeBy(800)
+        testScheduler.runCurrent()
+
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        assertEquals(TracksRefreshResult.Added(5), viewModel.uiState.value.refreshResult)
+
+        viewModel.acknowledgeRefreshResult()
+        testScheduler.runCurrent()
+        assertEquals(null, viewModel.uiState.value.refreshResult)
+    }
+
+    @Test
+    fun `refreshTracks when tracks removed sets Removed result`() = runTest(dispatcher) {
+        val syncController = FakeTracksSyncController()
+        syncController.fullSyncResult =
+            LibrarySyncEvent.Completed(
+                trigger = MediaLibrarySyncTrigger.MANUAL,
+                feedback = MediaLibrarySyncFeedback.SILENT,
+                result =
+                    SyncReport(
+                        generation = 2,
+                        upsertedTrackCount = 5,
+                        removedTrackCount = 3,
+                        addedTrackCount = 0,
+                        temporarilyUnavailableVolumeNames = emptySet(),
+                    ),
+            )
+        val viewModel = subject(tracksSyncController = syncController)
+        collectState(viewModel)
+
+        viewModel.refreshTracks()
+        testScheduler.runCurrent()
+
+        assertEquals(1, syncController.fullSyncCalls)
+        assertTrue(viewModel.uiState.value.isRefreshing)
+
+        testScheduler.advanceTimeBy(800)
+        testScheduler.runCurrent()
+
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        assertEquals(TracksRefreshResult.Removed(3), viewModel.uiState.value.refreshResult)
+    }
+
+    @Test
+    fun `refreshTracks when tracks both added and removed sets AddedAndRemoved result`() = runTest(dispatcher) {
+        val syncController = FakeTracksSyncController()
+        syncController.fullSyncResult =
+            LibrarySyncEvent.Completed(
+                trigger = MediaLibrarySyncTrigger.MANUAL,
+                feedback = MediaLibrarySyncFeedback.SILENT,
+                result =
+                    SyncReport(
+                        generation = 2,
+                        upsertedTrackCount = 8,
+                        removedTrackCount = 2,
+                        addedTrackCount = 4,
+                        temporarilyUnavailableVolumeNames = emptySet(),
+                    ),
+            )
+        val viewModel = subject(tracksSyncController = syncController)
+        collectState(viewModel)
+
+        viewModel.refreshTracks()
+        testScheduler.runCurrent()
+
+        assertEquals(1, syncController.fullSyncCalls)
+        assertTrue(viewModel.uiState.value.isRefreshing)
+
+        testScheduler.advanceTimeBy(800)
+        testScheduler.runCurrent()
+
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        assertEquals(TracksRefreshResult.AddedAndRemoved(4, 2), viewModel.uiState.value.refreshResult)
+    }
+
+    @Test
+    fun `refreshTracks with zero added and removed tracks sets UpToDate result after minimum duration`() = runTest(dispatcher) {
+        val syncController = FakeTracksSyncController()
+        syncController.fullSyncResult =
+            LibrarySyncEvent.Completed(
+                trigger = MediaLibrarySyncTrigger.MANUAL,
+                feedback = MediaLibrarySyncFeedback.SILENT,
+                result =
+                    SyncReport(
+                        generation = 2,
+                        upsertedTrackCount = 10,
+                        removedTrackCount = 0,
+                        addedTrackCount = 0,
+                        temporarilyUnavailableVolumeNames = emptySet(),
+                    ),
+            )
+        val viewModel = subject(tracksSyncController = syncController)
+        collectState(viewModel)
+
+        viewModel.refreshTracks()
+        testScheduler.runCurrent()
+
+        assertEquals(1, syncController.fullSyncCalls)
+        assertTrue(viewModel.uiState.value.isRefreshing)
+
+        testScheduler.advanceTimeBy(800)
+        testScheduler.runCurrent()
+
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        assertEquals(TracksRefreshResult.UpToDate, viewModel.uiState.value.refreshResult)
+    }
+
+    @Test
+    fun `refreshTracks when sync fails sets Failed result after minimum duration`() = runTest(dispatcher) {
+        val syncController = FakeTracksSyncController()
+        syncController.fullSyncResult =
+            LibrarySyncEvent.Failed(
+                trigger = MediaLibrarySyncTrigger.MANUAL,
+                feedback = MediaLibrarySyncFeedback.SILENT,
+                failure = MediaLibrarySyncFailure.QUERY_FAILED,
+            )
+        val viewModel = subject(tracksSyncController = syncController)
+        collectState(viewModel)
+
+        viewModel.refreshTracks()
+        testScheduler.runCurrent()
+
+        assertEquals(1, syncController.fullSyncCalls)
+        assertTrue(viewModel.uiState.value.isRefreshing)
+
+        testScheduler.advanceTimeBy(800)
+        testScheduler.runCurrent()
+
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        assertEquals(TracksRefreshResult.Failed, viewModel.uiState.value.refreshResult)
+    }
+
+    @Test
+    fun `refreshTracks is ignored when selection mode is active`() = runTest(dispatcher) {
+        val tracks = listOf(track(1, title = "A"))
+        val syncController = FakeTracksSyncController()
+        val viewModel = subject(tracks = tracks, tracksSyncController = syncController)
+        collectState(viewModel)
+
+        viewModel.startSelection(tracks.first().id)
+        testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        viewModel.refreshTracks()
+        testScheduler.runCurrent()
+
+        assertEquals(0, syncController.fullSyncCalls)
+    }
+
+    @Test
+    fun `refreshTracks is ignored when already refreshing`() = runTest(dispatcher) {
+        val syncController =
+            FakeTracksSyncController(
+                initialState =
+                    LibrarySyncState.Syncing(
+                        hasSuccessfulScan = true,
+                        trigger = MediaLibrarySyncTrigger.MANUAL,
+                    ),
+            )
+        val viewModel = subject(tracksSyncController = syncController)
+        collectState(viewModel)
+
+        assertTrue(viewModel.uiState.value.isRefreshing)
+
+        viewModel.refreshTracks()
+        testScheduler.runCurrent()
+
+        assertEquals(0, syncController.fullSyncCalls)
+    }
+
     private fun track(
         id: Long,
         title: String,
@@ -664,6 +889,46 @@ class TracksViewModelTest {
             relativePath = "Music/",
             displayName = "$title.mp3",
         )
+}
+
+private class FakeTracksSyncController(
+    initialState: LibrarySyncState = LibrarySyncState.Idle(hasSuccessfulScan = true),
+) : TracksSyncController {
+    val syncState = MutableStateFlow(initialState)
+    override val state: StateFlow<LibrarySyncState> = syncState
+    var incrementalSyncCalls = 0
+    var manualSyncCalls = 0
+    var incrementalSyncResult: LibrarySyncEvent =
+        LibrarySyncEvent.Completed(
+            trigger = MediaLibrarySyncTrigger.MANUAL,
+            feedback = MediaLibrarySyncFeedback.SILENT,
+            result =
+                SyncReport(
+                    generation = 1,
+                    upsertedTrackCount = 0,
+                    removedTrackCount = 0,
+                    temporarilyUnavailableVolumeNames = emptySet(),
+                ),
+        )
+
+    var fullSyncCalls = 0
+    var fullSyncResult: LibrarySyncEvent = incrementalSyncResult
+
+    override fun requestManualSync() {
+        manualSyncCalls++
+    }
+
+    override suspend fun requestIncrementalSync(): LibrarySyncEvent {
+        incrementalSyncCalls++
+        return incrementalSyncResult
+    }
+
+    override suspend fun requestFullSync(): LibrarySyncEvent {
+        fullSyncCalls++
+        return fullSyncResult
+    }
+
+    override fun acknowledgeFeedback(eventId: Long) = Unit
 }
 
 private class ImmediateArtworkRepository(

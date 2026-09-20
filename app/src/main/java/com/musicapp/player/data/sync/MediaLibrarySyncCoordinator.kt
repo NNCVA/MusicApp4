@@ -73,6 +73,9 @@ class MediaLibrarySyncCoordinator @Inject constructor(
             )
         }
 
+        val existingKeys = trackDao.getAllTrackCompositeKeys().toHashSet()
+        val addedCount = scan.candidates.count { "${it.volumeName}:${it.mediaStoreId}" !in existingKeys }
+
         val incoming = scan.candidates.map { candidate -> candidate.toEntity(generation) }
         if (incoming.isNotEmpty()) {
             trackDao.upsert(incoming)
@@ -136,6 +139,7 @@ class MediaLibrarySyncCoordinator @Inject constructor(
             upsertedTrackCount = incoming.size,
             removedTrackCount = removed.size,
             temporarilyUnavailableVolumeNames = unavailableVolumes,
+            addedTrackCount = addedCount,
         )
     }
 

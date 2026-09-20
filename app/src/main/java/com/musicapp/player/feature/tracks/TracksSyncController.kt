@@ -20,6 +20,10 @@ interface TracksSyncController {
 
     fun requestManualSync()
 
+    suspend fun requestIncrementalSync(): LibrarySyncEvent
+
+    suspend fun requestFullSync(): LibrarySyncEvent
+
     fun acknowledgeFeedback(eventId: Long)
 }
 
@@ -27,7 +31,7 @@ interface TracksSyncController {
 class DefaultTracksSyncController @Inject constructor(
     private val coordinator: LibrarySyncCoordinator,
     private val settingsRepository: SettingsRepository,
-    @ApplicationCoroutineScope private val applicationScope: CoroutineScope,
+    @param:ApplicationCoroutineScope private val applicationScope: CoroutineScope,
 ) : TracksSyncController {
     override val state: StateFlow<LibrarySyncState>
         get() = coordinator.state
@@ -40,6 +44,14 @@ class DefaultTracksSyncController @Inject constructor(
                 settingsRepository.clearLibrarySyncPending(capturedPending.revision)
             }
         }
+    }
+
+    override suspend fun requestIncrementalSync(): LibrarySyncEvent {
+        return coordinator.requestIncrementalSyncAndAwait()
+    }
+
+    override suspend fun requestFullSync(): LibrarySyncEvent {
+        return coordinator.requestFullSyncAndAwait(com.musicapp.player.data.sync.MediaLibrarySyncFeedback.SILENT)
     }
 
     override fun acknowledgeFeedback(eventId: Long) = coordinator.acknowledgeFeedback(eventId)
