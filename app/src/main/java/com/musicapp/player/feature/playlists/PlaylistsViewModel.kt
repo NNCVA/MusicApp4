@@ -269,7 +269,7 @@ class PlaylistDetailViewModel internal constructor(
     val uiState: StateFlow<PlaylistDetailUiState> =
         combine(
             playlistRepository.observePlaylists(),
-            mediaLibraryRepository.observeTracks(),
+            mediaLibraryRepository.observeTracks(includeHidden = false, includeUnavailable = true),
             selectedPlaylistId,
             sortPreferencesRepository.playlistTrackSort,
             searchQuery,

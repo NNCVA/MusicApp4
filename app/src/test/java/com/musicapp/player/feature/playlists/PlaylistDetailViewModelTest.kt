@@ -387,6 +387,49 @@ class PlaylistDetailViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `playlist detail retains unavailable external tracks with metadata`() = runTest(dispatcher) {
+        val availableTrack = track(1, "Available Song", "Artist", "Album", availability = Availability.AVAILABLE)
+        val unavailableTrack = track(2, "External Disconnected Song", "Artist", "Album", availability = Availability.TEMPORARILY_UNAVAILABLE)
+
+        val playlist = Playlist(
+            id = PlaylistId(10),
+            displayName = "My Playlist",
+            normalizedName = "my playlist",
+            trackIds = listOf(availableTrack.id, unavailableTrack.id),
+            createdAtMs = 1_000L,
+            updatedAtMs = 1_000L,
+        )
+
+        val libraryRepository = FakeMediaLibraryRepository(listOf(availableTrack, unavailableTrack))
+        val playlistRepository = FakePlaylistRepository(initialPlaylists = listOf(playlist))
+        val playbackController = DetailRecordingPlaybackController()
+        val executor = DefaultBatchTrackActionExecutor(playlistRepository, libraryRepository, playbackController, Clock { 10 })
+
+        val viewModel = PlaylistDetailViewModel(
+            playlistRepository = playlistRepository,
+            mediaLibraryRepository = libraryRepository,
+            useCase = PlaylistUseCase(playlistRepository, Clock { 10 }),
+            playbackController = playbackController,
+            batchActionExecutor = executor,
+            trackMetadataRepository = FakeTrackMetadataRepository(),
+            computationDispatcher = dispatcher,
+        )
+
+        val collectJob = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.open(playlist.id)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(2, state.tracks.size)
+        val unavailableItem = state.tracks.first { it.id == unavailableTrack.id }
+        assertEquals("External Disconnected Song", unavailableItem.title)
+        assertEquals(Availability.TEMPORARILY_UNAVAILABLE, unavailableItem.availability)
+
+        collectJob.cancel()
+    }
+
+
     private fun track(
         value: Long,
         title: String = "Track $value",

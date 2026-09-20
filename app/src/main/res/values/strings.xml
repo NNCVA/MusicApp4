@@ -313,6 +313,8 @@
         <item quantity="one">Playing %1$d track; skipped items: %2$d.</item>
         <item quantity="other">Playing %1$d tracks; skipped items: %2$d.</item>
     </plurals>
+    <string name="playlist_track_unavailable_device">The storage device for this track is disconnected and cannot be played.</string>
+    <string name="playlist_all_tracks_unavailable">All tracks in this playlist are currently unavailable and cannot be played.</string>
     <string name="selection_more_actions">More actions</string>
     <string name="selection_add_to_queue">Add to queue</string>
     <string name="selection_play_next">Play next</string>
@@ -457,6 +459,7 @@
     <string name="scan_blocked_folders">Blocked folders</string>
     <string name="scan_add_blocked_folder">Add blocked folder</string>
     <string name="scan_technical_support">When custom folders and the Android media library are both enabled, the scanned tracks are combined. Turn off the Android media library to scan only custom folders.</string>
+    <string name="scan_folder_unsupported_storage">This storage device is not recognized by the system media library and cannot be used as a scan folder.</string>
     <string name="scan_storage_root">Storage root</string>
     <string name="scan_remove_folder">Remove folder</string>
     <string name="scan_permission_dialog_title">Permission explanation</string>

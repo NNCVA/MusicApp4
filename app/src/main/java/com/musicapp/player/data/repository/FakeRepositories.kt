@@ -30,24 +30,30 @@ class FakeMediaLibraryRepository(
     private val rules = MutableStateFlow(initialRules)
     private var nextRuleId = (initialRules.maxOfOrNull { it.id.value } ?: 0) + 1
 
-    override fun observeTracks(includeHidden: Boolean): Flow<List<Track>> =
+    override fun observeTracks(includeHidden: Boolean, includeUnavailable: Boolean): Flow<List<Track>> =
         if (includeHidden) {
             tracks.map { it.values.sortedWith(trackComparator) }
         } else {
             combine(tracks, hiddenIds) { values, hidden ->
-                values.values.filterNot { it.id in hidden }.sortedWith(trackComparator)
+                values.values
+                    .filterNot { it.id in hidden }
+                    .filter { includeUnavailable || it.availability == Availability.AVAILABLE }
+                    .sortedWith(trackComparator)
             }
         }
 
     override fun observeAlbumTracks(albumId: AlbumId): Flow<List<Track>> =
         combine(tracks, hiddenIds) { values, hidden ->
-            values.values.filter { it.albumId == albumId && it.id !in hidden }.sortedWith(trackComparator)
+            values.values.filter {
+                it.albumId == albumId && it.id !in hidden && it.availability == Availability.AVAILABLE
+            }.sortedWith(trackComparator)
         }
 
     override fun observeArtistTracks(artistId: ArtistId): Flow<List<Track>> =
         combine(tracks, hiddenIds) { values, hidden ->
             values.values.filter { track ->
                 track.id !in hidden &&
+                    track.availability == Availability.AVAILABLE &&
                     com.musicapp.player.feature.artists.ArtistGrouping.matches(track.artistName, artistId)
             }.sortedWith(trackComparator)
         }
@@ -58,7 +64,9 @@ class FakeMediaLibraryRepository(
         return combine(tracks, hiddenIds) { values, hidden ->
             values.values.filter {
                 val trackDirectory = normalizeFolderDirectoryPath(it.relativePath)
-                it.id.volumeName == volumeName && it.id !in hidden &&
+                it.id.volumeName == volumeName &&
+                    it.id !in hidden &&
+                    it.availability == Availability.AVAILABLE &&
                     (normalizedDirectory.isEmpty() || trackDirectory == normalizedDirectory ||
                         trackDirectory.startsWith("$normalizedDirectory/"))
             }.sortedWith(compareBy(Track::relativePath).then(trackComparator))

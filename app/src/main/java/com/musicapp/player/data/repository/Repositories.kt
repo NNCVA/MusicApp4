@@ -15,7 +15,7 @@ import com.musicapp.player.core.domain.model.TrackId
 import kotlinx.coroutines.flow.Flow
 
 interface MediaLibraryRepository {
-    fun observeTracks(includeHidden: Boolean = false): Flow<List<Track>>
+    fun observeTracks(includeHidden: Boolean = false, includeUnavailable: Boolean = false): Flow<List<Track>>
     fun observeAlbumTracks(albumId: AlbumId): Flow<List<Track>>
     fun observeArtistTracks(artistId: ArtistId): Flow<List<Track>>
     fun observeFolderTracks(volumeName: String, directoryPath: String): Flow<List<Track>>

@@ -68,6 +68,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -139,6 +141,7 @@ fun PlaylistDetailScreenRoute(
     onOpenPlayer: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain"),
@@ -189,6 +192,9 @@ fun PlaylistDetailScreenRoute(
         viewModel.acknowledgeTransferFeedback()
     }
 
+    val allTracksUnavailableMessage = stringResource(R.string.playlist_all_tracks_unavailable)
+    val trackUnavailableDeviceMessage = stringResource(R.string.playlist_track_unavailable_device)
+
     PlaylistDetailScreen(
         state = state,
         contentInsets = contentInsets,
@@ -205,8 +211,28 @@ fun PlaylistDetailScreenRoute(
         onSearchQueryChange = viewModel::setSearchQuery,
         onOpenSearch = viewModel::openSearch,
         onCloseSearch = viewModel::closeSearch,
-        onPlayAll = viewModel::playAll,
-        onShufflePlay = viewModel::shufflePlay,
+        onPlayAll = {
+            if (state.tracks.isNotEmpty() && state.tracks.none { it.availability == Availability.AVAILABLE }) {
+                Toast.makeText(
+                    context,
+                    allTracksUnavailableMessage,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } else {
+                viewModel.playAll()
+            }
+        },
+        onShufflePlay = {
+            if (state.tracks.isNotEmpty() && state.tracks.none { it.availability == Availability.AVAILABLE }) {
+                Toast.makeText(
+                    context,
+                    allTracksUnavailableMessage,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } else {
+                viewModel.shufflePlay()
+            }
+        },
         onTrackClick = { track ->
             if (state.isSelectionMode) {
                 viewModel.toggleSelection(track.id)
@@ -214,6 +240,12 @@ fun PlaylistDetailScreenRoute(
                 onOpenPlayer()
             } else if (track.availability == Availability.AVAILABLE) {
                 viewModel.playTrack(track.id)
+            } else {
+                Toast.makeText(
+                    context,
+                    trackUnavailableDeviceMessage,
+                    Toast.LENGTH_SHORT,
+                ).show()
             }
         },
         onTrackLongClick = { track ->

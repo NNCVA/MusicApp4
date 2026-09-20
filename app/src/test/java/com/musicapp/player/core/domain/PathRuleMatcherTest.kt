@@ -88,6 +88,28 @@ class PathRuleMatcherTest {
         )
     }
 
+    @Test
+    fun volumeMatchingIsCaseInsensitive() {
+        val mixedRule = rule(5, "1b04-1207", "Music", PathRuleKind.INCLUDE)
+        assertTrue(
+            PathRuleMatcher.matches(
+                "1B04-1207",
+                "Music/song.mp3",
+                ScanMode.SELECTED_DIRECTORIES,
+                listOf(mixedRule),
+            ),
+        )
+        assertTrue(
+            PathRuleMatcher.matches(
+                "1b04-1207",
+                "Music/song.mp3",
+                ScanMode.SELECTED_DIRECTORIES,
+                listOf(mixedRule),
+            ),
+        )
+    }
+
+
     private fun rule(
         id: Long,
         volumeName: String,

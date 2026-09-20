@@ -304,6 +304,8 @@
     <plurals name="playlist_playback_result">
         <item quantity="other">将播放 %1$d 首；跳过项目：%2$d。</item>
     </plurals>
+    <string name="playlist_track_unavailable_device">该歌曲所在存储设备未连接，暂时无法播放。</string>
+    <string name="playlist_all_tracks_unavailable">歌单内曲目当前均不可用，无法播放。</string>
     <string name="selection_more_actions">更多操作</string>
     <string name="selection_add_to_queue">加入队列</string>
     <string name="selection_play_next">下一首播放</string>
@@ -444,6 +446,7 @@
     <string name="scan_blocked_folders">被屏蔽的文件夹</string>
     <string name="scan_add_blocked_folder">添加被屏蔽的文件夹</string>
     <string name="scan_technical_support">若同时开启自定义文件夹和 Android 媒体库，最终扫描到的歌曲为二者并集。关闭 Android 媒体库后，仅扫描自定义文件夹。</string>
+    <string name="scan_folder_unsupported_storage">该存储设备未被系统媒体库识别，无法作为扫描文件夹。</string>
     <string name="scan_storage_root">存储根目录</string>
     <string name="scan_remove_folder">移除文件夹</string>
     <string name="scan_permission_dialog_title">权限授权说明</string>

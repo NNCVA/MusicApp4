@@ -26,7 +26,8 @@ interface TrackDao {
     @Query(
         """
         SELECT tracks.* FROM tracks
-        WHERE NOT EXISTS (
+        WHERE availability = 'AVAILABLE'
+          AND NOT EXISTS (
             SELECT 1 FROM hidden_tracks
             WHERE track_volume_name = tracks.volume_name
               AND track_media_store_id = tracks.media_store_id
@@ -35,6 +36,19 @@ interface TrackDao {
         """,
     )
     fun observeVisible(): Flow<List<TrackEntity>>
+
+    @Query(
+        """
+        SELECT tracks.* FROM tracks
+        WHERE NOT EXISTS (
+            SELECT 1 FROM hidden_tracks
+            WHERE track_volume_name = tracks.volume_name
+              AND track_media_store_id = tracks.media_store_id
+        )
+        ORDER BY title COLLATE NOCASE, volume_name, media_store_id
+        """,
+    )
+    fun observeVisibleWithUnavailable(): Flow<List<TrackEntity>>
 
     @Query("SELECT * FROM tracks WHERE volume_name = :volumeName AND media_store_id = :mediaStoreId")
     suspend fun get(volumeName: String, mediaStoreId: Long): TrackEntity?
@@ -49,6 +63,7 @@ interface TrackDao {
         """
         SELECT * FROM tracks
         WHERE album_volume_name = :volumeName AND album_media_store_id = :albumMediaStoreId
+          AND availability = 'AVAILABLE'
           AND NOT EXISTS (
               SELECT 1 FROM hidden_tracks
               WHERE track_volume_name = tracks.volume_name
@@ -63,6 +78,7 @@ interface TrackDao {
         """
         SELECT * FROM tracks
         WHERE artist_media_store_id = :artistMediaStoreId
+          AND availability = 'AVAILABLE'
           AND NOT EXISTS (
               SELECT 1 FROM hidden_tracks
               WHERE track_volume_name = tracks.volume_name
@@ -79,6 +95,7 @@ interface TrackDao {
         WHERE volume_name = :volumeName
           AND (relative_path = :directoryPath
             OR relative_path LIKE :escapedDescendantPrefix || '%' ESCAPE '\')
+          AND availability = 'AVAILABLE'
           AND NOT EXISTS (
               SELECT 1 FROM hidden_tracks
               WHERE track_volume_name = tracks.volume_name
@@ -97,6 +114,7 @@ interface TrackDao {
         """
         SELECT * FROM tracks
         WHERE volume_name = :volumeName
+          AND availability = 'AVAILABLE'
           AND NOT EXISTS (
               SELECT 1 FROM hidden_tracks
               WHERE track_volume_name = tracks.volume_name

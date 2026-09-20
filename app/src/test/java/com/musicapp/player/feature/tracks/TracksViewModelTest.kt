@@ -1,6 +1,7 @@
 package com.musicapp.player.feature.tracks
 
 import androidx.lifecycle.SavedStateHandle
+import com.musicapp.player.core.domain.model.Availability
 import com.musicapp.player.core.domain.model.PlaybackContext
 import com.musicapp.player.core.domain.model.Playlist
 import com.musicapp.player.core.domain.model.Track
@@ -870,6 +871,20 @@ class TracksViewModelTest {
         assertEquals(0, syncController.fullSyncCalls)
     }
 
+    @Test
+    fun `unavailable tracks are not displayed in track list`() = runTest(dispatcher) {
+        val available = track(1, "Available Track")
+        val unavailable = track(2, "Disconnected Track").copy(availability = Availability.TEMPORARILY_UNAVAILABLE)
+        val repository = FakeMediaLibraryRepository(initialTracks = listOf(available, unavailable))
+        val viewModel = subject(repository = repository)
+        collectState(viewModel)
+
+        val tracks = viewModel.uiState.value.tracks
+        assertEquals(1, tracks.size)
+        assertEquals(available.id, tracks.first().id)
+    }
+
+
     private fun track(
         id: Long,
         title: String,
@@ -967,7 +982,7 @@ private class RestartingMediaLibraryRepository(
     val secondCollectionStarted = CompletableDeferred<Unit>()
     val secondCollectionStopped = CompletableDeferred<Unit>()
 
-    override fun observeTracks(includeHidden: Boolean): Flow<List<Track>> =
+    override fun observeTracks(includeHidden: Boolean, includeUnavailable: Boolean): Flow<List<Track>> =
         flow {
             when (collectionCount.incrementAndGet()) {
                 1 -> {

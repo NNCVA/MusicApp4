@@ -86,13 +86,21 @@ fun ScanMusicScreenRoute(
     var permissionDialogVisible by rememberSaveable { mutableStateOf(false) }
     var scanAfterPermission by rememberSaveable { mutableStateOf(false) }
     var folderKindName by rememberSaveable { mutableStateOf(PathRuleKind.INCLUDE.name) }
+    val unsupportedStorageMessage = stringResource(R.string.scan_folder_unsupported_storage)
     val folderLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
     ) { uri ->
         uri ?: return@rememberLauncherForActivityResult
         context.persistTreePermission(uri)
-        uri.toScanFolder(context)?.let { folder ->
+        val folder = ScanFolderResolver.resolve(context, uri)
+        if (folder != null) {
             viewModel.addFolder(folder.volumeName, folder.directory, PathRuleKind.valueOf(folderKindName))
+        } else {
+            android.widget.Toast.makeText(
+                context,
+                unsupportedStorageMessage,
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
         }
     }
 
@@ -447,31 +455,6 @@ private fun PermissionExplanationDialog(
     )
 }
 
-private data class ScanFolderSelection(
-    val volumeName: String,
-    val directory: String,
-)
-
-private fun Uri.toScanFolder(context: Context): ScanFolderSelection? {
-    val documentId = runCatching { DocumentsContract.getTreeDocumentId(this) }.getOrNull()
-        ?: return null
-    val separator = documentId.indexOf(':')
-    if (separator <= 0) return null
-    val storageId = documentId.substring(0, separator)
-    val directory = documentId.substring(separator + 1).replace('\\', '/').trim('/')
-    val volumeName = when {
-        storageId.equals("primary", ignoreCase = true) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
-            MediaStore.VOLUME_EXTERNAL_PRIMARY
-        storageId.equals("primary", ignoreCase = true) -> "external"
-        else -> storageId
-    }
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-        volumeName !in MediaStore.getExternalVolumeNames(context)
-    ) {
-        return null
-    }
-    return ScanFolderSelection(volumeName, directory)
-}
 
 private fun Context.persistTreePermission(uri: Uri) {
     runCatching {

@@ -12,7 +12,7 @@ object PathRuleMatcher {
         rules: Collection<PathRule>,
     ): Boolean {
         val normalizedPath = normalizePath(path)
-        val volumeRules = rules.filter { it.volumeName == volumeName }
+        val volumeRules = rules.filter { it.volumeName.equals(volumeName, ignoreCase = true) }
 
         if (volumeRules.any { it.kind == PathRuleKind.EXCLUDE && contains(it.directory, normalizedPath) }) {
             return false

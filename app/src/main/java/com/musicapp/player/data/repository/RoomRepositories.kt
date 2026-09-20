@@ -40,9 +40,12 @@ class RoomMediaLibraryRepository @Inject constructor(
     private val pathRuleDao = database.pathRuleDao()
     private val snapshotDao = database.playbackSnapshotDao()
 
-    override fun observeTracks(includeHidden: Boolean): Flow<List<Track>> =
-        (if (includeHidden) trackDao.observeAll() else trackDao.observeVisible())
-            .map { entities -> entities.map { it.toDomain() } }
+    override fun observeTracks(includeHidden: Boolean, includeUnavailable: Boolean): Flow<List<Track>> =
+        when {
+            includeHidden -> trackDao.observeAll()
+            includeUnavailable -> trackDao.observeVisibleWithUnavailable()
+            else -> trackDao.observeVisible()
+        }.map { entities -> entities.map { it.toDomain() } }
 
     override fun observeAlbumTracks(albumId: AlbumId): Flow<List<Track>> =
         trackDao.observeAlbumTracks(albumId.volumeName, albumId.mediaStoreId)

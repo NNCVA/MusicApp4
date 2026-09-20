@@ -420,7 +420,7 @@ class PlayerViewModelTest {
         }
         val source = MutableStateFlow<List<Track>>(counted)
         val repository = object : MediaLibraryRepository by FakeMediaLibraryRepository() {
-            override fun observeTracks(includeHidden: Boolean) = source
+            override fun observeTracks(includeHidden: Boolean, includeUnavailable: Boolean) = source
         }
         val controller = RecordingController(PlaybackControllerState(
             currentTrackId = library.first().id,
@@ -450,7 +450,7 @@ class PlayerViewModelTest {
         val second = track(2)
         val source = MutableStateFlow(listOf(first, second))
         val repository = object : MediaLibraryRepository by FakeMediaLibraryRepository() {
-            override fun observeTracks(includeHidden: Boolean) = source
+            override fun observeTracks(includeHidden: Boolean, includeUnavailable: Boolean) = source
         }
         val artworkRequests = mutableListOf<Track>()
         val controller = RecordingController(PlaybackControllerState(
