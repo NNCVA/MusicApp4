@@ -6,8 +6,8 @@ Android Runtime 集成测试 = 在真实 Android 运行时的设备或模拟器�
 
 | 层级 | 目录 | 适用范围 | 运行方式 |
 |---|---|---|---|
-| 纯逻辑 JVM 单测 | `app/src/test/java` | 领域规则、状态机、队列策略、歌词解析、格式化、ViewModel、图形策略及不需要真实 Android 环境的确定性业务逻辑 | `:app:testDebugUnitTest` |
-| Robolectric 平台适配测试 | `app/src/test/java` | 需要 `Context`、权限、MediaStore 协议解析、图片管道或 Android API 模拟的适配逻辑 | `:app:testDebugUnitTest`，使用 `RobolectricTestRunner` |
+| 纯逻辑 JVM 单测 | `app/src/test/java` | 领域规则、状态机、队列策略（如 `PlaybackQueueCoordinator` 模式切换零卡顿与自动纠偏）、路径规则大小写匹配（`PathRuleMatcher`）、歌词解析、格式化、ViewModel 同步状态机（如 `TracksViewModel` 静默全量刷新反馈与 `PlaylistDetailViewModel` 离线防呆拦截）及不需要真实 Android 环境的确定性业务逻辑 | `:app:testDebugUnitTest` |
+| Robolectric 平台适配测试 | `app/src/test/java` | 需要 `Context`、权限、MediaStore 协议解析、SAF 外置卷与 StorageManager 映射解析（`ScanFolderResolver`）、图片管道或 Android API 模拟的适配逻辑 | `:app:testDebugUnitTest`，使用 `RobolectricTestRunner` |
 | Android Runtime 集成测试 | `app/src/androidTest/java` | Room 数据库/迁移/Repository、媒体库同步、Hilt 依赖图、MediaLibraryService、真实资源启动、以及 Compose UI 交互/手势与无障碍语义树验证 | `AndroidJUnit4`，通过 `:app:connectedDebugAndroidTest` |
 
 `src/test` 不以覆盖 Android Runtime 为目标，也不把 Room/Hilt/Service 的真实行为强行放回 Robolectric。设备、视觉与完整交互验收仍由人工执行。

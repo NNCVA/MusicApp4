@@ -57,3 +57,43 @@
 - 二级详情页严禁承载全局扫描等一级管理入口，详情路由严禁暴露或透传扫描回调。
 - 实体不存在或从已就绪媒体库中移除时，对齐 `AlbumDetailScreen` 展示全屏不可用（Unavailable）占位与返回键。
 - 详情页行动栏必须增加曲目非空门控，空态时仅呈现纯文本说明与指引，消除“0 首播放全部”的不可点击占位。
+
+## 2026-09-15：播放模式切换触发 ExoPlayer 物理时间线重建导致音频卡顿
+
+### 现象
+
+在正常播放音乐时，用户点击切换播放循环模式（列表循环/单曲循环/随机播放），音频流会出现明显的卡顿、断音并伴随短暂重新缓冲。
+
+### 根因
+
+早期实现将播放模式变化直接映射到底层 `player.setMediaItems(...)` 的物理顺序重建。重设媒体项会导致 ExoPlayer 解码器重置并触发重新准备（prepare），破坏了音频解码流水线的连续性。
+
+### 修正与规避
+
+- **物理队列与逻辑播放顺序解耦**：底层 ExoPlayer 始终保持物理原始队列不变，随机序列在业务协调层（`PlaybackQueueCoordinator`）维护逻辑序列映射（`stableShuffleSequence`）。
+- **自动纠偏与索引映射**：在自动切歌或手动切歌时，由协调层通过 `indexOfFirst` 计算当前或目标曲目在 ExoPlayer 物理队列中的索引并执行平滑切换；ExoPlayer 线性前进若偏离随机逻辑序列，触发过渡自动纠偏。
+- **模式切换零卡顿**：切换播放模式仅更新协调层状态与逻辑指针，不重新初始化 ExoPlayer 的 MediaItem 时间线，确保音频播放丝滑无阻断。
+
+### 验证
+
+通过 `PlaybackQueueCoordinatorTest`（覆盖切歌模式保持物理索引、自动切歌纠偏、单曲循环维持）与真机实际试听验证。
+
+## 2026-09-18：SAF 外置存储/U 盘路径解析与 MediaStore 卷名大小写失配
+
+### 现象
+
+用户通过 SAF（Storage Access Framework）选择插入的 SD 卡或外置 U 盘作为扫描目录时，应用提示找不到曲目或路径匹配失败。
+
+### 根因
+
+SAF 返回的 `treeDocumentId` 形如 `1234-5678:Music`，其中存储 ID（UUID）在不同 Android 系统版本和设备厂商下大小写各异；而 MediaStore 中的外部卷名在 Android 10+ 可能是小写十六进制字符串或特定卷名，直接将 SAF documentId 作为路径前缀导致与 MediaStore 查询结果或路径规则匹配器（`PathRuleMatcher`）无法比对成功。
+
+### 修正与规避
+
+- **专用卷解析器 `ScanFolderResolver`**：封装对 SAF treeDocumentId 的解析逻辑，针对 primary 内部存储与 secondary 外置卷进行区分处理；通过 `StorageManager.storageVolumes` 与 `MediaStore.getExternalVolumeNames` 完成外置卷 UUID 与 MediaStore 卷名的双向小写归一化映射。
+- **路径规则大小写不敏感匹配**：在 `PathRuleMatcher` 中全面启用大小写不敏感比对，容忍 FAT32/exFAT 文件系统和 MediaStore 卷名的大小写差异。
+- **不受支持存储友好拦截**：若选择的外部卷未被系统 MediaStore 索引支持，弹出友好 Toast（`scan_folder_unsupported_storage`）进行拦截提示，避免用户误解。
+
+### 验证
+
+通过 `ScanFolderResolverTest`（覆盖内部卷、外置卷 UUID 匹配、未知卷拦截）和 `PathRuleMatcherTest` 单测及实体机 U 盘插入实测验证。
