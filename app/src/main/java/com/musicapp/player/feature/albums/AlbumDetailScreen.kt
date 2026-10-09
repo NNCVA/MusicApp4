@@ -66,7 +66,9 @@ import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.libraryLoadingBackground
 import com.musicapp.player.core.designsystem.component.EntityArtworkImage
+import com.musicapp.player.core.designsystem.component.LocalCustomBackgroundEnabled
 import com.musicapp.player.core.designsystem.component.QualityBadge
 import com.musicapp.player.core.designsystem.component.SearchableTopBar
 import com.musicapp.player.core.designsystem.component.TextInputDialog
@@ -174,9 +176,9 @@ fun AlbumDetailScreen(
 
     val topInsetPadding = contentInsets.asPaddingValues().calculateTopPadding()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().libraryLoadingBackground(isLoaded = state.isLoaded)) {
         // Ambient Hero blurred background behind transparent status bar
-        if (state.representativeTrack != null && state.albumId != null) {
+        if (state.isLoaded && !LocalCustomBackgroundEnabled.current && state.representativeTrack != null && state.albumId != null) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -226,7 +228,9 @@ fun AlbumDetailScreen(
             )
 
             // Main scrollable detail list
-            if (state.isUnavailable) {
+            if (!state.isLoaded) {
+                Spacer(modifier = Modifier.fillMaxWidth().weight(1f))
+            } else if (state.isUnavailable) {
                 EmptyState(
                     modifier = Modifier
                         .fillMaxWidth()

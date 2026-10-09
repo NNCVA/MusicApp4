@@ -72,6 +72,7 @@ import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.libraryLoadingBackground
 import com.musicapp.player.core.designsystem.component.EntityArtworkImage
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
@@ -152,9 +153,9 @@ private fun AlbumsScreen(
         AlbumSortField.TITLE,
         AlbumSortField.ARTIST,
     )
-    val gutterMode = remember(state.albums, isTextSort, state.sort.direction, sections, sectionPositions) {
+    val gutterMode = remember(state.isLoaded, state.albums, isTextSort, state.sort.direction, sections, sectionPositions) {
         when {
-            state.albums.isEmpty() -> GutterMode.Hidden
+            !state.isLoaded || state.albums.isEmpty() -> GutterMode.Hidden
             isTextSort ->
                 GutterMode.Index(
                     sortOrder = albumSortDirectionToSectionOrder(state.sort.direction),
@@ -172,7 +173,7 @@ private fun AlbumsScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().libraryLoadingBackground(isLoaded = state.isLoaded)) {
         Column(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
@@ -188,7 +189,9 @@ private fun AlbumsScreen(
                     )
                 },
             )
-            if (state.isLoaded && state.albums.isEmpty()) {
+            if (!state.isLoaded) {
+                Spacer(modifier = Modifier.fillMaxWidth().weight(1f))
+            } else if (state.albums.isEmpty()) {
                 EmptyState(
                     modifier = Modifier.weight(1f)
                         .padding(horizontal = dimensions.contentHorizontalPadding)

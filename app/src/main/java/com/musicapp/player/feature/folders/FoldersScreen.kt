@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.libraryLoadingBackground
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.InfoRow
 import com.musicapp.player.core.designsystem.component.RightGutterOverlay
@@ -122,8 +124,8 @@ private fun FoldersScreen(
             listState.canScrollForward || listState.canScrollBackward
         }
     }
-    val gutterMode = remember(displayFolders, canScroll, selectedSection, sections, sectionPositions) {
-        if (displayFolders.isEmpty() || !canScroll) {
+    val gutterMode = remember(state.isLoaded, displayFolders, canScroll, selectedSection, sections, sectionPositions) {
+        if (!state.isLoaded || displayFolders.isEmpty() || !canScroll) {
             GutterMode.Hidden
         } else {
             GutterMode.Index(
@@ -142,7 +144,7 @@ private fun FoldersScreen(
     }
     val hasContent = state.volumes.isNotEmpty() || state.musicFolders.isNotEmpty()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().libraryLoadingBackground(isLoaded = state.isLoaded)) {
         Column(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
@@ -151,7 +153,8 @@ private fun FoldersScreen(
                 openDrawer = openDrawer,
             )
             when {
-                state.isLoaded && !hasContent ->
+                !state.isLoaded -> Spacer(modifier = Modifier.fillMaxWidth().weight(1f))
+                !hasContent ->
                     EmptyState(
                         modifier = Modifier.weight(1f)
                             .padding(horizontal = dimensions.contentHorizontalPadding)

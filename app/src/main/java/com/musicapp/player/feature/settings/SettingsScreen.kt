@@ -1,6 +1,9 @@
 package com.musicapp.player.feature.settings
 
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.graphicsLayer
@@ -66,6 +69,7 @@ import com.musicapp.player.core.domain.model.ColorSource
 import com.musicapp.player.core.domain.model.PresetTheme
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.data.sync.LibrarySyncState
+import com.musicapp.player.data.background.BackgroundState
 import com.musicapp.player.feature.category.CategoryNavigationAction
 import com.musicapp.player.feature.category.CategoryHeader
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -86,6 +90,9 @@ fun SettingsScreenRoute(
     bottomPadding: Dp = 0.dp,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) viewModel.importBackgroundImage(uri)
+    }
     SettingsScreen(
         state = state,
         contentInsets = contentInsets,
@@ -106,6 +113,14 @@ fun SettingsScreenRoute(
         onConfirmAction = viewModel::confirmAction,
         onAcknowledgeMessage = viewModel::acknowledgeMessage,
         onShowMessage = onShowMessage,
+        onChooseBackground = {
+            try {
+                imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            } catch (_: RuntimeException) {
+                viewModel.backgroundSelectionFailed()
+            }
+        },
+        onDeleteBackground = viewModel::deleteBackgroundImage,
     )
 }
 
@@ -129,6 +144,8 @@ private fun SettingsScreen(
     onConfirmAction: () -> Unit,
     onAcknowledgeMessage: () -> Unit,
     onShowMessage: (Int) -> Unit,
+    onChooseBackground: () -> Unit,
+    onDeleteBackground: () -> Unit,
     bottomPadding: Dp = 0.dp,
 ) {
     val dimensions = MusicTheme.dimensions
@@ -181,7 +198,15 @@ private fun SettingsScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spaceLarge),
             ) {
-                item { AppearanceSettings(state.settings, onColorSourceChange, onPresetThemeChange, onThemeModeChange) }
+                item {
+                    AppearanceSettings(
+                        state.settings, onColorSourceChange, onPresetThemeChange, onThemeModeChange,
+                        background = state.background,
+                        backgroundActionsEnabled = !state.isWorking,
+                        onChooseBackground = onChooseBackground,
+                        onDeleteBackground = onDeleteBackground,
+                    )
+                }
                 item { LanguageSettings(state.settings.appLanguage, onLanguageChange) }
                 item {
                     PlayerSettings(
@@ -223,6 +248,10 @@ internal fun AppearanceSettings(
     onPresetThemeChange: (PresetTheme) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     supportsDynamicColor: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+    background: BackgroundState = BackgroundState(),
+    backgroundActionsEnabled: Boolean = true,
+    onChooseBackground: () -> Unit = {},
+    onDeleteBackground: () -> Unit = {},
 ) {
     val isDynamicColorActive = settings.colorSource == ColorSource.DYNAMIC && supportsDynamicColor
     val isPresetThemeEnabled = !isDynamicColorActive
@@ -232,6 +261,12 @@ internal fun AppearanceSettings(
         ThemeMode.DARK -> true
     }
     SettingsSection(stringResource(R.string.settings_appearance)) {
+        BackgroundImageSetting(
+            background = background,
+            enabled = backgroundActionsEnabled,
+            onChoose = onChooseBackground,
+            onDelete = onDeleteBackground,
+        )
         ChoiceCardGrid(
             title = stringResource(R.string.settings_theme_mode),
             values = ThemeMode.entries,
@@ -645,6 +680,9 @@ private fun SettingsMessage.labelRes(): Int =
         SettingsMessage.PLAYLISTS_DELETED -> R.string.settings_delete_playlists_done
         SettingsMessage.LIBRARY_REBUILT -> R.string.settings_rebuild_library_done
         SettingsMessage.ACTION_FAILED -> R.string.settings_action_failed
+        SettingsMessage.BACKGROUND_UPDATED -> R.string.settings_background_updated
+        SettingsMessage.BACKGROUND_REMOVED -> R.string.settings_background_removed
+        SettingsMessage.BACKGROUND_IMPORT_FAILED -> R.string.settings_background_import_failed
     }
 
 private fun ColorSource.labelRes() = when (this) {

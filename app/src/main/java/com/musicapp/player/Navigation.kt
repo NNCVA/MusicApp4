@@ -133,6 +133,8 @@ import com.musicapp.player.ui.shell.AppShell
 import com.musicapp.player.ui.shell.LibrarySyncFeedbackDialog
 import com.musicapp.player.ui.shell.WindowLayoutPolicy
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
+import com.musicapp.player.core.designsystem.component.CustomBackgroundHost
+import com.musicapp.player.theme.ProvideAeroCardTransparency
 import com.musicapp.player.ui.sidebar.SidebarNavigation
 import com.musicapp.player.ui.sidebar.nextSidebarMode
 import kotlinx.coroutines.launch
@@ -158,6 +160,8 @@ fun MainNavigation(
     onRetryPermission: () -> Unit,
     onOpenPermissionSettings: () -> Unit,
     onOpenApplicationSettings: () -> Unit,
+    backgroundImagePath: String? = null,
+    onBackgroundImageError: (String) -> Unit = {},
 ) {
     var encodedSnapshot by rememberSaveable {
         mutableStateOf(NavigationState.initial().snapshot().encode())
@@ -231,10 +235,11 @@ fun MainNavigation(
 
     val currentTopRoute = navigationState.currentBackStack.lastOrNull()
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MusicTheme.colors.background),
+    CustomBackgroundHost(
+        imagePath = backgroundImagePath,
+        onImageError = onBackgroundImageError,
+        enabled = currentTopRoute != EqualizerRoute,
+        modifier = Modifier.fillMaxSize(),
     ) {
         val windowLayoutPolicy = WindowLayoutPolicy.forWidth(maxWidth)
         AppShell(
@@ -666,13 +671,15 @@ fun MainNavigation(
                 modifier = Modifier.fillMaxSize(),
                 color = MusicTheme.colors.background,
             ) {
-                EqualizerScreenRoute(
-                    viewModel = viewModel<EqualizerViewModel>(),
-                    contentInsets = WindowInsets.safeDrawing,
-                    policy = windowLayoutPolicy,
-                    onBack = { showEqualizer = false },
-                    bottomPadding = 0.dp,
-                )
+                ProvideAeroCardTransparency(enabled = false) {
+                    EqualizerScreenRoute(
+                        viewModel = viewModel<EqualizerViewModel>(),
+                        contentInsets = WindowInsets.safeDrawing,
+                        policy = windowLayoutPolicy,
+                        onBack = { showEqualizer = false },
+                        bottomPadding = 0.dp,
+                    )
+                }
             }
         }
         BackHandler(enabled = showEqualizer) {

@@ -1,5 +1,6 @@
 package com.musicapp.player.feature.settings
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicapp.player.core.domain.model.AeroMode
@@ -14,6 +15,8 @@ import com.musicapp.player.core.domain.model.ScanMode
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.data.repository.MediaLibraryRepository
 import com.musicapp.player.data.settings.SettingsRepository
+import com.musicapp.player.data.background.BackgroundRepository
+import com.musicapp.player.data.background.BackgroundState
 import com.musicapp.player.data.sort.InMemorySortPreferencesRepository
 import com.musicapp.player.data.sort.SortPreferencesRepository
 import com.musicapp.player.data.sync.LibrarySyncState
@@ -49,6 +52,9 @@ enum class SettingsMessage {
     PLAYLISTS_DELETED,
     LIBRARY_REBUILT,
     ACTION_FAILED,
+    BACKGROUND_UPDATED,
+    BACKGROUND_REMOVED,
+    BACKGROUND_IMPORT_FAILED,
 }
 
 data class SettingsUiState(
@@ -61,6 +67,7 @@ data class SettingsUiState(
     val confirmation: SettingsConfirmation? = null,
     val message: SettingsMessage? = null,
     val isWorking: Boolean = false,
+    val background: BackgroundState = BackgroundState(),
 ) {
     val pendingSyncFeedback: PendingLibrarySyncFeedback?
         get() = syncState.pendingFeedback
@@ -74,6 +81,7 @@ class SettingsViewModel @Inject constructor(
     private val dataManagementUseCase: DataManagementUseCase,
     private val syncController: SettingsSyncController,
     private val sortPreferencesRepository: SortPreferencesRepository,
+    private val backgroundRepository: BackgroundRepository,
     private val equalizerRepository: EqualizerRepository = InMemoryEqualizerRepository(),
 ) : ViewModel() {
     constructor(
@@ -82,6 +90,7 @@ class SettingsViewModel @Inject constructor(
         pathRuleChangeCoordinator: PathRuleChangeCoordinator,
         dataManagementUseCase: DataManagementUseCase,
         syncController: SettingsSyncController,
+        backgroundRepository: BackgroundRepository,
     ) : this(
         settingsRepository = settingsRepository,
         mediaLibraryRepository = mediaLibraryRepository,
@@ -90,6 +99,7 @@ class SettingsViewModel @Inject constructor(
         syncController = syncController,
         sortPreferencesRepository = InMemorySortPreferencesRepository(),
         equalizerRepository = InMemoryEqualizerRepository(),
+        backgroundRepository = backgroundRepository,
     )
 
     private val controls = MutableStateFlow(SettingsControls())
@@ -108,7 +118,8 @@ class SettingsViewModel @Inject constructor(
                 controls,
                 ::Pair,
             ),
-        ) { settings, eqSettings, (pathRules, pathState), (syncState, controls) ->
+            backgroundRepository.state,
+        ) { settings, eqSettings, (pathRules, pathState), (syncState, controls), background ->
             SettingsUiState(
                 settings = settings,
                 equalizerSettings = eqSettings,
@@ -119,6 +130,7 @@ class SettingsViewModel @Inject constructor(
                 confirmation = controls.confirmation,
                 message = controls.message,
                 isWorking = controls.isWorking,
+                background = background,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -126,11 +138,47 @@ class SettingsViewModel @Inject constructor(
             initialValue = SettingsUiState(
                 settings = settingsRepository.settings.value,
                 equalizerSettings = equalizerRepository.settings.value,
+                background = backgroundRepository.state.value,
             ),
         )
 
     fun setEqualizerEnabled(enabled: Boolean) {
         viewModelScope.launch { equalizerRepository.setEnabled(enabled) }
+    }
+
+    fun importBackgroundImage(uri: Uri) = updateBackground(
+        success = SettingsMessage.BACKGROUND_UPDATED,
+        failure = SettingsMessage.BACKGROUND_IMPORT_FAILED,
+    ) { backgroundRepository.importImage(uri) }
+
+    fun deleteBackgroundImage() = updateBackground(
+        success = SettingsMessage.BACKGROUND_REMOVED,
+        failure = SettingsMessage.ACTION_FAILED,
+    ) { backgroundRepository.deleteImage() }
+
+    fun backgroundSelectionFailed() {
+        controls.value = controls.value.copy(message = SettingsMessage.BACKGROUND_IMPORT_FAILED)
+    }
+
+    private fun updateBackground(
+        success: SettingsMessage,
+        failure: SettingsMessage,
+        action: suspend () -> Unit,
+    ) {
+        if (controls.value.isWorking) return
+        controls.value = controls.value.copy(isWorking = true, message = null)
+        viewModelScope.launch {
+            try {
+                action()
+                controls.value = controls.value.copy(message = success)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                controls.value = controls.value.copy(message = failure)
+            } finally {
+                controls.value = controls.value.copy(isWorking = false)
+            }
+        }
     }
 
     fun setColorSource(value: ColorSource) = updateSetting { settingsRepository.setColorSource(value) }
@@ -189,6 +237,7 @@ class SettingsViewModel @Inject constructor(
                             val scanModeChanged =
                                 settingsRepository.settings.value.scanMode != AppSettings().scanMode
                             settingsRepository.reset()
+                            backgroundRepository.deleteImage()
                             sortPreferencesRepository.reset()
                             if (scanModeChanged) pathRuleChangeCoordinator.markScanPolicyChanged()
                         }

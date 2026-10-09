@@ -156,6 +156,7 @@ dependencies {
 
   // Coil 3 Image Loading Pipeline (Offline / Local-First)
   implementation(libs.coil.compose)
+  implementation(libs.androidx.exifinterface)
 
   // JVM tests
   testImplementation(libs.junit4)

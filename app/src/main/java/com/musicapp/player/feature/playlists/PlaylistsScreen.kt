@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,6 +45,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.libraryLoadingBackground
 import com.musicapp.player.core.designsystem.component.EntityArtworkImage
 import com.musicapp.player.core.designsystem.component.InfoRow
 import com.musicapp.player.core.designsystem.component.MenuIconPalette
@@ -139,6 +141,7 @@ private fun PlaylistsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .libraryLoadingBackground(isLoaded = state.isLoaded)
             .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         CategoryHeader(
@@ -195,7 +198,9 @@ private fun PlaylistsScreen(
                 }
             },
         )
-        if (state.isLoaded && state.playlists.isEmpty()) {
+        if (!state.isLoaded) {
+            Spacer(modifier = Modifier.fillMaxWidth().weight(1f))
+        } else if (state.playlists.isEmpty()) {
             EmptyState(
                 modifier = Modifier
                     .weight(1f)

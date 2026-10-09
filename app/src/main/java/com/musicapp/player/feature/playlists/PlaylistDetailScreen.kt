@@ -90,6 +90,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.ConfirmationDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.libraryLoadingBackground
 import com.musicapp.player.core.designsystem.component.GutterMode
 import com.musicapp.player.core.designsystem.component.ListActionBar
 import com.musicapp.player.core.designsystem.component.MenuIconPalette
@@ -391,7 +392,7 @@ fun PlaylistDetailScreen(
 
     var pageMenuExpanded by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().libraryLoadingBackground(isLoaded = state.isLibraryLoaded)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -536,6 +537,8 @@ fun PlaylistDetailScreen(
                     bottom = dimensions.spaceSmall + dynamicBottomPadding,
                 ),
             ) {
+                if (!state.isLibraryLoaded) return@LazyColumn
+
                 item(key = "playlist_hero_header") {
                     PlaylistHeroHeader(
                         playlist = state.playlist,

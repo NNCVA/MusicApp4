@@ -1,5 +1,8 @@
 package com.musicapp.player.feature.settings
 
+import android.net.Uri
+import com.musicapp.player.data.background.BackgroundRepository
+import com.musicapp.player.data.background.BackgroundState
 import com.musicapp.player.core.domain.model.AeroMode
 import com.musicapp.player.core.domain.model.AppLanguage
 import com.musicapp.player.core.domain.model.AppSettings
@@ -19,6 +22,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+
+internal class FakeBackgroundRepository : BackgroundRepository {
+    override val state = MutableStateFlow(BackgroundState())
+    var deletionFails = false
+    override suspend fun importImage(uri: Uri) {
+        state.value = BackgroundState("/background.png", true)
+    }
+    override suspend fun deleteImage() {
+        check(!deletionFails)
+        state.value = BackgroundState()
+    }
+    override suspend fun markUnavailable(imagePath: String) {
+        if (state.value.imagePath == imagePath) state.value = BackgroundState(hasSelection = true)
+    }
+}
 
 internal class FakeSettingsRepository(
     initialSettings: AppSettings = AppSettings(),

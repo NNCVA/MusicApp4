@@ -160,6 +160,35 @@ class SettingsViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `failed background deletion preserves selection and reports failure`() = runTest(dispatcher) {
+        val fixture = fixture(backgroundScope)
+        fixture.background.state.value = com.musicapp.player.data.background.BackgroundState("/saved.png", true)
+        fixture.background.deletionFails = true
+        val collection = backgroundScope.launch { fixture.viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        fixture.viewModel.deleteBackgroundImage()
+        advanceUntilIdle()
+        assertEquals("/saved.png", fixture.viewModel.uiState.value.background.imagePath)
+        assertEquals(SettingsMessage.ACTION_FAILED, fixture.viewModel.uiState.value.message)
+        assertTrue(!fixture.viewModel.uiState.value.isWorking)
+        collection.cancel()
+    }
+
+    @Test
+    fun `reset settings also removes custom background`() = runTest(dispatcher) {
+        val fixture = fixture(backgroundScope)
+        fixture.background.state.value = com.musicapp.player.data.background.BackgroundState(hasSelection = true)
+        val collection = backgroundScope.launch { fixture.viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        fixture.viewModel.requestConfirmation(SettingsConfirmation.RESET_SETTINGS)
+        fixture.viewModel.confirmAction()
+        advanceUntilIdle()
+        assertTrue(!fixture.viewModel.uiState.value.background.hasSelection)
+        assertEquals(SettingsMessage.SETTINGS_RESET, fixture.viewModel.uiState.value.message)
+        collection.cancel()
+    }
+
     private fun fixture(
         scope: kotlinx.coroutines.CoroutineScope,
         initialSettings: AppSettings = AppSettings(),
@@ -180,6 +209,7 @@ class SettingsViewModelTest {
         val sync = RecordingSettingsSyncController()
         val pathCoordinator = PathRuleChangeCoordinator(media, settings, sync, scope)
         val sortPreferences = FakeSortPreferencesRepository()
+        val background = FakeBackgroundRepository()
         return Fixture(
             viewModel = SettingsViewModel(
                 settingsRepository = settings,
@@ -188,11 +218,13 @@ class SettingsViewModelTest {
                 dataManagementUseCase = DataManagementUseCase(history, playlists, sync),
                 syncController = sync,
                 sortPreferencesRepository = sortPreferences,
+                backgroundRepository = background,
             ),
             media = media,
             history = history,
             playlists = playlists,
             sortPreferences = sortPreferences,
+            background = background,
         )
     }
 
@@ -213,5 +245,6 @@ class SettingsViewModelTest {
         val history: FakeHistoryRepository,
         val playlists: FakePlaylistRepository,
         val sortPreferences: FakeSortPreferencesRepository,
+        val background: FakeBackgroundRepository,
     )
 }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -69,6 +70,7 @@ import com.musicapp.player.core.designsystem.component.SelectionBarAction
 import com.musicapp.player.core.designsystem.component.SelectionBottomBar
 import com.musicapp.player.core.designsystem.component.TrackInfoViewer
 import com.musicapp.player.core.designsystem.component.TrackRow
+import com.musicapp.player.core.designsystem.component.libraryLoadingBackground
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.domain.model.AlbumId
@@ -304,7 +306,7 @@ fun SearchScreen(
             bottomPadding
         }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().libraryLoadingBackground(isLoaded = state.isLoaded)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -400,7 +402,9 @@ fun SearchScreen(
             }
 
             // 2. 内容区域：未输入或无匹配时展示纯插画空态，有匹配时展示吸顶操作栏与歌曲列表
-            if (!hasContent) {
+            if (!state.isLoaded) {
+                Spacer(modifier = Modifier.fillMaxWidth().weight(1f))
+            } else if (!hasContent) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

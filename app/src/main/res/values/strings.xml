@@ -367,6 +367,14 @@
         <item quantity="other">Played %1$d times</item>
     </plurals>
     <string name="settings_appearance">Main interface</string>
+    <string name="settings_background_choose">Choose background image</string>
+    <string name="settings_background_default">Default background</string>
+    <string name="settings_background_selected">Custom image selected</string>
+    <string name="settings_background_unavailable">Image unavailable. Choose another image or delete it.</string>
+    <string name="settings_background_delete">Delete background image</string>
+    <string name="settings_background_updated">Background image updated</string>
+    <string name="settings_background_removed">Default background restored</string>
+    <string name="settings_background_import_failed">Could not load the image. Check the file and available storage, then try again.</string>
     <string name="settings_color_source">Color source</string>
     <string name="settings_color_dynamic">Material You</string>
     <string name="settings_color_preset">Preset colors</string>

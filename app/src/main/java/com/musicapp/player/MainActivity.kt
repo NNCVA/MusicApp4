@@ -30,6 +30,7 @@ import com.musicapp.player.feature.tracks.TracksViewModel
 import com.musicapp.player.feature.tracks.TracksSyncController
 import com.musicapp.player.data.sync.LibrarySyncCoordinator
 import com.musicapp.player.data.settings.SettingsRepository
+import com.musicapp.player.data.background.BackgroundRepository
 import com.musicapp.player.core.playback.PlaybackControllerFacade
 import com.musicapp.player.media.service.MusicPlaybackService
 import com.musicapp.player.theme.MusicAppTheme
@@ -45,6 +46,7 @@ class MainActivity : AppCompatActivity() {
   @Inject lateinit var tracksSyncController: TracksSyncController
   @Inject lateinit var playbackController: PlaybackControllerFacade
   @Inject lateinit var settingsRepository: SettingsRepository
+  @Inject lateinit var backgroundRepository: BackgroundRepository
   @Inject lateinit var aeroSignalSource: AeroSignalSource
 
   private val tracksViewModel: TracksViewModel by viewModels()
@@ -82,6 +84,7 @@ class MainActivity : AppCompatActivity() {
     setContent {
       val permissionState by mediaPermissionCoordinator.state.collectAsStateWithLifecycle()
       val appSettings by settingsRepository.settings.collectAsStateWithLifecycle()
+      val backgroundState by backgroundRepository.state.collectAsStateWithLifecycle()
       val pendingSyncFeedback by remember {
         tracksSyncController.state.map { it.pendingFeedback }.distinctUntilChanged()
       }.collectAsStateWithLifecycle(null)
@@ -106,6 +109,10 @@ class MainActivity : AppCompatActivity() {
             colorSource = appSettings.colorSource,
             presetTheme = appSettings.presetTheme,
             windowWidthTier = windowWidthTier,
+            backgroundImagePath = backgroundState.imagePath,
+            onBackgroundImageError = { imagePath ->
+              lifecycleScope.launch { backgroundRepository.markUnavailable(imagePath) }
+            },
             pendingFeedback = pendingSyncFeedback,
             onFullExit = ::fullyExitApplication,
             onReturnToDesktop = { moveTaskToBack(true) },

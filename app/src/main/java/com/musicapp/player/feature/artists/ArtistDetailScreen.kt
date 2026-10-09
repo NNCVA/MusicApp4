@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicapp.player.R
 import com.musicapp.player.core.designsystem.component.AddToPlaylistDialog
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.libraryLoadingBackground
 import com.musicapp.player.core.designsystem.component.EntityArtworkImage
 import com.musicapp.player.core.designsystem.component.ListActionBar
 import com.musicapp.player.core.designsystem.component.SearchableTopBar
@@ -151,7 +152,7 @@ internal fun ArtistDetailScreen(
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().libraryLoadingBackground(isLoaded = state.isLoaded),
     ) {
         Column(
             modifier = Modifier
@@ -178,7 +179,9 @@ internal fun ArtistDetailScreen(
                 },
             )
 
-            if (state.isUnavailable) {
+            if (!state.isLoaded) {
+                Spacer(modifier = Modifier.fillMaxWidth().weight(1f))
+            } else if (state.isUnavailable) {
                 EmptyState(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -188,8 +191,6 @@ internal fun ArtistDetailScreen(
                     title = stringResource(R.string.artist_detail_unavailable_title),
                     description = stringResource(R.string.artist_detail_unavailable_description),
                 )
-            } else if (!state.isLoaded) {
-                Spacer(modifier = Modifier.fillMaxWidth().weight(1f))
             } else {
                 LazyColumn(
                     state = listState,

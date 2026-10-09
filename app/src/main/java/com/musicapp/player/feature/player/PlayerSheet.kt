@@ -135,6 +135,8 @@ import com.musicapp.player.core.metadata.AdvancedTrackMetadata
 import com.musicapp.player.core.metadata.ArtworkResult
 import com.musicapp.player.core.playback.timer.formatRemainingTime
 import com.musicapp.player.core.designsystem.component.bounceOverscroll
+import com.musicapp.player.core.designsystem.component.CustomBackgroundSlice
+import com.musicapp.player.core.designsystem.component.LocalCustomBackgroundEnabled
 import com.musicapp.player.core.designsystem.component.rememberBounceOverscrollEffect
 import com.musicapp.player.core.designsystem.motion.PlayerMotionTokens
 import com.musicapp.player.feature.lyrics.LyricsDisplayMode
@@ -144,6 +146,7 @@ import com.musicapp.player.feature.aero.AeroBackground
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
+import com.musicapp.player.theme.ProvideAeroCardTransparency
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import java.util.Locale
@@ -272,6 +275,7 @@ fun PlayerSheet(
 
     val bottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
     val totalCollapsedHeight = dimensions.miniPlayerHeight + bottomInset
+    val customBackgroundEnabled = LocalCustomBackgroundEnabled.current
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val travelPx = with(density) { (maxHeight - totalCollapsedHeight).toPx().coerceAtLeast(1f) }
@@ -353,10 +357,17 @@ fun PlayerSheet(
                 .fillMaxSize()
                 .offsetPx { (1f - progress) * travelPx },
             shape = RectangleShape,
-            color = MusicTheme.colors.surfaceContainer,
-            tonalElevation = dimensions.playerSheetElevation,
+            color = if (customBackgroundEnabled) Color.Transparent else MusicTheme.colors.surfaceContainer,
+            tonalElevation = if (customBackgroundEnabled) 0.dp else dimensions.playerSheetElevation,
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
+                CustomBackgroundSlice(
+                    modifier = Modifier.fillMaxWidth().height(totalCollapsedHeight)
+                        .graphicsLayer { alpha = PlayerLayerAlpha.mini(progress) },
+                    offsetInViewport = {
+                        Offset(0f, ((1f - progress) * travelPx).roundToInt().toFloat())
+                    },
+                )
                 MiniPlayer(
                     state = state,
                     track = track,
@@ -441,21 +452,23 @@ fun PlayerSheet(
             themeMode = playerThemeMode,
             windowWidthTier = windowWidthTier,
         ) {
-            CompositionLocalProvider(
-                LocalContentColor provides MusicTheme.colors.onSurface,
-            ) {
-                if (state.showTrackInfo) {
-                    TrackInfoViewer(track, state.metadata, state.metadataLoading, onDismissInfo)
-                }
-                if (state.showSleepTimer) {
-                    SleepTimerSheet(
-                        sleepTimerStatus = state.sleepTimer,
-                        initialDurationMinutes = state.savedSleepTimerDurationMinutes,
-                        initialExtendToEndOfTrack = state.savedSleepTimerExtendToEndOfTrack,
-                        onStart = onStartSleepTimer,
-                        onStop = onStopSleepTimer,
-                        onDismiss = onDismissSleepTimer,
-                    )
+            ProvideAeroCardTransparency(enabled = false) {
+                CompositionLocalProvider(
+                    LocalContentColor provides MusicTheme.colors.onSurface,
+                ) {
+                    if (state.showTrackInfo) {
+                        TrackInfoViewer(track, state.metadata, state.metadataLoading, onDismissInfo)
+                    }
+                    if (state.showSleepTimer) {
+                        SleepTimerSheet(
+                            sleepTimerStatus = state.sleepTimer,
+                            initialDurationMinutes = state.savedSleepTimerDurationMinutes,
+                            initialExtendToEndOfTrack = state.savedSleepTimerExtendToEndOfTrack,
+                            onStart = onStartSleepTimer,
+                            onStop = onStopSleepTimer,
+                            onDismiss = onDismissSleepTimer,
+                        )
+                    }
                 }
             }
         }

@@ -52,6 +52,7 @@ import com.musicapp.player.core.designsystem.component.AppDropdownMenu
 import com.musicapp.player.core.designsystem.component.AppDropdownMenuItem
 import com.musicapp.player.core.designsystem.component.BareIconButton
 import com.musicapp.player.core.designsystem.component.EmptyState
+import com.musicapp.player.core.designsystem.component.libraryLoadingBackground
 import com.musicapp.player.core.designsystem.component.InfoRow
 import com.musicapp.player.core.designsystem.component.LockScrollOnChange
 import com.musicapp.player.core.designsystem.component.ResetScrollOnChange
@@ -221,7 +222,7 @@ private fun FolderDetailScreen(
     val selectionBarHeight = dimensions.minimumTouchTarget
     val dynamicBottomPadding = bottomPadding + if (state.isSelectionMode) selectionBarHeight else 0.dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().libraryLoadingBackground(isLoaded = state.isLoaded)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -234,7 +235,7 @@ private fun FolderDetailScreen(
                 onOpenSearch = null,
             )
 
-            if (hasItems) {
+            if (state.isLoaded && hasItems) {
                 if (state.directTracks.isNotEmpty()) {
                     var sortMenuExpanded by remember { mutableStateOf(false) }
                     ListActionBar(
@@ -295,7 +296,9 @@ private fun FolderDetailScreen(
                 }
             }
 
-            if (state.isLoaded && !hasItems) {
+            if (!state.isLoaded) {
+                Spacer(modifier = Modifier.fillMaxWidth().weight(1f))
+            } else if (!hasItems) {
                 EmptyState(
                     modifier = Modifier
                         .weight(1f)
