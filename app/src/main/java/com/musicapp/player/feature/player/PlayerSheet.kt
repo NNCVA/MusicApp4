@@ -94,6 +94,7 @@ import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
@@ -146,6 +147,7 @@ import com.musicapp.player.feature.aero.AeroBackground
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicTheme
 import com.musicapp.player.theme.MusicWindowWidthTier
+import com.musicapp.player.theme.AERO_CARD_CONTAINER_ALPHA
 import com.musicapp.player.theme.ProvideAeroCardTransparency
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -276,6 +278,11 @@ fun PlayerSheet(
     val bottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
     val totalCollapsedHeight = dimensions.miniPlayerHeight + bottomInset
     val customBackgroundEnabled = LocalCustomBackgroundEnabled.current
+    val isDarkTheme = MusicTheme.colors.background.luminance() < 0.5f
+    val miniPlayerOverlayColor = resolveMiniPlayerOverlayColor(
+        customBackgroundEnabled = customBackgroundEnabled,
+        isDarkTheme = isDarkTheme,
+    )
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val travelPx = with(density) { (maxHeight - totalCollapsedHeight).toPx().coerceAtLeast(1f) }
@@ -368,6 +375,15 @@ fun PlayerSheet(
                         Offset(0f, ((1f - progress) * travelPx).roundToInt().toFloat())
                     },
                 )
+                if (miniPlayerOverlayColor != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(totalCollapsedHeight)
+                            .graphicsLayer { alpha = PlayerLayerAlpha.mini(progress) }
+                            .background(miniPlayerOverlayColor),
+                    )
+                }
                 CompositionLocalProvider(
                     LocalContentColor provides MusicTheme.colors.onSurface,
                 ) {
@@ -554,6 +570,20 @@ private fun rememberArtworkDiscTransition(
         transitionId = transitionId,
     )
 }
+
+internal fun resolveMiniPlayerOverlayColor(
+    customBackgroundEnabled: Boolean,
+    isDarkTheme: Boolean,
+): Color? =
+    if (customBackgroundEnabled) {
+        if (isDarkTheme) {
+            Color.Black.copy(alpha = AERO_CARD_CONTAINER_ALPHA)
+        } else {
+            Color.White.copy(alpha = AERO_CARD_CONTAINER_ALPHA)
+        }
+    } else {
+        null
+    }
 
 private fun Modifier.offsetPx(y: () -> Float): Modifier =
     this.offset { IntOffset(0, y().roundToInt()) }

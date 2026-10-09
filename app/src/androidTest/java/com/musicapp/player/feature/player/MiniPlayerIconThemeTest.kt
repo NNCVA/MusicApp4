@@ -5,6 +5,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
@@ -15,6 +16,7 @@ import com.musicapp.player.core.domain.model.AlbumId
 import com.musicapp.player.core.domain.model.ThemeMode
 import com.musicapp.player.core.domain.model.Track
 import com.musicapp.player.core.domain.model.TrackId
+import com.musicapp.player.theme.AERO_CARD_CONTAINER_ALPHA
 import com.musicapp.player.theme.MusicAppTheme
 import com.musicapp.player.theme.MusicTheme
 import org.junit.Assert.assertEquals
@@ -113,5 +115,37 @@ class MiniPlayerIconThemeTest {
         }
 
         assertEquals(expectedOnSurfaceDark, capturedContentColorDark)
+    }
+
+    @Test
+    fun miniPlayer_withCustomBackground_resolvesCorrectOverlayInLightTheme() {
+        var lightOverlay: Color? = null
+
+        composeRule.setContent {
+            MusicAppTheme(themeMode = ThemeMode.LIGHT) {
+                val isDark = MusicTheme.colors.background.luminance() < 0.5f
+                lightOverlay = resolveMiniPlayerOverlayColor(
+                    customBackgroundEnabled = true,
+                    isDarkTheme = isDark,
+                )
+            }
+        }
+        assertEquals(Color.White.copy(alpha = AERO_CARD_CONTAINER_ALPHA), lightOverlay)
+    }
+
+    @Test
+    fun miniPlayer_withCustomBackground_resolvesCorrectOverlayInDarkTheme() {
+        var darkOverlay: Color? = null
+
+        composeRule.setContent {
+            MusicAppTheme(themeMode = ThemeMode.DARK) {
+                val isDark = MusicTheme.colors.background.luminance() < 0.5f
+                darkOverlay = resolveMiniPlayerOverlayColor(
+                    customBackgroundEnabled = true,
+                    isDarkTheme = isDark,
+                )
+            }
+        }
+        assertEquals(Color.Black.copy(alpha = AERO_CARD_CONTAINER_ALPHA), darkOverlay)
     }
 }
