@@ -368,26 +368,30 @@ fun PlayerSheet(
                         Offset(0f, ((1f - progress) * travelPx).roundToInt().toFloat())
                     },
                 )
-                MiniPlayer(
-                    state = state,
-                    track = track,
-                    isVisible = PlayerLayerAlpha.mini(progress) > 0f,
-                    onExpand = {
-                        animateSheetTo(1f, 0f)
-                    },
-                    onTogglePlayback = onTogglePlayback,
-                    onOpenQueue = {
-                        onPageChanged(FullPlayerPage.QUEUE)
-                        animateSheetTo(1f, 0f)
-                    },
-                    modifier = Modifier
-                        .graphicsLayer { alpha = PlayerLayerAlpha.mini(progress) }
-                        .draggable(
-                            state = miniDragState,
-                            orientation = Orientation.Vertical,
-                            onDragStopped = { velocityY -> settleSheet(velocityY) },
-                        ),
-                )
+                CompositionLocalProvider(
+                    LocalContentColor provides MusicTheme.colors.onSurface,
+                ) {
+                    MiniPlayer(
+                        state = state,
+                        track = track,
+                        isVisible = PlayerLayerAlpha.mini(progress) > 0f,
+                        onExpand = {
+                            animateSheetTo(1f, 0f)
+                        },
+                        onTogglePlayback = onTogglePlayback,
+                        onOpenQueue = {
+                            onPageChanged(FullPlayerPage.QUEUE)
+                            animateSheetTo(1f, 0f)
+                        },
+                        modifier = Modifier
+                            .graphicsLayer { alpha = PlayerLayerAlpha.mini(progress) }
+                            .draggable(
+                                state = miniDragState,
+                                orientation = Orientation.Vertical,
+                                onDragStopped = { velocityY -> settleSheet(velocityY) },
+                            ),
+                    )
+                }
                 if (isContentMounted || progress > 0f) {
                     MusicAppTheme(
                         presetTheme = presetTheme,
@@ -555,7 +559,7 @@ private fun Modifier.offsetPx(y: () -> Float): Modifier =
     this.offset { IntOffset(0, y().roundToInt()) }
 
 @Composable
-private fun MiniPlayer(
+internal fun MiniPlayer(
     state: PlayerUiState,
     track: Track,
     isVisible: Boolean,
@@ -607,6 +611,7 @@ private fun MiniPlayer(
             Icon(
                 painter = painterResource(if (state.isPlaying) R.drawable.ic_playback_pause else R.drawable.ic_playback_play),
                 contentDescription = playbackDescription,
+                tint = MusicTheme.colors.onSurface,
                 modifier = Modifier.size(dimensions.spaceLarge),
             )
         }
@@ -617,6 +622,7 @@ private fun MiniPlayer(
             Icon(
                 painter = painterResource(R.drawable.ic_common_view_list),
                 contentDescription = stringResource(R.string.playback_queue),
+                tint = MusicTheme.colors.onSurface,
                 modifier = Modifier.size(dimensions.spaceLarge),
             )
         }
