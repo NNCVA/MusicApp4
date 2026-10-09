@@ -191,7 +191,7 @@ private fun AboutAppHeader(
     ) {
         Surface(
             shape = MusicTheme.shapes.medium,
-            color = MusicTheme.colors.surfaceContainerLowest,
+            color = Color.White,
             shadowElevation = 2.dp,
             modifier = Modifier.size(72.dp),
         ) {
