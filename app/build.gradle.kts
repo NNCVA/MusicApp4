@@ -44,8 +44,8 @@ android {
         applicationId = "com.musicapp4.player"
         minSdk = 26
         targetSdk = 37
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3.0"
         testInstrumentationRunner = "com.musicapp.player.HiltTestRunner"
     }
 
