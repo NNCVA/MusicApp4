@@ -368,6 +368,31 @@ fun PlayerSheet(
             tonalElevation = if (customBackgroundEnabled) 0.dp else dimensions.playerSheetElevation,
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
+                if (isContentMounted || progress > 0f) {
+                    MusicAppTheme(
+                        presetTheme = presetTheme,
+                        colorSource = colorSource,
+                        themeMode = playerThemeMode,
+                        windowWidthTier = windowWidthTier,
+                    ) {
+                        CompositionLocalProvider(
+                            LocalContentColor provides MusicTheme.colors.onSurface,
+                        ) {
+                            AeroBackground(
+                                preferredMode = aeroMode,
+                                signals = aeroSignals,
+                                artwork = (state.artwork as? ArtworkResult.Embedded)?.image,
+                                mixArtworkColors = true,
+                                isPlaying = state.isPlaying,
+                                isVisible = progress > 0f,
+                                artworkTransitionProgress = artworkTransition.progress,
+                                artworkTransitionRunning = artworkTransition.isRunning,
+                                modifier = Modifier.fillMaxSize()
+                                    .graphicsLayer { alpha = PlayerLayerAlpha.background(progress) },
+                            )
+                        }
+                    }
+                }
                 CustomBackgroundSlice(
                     modifier = Modifier.fillMaxWidth().height(totalCollapsedHeight)
                         .graphicsLayer { alpha = PlayerLayerAlpha.mini(progress) },
@@ -418,15 +443,7 @@ fun PlayerSheet(
                         CompositionLocalProvider(
                             LocalContentColor provides MusicTheme.colors.onSurface,
                         ) {
-                            AeroBackground(
-                                preferredMode = aeroMode,
-                                signals = aeroSignals,
-                                artwork = (state.artwork as? ArtworkResult.Embedded)?.image,
-                                mixArtworkColors = true,
-                                isPlaying = state.isPlaying,
-                                isVisible = progress > 0f,
-                                artworkTransitionProgress = artworkTransition.progress,
-                                artworkTransitionRunning = artworkTransition.isRunning,
+                            Box(
                                 modifier = Modifier.fillMaxSize()
                                     .graphicsLayer { alpha = PlayerLayerAlpha.full(progress) },
                             ) {

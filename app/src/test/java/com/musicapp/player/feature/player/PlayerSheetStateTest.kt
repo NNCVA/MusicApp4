@@ -23,6 +23,40 @@ class PlayerSheetStateTest {
     }
 
     @Test
+    fun `player layer alpha follows progressive transition curve`() {
+        // Collapsed (progress = 0)
+        assertEquals(1f, PlayerLayerAlpha.mini(0f), 0.0001f)
+        assertEquals(0f, PlayerLayerAlpha.background(0f), 0.0001f)
+        assertEquals(0f, PlayerLayerAlpha.full(0f), 0.0001f)
+
+        // Mini player fades out in 0..0.25
+        assertEquals(0.5f, PlayerLayerAlpha.mini(0.125f), 0.0001f)
+        assertEquals(0f, PlayerLayerAlpha.mini(0.25f), 0.0001f)
+        assertEquals(0f, PlayerLayerAlpha.mini(0.5f), 0.0001f)
+        assertEquals(0f, PlayerLayerAlpha.mini(1f), 0.0001f)
+
+        // Full player background fades in completely in 0..0.25
+        assertEquals(0.5f, PlayerLayerAlpha.background(0.125f), 0.0001f)
+        assertEquals(1f, PlayerLayerAlpha.background(0.25f), 0.0001f)
+        assertEquals(1f, PlayerLayerAlpha.background(0.5f), 0.0001f)
+        assertEquals(1f, PlayerLayerAlpha.background(0.75f), 0.0001f)
+        assertEquals(1f, PlayerLayerAlpha.background(1f), 0.0001f)
+
+        // Full player content fades in 0.25..1.0
+        assertEquals(0f, PlayerLayerAlpha.full(0.25f), 0.0001f)
+        assertEquals(0.3333f, PlayerLayerAlpha.full(0.5f), 0.001f)
+        assertEquals(1f, PlayerLayerAlpha.full(1f), 0.0001f)
+
+        // Clamping bounds
+        assertEquals(1f, PlayerLayerAlpha.mini(-0.1f), 0.0001f)
+        assertEquals(0f, PlayerLayerAlpha.mini(1.5f), 0.0001f)
+        assertEquals(0f, PlayerLayerAlpha.background(-0.1f), 0.0001f)
+        assertEquals(1f, PlayerLayerAlpha.background(1.5f), 0.0001f)
+        assertEquals(0f, PlayerLayerAlpha.full(-0.1f), 0.0001f)
+        assertEquals(1f, PlayerLayerAlpha.full(1.5f), 0.0001f)
+    }
+
+    @Test
     fun `calculate settle duration scales with distance and velocity`() {
         // Zero distance
         assertEquals(0, PlayerSheetState.calculateSettleDurationMs(0f, 0f))

@@ -62,6 +62,7 @@ data class PlayerSheetState(
 
 object PlayerLayerAlpha {
     fun mini(progress: Float): Float = (1f - progress / 0.25f).coerceIn(0f, 1f)
+    fun background(progress: Float): Float = (progress / 0.25f).coerceIn(0f, 1f)
     fun full(progress: Float): Float = ((progress - 0.25f) / 0.75f).coerceIn(0f, 1f)
 }
 
